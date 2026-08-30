@@ -1,0 +1,28 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "QOL Times",
+    "description": "Dispenser automation and Java-parity fixes. Stable APIs only - no experimental toggles required.",
+    "uuid": "8cc141ce-3612-419d-9a8d-bca87ef90995",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "QOL Times scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "79ae5873-8d1f-4044-a227-497a4584cf42",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.9.0" },
+    { "module_name": "@minecraft/server-ui", "version": "2.1.0" }
+  ],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

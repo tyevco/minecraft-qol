@@ -1,0 +1,28 @@
+{
+  "name": "qol-times",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quality-of-life automation and Java-parity fixes for Minecraft Bedrock",
+  "scripts": {
+    "lint": "just-scripts lint",
+    "build": "just-scripts build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "just-scripts clean",
+    "local-deploy": "just-scripts local-deploy",
+    "mcaddon": "just-scripts mcaddon"
+  },
+  "dependencies": {
+    "@minecraft/server": "2.9.0",
+    "@minecraft/server-ui": "2.1.0"
+  },
+  "devDependencies": {
+    "@minecraft/core-build-tasks": "^5.7.0",
+    "@minecraft/vanilla-data": "^1.26.44",
+    "@types/node": "^22.10.0",
+    "just-scripts": "^2.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.8"
+  }
+}

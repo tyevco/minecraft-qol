@@ -1,0 +1,24 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "QOL Times PROBE (throwaway)",
+    "description": "Phase 0 diagnostics. Logs only, never ships.",
+    "uuid": "7bb0e45b-bbc5-47b2-bfd6-2d3fc6091c40",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Probe scripts",
+      "language": "javascript",
+      "type": "script",
+      "uuid": "e51e312e-8ca9-4c9b-9741-7444d38ba672",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.9.0" }
+  ],
+  "metadata": { "product_type": "addon" }
+}

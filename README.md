@@ -72,11 +72,14 @@ want to disturb them.
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Vitest over the pure rules layer. No game required. |
-| `npm run build` | `tsc` typecheck, then esbuild bundle to `dist/scripts/main.js`. |
-| `npx just-scripts package` | Copy the pack + bundle into `development_behavior_packs`. |
-| `npm run local-deploy` | Build + deploy, then watch and repeat on save. |
-| `npm run mcaddon` | Produce `dist/packages/qol_times.mcaddon` for Realm upload. |
+| `npm test` | Vitest over the pure layers. No game required. |
+| `npm run build` | `tsc` typecheck, then an esbuild bundle per pack into `dist/<pack>/`. |
+| `npm run deploy` | Build, then copy each pack into `development_behavior_packs`. |
+| `npm run local-deploy` | Deploy, then watch and repeat on save. |
+| `npm run mcaddon` | Produce `dist/packages/<pack>.mcaddon` per pack. |
+
+Per-pack variants exist for everything: `npx just-scripts build:qol_times`,
+`deploy:qol_times`, `mcaddon:qol_times`, `clean:qol_times`.
 
 Turn on **Settings → Creator → Content Log GUI** to see output; `console.warn()`
 always appears there, `console.log()` only at Verbose/Info, which is why the code
@@ -100,6 +103,37 @@ Two mitigations: registration logs success or failure explicitly
 (`registered /qol:settings` vs `FAILED to register ...`, which previously
 swallowed `NamespaceNameError`), and `/scriptevent qol:settings` opens the same
 menu. That path is subscribed at `worldLoad`, so it works right after a `/reload`.
+
+## Repo layout
+
+This is a monorepo building several independent packs from a shared library.
+
+```
+packages/
+  shared/        code reused across packs (core/ pure, engine/ engine-facing)
+  qol-times/     behavior_pack/ + scripts/ + tests/
+  probe/         throwaway diagnostic pack, hand-deployed, plain JS
+dist/<pack>/     per-pack build output
+```
+
+Packs are declared in the `PACKS` array in `just.config.ts`; adding one is a new
+entry plus a folder. Each pack gets its own bundle, deploy, mcaddon and clean
+task, and its own `dist/` subdirectory so building one never wipes another's
+output.
+
+Two things that must stay in lockstep per pack: esbuild's `external` list and the
+manifest's `dependencies`. A mismatch fails at runtime with no build error.
+
+**Why we don't use the library's `copyTask`.** It reads `PROJECT_NAME` from
+`process.env` inside its returned closure, making the deploy destination a
+process global — so two packs cannot deploy from one build process. `deployPack`
+in `just.config.ts` uses the same `copyFiles` and `getGameDeploymentRootPaths`
+helpers `copyTask` itself uses, minus the env coupling. `cleanCollateralTask` has
+the same flaw and is replaced by a per-pack `rmSync`.
+
+Note also that `just`/`undertaker` resolves task names **eagerly** inside
+`series()`, so any task referenced by a per-pack task must be defined before the
+loop that creates them.
 
 ## Architecture
 

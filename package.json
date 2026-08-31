@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "just-scripts clean",
+    "deploy": "just-scripts package",
     "local-deploy": "just-scripts local-deploy",
     "mcaddon": "just-scripts mcaddon"
   },

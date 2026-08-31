@@ -1,10 +1,17 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
-// Only scripts/core is unit-tested: it is the pure layer with no @minecraft
-// imports, so it runs in plain Node at full speed with no game and no mocks.
+// Only pure layers are unit-tested: packages/shared/core and each pack's own
+// core/, none of which import @minecraft/*. They run in plain Node at full speed
+// with no game and no mocks.
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@qol/shared": path.resolve(__dirname, "packages/shared"),
+    },
+  },
   test: {
     environment: "node",
-    include: ["tests/**/*.test.ts"],
+    include: ["packages/**/tests/**/*.test.ts"],
   },
 });

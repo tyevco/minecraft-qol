@@ -15,8 +15,23 @@ the water, wash leather armour.
 Worth knowing: **this does not exist in Java Edition either.** Mojang closed the
 Java requests as Invalid (MC-9910, MC-220164, MC-165196) and Java players use
 mods for it. So this is net-new automation on both editions, not a parity fix.
-The genuine parity gaps handled here are armour-stand placement (MCPE-80145) and
-equipping armour onto villagers and wandering traders (MCPE-41432, MCPE-76479).
+The genuine parity gaps are armour-stand placement (MCPE-80145) and equipping
+armour onto villagers and wandering traders (MCPE-41432, MCPE-76479) — planned,
+not yet built.
+
+## Status
+
+**Working in game:** dispensers fill and drain cauldrons in both directions; the
+rig registry persists across reloads; `/qol:settings` gives per-feature toggles.
+28 unit tests pass over the pure rules layer.
+
+**Verified safe:** a dispenser full of cobblestone facing a cauldron mints
+nothing — the container diff refuses because the dispenser lost cobblestone, not
+a bucket.
+
+**Not yet done:** bottles / dye / wash are implemented and unit-tested but not
+yet exercised in game; the two parity features need a handler refactor (the
+interceptor currently assumes a cauldron target); GameTest pack.
 
 ## Setup
 
@@ -25,23 +40,33 @@ npm install
 cp .env.example .env     # then edit CUSTOM_DEPLOYMENT_PATH
 ```
 
-`.env` is gitignored because it holds a machine-specific absolute path and an XUID.
+`.env` is gitignored because it holds a machine-specific absolute path.
 
-### Why `MINECRAFT_PRODUCT="Custom"`
+### Where packs deploy, and why it's fiddly
 
-Since Bedrock 1.21.120 the Windows build moved from UWP to GDK. Mojang's
-`BedrockGDK` target resolves to
-`%APPDATA%\Minecraft Bedrock\Users\Shared\games\com.mojang`, but on machines
-migrated from the old UWP build **that path is a dangling symlink** pointing at a
-`LocalState\games\com.mojang` that no longer exists. Real data lives under the
-numeric per-user (XUID) folder, so we use `Custom` and point at it directly.
+Development packs load from the **shared** folder:
 
-Check yours before trusting either path:
+```
+%APPDATA%\Minecraft Bedrock\Users\Shared\games\com.mojang\development_behavior_packs
+```
+
+Confirmed empirically — packs placed only in the per-user (XUID) folder were
+never listed in game, and appeared the moment the shared path was populated.
+Per-user holds worlds and `options.txt`; shared holds packs.
+
+The trap: since Bedrock 1.21.120 the Windows build moved from UWP to GDK, and on
+migrated machines `Users\Shared\games\com.mojang` is a **symlink** into
+`%LOCALAPPDATA%\Packages\Microsoft.MinecraftUWP_*\LocalState\games\com.mojang`.
+A reinstall can delete that target, leaving a dangling link — packs then never
+load, with no error anywhere. Check yours:
 
 ```bash
-ls "$APPDATA/Minecraft Bedrock/Users/Shared/games/com.mojang"   # broken here
-ls "$APPDATA/Minecraft Bedrock/Users"/*/games/com.mojang        # the real one
+ls "$APPDATA/Minecraft Bedrock/Users/Shared/games/com.mojang"
 ```
+
+If it errors, recreate the directory the symlink points at. Don't replace the
+symlink — worlds and options resolve through the per-user folder and you don't
+want to disturb them.
 
 ## Commands
 
@@ -53,65 +78,74 @@ ls "$APPDATA/Minecraft Bedrock/Users"/*/games/com.mojang        # the real one
 | `npm run local-deploy` | Build + deploy, then watch and repeat on save. |
 | `npm run mcaddon` | Produce `dist/packages/qol_times.mcaddon` for Realm upload. |
 
-In game, `/reload` re-runs scripts. Turn on **Settings → Creator → Content Log
-GUI** to see output; `console.warn()` always appears there, `console.log()` only
-at Verbose/Info, which is why the code uses `warn` throughout.
+Turn on **Settings → Creator → Content Log GUI** to see output; `console.warn()`
+always appears there, `console.log()` only at Verbose/Info, which is why the code
+uses `warn` throughout. Ctrl+H opens the log history.
 
-## Architecture in one paragraph
+### When `/reload` is enough, and when it isn't
+
+| You changed | What to do |
+| --- | --- |
+| Anything inside an existing event handler or rule | `/reload` |
+| Added or changed a **custom command** | **Exit to the main menu and re-enter the world** |
+| `manifest.json`, or added a new pack folder | Restart the game |
+
+The command case is the one that bites. `system.beforeEvents.startup` fires when
+the world loads scripts and **not** on `/reload`, so a `/reload` re-runs the
+module but never re-fires the callback that calls `registerCommand` — the command
+silently does not exist, and the only symptom in game is Bedrock's generic
+"unknown command" error. Confirmed the hard way.
+
+Two mitigations: registration logs success or failure explicitly
+(`registered /qol:settings` vs `FAILED to register ...`, which previously
+swallowed `NamespaceNameError`), and `/scriptevent qol:settings` opens the same
+menu. That path is subscribed at `worldLoad`, so it works right after a `/reload`.
+
+## Architecture
 
 There is **no dispenser event** in the Bedrock scripting API, and custom block
-components can only attach to custom blocks, never to vanilla `minecraft:dispenser`.
+components attach only to custom blocks, never to vanilla `minecraft:dispenser`.
 So we use vanilla's own failure mode: a dispenser that cannot use its item ejects
-it as an item entity. We detect that ejection via `entitySpawn`, attribute it to a
-dispenser geometrically, and convert it into the interaction we wanted — but only
-after diffing the dispenser's container against a recent snapshot to *prove* it
-actually just lost that item. Without that proof, anyone could throw an empty
-bucket beside a dispenser full of cobblestone and mint a free lava bucket.
+it as an item entity. We detect that via `entitySpawn`, attribute it to a
+dispenser geometrically, and convert it into the interaction we wanted.
 
-`scripts/core/` is pure: no `@minecraft/*` imports, so it unit-tests in plain Node.
-Everything engine-facing lives outside it, and `scripts/dispenser/io.ts` is the
-single adapter that knows how a cauldron is represented.
+Four tiers, cheapest first — nearly every item spawn in the world exits at the
+first:
 
-## Status
+1. **Type, cause, amount.** Claimed item id, not a chunk-load rehydration, and
+   `amount === 1`. A dispenser dispenses exactly one item, so that last check is
+   a hard invariant — without it a thrown stack of 64 bottles would convert
+   wholesale for one cauldron's worth of water.
+2. **Geometry.** A dispenser that fired into this cell must sit one step back
+   along its own facing vector *and* face this way. Ambiguity fails closed.
+3. **Legal transition** for the target cauldron's state.
+4. **Causal proof.** Diff the dispenser's container against the previous tick and
+   require it lost exactly one of that item. Everything above is circumstantial —
+   a player can stand anywhere and throw anything. Only a container that actually
+   shrank proves a dispense happened.
 
-- **Done** — project scaffold, build/deploy/package pipeline, pure rules layer for
-  buckets / bottles / dye / wash, 28 passing unit tests.
-- **Next: Phase 0** — the probe below must be run before the interceptor is built.
-- **Then** — interceptor + rig registry, settings UI (`/qol:settings`), parity
-  features, GameTest pack.
+A consequence worth knowing: **the first dispense at any new rig does nothing.**
+An unproven dispenser registers itself and defers to vanilla. That costs one
+missed activation per rig, ever, and is what closes the free-mint hole.
 
-## Phase 0 — run the probe first
+`scripts/core/` is pure — no `@minecraft/*` imports, so it unit-tests in plain
+Node. `scripts/dispenser/io.ts` is the single adapter that knows how a cauldron
+is represented.
 
-Two unanswerable-from-docs questions can invalidate the whole design, so the probe
-pack answers them before any real code depends on them. It **only logs**; it
-mutates nothing unless you explicitly arm the removal test.
+See [docs/phase0-results.md](docs/phase0-results.md) for the measured engine
+behaviour this is built on, including why velocity is unusable as a signal and
+why levels go through block states rather than `fluid_container.fillLevel`.
 
-It is already deployed to `development_behavior_packs/qol_times_probe`.
+## The probe pack
 
-1. Make a **creative, flat, cheats-enabled** test world (not the Realm).
-2. Enable the **QOL Times PROBE** behavior pack. Turn on **Content Log GUI**
-   (Settings → Creator) and set GUI Log Level to Info.
-3. Build a rig: a dispenser facing a cauldron. Put a **water bucket** in the
-   dispenser and a button/lever on it.
-4. Run `/scriptevent qolprobe:scan` while standing near the rig.
-5. Pulse the dispenser.
-6. Run `/scriptevent qolprobe:arm`, then pulse it again.
+`probe_pack/` is a throwaway diagnostic that logs engine behaviour without
+mutating anything. It answered the blocking unknowns before the interceptor was
+written; keep it for investigating future surprises.
 
-### What to look for
+Deploy it the same way, enable it instead of the main pack, then:
 
-| Log line | Question it answers |
-| --- | --- |
-| `U1 ITEM SPAWN ... item=minecraft:water_bucket` | **Blocking.** If this never appears, `entitySpawn` does not fire for items and the architecture must fall back to polling. |
-| `U2 remove() verdict=...` | **Blocking.** `SUCCEEDED` is what we need. `SILENT NO-OP` is the dangerous one — it would dupe an item on every pulse. |
-| `U3 vs PREV-TICK` / `vs SAME-TICK` | Whether the dispenser has already decremented its slot when the event fires. Decides how container snapshots are timed. |
-| `U4` — the `vel=` field | Whether velocity is populated at spawn, i.e. usable as a corroborating signal. |
-| `U5 triggered_bit ...` | The waveform across a pulse: one-tick pulse or latched while powered. |
-| `U6` — `fluid_container=PRESENT fillLevel=N` | Whether the stable component exists on a vanilla cauldron, and whether `fillLevel` is 0–6 or 0–1. Fill a cauldron to different levels by hand and re-run `scan` to read the scale off directly. |
-| `mappingAgrees=true` | Confirms `facing_direction` really is 0=down, 1=up, 2=north, 3=south, 4=west, 5=east. |
-
-Also confirm the premise itself: the dispenser should **eject the bucket onto the
-floor** rather than placing water inside the cauldron block. Repeat with a lava
-bucket, and with an empty bucket against a full cauldron.
-
-Paste the `[QOLPROBE]` lines back and the interceptor can be built against real
-behaviour instead of assumptions.
+```
+/scriptevent qolprobe:scan     register rigs near you + dump cauldron readout
+/scriptevent qolprobe:arm      arm ONE removal test on the next item spawn
+/scriptevent qolprobe:status   show what is registered
+```

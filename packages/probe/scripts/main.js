@@ -12,10 +12,17 @@
  *   U6 is minecraft:fluid_container present on a vanilla cauldron, and is
  *      fillLevel scaled 0-6 or 0-1?
  *
+ *   L1 is getLightLevel() total brightness, and is block light recoverable
+ *      as (total - sky)? Hostile spawning keys off BLOCK light.
+ *   L2 which flags separate a mob-standable block from a slab/torch/glass?
+ *      Block has no isSolid, so we need an empirical proxy.
+ *
  * In-game:
  *   /scriptevent qolprobe:scan     register rigs near you + dump cauldron readout
  *   /scriptevent qolprobe:arm      arm ONE removal test on the next item spawn
  *   /scriptevent qolprobe:status   show what is registered
+ *   /scriptevent qolprobe:light    light readout at your feet (run day AND night)
+ *   /scriptevent qolprobe:solid    flag dump for the block you are looking at
  */
 import { world, system } from "@minecraft/server";
 
@@ -219,6 +226,56 @@ world.afterEvents.worldLoad.subscribe(() => {
     if (cmd === "arm") {
       armRemoval = true;
       log("U2 removal test ARMED for the next item spawn");
+      return;
+    }
+
+    // ---- L1: light semantics --------------------------------------------------
+    // getLightLevel() is documented only as "total brightness"; getSkyLightLevel()
+    // as the sky component. Hostile spawning keys off BLOCK light, and sky light
+    // does not prevent night spawns. We need to know whether block light is
+    // recoverable as (total - sky), or whether total is already the effective
+    // max(block, sky*darken). Run this in four places, at noon AND midnight:
+    //   enclosed dark | enclosed torch-lit | open sky | open sky under an overhang
+    if (cmd === "light") {
+      if (!src) { log("light: run this as a player"); return; }
+      const dim = src.dimension;
+      const feet = { x: Math.floor(src.location.x), y: Math.floor(src.location.y), z: Math.floor(src.location.z) };
+      const timeOfDay = world.getTimeOfDay();
+      log("L1 LIGHT timeOfDay=" + timeOfDay + " (0=dawn 6000=noon 18000=midnight) tick=" + system.currentTick);
+
+      for (let dy = -1; dy <= 1; dy++) {
+        const p = { x: feet.x, y: feet.y + dy, z: feet.z };
+        let total = "ERR", sky = "ERR";
+        try { total = dim.getLightLevel(p); } catch (e) { total = "ERR " + e; }
+        try { sky = dim.getSkyLightLevel(p); } catch (e) { sky = "ERR " + e; }
+        const derived = (typeof total === "number" && typeof sky === "number") ? total - sky : "?";
+        const label = dy === -1 ? "below" : dy === 0 ? "FEET " : "head ";
+        log("  " + label + " @" + p.x + "," + p.y + "," + p.z +
+            " total=" + total + " sky=" + sky + " (total-sky)=" + derived);
+      }
+      return;
+    }
+
+    // ---- L2: solidity flags ---------------------------------------------------
+    // Block has no isSolid. A mob needs a full opaque top face beneath it, so we
+    // need an empirical proxy. Look at a block and run this; compare stone vs
+    // slab vs torch vs glass vs leaves vs water to see which flags separate them.
+    if (cmd === "solid") {
+      if (!src) { log("solid: run this as a player"); return; }
+      const hit = src.getBlockFromViewDirection ? src.getBlockFromViewDirection({ maxDistance: 12 }) : undefined;
+      const b = hit && hit.block;
+      if (!b) { log("L2 solid: look at a block within 12 blocks first"); return; }
+      let liquidBlocking = "?";
+      try { liquidBlocking = String(b.isLiquidBlocking("Water")); } catch (e) { liquidBlocking = "ERR " + e; }
+      let tags = "?";
+      try { tags = JSON.stringify(b.getTags()); } catch (e) { tags = "ERR"; }
+      let states = "?";
+      try { states = JSON.stringify(b.permutation.getAllStates()); } catch (e) { states = "ERR"; }
+      log("L2 SOLID " + b.typeId + " @" + b.x + "," + b.y + "," + b.z +
+          " isAir=" + b.isAir + " isLiquid=" + b.isLiquid +
+          " isWaterlogged=" + b.isWaterlogged +
+          " isLiquidBlocking(Water)=" + liquidBlocking);
+      log("  tags=" + tags + " states=" + states);
       return;
     }
 

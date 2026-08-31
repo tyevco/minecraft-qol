@@ -7,7 +7,7 @@
  * system.beforeEvents.startup, which fires before `world` is usable.
  */
 import { system, world } from "@minecraft/server";
-import { registerCommands } from "./commands/register";
+import { installCommandFallback, registerCommands } from "./commands/register";
 import { install } from "./dispenser/interceptor";
 import { restore, startPolling, rigCount } from "./dispenser/rigRegistry";
 import { load as loadSettings } from "./settings/store";
@@ -28,6 +28,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   restore();
   startPolling();
   install(log);
+  installCommandFallback(log);
 
   log(`ready at tick ${system.currentTick}, ${rigCount()} known rig(s)`);
 });

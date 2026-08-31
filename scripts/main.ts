@@ -7,6 +7,9 @@
  * system.beforeEvents.startup, which fires before `world` is usable.
  */
 import { system, world } from "@minecraft/server";
+import { install } from "./dispenser/interceptor";
+import { restore, startPolling, rigCount } from "./dispenser/rigRegistry";
+import { load as loadSettings } from "./settings/store";
 
 const TAG = "[QOL Times]";
 
@@ -15,5 +18,12 @@ const TAG = "[QOL Times]";
 export const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 
 world.afterEvents.worldLoad.subscribe(() => {
-  log(`loaded at tick ${system.currentTick}`);
+  // /reload discards all module state, so everything durable is rehydrated here
+  // rather than assumed to have survived.
+  loadSettings();
+  restore();
+  startPolling();
+  install(log);
+
+  log(`ready at tick ${system.currentTick}, ${rigCount()} known rig(s)`);
 });

@@ -88,3 +88,44 @@ and a `runJob`-chunked flood fill. Deliberately out of scope for v1.
    `/scriptevent qolprobe:solid` readings for slab, torch, glass, leaves and
    water. `isLiquidBlocking("Water")` is the current candidate — grass_block
    returns `true` for it.
+
+---
+
+# Standability — measured
+
+`Block` exposes no `isSolid`, so "could a mob stand here?" needed an empirical
+proxy. From `/scriptevent qolprobe:solid` on Bedrock 1.26.45:
+
+| Block | `isLiquidBlocking(Water)` | Valid floor? |
+| --- | --- | --- |
+| `dirt` | true | yes |
+| `grass_block` | true | yes |
+| `smooth_stone_slab` (bottom) | true | yes |
+| `glass` | true | **no** — see below |
+| `torch` | false | no |
+| `lever` | false | no |
+
+**`isLiquidBlocking(Water)` cleanly separates real floors from attachments**, and
+correctly accepts a bottom slab — the case most likely to have broken it, since
+mobs do spawn on bottom slabs. Neither `getTags()` nor block states helped:
+glass reported no tags and no states at all.
+
+So it is a good **necessary** condition, and it is what `isStandableFloor` is
+built on. It is not quite **sufficient**: vanilla spawning also requires an
+opaque surface, and glass is a full water-blocking cube that mobs will not spawn
+on. That is handled by an explicit `DENY` list in
+`packages/lens/scripts/core/surface.ts` covering glass, stained glass, panes,
+leaves, ice variants, barrier, slime and honey.
+
+`DENY` encodes an inferred game rule, so it is a short explicit list rather than
+a heuristic. Getting an entry wrong is asymmetric: a block wrongly in `DENY`
+produces a **false warning**, one wrongly omitted produces a **missing warning**.
+The first is the safer failure, so the list stays conservative and only grows
+with in-game confirmation.
+
+## Worth verifying in game
+
+Whether mobs really do not spawn on each `DENY` entry. The clean test: a sealed,
+fully dark room, floored with the material in question, left overnight with a
+control room of stone beside it. Automatable later with the same
+self-building-rig technique as the light matrix.

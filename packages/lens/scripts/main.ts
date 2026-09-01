@@ -24,6 +24,8 @@ import {
   type CustomCommandResult,
   type ItemStack,
 } from "@minecraft/server";
+import { MAX_TIER, nextTier, type Tier } from "./core/tier";
+import { hasTier, readTier, stampTier } from "./engine/itemTier";
 import { MarkerPool } from "./engine/markers";
 import { deviceScale, runScan, type Mode, type ScanSettings } from "./engine/scan";
 
@@ -61,6 +63,8 @@ interface Session {
   markers: MarkerPool;
   /** Whether a command or a worn item switched this on - they must not fight. */
   source: Source;
+  /** Tier of the carrying item. Command sessions run at the maximum. */
+  tier: Tier;
 }
 
 const active = new Map<string, Session>();
@@ -91,28 +95,44 @@ const CARRY_SLOTS: readonly EquipmentSlot[] = [
   EquipmentSlot.Mainhand,
 ];
 
-/** Which mode, if any, the item in a given slot selects. */
-function modeForItem(item: ItemStack | undefined, slot: EquipmentSlot): Mode | undefined {
+interface Carried {
+  mode: Mode;
+  tier: Tier;
+  /** Where it was found, so a first-sight tier stamp can be written back. */
+  slot: EquipmentSlot;
+  /** True when this is the real item and it has never been stamped. */
+  needsStamp: boolean;
+}
+
+/** What the item in a given slot activates, if anything. */
+function carriedForItem(item: ItemStack | undefined, slot: EquipmentSlot): Carried | undefined {
   if (!item) return undefined;
   const name = item.nameTag?.toLowerCase();
 
   // The legacy renamed-helmet path stays scoped to the head slot, so a sword
   // that happens to be called "lens" does not switch the overlay on.
   const isLegacy = slot === EquipmentSlot.Head && (name?.includes(LENS_KEYWORD) ?? false);
-  if (item.typeId !== LENS_ITEM && !isLegacy) return undefined;
+  const isReal = item.typeId === LENS_ITEM;
+  if (!isReal && !isLegacy) return undefined;
 
-  // Renaming the item still switches mode, so "Safe Spawn Lens" works.
-  return name?.includes("safe") ? "safe" : "danger";
+  return {
+    // Renaming the item still switches mode, so "Safe Spawn Lens" works.
+    mode: name?.includes("safe") ? "safe" : "danger",
+    // A legacy renamed helmet has no tier property; it stays tier 1.
+    tier: isReal ? readTier(item) : 1,
+    slot,
+    needsStamp: isReal && !hasTier(item),
+  };
 }
 
-/** Which mode, if any, the player is currently carrying the Lens for. */
-function carriedMode(player: Player): Mode | undefined {
+/** What, if anything, the player is currently carrying the Lens for. */
+function carried(player: Player): Carried | undefined {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
     if (!equippable) return undefined;
     for (const slot of CARRY_SLOTS) {
-      const mode = modeForItem(equippable.getEquipment(slot), slot);
-      if (mode) return mode;
+      const found = carriedForItem(equippable.getEquipment(slot), slot);
+      if (found) return found;
     }
     return undefined;
   } catch {
@@ -120,11 +140,11 @@ function carriedMode(player: Player): Mode | undefined {
   }
 }
 
-function enable(player: Player, mode: Mode, source: Source): void {
+function enable(player: Player, mode: Mode, source: Source, tier: Tier = MAX_TIER): void {
   const existing = active.get(player.id);
   // Reuse the pool across a mode switch so markers recolour instead of blinking.
   const markers = existing?.markers ?? new MarkerPool(player);
-  active.set(player.id, { mode, busy: false, reported: false, markers, source });
+  active.set(player.id, { mode, busy: false, reported: false, markers, source, tier });
   player.sendMessage(
     mode === "danger"
       ? "§cLens on §7— marking where hostiles can spawn."
@@ -158,20 +178,93 @@ function toggle(player: Player, mode?: Mode): void {
  * undone by the helmet still being worn.
  */
 function syncWorn(player: Player): void {
-  const worn = carriedMode(player);
+  const worn = carried(player);
   const session = active.get(player.id);
+
+  // A freshly crafted Lens has no tier written, so it shows no lore. Stamp it
+  // once on first sight so the item describes itself.
+  if (worn?.needsStamp) stampInitialTier(player, worn.slot);
 
   if (worn === undefined) {
     if (session?.source === "item") disable(player, true);
     return;
   }
   if (!session) {
-    enable(player, worn, "item");
+    enable(player, worn.mode, "item", worn.tier);
     return;
   }
-  if (session.source === "item" && session.mode !== worn) {
-    session.mode = worn;
+  if (session.source === "item" && (session.mode !== worn.mode || session.tier !== worn.tier)) {
+    session.mode = worn.mode;
+    session.tier = worn.tier;
     session.reported = false;
+  }
+}
+
+function stampInitialTier(player: Player, slot: EquipmentSlot): void {
+  try {
+    const equippable = player.getComponent(EntityComponentTypes.Equippable);
+    const item = equippable?.getEquipment(slot);
+    if (!equippable || item?.typeId !== LENS_ITEM || hasTier(item)) return;
+    stampTier(item, 1);
+    equippable.setEquipment(slot, item);
+  } catch (e) {
+    log(`initial tier stamp failed: ${e}`);
+  }
+}
+
+/** The block whose light is absorbed to promote a Lens. */
+const UPGRADE_BLOCK = "minecraft:glowstone";
+
+/**
+ * Upgrade ritual: use a Spawn Lens on glowstone and it absorbs the block.
+ *
+ * Driven from the cancellable beforeEvent because that is the only interaction
+ * event carrying the itemStack - the after-event and itemStartUseOn both omit
+ * it. Before-events are read-only, so the actual work is deferred a tick.
+ *
+ * Deliberately avoids ItemCustomComponent: `minecraft:custom_components` is
+ * schema-attested at format 1.21.80 but absent from 1.21.90 onward, and this
+ * global event needs no component registration at all.
+ */
+function installUpgradeRitual(): void {
+  world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
+    // Interactions can fire twice; only act on the first.
+    if (!ev.isFirstEvent) return;
+    if (ev.itemStack?.typeId !== LENS_ITEM) return;
+    if (!ev.block.isValid || !ev.block.matches(UPGRADE_BLOCK)) return;
+    if (nextTier(readTier(ev.itemStack)) === undefined) return;
+
+    // Stop the normal interaction so the Lens does not also try to place.
+    ev.cancel = true;
+    const { player, block } = ev;
+    const location = { x: block.x, y: block.y, z: block.z };
+    system.run(() => upgrade(player, location));
+  });
+}
+
+function upgrade(player: Player, location: { x: number; y: number; z: number }): void {
+  try {
+    const equippable = player.getComponent(EntityComponentTypes.Equippable);
+    const held = equippable?.getEquipment(EquipmentSlot.Mainhand);
+    if (!equippable || held?.typeId !== LENS_ITEM) return;
+
+    const promoted = nextTier(readTier(held));
+    if (promoted === undefined) return;
+
+    // Re-check the block: a tick has passed since the interaction.
+    const block = player.dimension.getBlock(location);
+    if (!block?.isValid || !block.matches(UPGRADE_BLOCK)) return;
+
+    // Consume the glowstone first. If stamping the tier then failed we would
+    // rather have eaten a block than minted a free upgrade.
+    block.setType("minecraft:air");
+    stampTier(held, promoted);
+    equippable.setEquipment(EquipmentSlot.Mainhand, held);
+
+    player.dimension.playSound("random.levelup", player.location);
+    player.sendMessage(`§eThe Lens drinks the light. §7Spawn Sight ${promoted === 2 ? "II" : "I"}.`);
+  } catch (e) {
+    log(`upgrade failed: ${e}`);
   }
 }
 
@@ -238,6 +331,7 @@ system.beforeEvents.startup.subscribe((event) => {
 world.afterEvents.worldLoad.subscribe(() => {
   // /reload discards module state, so everything is re-established here.
   system.runInterval(scanTick, REFRESH_TICKS);
+  installUpgradeRitual();
   system.runInterval(() => {
     for (const player of world.getAllPlayers()) syncWorn(player);
   }, EQUIP_CHECK_TICKS);

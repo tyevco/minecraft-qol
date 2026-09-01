@@ -26,7 +26,7 @@ import {
 } from "@minecraft/server";
 import { fromIndex, toIndex } from "./core/grid";
 import { solve } from "./core/solver";
-import { MAX_TIER, nextTier, tierSuggestsLighting, type Tier } from "./core/tier";
+import { MAX_TIER, nextTier, tierLabel, tierSuggestsLighting, type Tier } from "./core/tier";
 import { hasTier, readTier, stampTier } from "./engine/itemTier";
 import { MarkerPool, type Mark } from "./engine/markers";
 import {
@@ -80,9 +80,11 @@ interface Session {
   source: Source;
   /** Tier of the carrying item. Command sessions run at the maximum. */
   tier: Tier;
-  /** Last solve's output, for the summary message. */
+  /** Last solve's output, for the summary message and /scriptevent lens:debug. */
   lastSuggestions?: number;
   lastUnreachable?: number;
+  lastTargets?: number;
+  lastCandidates?: number;
 }
 
 const active = new Map<string, Session>();
@@ -344,6 +346,8 @@ function* solveAndRender(
     session.markers.update([...suggestions, ...shaded]);
     session.lastSuggestions = solved.picks.length;
     session.lastUnreachable = solved.uncovered.length;
+    session.lastTargets = survey.targets.length;
+    session.lastCandidates = survey.candidates.length;
   } catch (e) {
     log(`solver failed: ${e}`);
     session.markers.update(result.marks);
@@ -374,8 +378,8 @@ function scanTick(): void {
       session.reported = true;
 
       player.sendMessage(
-        `§7Lens: §c${result.spawnable} spawnable§7, §8${result.uncertain} uncertain§7 ` +
-          `of ${result.scanned} standable position(s).`,
+        `§7Lens §f${tierLabel(session.tier)}§7: §c${result.spawnable} spawnable§7, ` +
+          `§8${result.uncertain} uncertain§7 of ${result.scanned} standable position(s).`,
       );
 
       if (tierSuggestsLighting(session.tier)) {
@@ -450,6 +454,34 @@ world.afterEvents.worldLoad.subscribe(() => {
     }
     const arg = ev.message.trim().toLowerCase();
     toggle(player, arg === "danger" || arg === "safe" ? arg : undefined);
+  });
+
+  // Reports the whole tier -> solver chain, so a missing suggestion can be
+  // traced to the step that actually failed rather than guessed at.
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "lens:debug") return;
+    const player = ev.sourceEntity;
+    if (!(player instanceof Player)) return;
+
+    const found = carried(player);
+    const session = active.get(player.id);
+    player.sendMessage(
+      found
+        ? `§7carried: §f${found.mode}§7 tier §f${found.tier}§7 in §f${found.slot}§7 ` +
+            `(stamped: ${found.needsStamp ? "§cno" : "§ayes"}§7)`
+        : "§7carried: §cnothing recognised",
+    );
+    player.sendMessage(
+      session
+        ? `§7session: tier §f${session.tier}§7 source §f${session.source}§7 ` +
+            `solver §f${tierSuggestsLighting(session.tier) ? "on" : "off"}`
+        : "§7session: §cnone active",
+    );
+    player.sendMessage(
+      `§7last solve: §f${session?.lastTargets ?? "-"}§7 targets, ` +
+        `§f${session?.lastCandidates ?? "-"}§7 torch spots available, ` +
+        `§f${session?.lastSuggestions ?? "-"}§7 suggested`,
+    );
   });
 
   world.afterEvents.playerLeave.subscribe((ev) => {

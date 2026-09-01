@@ -29,6 +29,11 @@ export function nextTier(tier: Tier): Tier | undefined {
 
 const ROMAN: Record<Tier, string> = { 1: "I", 2: "II" };
 
+/** "I" / "II" - used in messages as well as lore. */
+export function tierLabel(tier: Tier): string {
+  return ROMAN[tier];
+}
+
 /**
  * Lore lines shown on the item.
  *

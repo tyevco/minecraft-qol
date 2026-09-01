@@ -26,6 +26,9 @@
  *   /scriptevent qolprobe:lightmatrix
  *                                  builds its own rig 12 blocks up, sweeps
  *                                  shelter x torch x time, restores everything
+ *   /scriptevent qolprobe:spawn      report your spawn point (H1)
+ *   /scriptevent qolprobe:setspawn   set it to where you stand (reversible)
+ *   /scriptevent qolprobe:clearspawn clear it again
  */
 import { world, system, BlockPermutation } from "@minecraft/server";
 
@@ -227,6 +230,28 @@ async function runLightMatrix(player) {
   }
 }
 
+/** Dump the player's spawn point, distinguishing "unset" from a real location. */
+function reportSpawn(player, label) {
+  let sp = "ERR";
+  try {
+    const p = player.getSpawnPoint();
+    sp = p === undefined
+      ? "UNDEFINED (never set)"
+      : p.x + "," + p.y + "," + p.z + " in " + p.dimension.id;
+  } catch (e) { sp = "THREW " + e; }
+
+  let dflt = "ERR";
+  try {
+    const d = world.getDefaultSpawnLocation();
+    // Y 32767 is the documented "height not fixed" sentinel, not a real height.
+    dflt = d.x + "," + (d.y === 32767 ? "32767=auto" : d.y) + "," + d.z;
+  } catch (e) { dflt = "THREW " + e; }
+
+  log("H1 [" + label + "] getSpawnPoint()=" + sp +
+      " | standing in " + player.dimension.id +
+      " | worldDefaultSpawn=" + dflt);
+}
+
 world.afterEvents.worldLoad.subscribe(() => {
   log("loaded, tick=" + system.currentTick + " -- run /scriptevent qolprobe:scan near a dispenser+cauldron rig");
 
@@ -380,6 +405,55 @@ world.afterEvents.worldLoad.subscribe(() => {
     if (cmd === "lightmatrix") {
       if (!src) { log("lightmatrix: run this as a player"); return; }
       system.run(() => { void runLightMatrix(src); });
+      return;
+    }
+
+    // ---- H1: respawn anchor unknowns ------------------------------------------
+    // The whole Hearthstone design rests on pre-emptively assigning a spawn
+    // point rather than intercepting death. Three things decide whether that
+    // works, and none are answerable from the type definitions:
+    //   does getSpawnPoint() return undefined for someone who never slept?
+    //   does setSpawnPoint() accept a Nether/End location and survive a respawn?
+    //   does breaking a bed clear the spawn point back to undefined?
+    if (cmd === "spawn") {
+      if (!src) { log("spawn: run this as a player"); return; }
+      reportSpawn(src, "current");
+      return;
+    }
+
+    // Sets your spawn to where you stand. Reversible with qolprobe:clearspawn.
+    if (cmd === "setspawn") {
+      if (!src) { log("setspawn: run this as a player"); return; }
+      system.run(() => {
+        try {
+          const loc = {
+            x: Math.floor(src.location.x),
+            y: Math.floor(src.location.y),
+            z: Math.floor(src.location.z),
+            dimension: src.dimension,
+          };
+          src.setSpawnPoint(loc);
+          log("H1 setSpawnPoint(" + loc.x + "," + loc.y + "," + loc.z +
+              " in " + src.dimension.id + ") did not throw");
+          reportSpawn(src, "after set");
+        } catch (e) {
+          log("H1 setSpawnPoint THREW: " + e);
+        }
+      });
+      return;
+    }
+
+    if (cmd === "clearspawn") {
+      if (!src) { log("clearspawn: run this as a player"); return; }
+      system.run(() => {
+        try {
+          src.setSpawnPoint(undefined);
+          log("H1 cleared spawn point");
+          reportSpawn(src, "after clear");
+        } catch (e) {
+          log("H1 clear THREW: " + e);
+        }
+      });
       return;
     }
 

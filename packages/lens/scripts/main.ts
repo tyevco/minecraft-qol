@@ -5,7 +5,8 @@
  * behaviour, not assumptions - see docs/lens-light-results.md.
  *
  * Two ways to switch it on:
- *   - wear a helmet named "Lens" (any helmet, renamed in an anvil)
+ *   - carry a Spawn Lens: worn on the head, in the offhand, or held
+ *   - (legacy) wear any helmet renamed "Lens" in an anvil
  *   - /lens:toggle
  *
  * The worn trigger deliberately keys off the item's NAME rather than a custom
@@ -21,6 +22,7 @@ import {
   system,
   world,
   type CustomCommandResult,
+  type ItemStack,
 } from "@minecraft/server";
 import { MarkerPool } from "./engine/markers";
 import { deviceScale, runScan, type Mode, type ScanSettings } from "./engine/scan";
@@ -76,19 +78,43 @@ function settingsFor(player: Player, mode: Mode): ScanSettings {
   };
 }
 
-/** Which mode, if any, the player's headgear selects. */
-function wornMode(player: Player): Mode | undefined {
+/**
+ * Slots that activate the Lens, in priority order.
+ *
+ * Worn is first so a helmet keeps working when something unrelated is held.
+ * getEquipment reads any slot identically - there is no API-level distinction -
+ * so offhand support is only a matter of looking there.
+ */
+const CARRY_SLOTS: readonly EquipmentSlot[] = [
+  EquipmentSlot.Head,
+  EquipmentSlot.Offhand,
+  EquipmentSlot.Mainhand,
+];
+
+/** Which mode, if any, the item in a given slot selects. */
+function modeForItem(item: ItemStack | undefined, slot: EquipmentSlot): Mode | undefined {
+  if (!item) return undefined;
+  const name = item.nameTag?.toLowerCase();
+
+  // The legacy renamed-helmet path stays scoped to the head slot, so a sword
+  // that happens to be called "lens" does not switch the overlay on.
+  const isLegacy = slot === EquipmentSlot.Head && (name?.includes(LENS_KEYWORD) ?? false);
+  if (item.typeId !== LENS_ITEM && !isLegacy) return undefined;
+
+  // Renaming the item still switches mode, so "Safe Spawn Lens" works.
+  return name?.includes("safe") ? "safe" : "danger";
+}
+
+/** Which mode, if any, the player is currently carrying the Lens for. */
+function carriedMode(player: Player): Mode | undefined {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
-    const head = equippable?.getEquipment(EquipmentSlot.Head);
-    if (!head) return undefined;
-
-    // Renaming the real item still switches mode, so "Safe Spawn Lens" works.
-    const name = head.nameTag?.toLowerCase();
-    const isLens = head.typeId === LENS_ITEM || (name?.includes(LENS_KEYWORD) ?? false);
-    if (!isLens) return undefined;
-
-    return name?.includes("safe") ? "safe" : "danger";
+    if (!equippable) return undefined;
+    for (const slot of CARRY_SLOTS) {
+      const mode = modeForItem(equippable.getEquipment(slot), slot);
+      if (mode) return mode;
+    }
+    return undefined;
   } catch {
     return undefined; // never let equipment probing break the feature
   }
@@ -132,7 +158,7 @@ function toggle(player: Player, mode?: Mode): void {
  * undone by the helmet still being worn.
  */
 function syncWorn(player: Player): void {
-  const worn = wornMode(player);
+  const worn = carriedMode(player);
   const session = active.get(player.id);
 
   if (worn === undefined) {
@@ -238,6 +264,6 @@ world.afterEvents.worldLoad.subscribe(() => {
 
   log(
     `ready at tick ${system.currentTick}, marker budget ${MarkerPool.budget()}. ` +
-      `Wear a helmet named "Lens" or run /lens:toggle.`,
+      `Carry a Spawn Lens (head, offhand or hand) or run /lens:toggle.`,
   );
 });

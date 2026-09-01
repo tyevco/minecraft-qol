@@ -36,7 +36,12 @@ const PACKS: Pack[] = [
     dir: "packages/qol-times",
     external: ["@minecraft/server", "@minecraft/server-ui"],
   },
-  // lens is added once the qol_times move is verified working in game.
+  {
+    name: "lens",
+    dir: "packages/lens",
+    // No server-ui: the Lens has no forms. Must match its manifest.
+    external: ["@minecraft/server"],
+  },
 ];
 
 /**

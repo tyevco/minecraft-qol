@@ -1,0 +1,25 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Lens",
+    "description": "Shows where hostile mobs can spawn. Stable APIs only - no experimental toggles required.",
+    "uuid": "289813c8-ac19-41d3-b131-706082f4e72c",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Lens scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "f45046fa-60e1-4bd0-a6a2-f284745032e4",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

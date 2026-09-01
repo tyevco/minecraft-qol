@@ -83,11 +83,7 @@ and a `runJob`-chunked flood fill. Deliberately out of scope for v1.
    1.18 spawning rework. It is inferred from game rules, not read from an API, so
    it is a named constant with tests pinned to it — if an in-world observation
    disagrees, that one line changes and the suite re-runs.
-3. **Standability.** `Block` exposes `isAir`, `isLiquid` and `isWaterlogged` but
-   **no `isSolid`**, so "a mob can stand here" needs an empirical proxy. Pending
-   `/scriptevent qolprobe:solid` readings for slab, torch, glass, leaves and
-   water. `isLiquidBlocking("Water")` is the current candidate — grass_block
-   returns `true` for it.
+3. ~~Standability.~~ **Resolved** — see the Standability section below.
 
 ---
 

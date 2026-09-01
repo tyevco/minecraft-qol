@@ -1,10 +1,8 @@
-import {
-  LocationInUnloadedChunkError,
-  LocationOutOfWorldBoundariesError,
-  type Block,
-  type Dimension,
-  type Vector3,
-} from "@minecraft/server";
+import type { Block, Dimension, Vector3 } from "@minecraft/server";
+import { blockKey, safeGetBlock } from "@qol/shared/engine/safeBlock";
+
+// Re-exported so existing call sites in this pack keep working unchanged.
+export { blockKey, safeGetBlock };
 
 /**
  * facing_direction -> unit vector. Verified in-game: the probe reported
@@ -24,24 +22,6 @@ export interface DispenserSource {
   facing: number;
   /** The block the dispenser faces - where the item appeared. */
   target: Block;
-}
-
-/**
- * Block accessors throw on unloaded chunks and out-of-world coordinates rather
- * than returning undefined, so every lookup goes through here.
- */
-export function safeGetBlock(dim: Dimension, loc: Vector3): Block | undefined {
-  try {
-    return dim.getBlock(loc);
-  } catch (e) {
-    if (e instanceof LocationInUnloadedChunkError) return undefined;
-    if (e instanceof LocationOutOfWorldBoundariesError) return undefined;
-    throw e;
-  }
-}
-
-export function blockKey(dimId: string, b: { x: number; y: number; z: number }): string {
-  return `${dimId}|${b.x},${b.y},${b.z}`;
 }
 
 /**

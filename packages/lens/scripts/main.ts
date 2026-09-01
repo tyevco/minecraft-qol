@@ -16,6 +16,7 @@ import {
   world,
   type CustomCommandResult,
 } from "@minecraft/server";
+import { MarkerPool } from "./engine/markers";
 import { deviceScale, runScan, type Mode, type ScanSettings } from "./engine/scan";
 
 const TAG = "[Lens]";
@@ -34,6 +35,8 @@ interface Session {
   busy: boolean;
   /** Summary is sent once per toggle, not every refresh. */
   reported: boolean;
+  /** Persistent markers, moved rather than respawned between scans. */
+  markers: MarkerPool;
 }
 
 /** Sky light above this means outdoor readings carry little information. */
@@ -63,6 +66,8 @@ function tick(): void {
     session.busy = true;
     runScan(player, settingsFor(player, session.mode), (result) => {
       session.busy = false;
+      session.markers.update(result.marks);
+
       if (session.reported) return;
       session.reported = true;
 
@@ -89,13 +94,16 @@ function toggle(player: Player, mode?: Mode): void {
 
   // Same mode -> off. Different mode -> switch without an off/on round trip.
   if (existing && (mode === undefined || existing.mode === mode)) {
+    existing.markers.clear();
     active.delete(player.id);
     player.sendMessage("§7Lens off.");
     return;
   }
 
   const next = mode ?? existing?.mode ?? BASE.mode;
-  active.set(player.id, { mode: next, busy: false, reported: false });
+  // Reuse the pool across a mode switch so markers recolour instead of blinking.
+  const markers = existing?.markers ?? new MarkerPool(player);
+  active.set(player.id, { mode: next, busy: false, reported: false, markers });
   player.sendMessage(
     next === "danger"
       ? "§cLens on §7— marking where hostiles can spawn. §8Grey = uncertain (open sky masks block light)."
@@ -155,7 +163,15 @@ world.afterEvents.worldLoad.subscribe(() => {
     toggle(player, parseMode(ev.message));
   });
 
-  world.afterEvents.playerLeave.subscribe((ev) => active.delete(ev.playerId));
+  world.afterEvents.playerLeave.subscribe((ev) => {
+    // Markers are world-level objects, so a leaver's must be released or they
+    // leak against the engine's shape cap for everyone else.
+    active.get(ev.playerId)?.markers.clear();
+    active.delete(ev.playerId);
+  });
 
-  log(`ready at tick ${system.currentTick}, refresh every ${REFRESH_TICKS} ticks (job ${ticker})`);
+  log(
+    `ready at tick ${system.currentTick}, refresh every ${REFRESH_TICKS} ticks, ` +
+      `marker budget ${MarkerPool.budget()} (job ${ticker})`,
+  );
 });

@@ -7,8 +7,16 @@ import {
   type Vector3,
 } from "@minecraft/server";
 import { withBlock } from "@qol/shared/engine/safeBlock";
-import { classify, shouldMark, type Verdict } from "../core/spawn";
+import { classify, shouldMark } from "../core/spawn";
 import { isClearSpace, isStandableFloor, type BlockFlags } from "../core/surface";
+import type { Mark } from "./markers";
+
+function sqDist(a: Vector3, b: Vector3): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return dx * dx + dy * dy + dz * dz;
+}
 
 export type Mode = "danger" | "safe";
 
@@ -20,18 +28,6 @@ export interface ScanSettings {
   /** Draw one marker every N qualifying positions, to thin dense results. */
   density: number;
 }
-
-/**
- * Particle per verdict. Wrapped in try/catch at the call site: an unknown
- * particle id must not kill the scan, and we only want to hear about it once.
- */
-const PARTICLE: Record<Exclude<Verdict, "safe"> | "safe", string> = {
-  spawnable: "minecraft:basic_flame_particle",
-  uncertain: "minecraft:basic_smoke_particle",
-  safe: "minecraft:villager_happy",
-};
-
-let particleWarned = false;
 
 function readFlags(dim: Dimension, loc: Vector3): BlockFlags | undefined {
   return withBlock(dim, loc, (b) => ({
@@ -65,7 +61,6 @@ export function deviceScale(player: Player): number {
 
 export interface ScanResult {
   scanned: number;
-  marked: number;
   spawnable: number;
   uncertain: number;
   /**
@@ -73,6 +68,11 @@ export interface ScanResult {
    * from "grey for some other reason", so the UI can explain itself.
    */
   skyMax: number;
+  /**
+   * Positions to draw, nearest first. Rendering is deliberately not done here -
+   * the scan decides what is true, the marker pool decides how it looks.
+   */
+  marks: Mark[];
 }
 
 /**
@@ -95,7 +95,13 @@ export function* scanAround(
     z: Math.floor(player.location.z),
   };
 
-  const result: ScanResult = { scanned: 0, marked: 0, spawnable: 0, uncertain: 0, skyMax: 0 };
+  const result: ScanResult = {
+    scanned: 0,
+    spawnable: 0,
+    uncertain: 0,
+    skyMax: 0,
+    marks: [],
+  };
   const r = settings.radius;
   const h = settings.height;
   let sinceYield = 0;
@@ -138,25 +144,17 @@ export function* scanAround(
         if (verdict === "uncertain") result.uncertain++;
         if (!shouldMark(verdict, settings.mode)) continue;
 
-        // Thin dense results rather than drawing every single position.
+        // Thin dense results rather than marking every single position.
         if (settings.density > 1 && qualifying++ % settings.density !== 0) continue;
 
-        try {
-          dim.spawnParticle(PARTICLE[verdict], {
-            x: feetPos.x + 0.5,
-            y: feetPos.y + 0.1,
-            z: feetPos.z + 0.5,
-          });
-          result.marked++;
-        } catch (e) {
-          if (!particleWarned) {
-            particleWarned = true;
-            console.warn(`[Lens] particle ${PARTICLE[verdict]} failed: ${e}`);
-          }
-        }
+        result.marks.push({ pos: feetPos, verdict });
       }
     }
   }
+
+  // Nearest first, so that when the marker budget clips the list it keeps the
+  // positions the player is actually standing among.
+  result.marks.sort((a, b) => sqDist(origin, a.pos) - sqDist(origin, b.pos));
 
   onDone(result);
 }

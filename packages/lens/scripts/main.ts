@@ -4,13 +4,19 @@
  * Marks nearby positions where hostile mobs can spawn. Built on measured engine
  * behaviour, not assumptions - see docs/lens-light-results.md.
  *
- * v1 deliberately ships no custom item: that would need a resource pack for its
- * texture and name, and the overlay is fully usable from a command. The item is
- * a later phase, where ItemCustomComponent.onUse is already stable and waiting.
+ * Two ways to switch it on:
+ *   - wear a helmet named "Lens" (any helmet, renamed in an anvil)
+ *   - /lens:toggle
+ *
+ * The worn trigger deliberately keys off the item's NAME rather than a custom
+ * item type: a custom item would need a resource pack for its texture and name,
+ * and this works today with vanilla gear and an anvil.
  */
 import {
   CommandPermissionLevel,
   CustomCommandStatus,
+  EntityComponentTypes,
+  EquipmentSlot,
   Player,
   system,
   world,
@@ -23,27 +29,33 @@ const TAG = "[Lens]";
 // console.warn always reaches the content log; console.log only at Verbose/Info.
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 
-/** Defaults. Pack settings will back these in a follow-up; see README. */
+/** Defaults. Pack settings will back these in a follow-up; see docs/backlog.md. */
 const BASE: ScanSettings = { radius: 12, height: 4, mode: "danger", density: 1 };
 
-/** Ticks between refreshes while the overlay is on. */
+/** Ticks between rescans while the overlay is on. */
 const REFRESH_TICKS = 40;
+/** Ticks between equipment checks. Cheap, so it can be much faster than a scan. */
+const EQUIP_CHECK_TICKS = 10;
+/** Sky light above this means outdoor readings carry little information. */
+const DAYLIGHT_SKY = 4;
+/** A head item whose name contains this activates the overlay. */
+const LENS_KEYWORD = "lens";
+
+type Source = "command" | "item";
 
 interface Session {
   mode: Mode;
-  /** runJob handle, so a slow scan is not double-started. */
+  /** Guards against starting a second scan while one is still running. */
   busy: boolean;
-  /** Summary is sent once per toggle, not every refresh. */
+  /** Summary is sent once per activation, not every refresh. */
   reported: boolean;
   /** Persistent markers, moved rather than respawned between scans. */
   markers: MarkerPool;
+  /** Whether a command or a worn item switched this on - they must not fight. */
+  source: Source;
 }
 
-/** Sky light above this means outdoor readings carry little information. */
-const DAYLIGHT_SKY = 4;
-
 const active = new Map<string, Session>();
-let ticker: number | undefined;
 
 function settingsFor(player: Player, mode: Mode): ScanSettings {
   const scale = deviceScale(player);
@@ -52,17 +64,87 @@ function settingsFor(player: Player, mode: Mode): ScanSettings {
     mode,
     radius: Math.max(4, Math.round(BASE.radius * scale)),
     height: Math.max(2, Math.round(BASE.height * scale)),
-    // Thin markers on weaker devices rather than dropping the radius further -
+    // Thin markers on weaker devices rather than shrinking the radius further -
     // a small accurate picture beats a large sparse one.
     density: scale < 0.7 ? 2 : 1,
   };
 }
 
-function tick(): void {
+/** Which mode, if any, the player's headgear selects. */
+function wornMode(player: Player): Mode | undefined {
+  try {
+    const equippable = player.getComponent(EntityComponentTypes.Equippable);
+    const head = equippable?.getEquipment(EquipmentSlot.Head);
+    const name = head?.nameTag?.toLowerCase();
+    if (!name || !name.includes(LENS_KEYWORD)) return undefined;
+    // "Safe Lens" picks the inverse mode; anything else means danger.
+    return name.includes("safe") ? "safe" : "danger";
+  } catch {
+    return undefined; // never let equipment probing break the feature
+  }
+}
+
+function enable(player: Player, mode: Mode, source: Source): void {
+  const existing = active.get(player.id);
+  // Reuse the pool across a mode switch so markers recolour instead of blinking.
+  const markers = existing?.markers ?? new MarkerPool(player);
+  active.set(player.id, { mode, busy: false, reported: false, markers, source });
+  player.sendMessage(
+    mode === "danger"
+      ? "§cLens on §7— marking where hostiles can spawn."
+      : "§aLens on §7— marking spawn-proofed positions.",
+  );
+}
+
+function disable(player: Player, quiet = false): void {
+  const session = active.get(player.id);
+  if (!session) return;
+  session.markers.clear();
+  active.delete(player.id);
+  if (!quiet) player.sendMessage("§7Lens off.");
+}
+
+/** Command toggle. Always wins over the worn state for this player. */
+function toggle(player: Player, mode?: Mode): void {
+  const existing = active.get(player.id);
+  if (existing && (mode === undefined || existing.mode === mode)) {
+    disable(player);
+    return;
+  }
+  enable(player, mode ?? existing?.mode ?? BASE.mode, "command");
+}
+
+/**
+ * Keep the overlay in step with what the player is wearing.
+ *
+ * Only ever touches sessions it owns: taking off the helmet must not cancel a
+ * deliberate /lens:toggle, and toggling off by command must not be immediately
+ * undone by the helmet still being worn.
+ */
+function syncWorn(player: Player): void {
+  const worn = wornMode(player);
+  const session = active.get(player.id);
+
+  if (worn === undefined) {
+    if (session?.source === "item") disable(player, true);
+    return;
+  }
+  if (!session) {
+    enable(player, worn, "item");
+    return;
+  }
+  if (session.source === "item" && session.mode !== worn) {
+    session.mode = worn;
+    session.reported = false;
+  }
+}
+
+function scanTick(): void {
   if (active.size === 0) return;
   for (const player of world.getAllPlayers()) {
     const session = active.get(player.id);
     if (!session || session.busy) continue;
+
     session.busy = true;
     runScan(player, settingsFor(player, session.mode), (result) => {
       session.busy = false;
@@ -77,8 +159,6 @@ function tick(): void {
       );
 
       // Explain the grey rather than leaving it looking like a malfunction.
-      // Outdoors in daylight the sky term masks block light entirely, so the
-      // answer is genuinely unknowable - at night it mostly is not.
       if (result.uncertain > result.spawnable && result.skyMax > DAYLIGHT_SKY) {
         player.sendMessage(
           "§8Grey = sky light hides block light here. Readings under open sky " +
@@ -87,34 +167,6 @@ function tick(): void {
       }
     });
   }
-}
-
-function toggle(player: Player, mode?: Mode): void {
-  const existing = active.get(player.id);
-
-  // Same mode -> off. Different mode -> switch without an off/on round trip.
-  if (existing && (mode === undefined || existing.mode === mode)) {
-    existing.markers.clear();
-    active.delete(player.id);
-    player.sendMessage("§7Lens off.");
-    return;
-  }
-
-  const next = mode ?? existing?.mode ?? BASE.mode;
-  // Reuse the pool across a mode switch so markers recolour instead of blinking.
-  const markers = existing?.markers ?? new MarkerPool(player);
-  active.set(player.id, { mode: next, busy: false, reported: false, markers });
-  player.sendMessage(
-    next === "danger"
-      ? "§cLens on §7— marking where hostiles can spawn. §8Grey = uncertain (open sky masks block light)."
-      : "§aLens on §7— marking spawn-proofed positions.",
-  );
-}
-
-function parseMode(message: string): Mode | undefined {
-  const m = message.trim().toLowerCase();
-  if (m === "danger" || m === "safe") return m;
-  return undefined;
 }
 
 // Must run at module scope: startup fires before worldLoad, and does NOT fire
@@ -135,7 +187,7 @@ system.beforeEvents.startup.subscribe((event) => {
         if (!(player instanceof Player)) {
           return { status: CustomCommandStatus.Failure, message: "Run this as a player." };
         }
-        // Command callbacks are read-only; defer anything that touches the world.
+        // Command callbacks are read-only; defer anything touching the world.
         system.run(() => toggle(player));
         return { status: CustomCommandStatus.Success };
       },
@@ -149,7 +201,10 @@ system.beforeEvents.startup.subscribe((event) => {
 
 world.afterEvents.worldLoad.subscribe(() => {
   // /reload discards module state, so everything is re-established here.
-  ticker = system.runInterval(tick, REFRESH_TICKS);
+  system.runInterval(scanTick, REFRESH_TICKS);
+  system.runInterval(() => {
+    for (const player of world.getAllPlayers()) syncWorn(player);
+  }, EQUIP_CHECK_TICKS);
 
   // Fallback that works immediately after /reload, unlike a custom command.
   // Optional argument: "danger" or "safe".
@@ -160,7 +215,8 @@ world.afterEvents.worldLoad.subscribe(() => {
       log("scriptevent lens:toggle: run this as a player");
       return;
     }
-    toggle(player, parseMode(ev.message));
+    const arg = ev.message.trim().toLowerCase();
+    toggle(player, arg === "danger" || arg === "safe" ? arg : undefined);
   });
 
   world.afterEvents.playerLeave.subscribe((ev) => {
@@ -171,7 +227,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   });
 
   log(
-    `ready at tick ${system.currentTick}, refresh every ${REFRESH_TICKS} ticks, ` +
-      `marker budget ${MarkerPool.budget()} (job ${ticker})`,
+    `ready at tick ${system.currentTick}, marker budget ${MarkerPool.budget()}. ` +
+      `Wear a helmet named "Lens" or run /lens:toggle.`,
   );
 });

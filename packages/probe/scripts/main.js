@@ -247,8 +247,22 @@ function reportSpawn(player, label) {
     dflt = d.x + "," + (d.y === 32767 ? "32767=auto" : d.y) + "," + d.z;
   } catch (e) { dflt = "THREW " + e; }
 
+  // Height range matters: setSpawnPoint throws LocationOutOfWorldBoundariesError
+  // outside it, and the Nether ceiling (y=128) is out of bounds even though you
+  // can stand on it. Without this, a roof test looks like "Nether unsupported".
+  let range = "?";
+  let inRange = "?";
+  try {
+    const r = player.dimension.heightRange;
+    range = r.min + ".." + r.max;
+    const y = Math.floor(player.location.y);
+    inRange = y >= r.min && y <= r.max ? "yes" : "NO - y=" + y + " is out of bounds";
+  } catch (e) { range = "ERR " + e; }
+
   log("H1 [" + label + "] getSpawnPoint()=" + sp +
       " | standing in " + player.dimension.id +
+      " y=" + Math.floor(player.location.y) +
+      " (legal " + range + ", in range: " + inRange + ")" +
       " | worldDefaultSpawn=" + dflt);
 }
 
@@ -426,9 +440,19 @@ world.afterEvents.worldLoad.subscribe(() => {
       if (!src) { log("setspawn: run this as a player"); return; }
       system.run(() => {
         try {
+          const y = Math.floor(src.location.y);
+          const r = src.dimension.heightRange;
+          if (y < r.min || y > r.max) {
+            // Refuse rather than throw: standing on the Nether roof at y=128 is
+            // out of bounds, and the resulting error reads as "Nether
+            // unsupported" when it only means "that altitude is illegal".
+            log("H1 REFUSED: y=" + y + " is outside " + src.dimension.id +
+                " bounds " + r.min + ".." + r.max + ". Move to a legal height and retry.");
+            return;
+          }
           const loc = {
             x: Math.floor(src.location.x),
-            y: Math.floor(src.location.y),
+            y,
             z: Math.floor(src.location.z),
             dimension: src.dimension,
           };

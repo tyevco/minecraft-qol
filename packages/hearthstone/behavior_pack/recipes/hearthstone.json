@@ -1,0 +1,14 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "hearthstone:hearthstone" },
+    "tags": ["crafting_table"],
+    "pattern": ["SSS", "SCS", "SSS"],
+    "key": {
+      "S": { "item": "minecraft:stone_bricks" },
+      "C": { "item": "minecraft:campfire" }
+    },
+    "unlock": [{ "context": "AlwaysUnlocked" }],
+    "result": { "item": "hearthstone:hearthstone", "count": 1 }
+  }
+}

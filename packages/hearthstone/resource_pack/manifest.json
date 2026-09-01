@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Hearthstone Resources",
+    "description": "Textures and names for the Hearthstone anchor.",
+    "uuid": "344f1bf1-e861-44d4-8c4f-6cf327839245",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Hearthstone resources",
+      "type": "resources",
+      "uuid": "7445410c-fd5e-4ed2-9565-6789e081c13f",
+      "version": [1, 0, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

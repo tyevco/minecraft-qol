@@ -1,0 +1,26 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "hearthstone:hearthstone",
+      "menu_category": {
+        "category": "construction",
+        "group": "minecraft:itemGroup.name.stone"
+      }
+    },
+    "components": {
+      "minecraft:display_name": "Hearthstone",
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "hearthstone",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 3 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 6 },
+      "minecraft:light_emission": 7,
+      "minecraft:map_color": "#E27928"
+    }
+  }
+}

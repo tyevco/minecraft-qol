@@ -45,12 +45,16 @@ getSpawnPoint()=-12,53,13 in minecraft:nether
 So `setSpawnPoint` is **not** dimension-restricted, and the earlier roof failures
 were purely about altitude.
 
-**Still unproven: whether a player actually respawns there.** Setting and reading
-back is not the same as surviving a death. Beds do not set spawn in the Nether
-and respawn anchors are the vanilla mechanic there, so the engine may accept the
-value and then ignore or clear it on death. Until someone dies in the Nether and
-lands at the anchor, treat Nether support as unverified and keep it behind a
-setting that defaults off.
+**And a player really does respawn there — verified by dying in the Nether.**
+
+This was the part that mattered: setting and reading back is not the same as
+surviving a death, and beds do not set spawn in the Nether while respawn anchors
+are the vanilla mechanic there, so the engine could plausibly have accepted the
+value and then ignored it. It does not.
+
+So Hearthstone works in all three dimensions, and "allow anchors in Nether / End"
+is a real setting worth building rather than a limitation to document. The only
+altitude constraint is the dimension's own `heightRange`.
 
 ## Superseded: why the first Nether reading looked like a failure
 

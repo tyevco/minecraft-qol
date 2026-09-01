@@ -28,6 +28,8 @@ interface Pack {
   dir: string;
   /** Engine modules resolved at runtime. Must match the manifest's dependencies. */
   external: string[];
+  /** Set when the pack also ships a resource_pack/ folder. */
+  hasResourcePack?: boolean;
 }
 
 const PACKS: Pack[] = [
@@ -41,6 +43,12 @@ const PACKS: Pack[] = [
     dir: "packages/lens",
     // No server-ui: the Lens has no forms. Must match its manifest.
     external: ["@minecraft/server"],
+  },
+  {
+    name: "hearthstone",
+    dir: "packages/hearthstone",
+    external: ["@minecraft/server"],
+    hasResourcePack: true,
   },
 ];
 
@@ -76,18 +84,41 @@ function deploymentRoot(): string {
  */
 function deployPack(pack: Pack): () => void {
   return () => {
-    const target = path.join(deploymentRoot(), "development_behavior_packs", pack.name);
+    const root = deploymentRoot();
+    const target = path.join(root, "development_behavior_packs", pack.name);
     console.log(`Deploying ${pack.name} -> ${target}`);
     copyFiles([path.join(pack.dir, "behavior_pack")], target);
     copyFiles([path.join("dist", pack.name, "scripts")], path.join(target, "scripts"));
+
+    if (pack.hasResourcePack) {
+      // Resource packs live in a sibling folder under the same com.mojang root.
+      const rpTarget = path.join(root, "development_resource_packs", pack.name);
+      console.log(`Deploying ${pack.name} RP -> ${rpTarget}`);
+      copyFiles([path.join(pack.dir, "resource_pack")], rpTarget);
+      console.log(
+        `  note: resource changes do NOT hot-reload. /reload will not show them - ` +
+          `exit to the main menu and re-enter, or restart for manifest changes.`,
+      );
+    }
   };
 }
 
-/** Remove only this pack's deploy target, never a sibling's. */
+/** Remove only this pack's deploy targets, never a sibling's. */
 function cleanPack(pack: Pack): () => void {
   return () => {
-    const target = path.join(deploymentRoot(), "development_behavior_packs", pack.name);
-    rmSync(target, { recursive: true, force: true });
+    const root = deploymentRoot();
+    rmSync(path.join(root, "development_behavior_packs", pack.name), {
+      recursive: true,
+      force: true,
+    });
+    if (pack.hasResourcePack) {
+      // A stale resource pack is harder to notice than a stale behavior pack -
+      // it keeps loading and shadowing the new one with no error anywhere.
+      rmSync(path.join(root, "development_resource_packs", pack.name), {
+        recursive: true,
+        force: true,
+      });
+    }
   };
 }
 
@@ -113,6 +144,8 @@ for (const pack of PACKS) {
   const mcaddonOptions: ZipTaskParameters = {
     copyToBehaviorPacks: [`./${pack.dir}/behavior_pack`],
     copyToScripts: [`./dist/${pack.name}/scripts`],
+    // The RP .mcpack is only added to the .mcaddon when this is non-empty.
+    ...(pack.hasResourcePack ? { copyToResourcePacks: [`./${pack.dir}/resource_pack`] } : {}),
     outputFile: `./dist/packages/${pack.name}.mcaddon`,
   };
 
@@ -138,5 +171,8 @@ task("mcaddon", series("build", ...packNames.map((n) => `mcaddon:${n}`)));
 
 task(
   "local-deploy",
-  watchTask(["packages/**/*.ts", "packages/**/behavior_pack/**/*"], series("build", "deploy")),
+  watchTask(
+    ["packages/**/*.ts", "packages/**/behavior_pack/**/*", "packages/**/resource_pack/**/*"],
+    series("build", "deploy"),
+  ),
 );

@@ -24,17 +24,32 @@ import {
   type CustomCommandResult,
   type ItemStack,
 } from "@minecraft/server";
-import { MAX_TIER, nextTier, type Tier } from "./core/tier";
+import { fromIndex, toIndex } from "./core/grid";
+import { solve } from "./core/solver";
+import { MAX_TIER, nextTier, tierSuggestsLighting, type Tier } from "./core/tier";
 import { hasTier, readTier, stampTier } from "./engine/itemTier";
-import { MarkerPool } from "./engine/markers";
-import { deviceScale, runScan, type Mode, type ScanSettings } from "./engine/scan";
+import { MarkerPool, type Mark } from "./engine/markers";
+import {
+  deviceScale,
+  runScan,
+  type Mode,
+  type ScanResult,
+  type ScanSettings,
+  type Survey,
+} from "./engine/scan";
 
 const TAG = "[Lens]";
 // console.warn always reaches the content log; console.log only at Verbose/Info.
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 
 /** Defaults. Pack settings will back these in a follow-up; see docs/backlog.md. */
-const BASE: ScanSettings = { radius: 12, height: 4, mode: "danger", density: 1 };
+const BASE: ScanSettings = {
+  radius: 12,
+  height: 4,
+  mode: "danger",
+  density: 1,
+  wantSolver: false,
+};
 
 /** Ticks between rescans while the overlay is on. */
 const REFRESH_TICKS = 40;
@@ -65,15 +80,19 @@ interface Session {
   source: Source;
   /** Tier of the carrying item. Command sessions run at the maximum. */
   tier: Tier;
+  /** Last solve's output, for the summary message. */
+  lastSuggestions?: number;
+  lastUnreachable?: number;
 }
 
 const active = new Map<string, Session>();
 
-function settingsFor(player: Player, mode: Mode): ScanSettings {
+function settingsFor(player: Player, mode: Mode, tier: Tier): ScanSettings {
   const scale = deviceScale(player);
   return {
     ...BASE,
     mode,
+    wantSolver: tierSuggestsLighting(tier),
     radius: Math.max(4, Math.round(BASE.radius * scale)),
     height: Math.max(2, Math.round(BASE.height * scale)),
     // Thin markers on weaker devices rather than shrinking the radius further -
@@ -268,6 +287,71 @@ function upgrade(player: Player, location: { x: number; y: number; z: number }):
   }
 }
 
+/** Most torch suggestions to show at once. More than this is not actionable. */
+const MAX_SUGGESTIONS = 8;
+
+/**
+ * Run the solver over a completed survey, then redraw with suggestions and
+ * coverage shading folded in.
+ */
+function* solveAndRender(
+  session: Session,
+  result: ScanResult,
+  survey: Survey,
+): Generator<void, void, void> {
+  try {
+    const solving = solve(survey.grid, survey.targets, survey.candidates, {
+      maxPicks: MAX_SUGGESTIONS,
+    });
+    let step = solving.next();
+    while (!step.done) {
+      yield;
+      step = solving.next();
+    }
+    const solved = step.value;
+
+    // Cell index -> world position, so solver output can be drawn.
+    const toWorld = (index: number) => {
+      const local = fromIndex(survey.grid, index);
+      return {
+        x: survey.origin.x + local.x,
+        y: survey.origin.y + local.y,
+        z: survey.origin.z + local.z,
+      };
+    };
+
+    // Positions a suggestion would fix get shaded rather than left alarming red.
+    const coveredCells = new Set<number>();
+    for (const pick of solved.picks) for (const c of pick.covered) coveredCells.add(c);
+
+    const shaded: Mark[] = result.marks.map((mark) => {
+      if (mark.verdict !== "spawnable") return mark;
+      const local = {
+        x: mark.pos.x - survey.origin.x,
+        y: mark.pos.y - survey.origin.y,
+        z: mark.pos.z - survey.origin.z,
+      };
+      const index = toIndex(survey.grid, local.x, local.y, local.z);
+      return coveredCells.has(index) ? { ...mark, verdict: "covered" as const } : mark;
+    });
+
+    // Suggestions first so they survive the marker budget being clipped.
+    const suggestions: Mark[] = solved.picks.map((p) => ({
+      pos: toWorld(p.candidate),
+      verdict: "suggested" as const,
+    }));
+
+    session.markers.update([...suggestions, ...shaded]);
+    session.lastSuggestions = solved.picks.length;
+    session.lastUnreachable = solved.uncovered.length;
+  } catch (e) {
+    log(`solver failed: ${e}`);
+    session.markers.update(result.marks);
+  } finally {
+    session.busy = false;
+  }
+}
+
 function scanTick(): void {
   if (active.size === 0) return;
   for (const player of world.getAllPlayers()) {
@@ -275,9 +359,16 @@ function scanTick(): void {
     if (!session || session.busy) continue;
 
     session.busy = true;
-    runScan(player, settingsFor(player, session.mode), (result) => {
-      session.busy = false;
-      session.markers.update(result.marks);
+    runScan(player, settingsFor(player, session.mode, session.tier), (result) => {
+      const survey = result.survey;
+      if (survey && tierSuggestsLighting(session.tier)) {
+        // The solve is its own job: it is the expensive half, and keeping it
+        // separate means a slow solve never delays the level 1 markers.
+        system.runJob(solveAndRender(session, result, survey));
+      } else {
+        session.busy = false;
+        session.markers.update(result.marks);
+      }
 
       if (session.reported) return;
       session.reported = true;
@@ -286,6 +377,18 @@ function scanTick(): void {
         `§7Lens: §c${result.spawnable} spawnable§7, §8${result.uncertain} uncertain§7 ` +
           `of ${result.scanned} standable position(s).`,
       );
+
+      if (tierSuggestsLighting(session.tier)) {
+        // Deferred: the solve runs as its own job and finishes after this.
+        system.runTimeout(() => {
+          const picks = session.lastSuggestions ?? 0;
+          const stranded = session.lastUnreachable ?? 0;
+          const tail = stranded > 0 ? ` §8${stranded} out of reach of any torch spot.` : "";
+          player.sendMessage(
+            `§eSpawn Sight II: §6${picks} torch spot(s)§e marked §6*§e.${tail}`,
+          );
+        }, 40);
+      }
 
       // Explain the grey rather than leaving it looking like a malfunction.
       if (result.uncertain > result.spawnable && result.skyMax > DAYLIGHT_SKY) {

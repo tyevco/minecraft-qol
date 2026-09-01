@@ -76,3 +76,46 @@ export function isClearSpace(block: BlockFlags): boolean {
 export function isStandable(below: BlockFlags, feet: BlockFlags, head: BlockFlags): boolean {
   return isStandableFloor(below) && isClearSpace(feet) && isClearSpace(head);
 }
+
+/**
+ * Full cubes that block water but still let light through. Glass is the whole
+ * point of this list: it is the one common block where "blocks water" and
+ * "blocks light" disagree.
+ */
+const LIGHT_PASSING_SOLIDS = ["glass", "_pane", "barrier"];
+
+/**
+ * Does light propagate through this cell?
+ *
+ * A THIRD predicate, deliberately separate from spawn floors and torch support -
+ * they disagree on glass in both directions. Reusing either here would be wrong.
+ *
+ * Conservative by design: liquids are treated as blocking even though they only
+ * dampen, because the exact per-step dampening values are unconfirmed and the
+ * sources contradict each other. Under-claiming coverage means suggesting a few
+ * more torches than strictly needed, which is the safe direction.
+ */
+export function passesLight(block: BlockFlags): boolean {
+  if (block.isAir) return true;
+  if (block.isLiquid) return false;
+  // Non-solid clutter - torches, levers, plants - does not block light.
+  if (!block.blocksWater) return true;
+  return LIGHT_PASSING_SOLIDS.some((p) => block.typeId.includes(p));
+}
+
+/**
+ * Blocks a torch will not attach to even though they block water.
+ *
+ * Sources conflict on fences, slabs and glass sides, and there is no
+ * canPlaceBlock in the stable API to delegate to. Bedrock also *snaps* a
+ * rejected placement to a nearby valid face, which would silently put the torch
+ * somewhere other than suggested - so when in doubt, refuse to suggest.
+ */
+const NO_TORCH_SUPPORT = ["_leaves", "scaffolding", "barrier", "ice", "slime", "honey", "_pane"];
+
+/** Can a torch stand on top of this block? */
+export function supportsTorch(below: BlockFlags): boolean {
+  if (below.isAir || below.isLiquid) return false;
+  if (!below.blocksWater) return false; // torches, levers and the like
+  return !NO_TORCH_SUPPORT.some((p) => below.typeId.includes(p));
+}

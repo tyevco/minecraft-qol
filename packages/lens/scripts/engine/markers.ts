@@ -21,11 +21,24 @@ import type { Verdict } from "../core/spawn";
  */
 const GLYPH = "+";
 
-const COLORS: Record<Verdict, RGBA> = {
+/**
+ * What a marker means. Beyond the spawn verdicts, tier 2 adds two:
+ * `suggested` (put a torch here) and `covered` (a suggestion already fixes this).
+ */
+export type MarkKind = Verdict | "suggested" | "covered";
+
+const COLORS: Record<MarkKind, RGBA> = {
   spawnable: { red: 1, green: 0.15, blue: 0.1, alpha: 1 },
   uncertain: { red: 0.65, green: 0.65, blue: 0.7, alpha: 0.75 },
   safe: { red: 0.25, green: 1, blue: 0.35, alpha: 1 },
+  // Warm gold: reads as "place a light here" rather than as a warning.
+  suggested: { red: 1, green: 0.85, blue: 0.2, alpha: 1 },
+  // Dimmed, so shaded positions recede behind the suggestions that fix them.
+  covered: { red: 0.45, green: 0.35, blue: 0.15, alpha: 0.7 },
 };
+
+/** Suggestions get their own glyph so they read as actions, not warnings. */
+const GLYPHS: Partial<Record<MarkKind, string>> = { suggested: "*" };
 
 /** Beyond this the markers fade out, keeping dense scans readable. */
 const RENDER_DISTANCE = 48;
@@ -35,7 +48,7 @@ const PER_PLAYER_LIMIT = 400;
 
 export interface Mark {
   pos: Vector3;
-  verdict: Verdict;
+  verdict: MarkKind;
 }
 
 export class MarkerPool {
@@ -91,6 +104,9 @@ export class MarkerPool {
 
       try {
         shape.color = COLORS[mark.verdict];
+        // Shapes are recycled between scans, so the glyph must be set every
+        // time - a reused shape may have been something else last round.
+        shape.setText(GLYPHS[mark.verdict] ?? GLYPH);
       } catch {
         /* shape became invalid; it will be pruned on the next clear */
       }

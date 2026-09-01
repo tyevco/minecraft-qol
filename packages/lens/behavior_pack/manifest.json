@@ -9,6 +9,12 @@
   },
   "modules": [
     {
+      "description": "Lens items and recipes",
+      "type": "data",
+      "uuid": "53c1ef88-a762-46aa-ba29-56aebdf4672a",
+      "version": [1, 0, 0]
+    },
+    {
       "description": "Lens scripts",
       "type": "script",
       "language": "javascript",

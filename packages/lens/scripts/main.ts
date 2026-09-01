@@ -38,7 +38,13 @@ const REFRESH_TICKS = 40;
 const EQUIP_CHECK_TICKS = 10;
 /** Sky light above this means outdoor readings carry little information. */
 const DAYLIGHT_SKY = 4;
-/** A head item whose name contains this activates the overlay. */
+/** The real item. Matching by typeId has no false-positive surface. */
+const LENS_ITEM = "lens:spawn_lens";
+/**
+ * Legacy fallback: any head item *named* "lens", which is how this worked before
+ * the real item existed. Kept so an already-renamed helmet does not stop working;
+ * delete once nobody is relying on it.
+ */
 const LENS_KEYWORD = "lens";
 
 type Source = "command" | "item";
@@ -75,10 +81,14 @@ function wornMode(player: Player): Mode | undefined {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
     const head = equippable?.getEquipment(EquipmentSlot.Head);
-    const name = head?.nameTag?.toLowerCase();
-    if (!name || !name.includes(LENS_KEYWORD)) return undefined;
-    // "Safe Lens" picks the inverse mode; anything else means danger.
-    return name.includes("safe") ? "safe" : "danger";
+    if (!head) return undefined;
+
+    // Renaming the real item still switches mode, so "Safe Spawn Lens" works.
+    const name = head.nameTag?.toLowerCase();
+    const isLens = head.typeId === LENS_ITEM || (name?.includes(LENS_KEYWORD) ?? false);
+    if (!isLens) return undefined;
+
+    return name?.includes("safe") ? "safe" : "danger";
   } catch {
     return undefined; // never let equipment probing break the feature
   }

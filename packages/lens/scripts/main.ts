@@ -32,7 +32,12 @@ interface Session {
   mode: Mode;
   /** runJob handle, so a slow scan is not double-started. */
   busy: boolean;
+  /** Summary is sent once per toggle, not every refresh. */
+  reported: boolean;
 }
+
+/** Sky light above this means outdoor readings carry little information. */
+const DAYLIGHT_SKY = 4;
 
 const active = new Map<string, Session>();
 let ticker: number | undefined;
@@ -56,8 +61,25 @@ function tick(): void {
     const session = active.get(player.id);
     if (!session || session.busy) continue;
     session.busy = true;
-    runScan(player, settingsFor(player, session.mode), () => {
+    runScan(player, settingsFor(player, session.mode), (result) => {
       session.busy = false;
+      if (session.reported) return;
+      session.reported = true;
+
+      player.sendMessage(
+        `§7Lens: §c${result.spawnable} spawnable§7, §8${result.uncertain} uncertain§7 ` +
+          `of ${result.scanned} standable position(s).`,
+      );
+
+      // Explain the grey rather than leaving it looking like a malfunction.
+      // Outdoors in daylight the sky term masks block light entirely, so the
+      // answer is genuinely unknowable - at night it mostly is not.
+      if (result.uncertain > result.spawnable && result.skyMax > DAYLIGHT_SKY) {
+        player.sendMessage(
+          "§8Grey = sky light hides block light here. Readings under open sky " +
+            "are far more useful at night; enclosed spaces are exact at any time.",
+        );
+      }
     });
   }
 }
@@ -73,7 +95,7 @@ function toggle(player: Player, mode?: Mode): void {
   }
 
   const next = mode ?? existing?.mode ?? BASE.mode;
-  active.set(player.id, { mode: next, busy: false });
+  active.set(player.id, { mode: next, busy: false, reported: false });
   player.sendMessage(
     next === "danger"
       ? "§cLens on §7— marking where hostiles can spawn. §8Grey = uncertain (open sky masks block light)."

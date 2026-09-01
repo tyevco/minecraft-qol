@@ -68,6 +68,11 @@ export interface ScanResult {
   marked: number;
   spawnable: number;
   uncertain: number;
+  /**
+   * Highest sky light seen. Distinguishes "grey because it is daytime outdoors"
+   * from "grey for some other reason", so the UI can explain itself.
+   */
+  skyMax: number;
 }
 
 /**
@@ -90,7 +95,7 @@ export function* scanAround(
     z: Math.floor(player.location.z),
   };
 
-  const result: ScanResult = { scanned: 0, marked: 0, spawnable: 0, uncertain: 0 };
+  const result: ScanResult = { scanned: 0, marked: 0, spawnable: 0, uncertain: 0, skyMax: 0 };
   const r = settings.radius;
   const h = settings.height;
   let sinceYield = 0;
@@ -127,6 +132,7 @@ export function* scanAround(
         }
 
         result.scanned++;
+        if (sky > result.skyMax) result.skyMax = sky;
         const verdict = classify({ light: { total, sky }, standable: true });
         if (verdict === "spawnable") result.spawnable++;
         if (verdict === "uncertain") result.uncertain++;

@@ -26,7 +26,14 @@ import {
 } from "@minecraft/server";
 import { fromIndex, toIndex } from "./core/grid";
 import { solve } from "./core/solver";
-import { MAX_TIER, nextTier, tierLabel, tierSuggestsLighting, type Tier } from "./core/tier";
+import {
+  MAX_TIER,
+  bestByTier,
+  nextTier,
+  tierLabel,
+  tierSuggestsLighting,
+  type Tier,
+} from "./core/tier";
 import { hasTier, readTier, stampTier } from "./engine/itemTier";
 import { MarkerPool, type Mark } from "./engine/markers";
 import {
@@ -104,11 +111,13 @@ function settingsFor(player: Player, mode: Mode, tier: Tier): ScanSettings {
 }
 
 /**
- * Slots that activate the Lens, in priority order.
+ * Slots that can activate the Lens.
  *
- * Worn is first so a helmet keeps working when something unrelated is held.
- * getEquipment reads any slot identically - there is no API-level distinction -
- * so offhand support is only a matter of looking there.
+ * Order is only a tie-break: the BEST tier wins, not the first slot checked.
+ * Carrying a tier 2 in the offhand and a tier 1 on your head must give you tier
+ * 2 - anything else silently downgrades you for wearing a spare.
+ *
+ * getEquipment reads every slot identically; there is no API-level distinction.
  */
 const CARRY_SLOTS: readonly EquipmentSlot[] = [
   EquipmentSlot.Head,
@@ -146,16 +155,24 @@ function carriedForItem(item: ItemStack | undefined, slot: EquipmentSlot): Carri
   };
 }
 
-/** What, if anything, the player is currently carrying the Lens for. */
+/**
+ * The best Lens the player is carrying, across every slot.
+ *
+ * Highest tier wins; slot order breaks ties only. Picking the first slot with a
+ * Lens instead would mean a spare tier 1 on your head silently overrides the
+ * tier 2 in your hand.
+ */
 function carried(player: Player): Carried | undefined {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
     if (!equippable) return undefined;
+
+    const found: Carried[] = [];
     for (const slot of CARRY_SLOTS) {
-      const found = carriedForItem(equippable.getEquipment(slot), slot);
-      if (found) return found;
+      const item = carriedForItem(equippable.getEquipment(slot), slot);
+      if (item) found.push(item);
     }
-    return undefined;
+    return bestByTier(found);
   } catch {
     return undefined; // never let equipment probing break the feature
   }

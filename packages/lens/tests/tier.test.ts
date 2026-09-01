@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  bestByTier,
   clampTier,
   loreForTier,
   nextTier,
@@ -62,5 +63,32 @@ describe("tierSuggestsLighting", () => {
   it("gates torch suggestions behind tier 2", () => {
     expect(tierSuggestsLighting(1)).toBe(false);
     expect(tierSuggestsLighting(2)).toBe(true);
+  });
+});
+
+describe("bestByTier", () => {
+  // The exact situation that broke in game: a spare tier 1 worn on the head
+  // beat the tier 2 in the offhand, because slot order decided the winner.
+  it("prefers a higher tier found later over a lower tier found first", () => {
+    const head = { slot: "Head", tier: 1 as const };
+    const offhand = { slot: "Offhand", tier: 2 as const };
+    expect(bestByTier([head, offhand])).toBe(offhand);
+  });
+
+  it("keeps input order as the tie-break only", () => {
+    const head = { slot: "Head", tier: 2 as const };
+    const offhand = { slot: "Offhand", tier: 2 as const };
+    expect(bestByTier([head, offhand])).toBe(head);
+  });
+
+  it("is order-independent for the winner", () => {
+    const low = { slot: "Head", tier: 1 as const };
+    const high = { slot: "Mainhand", tier: 2 as const };
+    expect(bestByTier([low, high])).toBe(high);
+    expect(bestByTier([high, low])).toBe(high);
+  });
+
+  it("returns undefined when nothing is carried", () => {
+    expect(bestByTier([])).toBeUndefined();
   });
 });

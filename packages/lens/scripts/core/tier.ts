@@ -54,3 +54,18 @@ export function loreForTier(tier: Tier): string[] {
 export function tierSuggestsLighting(tier: Tier): boolean {
   return tier >= 2;
 }
+
+/**
+ * Pick the best of several carried Lenses.
+ *
+ * Highest tier wins; input order breaks ties only. Taking the first match
+ * instead would mean a spare tier 1 worn on the head silently overrides a tier 2
+ * held in the hand - which is a downgrade for carrying more.
+ */
+export function bestByTier<T extends { tier: Tier }>(found: readonly T[]): T | undefined {
+  let best: T | undefined;
+  for (const item of found) {
+    if (!best || item.tier > best.tier) best = item;
+  }
+  return best;
+}

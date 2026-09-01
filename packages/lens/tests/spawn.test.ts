@@ -8,19 +8,30 @@ import {
 } from "../scripts/core/spawn";
 
 /**
- * The eight rows measured in game by `/scriptevent qolprobe:lightmatrix` on
- * Bedrock 1.26.45. These are observations, not assumptions - if a future game
- * version changes them, these tests fail and tell us the model moved.
+ * Rows measured in game by `/scriptevent qolprobe:lightmatrix` on Bedrock
+ * 1.26.45. These are observations, not assumptions - if a future game version
+ * changes them, these tests fail and tell us the model moved.
+ *
+ * Two runs at different sky values, because the first happened to be during
+ * rain (sky 12 at noon) and the second was after /weather clear (sky 15). Both
+ * satisfy total = max(blockLight, effectiveSky), which is much stronger evidence
+ * for the model than a single run would be - so both are kept.
  */
 const MEASURED = [
-  { label: "open @noon", total: 12, sky: 12, expectBlockLight: undefined },
-  { label: "open @midnight", total: 4, sky: 4, expectBlockLight: undefined },
-  { label: "open +torch @noon", total: 13, sky: 12, expectBlockLight: 13 },
-  { label: "open +torch @midnight", total: 13, sky: 4, expectBlockLight: 13 },
-  { label: "sealed @noon", total: 0, sky: 0, expectBlockLight: 0 },
-  { label: "sealed @midnight", total: 0, sky: 0, expectBlockLight: 0 },
-  { label: "sealed +torch @noon", total: 13, sky: 0, expectBlockLight: 13 },
-  { label: "sealed +torch @midnight", total: 13, sky: 0, expectBlockLight: 13 },
+  // --- clear weather ---
+  { label: "clear: open @noon", total: 15, sky: 15, expectBlockLight: undefined },
+  { label: "clear: open @midnight", total: 4, sky: 4, expectBlockLight: undefined },
+  // sky 15 masks the torch entirely: max(13, 15) = 15.
+  { label: "clear: open +torch @noon", total: 15, sky: 15, expectBlockLight: undefined },
+  { label: "clear: open +torch @midnight", total: 13, sky: 4, expectBlockLight: 13 },
+  { label: "clear: sealed @noon", total: 0, sky: 0, expectBlockLight: 0 },
+  { label: "clear: sealed @midnight", total: 0, sky: 0, expectBlockLight: 0 },
+  { label: "clear: sealed +torch @noon", total: 13, sky: 0, expectBlockLight: 13 },
+  { label: "clear: sealed +torch @midnight", total: 13, sky: 0, expectBlockLight: 13 },
+
+  // --- rain: sky drops 15 -> 12, so a torch at 13 now shows through ---
+  { label: "rain: open @noon", total: 12, sky: 12, expectBlockLight: undefined },
+  { label: "rain: open +torch @noon", total: 13, sky: 12, expectBlockLight: 13 },
 ] as const;
 
 describe("blockLight recovery, against measured engine values", () => {
@@ -65,7 +76,14 @@ describe("classify", () => {
 
   it("reports uncertain where sky light masks block light", () => {
     expect(at(4, 4)).toBe("uncertain"); // open sky, midnight
-    expect(at(12, 12)).toBe("uncertain"); // open sky, noon
+    expect(at(15, 15)).toBe("uncertain"); // open sky, clear noon
+    expect(at(12, 12)).toBe("uncertain"); // open sky, noon during rain
+  });
+
+  it("does not call a torch-lit open-sky spot safe at noon", () => {
+    // Measured: clear noon masks a torch completely (max(13,15) = 15). We cannot
+    // prove it is lit, so we must not claim it is - even though it is.
+    expect(at(15, 15)).toBe("uncertain");
   });
 
   it("is safe wherever a mob could not stand, regardless of light", () => {

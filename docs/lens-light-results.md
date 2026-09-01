@@ -4,18 +4,34 @@ Measured in game on Bedrock **1.26.4501.0** (retail 26.45), `@minecraft/server`
 2.9.0, no experiments, via `/scriptevent qolprobe:lightmatrix`. The probe builds
 its own 5×5×5 rig, sweeps shelter × torch × time, and restores everything.
 
-## Raw results
+## Raw results — clear weather
 
 | Config | total | sky | block light |
 | --- | --- | --- | --- |
-| open @noon | 12 | 12 | masked |
+| open @noon | 15 | 15 | masked |
 | open @midnight | 4 | 4 | masked |
-| open +torch @noon | 13 | 12 | **13** |
+| open +torch @noon | 15 | 15 | masked — see below |
 | open +torch @midnight | 13 | 4 | **13** |
 | sealed @noon | 0 | 0 | **0** |
 | sealed @midnight | 0 | 0 | **0** |
 | sealed +torch @noon | 13 | 0 | **13** |
 | sealed +torch @midnight | 13 | 0 | **13** |
+
+## Raw results — during rain
+
+The first run happened in rain, which drops sky light from 15 to **12** (a
+3-point reduction; Java's is 5). Kept because it is a second, independent
+confirmation of the model at a different sky value:
+
+| Config | total | sky | block light |
+| --- | --- | --- | --- |
+| open @noon | 12 | 12 | masked |
+| open +torch @noon | **13** | 12 | **13** |
+
+That last row is the useful one. At sky 12 a torch at block light 13 **shows
+through** (max(13,12) = 13); at sky 15 the identical torch is **completely
+masked** (max(13,15) = 15). Same torch, same position, different verdict purely
+from the sky term — exactly what the max model predicts.
 
 ## The model
 
@@ -40,8 +56,10 @@ Block light is exactly recoverable in two cases, and only those:
 - **`total > sky`** — block light dominates the max, so it *is* `total`.
 
 When `total === sky > 0`, all we know is `blockLight ≤ sky`. Under open sky that
-is ≤ 4 at midnight and ≤ 12 at noon. This is a limit of the engine API, not of
-our implementation, and no amount of cleverness with these two numbers escapes it.
+is ≤ 4 at midnight and ≤ 15 at clear noon — i.e. at midday outdoors the reading
+carries **no information at all** about block light, since 15 is the maximum a
+block light can be. This is a limit of the engine API, not of our implementation,
+and no amount of cleverness with these two numbers escapes it.
 
 Hence the predicate in `packages/lens/scripts/core/spawn.ts` is **three-state** —
 `spawnable` / `safe` / `uncertain` — rather than a boolean. `uncertain` is shown
@@ -59,10 +77,8 @@ and a `runJob`-chunked flood fill. Deliberately out of scope for v1.
 
 ## Open questions
 
-1. **`sky` read 12 at noon, not 15.** The model holds either way and nothing
-   depends on the absolute value, but 15 was expected under open sky. Most likely
-   weather — worth one re-run after `/weather clear` to confirm it returns 15,
-   purely so we understand the number.
+1. ~~`sky` read 12 at noon, not 15.~~ **Resolved:** it was rain. After
+   `/weather clear` it reads 15. Rain costs 3 points of sky light on Bedrock.
 2. **The spawn threshold itself.** `HOSTILE_MAX_BLOCK_LIGHT = 0` reflects the
    1.18 spawning rework. It is inferred from game rules, not read from an API, so
    it is a named constant with tests pinned to it — if an in-world observation

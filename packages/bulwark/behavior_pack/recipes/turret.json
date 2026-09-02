@@ -10,7 +10,6 @@
       "S": { "item": "minecraft:stone" },
       "R": { "item": "minecraft:redstone" }
     },
-    "unlock": [{ "context": "AlwaysUnlocked" }],
     "result": { "item": "bulwark:turret", "count": 1 }
   }
 }

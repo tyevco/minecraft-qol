@@ -8,7 +8,6 @@
       "C": { "item": "minecraft:copper_ingot" },
       "B": { "item": "minecraft:bucket" }
     },
-    "unlock": [{ "context": "AlwaysUnlocked" }],
     "result": { "item": "fluidworks:funnel", "count": 1 }
   }
 }

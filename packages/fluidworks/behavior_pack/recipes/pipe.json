@@ -7,7 +7,6 @@
     "key": {
       "C": { "item": "minecraft:copper_ingot" }
     },
-    "unlock": [{ "context": "AlwaysUnlocked" }],
     "result": { "item": "fluidworks:pipe", "count": 6 }
   }
 }

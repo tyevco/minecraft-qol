@@ -8,7 +8,6 @@
       "G": { "item": "minecraft:glass" },
       "A": { "item": "minecraft:amethyst_shard" }
     },
-    "unlock": [{ "context": "AlwaysUnlocked" }],
     "result": { "item": "lens:spawn_lens", "count": 1 }
   }
 }

@@ -8,7 +8,6 @@
       "S": { "item": "minecraft:stone_bricks" },
       "C": { "item": "minecraft:campfire" }
     },
-    "unlock": [{ "context": "AlwaysUnlocked" }],
     "result": { "item": "hearthstone:hearthstone", "count": 1 }
   }
 }

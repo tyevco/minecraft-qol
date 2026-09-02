@@ -11,8 +11,8 @@
  * Start here: packages/bulwark/README.md
  */
 import { system, world } from "@minecraft/server";
+import * as debug from "./engine/debug";
 import * as hooks from "./engine/hooks";
-import * as probes from "./engine/probes";
 import * as storage from "./engine/storage";
 import { COMPONENT_ID, turretComponent } from "./engine/turret";
 
@@ -21,9 +21,9 @@ const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 
 let componentRegistered = false;
 
-// Must run at module scope: startup fires before worldLoad. Registration is
-// logged either way so a turret block that does nothing can be traced to its
-// cause in the content log rather than guessed at.
+// Must run at module scope: startup fires before worldLoad, and not on /reload.
+// Registration is logged either way so a turret block that does nothing can be
+// traced to its cause in the content log rather than guessed at.
 system.beforeEvents.startup.subscribe((event) => {
   try {
     event.blockComponentRegistry.registerCustomComponent(COMPONENT_ID, turretComponent);
@@ -36,14 +36,12 @@ system.beforeEvents.startup.subscribe((event) => {
 
 world.afterEvents.worldLoad.subscribe(() => {
   // /reload discards module state, so everything is re-established here.
-  const report = storage.load();
+  const known = storage.load();
   hooks.install();
-  probes.install();
+  debug.install();
 
   log(
-    `ready at tick ${system.currentTick}: ${report.loaded} turret(s) known` +
-      (report.corrupt ? `, ${report.corrupt} corrupt` : "") +
-      (report.newer ? `, ${report.newer} from a newer schema` : "") +
-      `; block component ${componentRegistered ? "registered" : "NOT registered - re-enter the world"}`,
+    `ready at tick ${system.currentTick}: ${known} turret(s) known; block component ` +
+      `${componentRegistered ? "registered" : "NOT registered - re-enter the world"}`,
   );
 });

@@ -11,7 +11,12 @@
     "clean": "just-scripts clean",
     "deploy": "just-scripts package",
     "local-deploy": "just-scripts local-deploy",
-    "mcaddon": "just-scripts mcaddon"
+    "mcaddon": "just-scripts mcaddon",
+    "textures": "ts-node -P tools/tsconfig.json tools/textures/generate.ts",
+    "models": "ts-node -P tools/tsconfig.json tools/models/generate.ts",
+    "structures": "ts-node -P tools/tsconfig.json tools/structures/generate.ts",
+    "assets": "npm run textures && npm run models && npm run structures",
+    "viewer": "ts-node -P tools/tsconfig.json tools/viewer/build.ts"
   },
   "dependencies": {
     "@minecraft/server": "2.9.0",
@@ -19,6 +24,7 @@
   },
   "devDependencies": {
     "@minecraft/core-build-tasks": "^5.7.0",
+    "@minecraft/server-gametest": "^1.0.0-beta.1.26.44-stable",
     "@minecraft/vanilla-data": "^1.26.44",
     "@types/node": "^22.10.0",
     "just-scripts": "^2.4.1",

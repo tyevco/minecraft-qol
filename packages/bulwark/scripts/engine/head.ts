@@ -1,19 +1,19 @@
 import { world, type Dimension, type Entity } from "@minecraft/server";
 import { armEvent, isArmed } from "../core/ammo";
-import { parseRecordKey, recordKey, type Position } from "../core/record";
+import { linkKey, parseLinkKey, type Position } from "../core/record";
 import { headSpawnLocation, isAtBlock, type Head } from "../core/reconcile";
 
 /**
  * The turret head: the entity half of the block/entity pair.
  *
  * The link back to its block is a dynamic property on the entity holding the
- * block's record key, so either side can find the other. The armed flag
+ * block's position, so either side can find the other. The armed flag
  * mirrors which component group we last asked the entity to wear, so the
  * block's tick can bring the two into line without firing an event every
  * second.
  */
 
-export const TURRET_ENTITY = "bulwark:turret";
+export const TURRET_ENTITY = "bulwark:turret_head";
 const PROP_LINK = "bw:link";
 const PROP_ARMED = "bw:armed";
 const TAG = "[Bulwark]";
@@ -29,7 +29,7 @@ export function isTurretEntity(entity: Entity | undefined): entity is Entity {
 export function readLink(entity: Entity): Position | undefined {
   try {
     const raw = entity.getDynamicProperty(PROP_LINK);
-    return typeof raw === "string" ? parseRecordKey(raw) : undefined;
+    return typeof raw === "string" ? parseLinkKey(raw) : undefined;
   } catch {
     return undefined;
   }
@@ -37,7 +37,7 @@ export function readLink(entity: Entity): Position | undefined {
 
 export function writeLink(entity: Entity, block: Position): void {
   try {
-    entity.setDynamicProperty(PROP_LINK, recordKey(block));
+    entity.setDynamicProperty(PROP_LINK, linkKey(block));
   } catch (e) {
     console.warn(`${TAG} failed to link head ${entity.id}: ${e}`);
   }
@@ -101,7 +101,7 @@ export function spawnHead(dim: Dimension, block: Position): Entity | undefined {
     writeLink(entity, block);
     return entity;
   } catch (e) {
-    console.warn(`${TAG} could not spawn a head at ${recordKey(block)}: ${e}`);
+    console.warn(`${TAG} could not spawn a head at ${linkKey(block)}: ${e}`);
     return undefined;
   }
 }

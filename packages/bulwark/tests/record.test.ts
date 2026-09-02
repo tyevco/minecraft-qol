@@ -1,86 +1,70 @@
 import { describe, expect, it } from "vitest";
 import {
-  KEY_PREFIX,
-  SCHEMA,
-  decodeRecord,
-  encodeRecord,
-  isRecordKey,
-  parseRecordKey,
-  recordKey,
+  linkKey,
+  packRecord,
+  parseLinkKey,
   samePosition,
+  unpackRecord,
   type Position,
   type TurretRecord,
 } from "../scripts/core/record";
 
 const pos: Position = { dimId: "minecraft:overworld", x: -12, y: 64, z: 300 };
 
-describe("record keys", () => {
-  it("round-trips a position through the key, dimension colon included", () => {
-    const key = recordKey(pos);
-    expect(key.startsWith(KEY_PREFIX)).toBe(true);
-    expect(parseRecordKey(key)).toEqual(pos);
+describe("link keys", () => {
+  it("round-trips a position, dimension colon included", () => {
+    expect(parseLinkKey(linkKey(pos))).toEqual(pos);
   });
 
   it("handles negative and zero coordinates", () => {
     const p = { dimId: "minecraft:nether", x: 0, y: -64, z: -1 };
-    expect(parseRecordKey(recordKey(p))).toEqual(p);
+    expect(parseLinkKey(linkKey(p))).toEqual(p);
   });
 
-  it("rejects keys that are not ours", () => {
-    expect(isRecordKey("hs:anchors")).toBe(false);
-    expect(parseRecordKey("hs:anchors")).toBeUndefined();
-    expect(parseRecordKey(`${KEY_PREFIX}minecraft:overworld|1,2`)).toBeUndefined();
-    expect(parseRecordKey(`${KEY_PREFIX}minecraft:overworld|1,2,x`)).toBeUndefined();
-    expect(parseRecordKey(`${KEY_PREFIX}|1,2,3`)).toBeUndefined();
-    expect(parseRecordKey(`${KEY_PREFIX}minecraft:overworld|1.5,2,3`)).toBeUndefined();
+  it("rejects malformed keys", () => {
+    expect(parseLinkKey("hs:anchors")).toBeUndefined();
+    expect(parseLinkKey("minecraft:overworld|1,2")).toBeUndefined();
+    expect(parseLinkKey("minecraft:overworld|1,2,x")).toBeUndefined();
+    expect(parseLinkKey("minecraft:overworld|1,,3")).toBeUndefined();
+    expect(parseLinkKey("|1,2,3")).toBeUndefined();
+    expect(parseLinkKey("minecraft:overworld|1.5,2,3")).toBeUndefined();
   });
 });
 
-describe("record encoding", () => {
+describe("row packing", () => {
   const full: TurretRecord = { ...pos, entityId: "-4294967295", ammo: 17, kills: 3 };
 
   it("round-trips a full record", () => {
-    const decoded = decodeRecord(pos, encodeRecord(full));
-    expect(decoded).toEqual({ ok: true, record: full });
+    expect(unpackRecord(packRecord(full))).toEqual(full);
   });
 
   it("round-trips an unlinked record with the entity absent, not empty", () => {
     const unlinked: TurretRecord = { ...pos, ammo: 0, kills: 0 };
-    const decoded = decodeRecord(pos, encodeRecord(unlinked));
-    expect(decoded.ok).toBe(true);
-    if (decoded.ok) {
-      expect(decoded.record.entityId).toBeUndefined();
-      expect("entityId" in decoded.record && decoded.record.entityId).toBeFalsy();
-    }
+    const back = unpackRecord(packRecord(unlinked));
+    expect(back).toBeDefined();
+    expect(back!.entityId).toBeUndefined();
   });
 
-  it("stores the current schema first", () => {
-    expect(JSON.parse(encodeRecord(full))[0]).toBe(SCHEMA);
+  it("packs to plain JSON values only", () => {
+    expect(JSON.parse(JSON.stringify(packRecord(full)))).toEqual(packRecord(full));
   });
 
-  it("refuses a newer schema rather than misreading it", () => {
-    const raw = JSON.stringify([SCHEMA + 1, "1", 5, 0]);
-    expect(decodeRecord(pos, raw)).toEqual({ ok: false, reason: "newer-schema" });
-  });
-
-  it("reports corruption for anything malformed", () => {
-    expect(decodeRecord(pos, undefined)).toEqual({ ok: false, reason: "corrupt" });
-    expect(decodeRecord(pos, 42)).toEqual({ ok: false, reason: "corrupt" });
-    expect(decodeRecord(pos, "not json")).toEqual({ ok: false, reason: "corrupt" });
-    expect(decodeRecord(pos, "{}")).toEqual({ ok: false, reason: "corrupt" });
-    expect(decodeRecord(pos, "[1]")).toEqual({ ok: false, reason: "corrupt" });
-    expect(decodeRecord(pos, JSON.stringify([1, 7, 1, 1]))).toEqual({ ok: false, reason: "corrupt" });
-    expect(decodeRecord(pos, JSON.stringify([1, "7", "1", 1]))).toEqual({ ok: false, reason: "corrupt" });
+  it("drops anything malformed rather than guessing", () => {
+    expect(unpackRecord(undefined)).toBeUndefined();
+    expect(unpackRecord("nope")).toBeUndefined();
+    expect(unpackRecord({})).toBeUndefined();
+    expect(unpackRecord([])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 1, 2, 3])).toBeUndefined();
+    expect(unpackRecord(["", 1, 2, 3, "", 0, 0])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 1.5, 2, 3, "", 0, 0])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 1, 2, 3, 7, 0, 0])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 1, 2, 3, "", "0", 0])).toBeUndefined();
   });
 
   it("clamps negative or fractional counters on read", () => {
-    const raw = JSON.stringify([SCHEMA, "", -3, 2.9]);
-    const decoded = decodeRecord(pos, raw);
-    expect(decoded.ok).toBe(true);
-    if (decoded.ok) {
-      expect(decoded.record.ammo).toBe(0);
-      expect(decoded.record.kills).toBe(2);
-    }
+    const back = unpackRecord(["minecraft:overworld", 1, 2, 3, "", -3, 2.9]);
+    expect(back!.ammo).toBe(0);
+    expect(back!.kills).toBe(2);
   });
 });
 

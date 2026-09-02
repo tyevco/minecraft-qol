@@ -100,22 +100,28 @@ export function reconcileEntity(
 }
 
 /**
- * A head is "at" its block when its feet are in the cell directly above it.
- *
- * The block is a pedestal and the head sits on top; the entity has no gravity,
- * so nothing about the world holds it there except this check.
+ * Where the head's feet sit: the socket on top of the base model, 14/16 of a
+ * block up (tools/models/generate.ts). The entity has no gravity and no
+ * collision, so nothing about the world holds it there except reconciliation.
+ */
+export const HEAD_SEAT = 14 / 16;
+
+/**
+ * A head is "at" its block when it is in the block's column and within half a
+ * block of its seat - inside the base's own cell, or just above it.
  */
 export function isAtBlock(block: Position, location: { x: number; y: number; z: number }): boolean {
   return (
     Math.floor(location.x) === block.x &&
-    Math.floor(location.y) === block.y + 1 &&
-    Math.floor(location.z) === block.z
+    Math.floor(location.z) === block.z &&
+    location.y >= block.y &&
+    location.y < block.y + HEAD_SEAT + 0.5
   );
 }
 
-/** Where a head stands: centred on the block, feet on its top face. */
+/** Where a head stands: centred on the block, feet in the socket. */
 export function headSpawnLocation(block: Position): { x: number; y: number; z: number } {
-  return { x: block.x + 0.5, y: block.y + 1, z: block.z + 0.5 };
+  return { x: block.x + 0.5, y: block.y + HEAD_SEAT, z: block.z + 0.5 };
 }
 
 /**

@@ -23,9 +23,10 @@ Three kinds of document live here, and they carry very different authority.
 
 - [`bulwark-turret-probe.md`](bulwark-turret-probe.md) — the protocol for the
   turret's block-to-entity pairing: entity persistence, stationary ranged AI,
-  head rotation, mob caps, and reconciliation under fire. Built into the pack
-  as `/scriptevent bulwark:probe-*`. Not a findings document until it has been
-  run; it says so at the top.
+  head rotation, mob caps, and reconciliation under fire. Built as
+  `/scriptevent qolprobe:turret-*` in the probe pack, with `bulwark:debug` for
+  the counters. Not a findings document until it has been run; it says so at
+  the top.
 
 ## Design docs — read with the corrections below
 
@@ -44,6 +45,9 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `Player.persistentId` for ownership | **Beta-only.** Mint an id into a player dynamic property instead. |
 | `PackSettingsChangeAfterEvent` | Beta-only, and misnamed (`PackSettingChangeAfterEventSignal`). `world.getPackSettings()` itself is stable — poll and diff. |
 | `CustomForm.image` grids | server-ui **2.2.0**, which has no stable release. `CustomForm` itself *is* stable in 2.1.0. |
+| `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
+| Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
+| Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
 (block, paired entity, reconciliation, vanilla ranged AI, hopper ammo), not yet
@@ -55,7 +59,10 @@ so much as join it — both load. What the doc misses and a turret needs is
 `in_range_movement_mode: hold_position` and raising the default 30° head-rotation
 caps. The lens half of that design shipped separately as `packages/lens`.
 
-**[`design/fluidworks.md`](design/fluidworks.md)** — not yet built. Its two open
+**[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
+(funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times
+machines through the shared rules; pipes, Harvester, Collector, tank labels).
+Phase 2, potions, is blocked - see the table. Its two open
 questions are now answered: cauldron `fill_level` is **0–6** (not Java's 0–3), and
 dyed water is fully round-trippable via `BlockFluidContainerComponent.fluidColor`.
 But **potions are not** — there is `setPotion` and no `getPotion`, so you can set
@@ -63,10 +70,29 @@ a cauldron's potion and detect that one is present, never read back *which*.
 Note also that QOL Times already implements four of its machines at the rules
 layer (`packages/qol-times/scripts/core/rules/`).
 
+**[`design/graves.md`](design/graves.md)** — **built**, written alongside the
+implementation rather than before it, so it carries no corrections. Its §5
+lists what to measure in game; the probe pack has `qolprobe:death` for it.
+
 **[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1). Its
 "must prototype" list is resolved in `hearthstone-spawn-results.md`:
 `getSpawnPoint()` really does return `undefined` for a player who never slept,
 and non-Overworld anchors work — verified by dying in the Nether.
+
+## Proposals — not yet built
+
+Written against the installed 2.9.0 typings, each with its own “must
+prototype” list. In suggested order:
+
+- [`design/guardian.md`](design/guardian.md) — per-role damage scaling and
+  safety switches, on the stable `entityHurt` before-event. Pets in phase 3.
+- [`design/waypoints.md`](design/waypoints.md) — locator-bar markers for your
+  bed, gravestone and Hearthstone; a shared module, not a pack.
+- [`design/waystones.md`](design/waystones.md) — placed teleport points; the
+  other half of Hearthstone's tagline.
+- [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
+  and replant.
+- [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
 
 ## Plans
 
@@ -86,3 +112,9 @@ That loop — question, probe, results doc, build against measurements — caugh
 `total − sky` formula being wrong, the Nether roof reading as a dimension failure,
 and `minecraft:block_entity` being a preview-only feature. Each would have been a
 plausible-looking implementation that was quietly incorrect.
+
+The GameTest pack (`packages/gametest/`) is the other half of the loop: once
+behaviour is built, an in-game test pins it. It runs on Mojang's GameTest
+framework, which needs the Beta APIs experiment, so it lives in a throwaway
+world and is never packaged. Probe first to learn what the engine does; test
+afterwards so it keeps doing it. `/gametest runset qol` runs every test.

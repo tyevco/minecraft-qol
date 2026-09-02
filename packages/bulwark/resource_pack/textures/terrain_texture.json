@@ -4,8 +4,6 @@
   "padding": 8,
   "num_mip_levels": 4,
   "texture_data": {
-    "bulwark_turret_base": {
-      "textures": "textures/blocks/turret_base"
-    }
+    "bulwark_turret_base": { "textures": "textures/blocks/turret_base" }
   }
 }

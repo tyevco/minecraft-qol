@@ -15,7 +15,7 @@ import { NEIGHBOURS } from "@qol/shared/core/facing";
 import { safeGetBlock } from "@qol/shared/engine/safeBlock";
 import { AMMO_CAP, AMMO_ITEM, acceptFeed, isArmed, planPull, type Slot } from "../core/ammo";
 import { hopperFeeds } from "../core/hopper";
-import { recordKey, samePosition, type Position, type TurretRecord } from "../core/record";
+import { linkKey, samePosition, type Position, type TurretRecord } from "../core/record";
 import { reconcileBlock, spawnAllowed } from "../core/reconcile";
 import {
   headsAt,
@@ -42,7 +42,7 @@ import * as storage from "./storage";
  * falls out of the block component model for free.
  */
 
-export const TURRET_BLOCK = "bulwark:turret_base";
+export const TURRET_BLOCK = "bulwark:turret";
 export const COMPONENT_ID = "bulwark:turret";
 const HOPPER = "minecraft:hopper";
 const TAG = "[Bulwark]";
@@ -120,7 +120,7 @@ function pullFromHoppers(dim: Dimension, pos: Position, ammo: number): number {
         taken += take.amount;
       }
     } catch (e) {
-      console.warn(`${TAG} hopper pull interrupted at ${recordKey(pos)}: ${e}`);
+      console.warn(`${TAG} hopper pull interrupted at ${linkKey(pos)}: ${e}`);
     }
     ammo += taken;
     stats.pulled += taken;
@@ -140,7 +140,7 @@ export function tick(block: Block): void {
   if (!block.isValid) return;
   const dim = block.dimension;
   const pos = positionOf(block);
-  const key = recordKey(pos);
+  const key = linkKey(pos);
 
   let record = storage.get(pos);
   let dirty = false;
@@ -239,7 +239,7 @@ function dropArrows(dim: Dimension, pos: Position, count: number): void {
     try {
       dim.spawnItem(new ItemStack(AMMO_ITEM, n), at);
     } catch (e) {
-      console.warn(`${TAG} could not drop ${n} arrows at ${recordKey(pos)}: ${e}`);
+      console.warn(`${TAG} could not drop ${n} arrows at ${linkKey(pos)}: ${e}`);
     }
   }
 }
@@ -257,7 +257,7 @@ export function retire(dim: Dimension, pos: Position, player?: Player): void {
     const link = readLink(entity);
     if (link && samePosition(link, pos)) removeHead(entity);
   }
-  misses.delete(recordKey(pos));
+  misses.delete(linkKey(pos));
 
   if (!record) return;
   stats.retired++;
@@ -310,7 +310,7 @@ export function interact(player: Player, block: Block): void {
       return;
     }
   } catch (e) {
-    console.warn(`${TAG} feed failed at ${recordKey(pos)}: ${e}`);
+    console.warn(`${TAG} feed failed at ${linkKey(pos)}: ${e}`);
   }
 
   player.sendMessage(statusLine(record, head));

@@ -76,7 +76,8 @@ want to disturb them.
 | `npm run build` | `tsc` typecheck, then an esbuild bundle per pack into `dist/<pack>/`. |
 | `npm run deploy` | Build, then copy each pack into `development_behavior_packs`. |
 | `npm run local-deploy` | Deploy, then watch and repeat on save. |
-| `npm run mcaddon` | Produce `dist/packages/<pack>.mcaddon` per pack. |
+| `npm run mcaddon` | Produce `dist/packages/<pack>.mcaddon` per shipped pack. |
+| `npm run assets` | Regenerate textures, models and GameTest structures from `tools/`. |
 
 Per-pack variants exist for everything: `npx just-scripts build:qol_times`,
 `deploy:qol_times`, `mcaddon:qol_times`, `clean:qol_times`.
@@ -119,7 +120,12 @@ This is a monorepo building several independent packs from a shared library.
 packages/
   shared/        code reused across packs (core/ pure, engine/ engine-facing)
   qol-times/     behavior_pack/ + scripts/ + tests/
+  hearthstone/   behavior_pack/ + resource_pack/ + scripts/ + tests/
+  graves/        per-player item preservation; same shape
+  fluidworks/    funnels and tanks; the cauldron rules live in shared/core/fluids
+  gametest/      in-game tests on the GameTest framework; dev only, never shipped
   probe/         throwaway diagnostic pack, hand-deployed, plain JS
+tools/           texture and model generators (see Models and textures)
 dist/<pack>/     per-pack build output
 ```
 
@@ -130,6 +136,59 @@ output.
 
 Two things that must stay in lockstep per pack: esbuild's `external` list and the
 manifest's `dependencies`. A mismatch fails at runtime with no build error.
+
+A pack that ships a `resource_pack/` folder sets `hasResourcePack: true`; deploy,
+clean and mcaddon all grow a resource-pack branch from that one flag.
+
+## Models and textures
+
+Every texture and every geometry file in the repo is **generated**, not drawn:
+
+```bash
+npm run textures    # tools/textures -> resource_pack/textures/**/*.png
+npm run models      # tools/models   -> resource_pack/models/**/*.geo.json
+npm run assets      # both
+```
+
+Output is deterministic, so a changed PNG or `.geo.json` in a diff always
+corresponds to a source change under `tools/`. Hand edits to the outputs are
+overwritten on the next run.
+
+The pieces:
+
+- `tools/atlases.ts` names every 16x16 tile in every atlas. Textures paint into
+  a named slot; geometry faces sample a window of a named slot. A face cannot
+  point at a tile nobody painted, and moving a tile is one edit.
+- `tools/textures/tiles.ts` paints the tiles, from ASCII art where the shape is
+  deliberate and from seeded speckle where it is grain. `png.ts` is a
+  dependency-free PNG encoder over Node's zlib.
+- `tools/models/geometry.ts` builds per-face-UV geometry from cubes that name
+  tiles instead of coordinates; the window size follows from the cube.
+
+Conventions: block models are centred on x/z and stand on y = 0; a directional
+block's front is authored on +z, the default placement-direction value; entity
+models face -z, the vanilla convention. Both are in the generator's header.
+
+What exists today:
+
+| Pack | Asset | Notes |
+| --- | --- | --- |
+| Hearthstone | `geometry.hearthstone` | Stone-brick hearth with a walled bowl of embers and a flame. The flame faces use a second material instance (`alpha_test`, no face dimming) so they cut out and stay bright. |
+| Lens | `spawn_lens` item icon | The Lens's first resource pack. Icon only; the item does not render on the head. |
+| Fluidworks | `geometry.fluidworks_funnel`, `geometry.fluidworks_pipe` | Funnel behaviour is Phase 1 of the design; pipes are visual only. See the pack README for what to verify in game. |
+| Bulwark | `geometry.bulwark_turret_base` (block), `geometry.bulwark_turret_head` (entity) | The head has one texture per damage tier, picked by the `bulwark:tier` entity property. |
+| Graves | `geometry.graves_gravestone` (entity) | A headstone at the head of a mound; the entity holds the dead player's items. |
+
+Resource changes never hot-reload: exit to the main menu and re-enter for a
+texture or model, restart the game for a manifest. `npm run deploy` prints the
+reminder.
+
+**Viewer.** `npm run viewer` builds a static page into `dist/viewer` that
+renders every model above with its atlas: orbit, texture variants (turret
+tiers), bone toggles (pipe arms). Serve the folder with any static server
+(`npx http-server dist/viewer`). GitHub Pages publishes the same page from
+`main` via `.github/workflows/pages.yml`, so the live page always shows what
+the repo generates.
 
 **Why we don't use the library's `copyTask`.** It reads `PROJECT_NAME` from
 `process.env` inside its returned closure, making the deploy destination a
@@ -176,6 +235,15 @@ is represented.
 See [docs/phase0-results.md](docs/phase0-results.md) for the measured engine
 behaviour this is built on, including why velocity is unusable as a signal and
 why levels go through block states rather than `fluid_container.fillLevel`.
+
+## In-game tests
+
+`packages/gametest` runs regression tests inside the game on Mojang's GameTest
+framework: a dispenser really fills a cauldron, a funnel really makes concrete,
+a player who dies really keeps their diamonds. It needs the **Beta APIs**
+experiment and a throwaway world, is deployed like any pack, and is excluded
+from `mcaddon`. `/gametest runset qol` runs the lot. See
+[`packages/gametest/README.md`](packages/gametest/README.md).
 
 ## The probe pack
 

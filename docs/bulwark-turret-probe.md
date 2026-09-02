@@ -4,6 +4,8 @@
 results. When it has been run, replace this preamble with the readings, in the
 style of [`hearthstone-spawn-results.md`](hearthstone-spawn-results.md), and
 move the file's entry in [`README.md`](README.md) up to the findings list.
+The GameTest suite (`turret_*` in `packages/gametest`) pins P0 and the
+in-arena half of P5 once the probes have been run.
 
 The design's own words (§10): *"Entity reconciliation reliability. The
 block-entity pairing is the load-bearing assumption. If entities go missing in
@@ -11,11 +13,12 @@ ways reconciliation can't catch, the whole architecture needs rethinking."*
 The roadmap agrees it is the riskiest unproven assumption in any of the docs.
 So it gets probed before anything is built on it.
 
-The probes live inside the Bulwark pack (`/scriptevent bulwark:…`) rather than
-in `packages/probe`, because every question needs the real entity and block
-definitions. They follow the probe pack's rules: `/scriptevent`-driven so they
-survive `/reload`, log-only unless the name says it mutates, and everything
-they create is tagged `bulwark:probe` so `bulwark:probe-cleanup` can find it.
+The engine probes (P1–P4) live in the probe pack as `qolprobe:turret-*`, and
+need the Bulwark pack enabled alongside it, since every question is about its
+entity definition. They follow the probe pack's rules: `/scriptevent`-driven so
+they survive `/reload`, log-only unless the name says it mutates, and
+everything they create is tagged `qolprobe:turret` so `qolprobe:turret-cleanup`
+can find it. P0 and P5 use Bulwark's own `bulwark:debug` counters.
 
 Watch the content log (Settings → Creator → Content Log GUI); everything is
 `console.warn`.
@@ -30,7 +33,7 @@ Before anything else, on world entry the log must show:
 ```
 
 Then place a turret from the creative menu or craft it (iron, dispenser,
-stone, redstone). Expect a head to appear on top within a tick. If the block
+stone, redstone). Expect a head to appear in the socket within a tick. If the block
 places but no head appears, the entity definition failed strict validation:
 the content log will name the offending field. `bulwark:debug` shows the
 nearest record and whether its head ever spawned.
@@ -41,12 +44,12 @@ nearest record and whether its head ever spawned.
 properties, survive everything a world does?*
 
 ```
-/scriptevent bulwark:probe-persist    spawn an UNLINKED head where you stand
-/scriptevent bulwark:probe-check      look every remembered head up by id
+/scriptevent qolprobe:turret-persist   spawn an UNLINKED head where you stand
+/scriptevent qolprobe:turret-check     look every remembered head up by id
 ```
 
 The probe head is unlinked, so reconciliation never touches it; this measures
-the engine alone. After `probe-persist`, run `probe-check` after each of:
+the engine alone. After `turret-persist`, run `turret-check` after each of:
 
 | Step | Expect | If not |
 | --- | --- | --- |
@@ -72,10 +75,10 @@ never valid again would delay every respawn by two ticks for nothing.
 actually fire? At what distances? Straight down?*
 
 ```
-/scriptevent bulwark:probe-target     MUTATES: spawns one zombie 8 blocks
-                                      ahead of you, then watches the nearest
-                                      head for 10 seconds
-/scriptevent bulwark:probe-watch      log-only: the same watch, no spawn
+/scriptevent qolprobe:turret-target    MUTATES: spawns one zombie 8 blocks
+                                       ahead of you, then watches the nearest
+                                       head for 10 seconds
+/scriptevent qolprobe:turret-watch     log-only: the same watch, no spawn
 ```
 
 Prerequisites: a placed turret with ammo (`bulwark:debug` shows it; use arrows
@@ -84,8 +87,9 @@ wanders in.
 
 | Reading | Meaning |
 | --- | --- |
-| `P3 done: N turret shot(s) attributed` with N > 0, and ammo dropped by N in `bulwark:debug` | Acquisition, firing and shot attribution all work; `Projectile.owner` is populated |
-| shots fired (arrows visible, bow sound) but N = 0 and `unattributed` climbed | The arrow's owner is not set even one tick after spawn. Ammo is then never consumed. Fix: attribute geometrically — arrows spawning within a block of a head's muzzle — the same shape as the dispenser interceptor in QOL Times |
+| `T2 arrows spawned during the watch: N` with N > 0 and `owner@spawn=bulwark:turret_head`; ammo down by N in `bulwark:debug` | Acquisition, firing and shot attribution all work; `Projectile.owner` is populated at spawn |
+| arrows listed with `owner@spawn=none` but `owner@+1=bulwark:turret_head` | Owner lands a tick late. Bulwark already retries once next tick, so ammo still drops; nothing to change, worth recording |
+| arrows listed with no owner at either time; `unattributed` climbs in `bulwark:debug` | Ammo is never consumed. Fix: attribute geometrically — arrows spawning within a block of a head's muzzle — the same shape as the dispenser interceptor in QOL Times |
 | no arrows at all, head yaw changes | Targeting works, firing does not: `ranged_attack` needs a component the head lacks, or `attack_radius` is being read as a *minimum* — try `attack_range: {min: 0, max: 16}` |
 | no arrows, yaw never changes, zombie walks straight past | Acquisition failed: check `must_see` (line of sight from the head's eye height at the top of a full block), and that the zombie is loaded — the `P4` census will show it |
 | head fires at the zombie's feet / over its head | Aim leading assumes a normal mob's eye height; adjust `collision_box.height` |
@@ -99,7 +103,7 @@ directly below" as the cases vanilla skeleton tuning was never meant for.
 *Does a stationary entity turn to face its target, and does the head bone
 track visually?*
 
-This is read off the same watch. `P3 t+N yaw=… pitch=…` lines print whenever
+This is read off the same watch. `T3 t+N yaw=… pitch=…` lines print whenever
 the rotation changes.
 
 | Reading | Meaning |
@@ -116,19 +120,19 @@ perimeter that silently suppresses spawns would be a confusing bug to chase
 later.
 
 ```
-/scriptevent bulwark:probe-census     monsters, heads and total entities
-                                      within 64 blocks
+/scriptevent qolprobe:turret-census    monsters, heads and total entities
+                                       within 64 blocks
 ```
 
 Not a one-reading question. Protocol: pick a dark test area away from your
 base. Night 1, no turrets: run the census every few minutes and note the
 monster count. Night 2, thirty to fifty turret **heads** (probe heads are
-fine — `probe-persist` repeatedly; they are inert) in the same area: repeat.
+fine — `turret-persist` repeatedly; they are inert) in the same area: repeat.
 Night 3, cleaned up: repeat as a control. A clear drop on night 2 means heads
-are counted against the cap and the design needs `minecraft:type_family`
-without `mob`, or a density cap far lower than planned.
+are counted against the cap even without the `mob` family (the head already
+omits it), and the design needs a density cap far lower than planned.
 
-`bulwark:probe-cleanup` removes every tagged probe entity in loaded chunks.
+`qolprobe:turret-cleanup` removes every tagged probe entity in loaded chunks.
 
 ## P5 — reconciliation under fire
 
@@ -139,10 +143,10 @@ ran.
 
 | Do | Expect |
 | --- | --- |
-| `/kill @e[type=bulwark:turret]` next to a turret | Within 4 s a new head, `spawned` +1 |
-| `/tp @e[type=bulwark:turret] ~ ~3 ~` | Within 2 s it is back on the block, `reseated` +1 |
+| `/kill @e[type=bulwark:turret_head]` next to a turret | Within 4 s a new head, `spawned` +1 |
+| `/tp @e[type=bulwark:turret_head] ~ ~3 ~` | Within 2 s it is back on the block, `reseated` +1 |
 | `/setblock` the turret block to air (not a break) | No break hook fires for this. Within 10 s the sweep finds the record's block loaded and not a turret: record gone, head gone, arrows dropped, `stale` +1 |
-| `/summon bulwark:turret` on top of an existing turret | It stays (unlinked = inert), does nothing, `dupes` unchanged |
+| `/summon bulwark:turret_head` on top of an existing turret | It stays (unlinked = inert), does nothing, `dupes` unchanged |
 | Copy a turret with `/clone` | The clone gets its own record and head on its first tick (`onPlace` fires for clone/fill); its head is linked to the new position |
 | Break the block with 20 arrows loaded | 20 arrows drop, head gone, record gone |
 | Explode it (TNT) | Same, via `onBreak` |

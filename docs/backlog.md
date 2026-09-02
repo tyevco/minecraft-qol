@@ -39,12 +39,23 @@ are stable (`world.getPackSettings()`, four control types) but need manifest
 `format_version` 3, which brings SemVer version strings and a required
 `metadata.authors`. Deferred so the pack could be confirmed loading first.
 `PackSettingChangeAfterEventSignal` is beta-only, so changes need polling.
+Graves now does exactly this (`packages/graves/behavior_pack/manifest.json`,
+`scripts/engine/settings.ts`); once it is confirmed loading, copy the shape.
 
-## Lens: custom item
+## Lens: render the worn Lens
 
-The doc's original framing is a held lens item rather than a command. Needs the
-repo's first **resource pack** — texture, name, and `copyToResourcePacks` wired
-into `just.config.ts`. `ItemCustomComponent.onUse` is stable and ready.
+The Spawn Lens item, its resource pack and icon exist. What it still lacks is
+an **attachable**: worn on the head it occupies the slot but draws nothing on
+the player model. A goggles-style attachable geometry plus
+`attachables/spawn_lens.json` in the resource pack would make a Lens-wearer
+visible to other players. Purely cosmetic, so it waits.
+
+## Graves: experience
+
+Vanilla drops XP orbs on death whatever the mode. Re-granting `getTotalXp()`
+on respawn would duplicate whatever orbs the player then walks over, so it
+needs the orbs removed on the death tick — the drop-chasing the design avoided.
+Worth it only if XP loss turns out to be what actually frustrates the kids.
 
 ## Lens: verify the DENY list
 
@@ -61,14 +72,22 @@ game. Also the two parity features — dispenser places armour stands
 (MCPE-41432 / MCPE-76479) — which need the interceptor generalised, since it
 currently assumes a cauldron target.
 
-## Shared library: extract the block index
+## Shared library: finish the block index
 
-`packages/qol-times/scripts/dispenser/rigRegistry.ts` holds a world-index pattern
-all three planned packs need. Roughly 40 of its 193 lines are generic. Extracting
-it wants three things it lacks: **chunk keying** (it stores every entry in one
-dynamic property, which will hit the per-property cap), a **schema version**, and
-a **tick budget** (it polls every tick, unyielded). Do this when the second
-consumer appears — Hearthstone — not before.
+`packages/shared/engine/positionIndex.ts` is the generic position-keyed index,
+with a schema version, used by Fluidworks. Hearthstone and Graves still carry
+their own copies of the same pattern and should move onto it. Still missing
+from the shared one: **chunk keying** (every row in one dynamic property will
+hit the per-property cap eventually) and a **tick budget** (Fluidworks yields
+every four funnels inside a job, which is a start, not a budget).
+
+## Fluidworks: what is left
+
+Potions are blocked until the stable API can construct a potion of a chosen
+effect (`ItemStack.createPotion` is absent in 2.9.0). The Filter Funnel needs
+a per-block configuration surface, which without commands means either block
+entities reaching retail or an in-world idiom (an item frame on the funnel as
+its filter is the obvious one). The Linked Pair and Lava Kiln are Phase 4.
 
 ## Bulwark: run the probe protocol
 
@@ -80,28 +99,25 @@ reading means and which code path it changes.
 ## Bulwark: shot attribution fallback
 
 Ammo accounting reads `EntityProjectileComponent.owner` off each spawned
-arrow, at spawn and again one tick later. If the probe shows the owner is
-never populated for AI-fired arrows, switch to geometric attribution (arrows
-appearing within a block of a head) — the same tier structure as the QOL Times
-dispenser interceptor, minus the container-diff proof, since a head cannot be
-thrown at.
+arrow, at spawn and again one tick later. `qolprobe:turret-watch` reports
+which of those is populated. If neither is, switch to geometric attribution
+(arrows appearing within a block of a head) — the same tier structure as the
+QOL Times dispenser interceptor, minus the container-diff proof, since a head
+cannot be thrown at.
 
 ## Bulwark: phases 3–5
 
-Upgrades via component groups and entity properties, the config form
-(`CustomForm`, no `image` grid on stable), ownership and friendly-fire filters,
-the player-targeting toggle (off by default), density caps, waypoints. All
-gated on Phase 2 measuring clean. Records are schema-versioned from the first
-commit so tier and owner fields can be added without a migration.
+Upgrades via the existing `bulwark:tier` entity property, the config form
+(`CustomForm`, no `image` grid on stable), ownership and friendly-fire
+filters, the player-targeting toggle (off by default, from the settings
+panel), density caps, waypoints. All gated on Phase 2 measuring clean. Rows
+are schema-versioned so tier and owner fields can be added with a migration
+rather than a wipe.
 
-## Repo: lint task has no config
+## GameTest pack: grow the suite
 
-`npm run lint` fails immediately: `coreLint` wants an ESLint config at the
-root and none exists. Either add one or drop the task; today it is a trap.
-
-## GameTest pack
-
-Worth it for world-interaction regression tests ("does the dispenser actually
-fill the cauldron"), not for measurements. `@minecraft/server-gametest` has no
-stable release, so it needs the Beta APIs experiment in a throwaway world and
-must stay out of every shipped `.mcaddon`.
+`packages/gametest` exists (dev only, Beta APIs, never shipped) with one test
+per pack. Worth adding as behaviour lands: Lens marker placement against a
+known dark room, Graves retrieval by interacting with the stone (needs
+`interactWithEntity` on a simulated player), pipe connection states, and the
+Guardian damage table once it is built.

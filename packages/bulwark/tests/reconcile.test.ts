@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Position } from "../scripts/core/record";
 import {
+  HEAD_SEAT,
   SPAWN_GRACE_TICKS,
   headSpawnLocation,
   isAtBlock,
@@ -109,17 +110,18 @@ describe("reconcileEntity", () => {
 });
 
 describe("geometry", () => {
-  it("places the head centred on top of the block", () => {
-    expect(headSpawnLocation(block)).toEqual({ x: 10.5, y: 71, z: -4.5 });
+  it("seats the head centred on the block, in the socket", () => {
+    expect(headSpawnLocation(block)).toEqual({ x: 10.5, y: 70 + HEAD_SEAT, z: -4.5 });
   });
 
-  it("treats anywhere in the cell above as at the block, including negative coordinates", () => {
+  it("accepts the seat and a little drift, rejects the next cell over or a fall", () => {
     expect(isAtBlock(block, headSpawnLocation(block))).toBe(true);
-    expect(isAtBlock(block, { x: 10.99, y: 71.0, z: -4.01 })).toBe(true);
-    expect(isAtBlock(block, { x: 11, y: 71, z: -4.5 })).toBe(false);
-    expect(isAtBlock(block, { x: 10.5, y: 70, z: -4.5 })).toBe(false);
-    expect(isAtBlock(block, { x: 10.5, y: 72, z: -4.5 })).toBe(false);
-    expect(isAtBlock(block, { x: 10.5, y: 71, z: -5.01 })).toBe(false);
+    expect(isAtBlock(block, { x: 10.99, y: 70.0, z: -4.01 })).toBe(true);
+    expect(isAtBlock(block, { x: 10.5, y: 70 + HEAD_SEAT + 0.49, z: -4.5 })).toBe(true);
+    expect(isAtBlock(block, { x: 10.5, y: 70 + HEAD_SEAT + 0.5, z: -4.5 })).toBe(false);
+    expect(isAtBlock(block, { x: 10.5, y: 69.99, z: -4.5 })).toBe(false);
+    expect(isAtBlock(block, { x: 11, y: 70.5, z: -4.5 })).toBe(false);
+    expect(isAtBlock(block, { x: 10.5, y: 70.5, z: -5.01 })).toBe(false);
   });
 });
 

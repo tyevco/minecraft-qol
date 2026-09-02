@@ -1,0 +1,13 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "fluidworks:pipe" },
+    "tags": ["crafting_table"],
+    "pattern": ["C C", "C C", "C C"],
+    "key": {
+      "C": { "item": "minecraft:copper_ingot" }
+    },
+    "unlock": [{ "context": "AlwaysUnlocked" }],
+    "result": { "item": "fluidworks:pipe", "count": 6 }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "format_version": [1, 1, 0],
+  "fluidworks:funnel": { "sound": "copper" },
+  "fluidworks:pipe": { "sound": "copper" }
+}

@@ -19,7 +19,7 @@ import {
  * bucket lands on the floor. The second is the one that must work.
  */
 registerAsync("qol", "dispenser_fills_cauldron", async (test) => {
-  floor(test);
+  await floor(test);
   const dispenser = { x: 3, y: 1, z: 3 };
   const tank = { x: 4, y: 1, z: 3 };
   // facing_direction 5 = east, measured (docs/phase0-results.md).

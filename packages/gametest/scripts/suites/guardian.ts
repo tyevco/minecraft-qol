@@ -22,7 +22,7 @@ const health = (p: { getComponent: (id: string) => unknown }): number =>
     ?.currentValue ?? NaN;
 
 registerAsync("qol", "guardian_never_adds_damage", async (test) => {
-  floor(test);
+  await floor(test);
   const player = test.spawnSimulatedPlayer(
     { x: 3, y: 1, z: 3 },
     "gd_tester",
@@ -57,7 +57,7 @@ registerAsync("qol", "guardian_never_adds_damage", async (test) => {
   .maxTicks(200);
 
 registerAsync("qol", "guardian_void_catch", async (test) => {
-  floor(test);
+  await floor(test);
   const player = test.spawnSimulatedPlayer(
     { x: 3, y: 1, z: 3 },
     "gd_faller",

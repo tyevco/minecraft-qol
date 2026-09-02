@@ -17,7 +17,17 @@ import type { SimulatedPlayer, Test } from "@minecraft/server-gametest";
 export const STRUCTURE = "qol:arena";
 export const SIZE = 8;
 
-export function floor(test: Test, type = "minecraft:stone"): void {
+/**
+ * Lay the floor, and wait a tick first.
+ *
+ * The idle is load-bearing, not politeness. An async test's body starts running
+ * before its structure block is associated with the test, and every block call
+ * before that association throws "Could not find StructureBlockActor associated
+ * to this test" - which is what every test in the suite did, identically, at
+ * this exact call.
+ */
+export async function floor(test: Test, type = "minecraft:stone"): Promise<void> {
+  await test.idle(1);
   for (let x = 0; x < SIZE; x++)
     for (let z = 0; z < SIZE; z++) test.setBlockType(type, { x, y: 0, z });
 }

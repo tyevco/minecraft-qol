@@ -12,7 +12,7 @@ import { carried, floor, item, STRUCTURE } from "./rig";
  * did not hold, or the transfer to the stone lost them.
  */
 registerAsync("qol", "death_keeps_items", async (test) => {
-  floor(test);
+  await floor(test);
   const player = test.spawnSimulatedPlayer(
     { x: 3, y: 1, z: 3 },
     "gv_tester",

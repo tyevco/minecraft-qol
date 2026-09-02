@@ -4,7 +4,7 @@
     "name": "Fluidworks",
     "description": "Fluid logistics: cauldrons are tanks, funnels are pipes, dispensers are ports.",
     "uuid": "b1a7f5b3-97bd-468c-afd4-66aa916f806a",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "min_engine_version": "1.26.40"
   },
   "modules": [
@@ -12,14 +12,14 @@
       "description": "Fluidworks blocks and recipes",
       "type": "data",
       "uuid": "816d1438-464c-41fb-a5f9-48ac86e6cebb",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "description": "Fluidworks scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "a4bd91a4-b950-4405-a4fa-8ca06b314c5e",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "entry": "scripts/main.js"
     }
   ],
@@ -40,6 +40,10 @@
     { "type": "toggle", "text": "Wash Station (wash leather and wolf armour)", "name": "fluidworks:wash", "default": true },
     { "type": "toggle", "text": "Fluid transfer from source blocks and between tanks", "name": "fluidworks:transfer", "default": true },
     { "type": "toggle", "text": "Rain Collector (a funnel facing down, open to the sky)", "name": "fluidworks:rain", "default": true },
+    { "type": "toggle", "text": "Harvester (a mature crop at the mouth, a container at the spout)", "name": "fluidworks:harvest", "default": true },
+    { "type": "toggle", "text": "Collector (dropped items near an open mouth go into a container at the spout)", "name": "fluidworks:collect", "default": true },
+    { "type": "toggle", "text": "Pipes carry fluid between funnels and tanks", "name": "fluidworks:pipes", "default": true },
+    { "type": "toggle", "text": "Floating level labels over tanks", "name": "fluidworks:labels", "default": true },
     {
       "type": "slider",
       "text": "Seconds between machine cycles",

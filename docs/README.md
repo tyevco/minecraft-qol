@@ -37,6 +37,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `PackSettingsChangeAfterEvent` | Beta-only, and misnamed (`PackSettingChangeAfterEventSignal`). `world.getPackSettings()` itself is stable — poll and diff. |
 | `CustomForm.image` grids | server-ui **2.2.0**, which has no stable release. `CustomForm` itself *is* stable in 2.1.0. |
 | `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
+| Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
 | Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — not yet built.
@@ -44,9 +45,10 @@ Additional correction: the doc treats the `on_kill` fix as good news for a turre
 but that fix covers **melee goals only**; `ranged_attack` is not in the list, so a
 ranged turret needs a script-side kill hook.
 
-**[`design/fluidworks.md`](design/fluidworks.md)** — **Phase 1 built** (funnel,
-Concrete Mixer, Rain Collector, fluid transfer, and the four QOL Times
-machines through the shared rules). Its two open
+**[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
+(funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times
+machines through the shared rules; pipes, Harvester, Collector, tank labels).
+Phase 2, potions, is blocked - see the table. Its two open
 questions are now answered: cauldron `fill_level` is **0–6** (not Java's 0–3), and
 dyed water is fully round-trippable via `BlockFluidContainerComponent.fluidColor`.
 But **potions are not** — there is `setPotion` and no `getPotion`, so you can set

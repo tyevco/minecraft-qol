@@ -33,8 +33,12 @@ const ALL: Policy = {
   },
   transfer: true,
   rain: true,
+  harvest: true,
+  collect: true,
   concretePerLevel: 16,
 };
+const sky: Endpoint = { kind: "open", sky: true };
+const roofed: Endpoint = { kind: "open", sky: false };
 const ctx = (wear = 0, raining = false) => ({ wear, raining });
 const run = (input: Endpoint, output: Endpoint, c = ctx(), policy = ALL) =>
   plan(input, output, c, policy, CAULDRON_RULES);
@@ -74,10 +78,9 @@ describe("plan: nothing without a tank at the spout", () => {
     for (const input of [
       chest(item("minecraft:red_concrete_powder")),
       { kind: "source", fluid: "water" } as Endpoint,
-      { kind: "sky" } as Endpoint,
+      sky as Endpoint,
     ]) {
       expect(run(input, { kind: "other" })).toEqual({ kind: "idle" });
-      expect(run(input, chest())).toEqual({ kind: "idle" });
     }
   });
 });
@@ -203,28 +206,65 @@ describe("plan: fluid transfer", () => {
   });
 });
 
+describe("plan: a container at the spout", () => {
+  it("harvests a mature crop at the mouth", () => {
+    expect(run({ kind: "crop", mature: true }, chest())).toEqual({
+      kind: "harvest",
+    });
+    expect(run({ kind: "crop", mature: false }, chest())).toEqual({
+      kind: "idle",
+    });
+    expect(
+      run({ kind: "crop", mature: true }, chest(), ctx(), {
+        ...ALL,
+        harvest: false,
+      }),
+    ).toEqual({ kind: "idle" });
+  });
+  it("collects around an open mouth, roofed or not", () => {
+    expect(run(sky, chest())).toEqual({ kind: "collect" });
+    expect(run(roofed, chest())).toEqual({ kind: "collect" });
+    expect(run(sky, chest(), ctx(), { ...ALL, collect: false })).toEqual({
+      kind: "idle",
+    });
+  });
+  it("never moves items or fluid into a container", () => {
+    expect(run(chest(item("minecraft:red_concrete_powder")), chest())).toEqual({
+      kind: "idle",
+    });
+    expect(run({ kind: "source", fluid: "water" }, chest())).toEqual({
+      kind: "idle",
+    });
+    expect(run(tank(water(3)), chest())).toEqual({ kind: "idle" });
+  });
+  it("does not rain into a container or collect into a tank", () => {
+    expect(run(sky, chest(), ctx(0, true))).toEqual({ kind: "collect" });
+    expect(run(roofed, tank(empty), ctx(0, true))).toEqual({ kind: "idle" });
+  });
+});
+
 describe("plan: rain collector", () => {
   it("fills with water only while it rains", () => {
-    expect(run({ kind: "sky" }, tank(empty), ctx(0, true))).toEqual({
+    expect(run(sky, tank(empty), ctx(0, true))).toEqual({
       kind: "fill",
       dest: water(1),
       sound: "bucket.empty_water",
     });
-    expect(run({ kind: "sky" }, tank(empty), ctx(0, false))).toEqual({
+    expect(run(sky, tank(empty), ctx(0, false))).toEqual({
       kind: "idle",
     });
   });
   it("never rains into lava, and stops at full", () => {
-    expect(run({ kind: "sky" }, tank(lava(1)), ctx(0, true))).toEqual({
+    expect(run(sky, tank(lava(1)), ctx(0, true))).toEqual({
       kind: "idle",
     });
-    expect(run({ kind: "sky" }, tank(water(MAX_LEVEL)), ctx(0, true))).toEqual({
+    expect(run(sky, tank(water(MAX_LEVEL)), ctx(0, true))).toEqual({
       kind: "idle",
     });
   });
   it("is off when the panel says so", () => {
     expect(
-      run({ kind: "sky" }, tank(empty), ctx(0, true), { ...ALL, rain: false }),
+      run(sky, tank(empty), ctx(0, true), { ...ALL, rain: false }),
     ).toEqual({ kind: "idle" });
   });
 });

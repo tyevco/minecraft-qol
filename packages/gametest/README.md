@@ -24,6 +24,9 @@ one of the "to verify in game" items in a pack README.
 | `funnel_makes_concrete` | Fluidworks | The flagship rig, and **whether `facing_direction` is the spout's direction** — a failure here answers the orientation question. |
 | `funnel_fills_from_source` | Fluidworks | Water source → tank, one level per cycle. |
 | `rain_collector` | Fluidworks | Down-facing funnel under open sky in rain; also `getTopmostBlock`. |
+| `funnel_through_pipes` | Fluidworks | A source, a funnel, three pipes with a corner, a tank at the far end. |
+| `harvester_funnel` | Fluidworks | Mature wheat at the mouth is harvested into a chest and replanted at growth 0; also the `growth` state name and the loot manager. |
+| `collector_funnel` | Fluidworks | Cobblestone dropped by an open mouth ends up in the chest, and the item entity is gone. |
 | `death_keeps_items` | Graves | Items survive death in the inventory or in a gravestone — accepts either, since the panel decides, and prints which. Fails only if they dropped. |
 | `anchor_sets_spawn` | Hearthstone | A placed anchor gives a spawn-less player a spawn point beside it. |
 

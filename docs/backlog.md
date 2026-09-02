@@ -81,13 +81,13 @@ from the shared one: **chunk keying** (every row in one dynamic property will
 hit the per-property cap eventually) and a **tick budget** (Fluidworks yields
 every four funnels inside a job, which is a start, not a budget).
 
-## Fluidworks: the rest of the design
+## Fluidworks: what is left
 
-Phase 2 is potions (`setPotion` exists, `getPotion` does not - the pack must
-shadow which potion is in a tank), Phase 3 is fluid through pipes, the Filter
-and Harvester funnels, the Collector and tank labels. The pipe already carries
-its connection states; the planner in `core/machine.ts` is where a pipe walk
-would plug in.
+Potions are blocked until the stable API can construct a potion of a chosen
+effect (`ItemStack.createPotion` is absent in 2.9.0). The Filter Funnel needs
+a per-block configuration surface, which without commands means either block
+entities reaching retail or an in-world idiom (an item frame on the funnel as
+its filter is the obvious one). The Linked Pair and Lava Kiln are Phase 4.
 
 ## GameTest pack: grow the suite
 

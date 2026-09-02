@@ -23,8 +23,10 @@ export type Endpoint =
   | { kind: "cauldron"; state: CauldronState }
   /** An infinite source block. */
   | { kind: "source"; fluid: "water" | "lava" }
-  /** Nothing solid above, open to the weather. */
-  | { kind: "sky" }
+  /** Air. `sky` when nothing solid stands above it in its column. */
+  | { kind: "open"; sky: boolean }
+  /** A crop block; `mature` when it can be harvested. */
+  | { kind: "crop"; mature: boolean }
   | { kind: "other" };
 
 export interface Policy {
@@ -34,6 +36,10 @@ export interface Policy {
   transfer: boolean;
   /** Fill a cauldron below an upward-facing mouth during rain. */
   rain: boolean;
+  /** Harvest and replant a mature crop at the mouth into a container at the spout. */
+  harvest: boolean;
+  /** Pull dropped items around an open mouth into a container at the spout. */
+  collect: boolean;
   /** Units of wear (one per concrete block) before a level is drained. */
   concretePerLevel: number;
 }
@@ -60,7 +66,11 @@ export type Plan =
       wear: number;
     }
   | { kind: "fill"; dest: CauldronState; sound: string }
-  | { kind: "move"; src: CauldronState; dest: CauldronState };
+  | { kind: "move"; src: CauldronState; dest: CauldronState }
+  /** Harvest the crop at the mouth; drops go to the container at the spout. */
+  | { kind: "harvest" }
+  /** Pull item entities near the mouth into the container at the spout. */
+  | { kind: "collect" };
 
 export const IDLE: Plan = { kind: "idle" };
 
@@ -100,7 +110,15 @@ export function plan(
   policy: Policy,
   rules: Readonly<Record<string, Rule>>,
 ): Plan {
-  // Everything a funnel does ends in a tank. No tank at the spout, nothing to do.
+  // A container at the spout takes solid things: a harvest, or what lies around.
+  if (output.kind === "container") {
+    if (input.kind === "crop")
+      return policy.harvest && input.mature ? { kind: "harvest" } : IDLE;
+    if (input.kind === "open")
+      return policy.collect ? { kind: "collect" } : IDLE;
+    return IDLE;
+  }
+  // Everything else a funnel does ends in a tank.
   if (output.kind !== "cauldron") return IDLE;
   const tank = output.state;
 
@@ -153,8 +171,8 @@ export function plan(
         dest,
       };
     }
-    case "sky": {
-      if (!policy.rain || !ctx.raining) return IDLE;
+    case "open": {
+      if (!policy.rain || !input.sky || !ctx.raining) return IDLE;
       const dest = fillOne(tank, "water");
       if (!dest) return IDLE;
       return { kind: "fill", dest, sound: "bucket.empty_water" };

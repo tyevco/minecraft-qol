@@ -32,6 +32,7 @@ import {
 import { FUNNEL } from "./core/pipes";
 import { cycle } from "./engine/funnel";
 import { funnels } from "./engine/index";
+import * as labels from "./engine/labels";
 import { isConnectable, refreshAround } from "./engine/pipes";
 import * as weather from "./engine/weather";
 
@@ -109,7 +110,11 @@ world.afterEvents.worldLoad.subscribe(() => {
     // funnel that arrived any other way gets picked up - GameTest rigs included.
     if (ev.id === "fluidworks:rescan") {
       const r = Math.min(32, Math.max(1, Number(ev.message) || 16));
-      const o = { x: Math.floor(player.location.x), y: Math.floor(player.location.y), z: Math.floor(player.location.z) };
+      const o = {
+        x: Math.floor(player.location.x),
+        y: Math.floor(player.location.y),
+        z: Math.floor(player.location.z),
+      };
       const dim = player.dimension;
       let found = 0;
       for (let dx = -r; dx <= r; dx++)
@@ -119,9 +124,12 @@ world.afterEvents.worldLoad.subscribe(() => {
             const b = safeGetBlock(dim, pos);
             if (!b || !b.isValid || b.typeId !== FUNNEL) continue;
             found++;
-            if (!funnels.find({ dimId: dim.id, ...pos })) funnels.put({ dimId: dim.id, ...pos, wear: 0, sleepUntil: 0 });
+            if (!funnels.find({ dimId: dim.id, ...pos }))
+              funnels.put({ dimId: dim.id, ...pos, wear: 0, sleepUntil: 0 });
           }
-      player.sendMessage(`§7rescan r=${r}: §f${found}§7 funnel(s) found, §f${funnels.count()}§7 indexed`);
+      player.sendMessage(
+        `§7rescan r=${r}: §f${found}§7 funnel(s) found, §f${funnels.count()}§7 indexed`,
+      );
       return;
     }
 

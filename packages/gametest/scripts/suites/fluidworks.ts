@@ -115,3 +115,87 @@ registerAsync("qol", "rain_collector", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(600);
+
+/** Fluid reaches a tank at the far end of a run of pipes. */
+registerAsync("qol", "funnel_through_pipes", async (test) => {
+  floor(test);
+  test.setBlockType("minecraft:water", { x: 1, y: 1, z: 3 });
+  funnel(test, { x: 2, y: 1, z: 3 }, "east");
+  test.setBlockType("fluidworks:pipe", { x: 3, y: 1, z: 3 });
+  test.setBlockType("fluidworks:pipe", { x: 4, y: 1, z: 3 });
+  test.setBlockType("fluidworks:pipe", { x: 4, y: 2, z: 3 });
+  const tank = { x: 5, y: 2, z: 3 };
+  cauldron(test, tank, 0);
+  rescan(test);
+
+  test.succeedWhen(() => {
+    test.assert(
+      cauldronLevel(test, tank) >= 1,
+      `tank at the end of the pipes is at ${cauldronLevel(test, tank)}`,
+    );
+  });
+})
+  .structureName(STRUCTURE)
+  .maxTicks(400);
+
+/**
+ * A mature crop at the mouth is harvested into the container at the spout
+ * and replanted. Wheat needs farmland under it, so the rig is laid out
+ * sideways: farmland and wheat, then the funnel, then the chest.
+ */
+registerAsync("qol", "harvester_funnel", async (test) => {
+  floor(test);
+  test.setBlockType("minecraft:farmland", { x: 2, y: 0, z: 3 });
+  const crop = { x: 2, y: 1, z: 3 };
+  test.setBlockPermutation(
+    BlockPermutation.resolve("minecraft:wheat", { growth: 7 }),
+    crop,
+  );
+  funnel(test, { x: 3, y: 1, z: 3 }, "east");
+  const out = { x: 4, y: 1, z: 3 };
+  test.setBlockType("minecraft:chest", out);
+  rescan(test);
+
+  test.succeedWhen(() => {
+    test.assert(
+      count(test, out, "minecraft:wheat") >= 1,
+      "no wheat in the chest",
+    );
+    const b = test.getBlock(crop);
+    test.assert(
+      b.typeId === "minecraft:wheat",
+      `crop tile is ${b.typeId}; expected it replanted`,
+    );
+    test.assert(
+      (b.permutation.getState("growth") as number) === 0,
+      "replanted wheat is not at growth 0",
+    );
+  });
+})
+  .structureName(STRUCTURE)
+  .maxTicks(400);
+
+/** Items dropped near an open mouth end up in the container at the spout. */
+registerAsync("qol", "collector_funnel", async (test) => {
+  floor(test);
+  funnel(test, { x: 3, y: 1, z: 3 }, "east");
+  const out = { x: 4, y: 1, z: 3 };
+  test.setBlockType("minecraft:chest", out);
+  rescan(test);
+  test.spawnItem(item("minecraft:cobblestone", 5), { x: 2.5, y: 1.5, z: 3.5 });
+
+  test.succeedWhen(() => {
+    test.assert(
+      count(test, out, "minecraft:cobblestone") === 5,
+      `cobblestone in the chest: ${count(test, out, "minecraft:cobblestone")}, want 5`,
+    );
+    test.assertItemEntityCountIs(
+      "minecraft:cobblestone",
+      { x: 2, y: 1, z: 3 },
+      2,
+      0,
+    );
+  });
+})
+  .structureName(STRUCTURE)
+  .maxTicks(300);

@@ -1,5 +1,6 @@
 import {
   BlockComponentTypes,
+  EntityComponentTypes,
   ItemStack,
   system,
   world,
@@ -7,6 +8,7 @@ import {
   type Container,
   type Dimension,
 } from "@minecraft/server";
+import { cropOf, withholdSeed, type Drop } from "@qol/shared/core/crops";
 import { CAULDRON_RULES } from "@qol/shared/core/fluids";
 import {
   applyCauldron,
@@ -21,6 +23,8 @@ import { FUNNEL } from "../core/pipes";
 import type { Settings } from "../core/policy";
 import { describeBlock, isOpenSky } from "./endpoints";
 import { funnels, type FunnelRow } from "./index";
+import * as labels from "./labels";
+import { resolveThroughPipes } from "./network";
 import { isRaining } from "./weather";
 
 type Log = (...parts: unknown[]) => void;
@@ -50,6 +54,7 @@ export function* cycle(settings: Settings, log: Log): Generator<void> {
     }
     if (++n % BATCH === 0) yield;
   }
+  labels.sync(settings.labels);
 }
 
 function step(row: FunnelRow, settings: Settings, now: number, log: Log): void {
@@ -72,13 +77,26 @@ function step(row: FunnelRow, settings: Settings, now: number, log: Log): void {
   }
   if (!facing) return;
 
-  const inBlock = safeGetBlock(dim, inputOf(row, facing));
-  const outBlock = safeGetBlock(dim, outputOf(row, facing));
+  const mouth = inputOf(row, facing);
+  const inRes = resolveThroughPipes(dim, row, mouth, settings.pipes);
+  const outRes = resolveThroughPipes(
+    dim,
+    row,
+    outputOf(row, facing),
+    settings.pipes,
+  );
+  const inBlock = inRes.block;
+  const outBlock = outRes.block;
   const output = describeBlock(outBlock);
-  const input: Endpoint =
-    facing === "down" && inBlock?.isAir && isOpenSky(dim, row)
-      ? { kind: "sky" }
-      : describeBlock(inBlock);
+  // Only the block directly at the mouth can be "open"; a pipe run never is.
+  const input: Endpoint = inRes.viaPipes
+    ? describeBlock(inBlock)
+    : describeBlock(inBlock, inBlock?.isAir === true && isOpenSky(dim, mouth));
+
+  if (output.kind === "cauldron" && outBlock)
+    labels.want(dim, outRes.pos, output.state);
+  if (input.kind === "cauldron" && inBlock)
+    labels.want(dim, inRes.pos, input.state);
 
   const p = plan(
     input,
@@ -91,7 +109,7 @@ function step(row: FunnelRow, settings: Settings, now: number, log: Log): void {
     row.sleepUntil = now + settings.cycleTicks * IDLE_CYCLES;
     return;
   }
-  execute(p, row, dim, inBlock!, outBlock!, input, log);
+  execute(p, row, dim, inBlock!, outBlock!, input, mouth, log);
 }
 
 function execute(
@@ -101,9 +119,18 @@ function execute(
   inBlock: Block,
   outBlock: Block,
   input: Endpoint,
+  mouth: { x: number; y: number; z: number },
   log: Log,
 ): void {
   switch (p.kind) {
+    case "harvest": {
+      harvest(inBlock, outBlock, dim, log);
+      return;
+    }
+    case "collect": {
+      collect(mouth, outBlock, dim, log);
+      return;
+    }
     case "fill": {
       writeCauldron(outBlock, p.dest);
       dim.playSound(p.sound, outBlock.center());
@@ -159,6 +186,109 @@ function execute(
     }
     default:
       return;
+  }
+}
+
+/**
+ * Harvest the crop at the mouth into the container at the spout, replanting
+ * from its own drops. Same drops, same seeds as breaking it by hand: loot
+ * comes from the engine's own table, one seed is withheld to replant, and a
+ * roll with no seed leaves the tile bare exactly as a hand would.
+ */
+function harvest(
+  cropBlock: Block,
+  outBlock: Block,
+  dim: Dimension,
+  log: Log,
+): void {
+  const crop = cropOf(cropBlock.typeId);
+  const target = outBlock.getComponent(
+    BlockComponentTypes.Inventory,
+  )?.container;
+  if (!crop || !target || !target.isValid) return;
+
+  const loot =
+    world.getLootTableManager().generateLootFromBlock(cropBlock) ?? [];
+  const drops: Drop[] = loot.map((s) => ({
+    typeId: s.typeId,
+    amount: s.amount,
+  }));
+  const { drops: kept, replant } = withholdSeed(drops, crop);
+
+  // Replant (or clear) first, then deliver: a failure between the two leaves
+  // the crop harvested and the drops in the loot list, never duplicated.
+  const kept_states: Record<string, string | number | boolean> = {};
+  for (const name of crop.keepStates ?? []) {
+    const v = cropBlock.permutation.getState(name as never);
+    if (v !== undefined) kept_states[name] = v;
+  }
+  if (replant) {
+    let perm = cropBlock.permutation.withState(
+      crop.ageState as never,
+      0 as never,
+    );
+    for (const [name, v] of Object.entries(kept_states))
+      perm = perm.withState(name as never, v as never);
+    cropBlock.setPermutation(perm);
+  } else {
+    cropBlock.setType("minecraft:air");
+  }
+
+  const above = outBlock.center();
+  for (const d of kept) {
+    let leftover: ItemStack | undefined = new ItemStack(d.typeId, d.amount);
+    try {
+      leftover = target.addItem(leftover);
+    } catch (e) {
+      log(`harvest deliver failed: ${e}`);
+    }
+    if (leftover)
+      dim.spawnItem(leftover, { x: above.x, y: above.y + 0.8, z: above.z });
+  }
+  dim.playSound("block.sweet_berry_bush.pick", cropBlock.center());
+}
+
+/** Radius around the mouth in which dropped items are pulled in. */
+const COLLECT_RADIUS = 2.5;
+
+/**
+ * Pull dropped items near the mouth into the container at the spout. An
+ * item entity is only removed once the container has taken all of it; a
+ * partial fit re-drops the remainder in its place, so nothing is lost.
+ */
+function collect(
+  mouth: { x: number; y: number; z: number },
+  outBlock: Block,
+  dim: Dimension,
+  log: Log,
+): void {
+  const target = outBlock.getComponent(
+    BlockComponentTypes.Inventory,
+  )?.container;
+  if (!target || !target.isValid) return;
+  const center = { x: mouth.x + 0.5, y: mouth.y + 0.5, z: mouth.z + 0.5 };
+  let entities;
+  try {
+    entities = dim.getEntities({
+      type: "minecraft:item",
+      location: center,
+      maxDistance: COLLECT_RADIUS,
+    });
+  } catch {
+    return;
+  }
+  for (const e of entities) {
+    try {
+      const stack = e.getComponent(EntityComponentTypes.Item)?.itemStack;
+      if (!stack) continue;
+      const leftover = target.addItem(stack);
+      if (leftover && leftover.amount === stack.amount) continue; // nothing fitted
+      const at = e.location;
+      e.remove();
+      if (leftover) dim.spawnItem(leftover, at);
+    } catch (err) {
+      log(`collect failed: ${err}`);
+    }
   }
 }
 

@@ -70,14 +70,15 @@ export class Canvas {
     this.data = new Uint8Array(width * height * 4);
   }
 
-  set(x: number, y: number, color: Color, alpha = 255): void {
-    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
+  set(x: number, y: number, color: Color, alpha = 255): this {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return this;
     const i = (y * this.width + x) * 4;
     const c = rgba(color, alpha);
     this.data[i] = c.r;
     this.data[i + 1] = c.g;
     this.data[i + 2] = c.b;
     this.data[i + 3] = c.a;
+    return this;
   }
 
   get(x: number, y: number): RGBA {

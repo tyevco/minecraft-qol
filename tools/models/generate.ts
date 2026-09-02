@@ -425,3 +425,56 @@ write("packages/bulwark/resource_pack/models/entity/turret_head.geo.json", {
     },
   ],
 });
+
+// ---------------------------------------------------------------------------
+// Graves gravestone - the entity. A headstone with a rounded top and an
+// inscription on its front (-z), standing at the head of a low mound.
+// ---------------------------------------------------------------------------
+
+type GV = keyof typeof A.GRAVESTONE.tiles;
+
+write("packages/graves/resource_pack/models/entity/gravestone.geo.json", {
+  identifier: "geometry.graves_gravestone",
+  atlas: A.GRAVESTONE,
+  visibleBounds: { width: 2, height: 2, offset: [0, 0.75, 0] },
+  bones: [
+    {
+      name: "gravestone",
+      cubes: [
+        // Plinth under the stone.
+        {
+          origin: [-6, 0, -1],
+          size: [12, 2, 6],
+          faces: { sides: "stone", up: "top", down: "dark" },
+        },
+        // The stone itself, stepping in twice towards a rounded top.
+        {
+          origin: [-5, 2, 0],
+          size: [10, 11, 3],
+          faces: { sides: "stone", north: "face", up: "top", down: "dark" },
+        },
+        {
+          origin: [-4, 13, 0],
+          size: [8, 2, 3],
+          faces: { sides: "stone", up: "top" },
+        },
+        {
+          origin: [-2, 15, 0],
+          size: [4, 1, 3],
+          faces: { sides: "stone", up: "top" },
+        },
+        // The grave: a mound of earth stretching out in front.
+        {
+          origin: [-4, 0, -9],
+          size: [8, 2, 8],
+          faces: { sides: "mound", up: "mound", down: "dark" },
+        },
+        {
+          origin: [-3, 2, -8],
+          size: [6, 1, 6],
+          faces: { sides: "mound", up: "mound" },
+        },
+      ] satisfies Cube<GV>[],
+    },
+  ],
+});

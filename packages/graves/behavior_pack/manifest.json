@@ -1,0 +1,31 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Graves",
+    "description": "Per-player item preservation on death: keep everything, or collect it from a gravestone.",
+    "uuid": "663034fc-4a5e-42a7-b663-4863dcc8291c",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Graves entities",
+      "type": "data",
+      "uuid": "b2c43810-ae79-4a2b-813a-9efe0f055176",
+      "version": [1, 0, 0]
+    },
+    {
+      "description": "Graves scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "2c9f5200-ba22-47f6-a4f1-3b584c2b737e",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

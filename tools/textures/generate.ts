@@ -122,3 +122,23 @@ write(
   "packages/bulwark/resource_pack/textures/entity/turret_head_netherite.png",
   turretHead(T.NETHERITE),
 );
+
+// Graves: a weathered headstone on a mound of turned earth.
+write(
+  "packages/graves/resource_pack/textures/entity/gravestone.png",
+  atlas(A.GRAVESTONE, {
+    stone: T.roughStone(T.STONE, 401),
+    face: T.gravestoneFace(T.STONE),
+    top: T.roughStone(
+      {
+        light: T.STONE.light,
+        mid: T.STONE.light,
+        dark: T.STONE.mid,
+        deep: T.STONE.dark,
+      },
+      402,
+    ),
+    mound: T.mound(),
+    dark: T.flatDark(T.DARK_STONE),
+  }),
+);

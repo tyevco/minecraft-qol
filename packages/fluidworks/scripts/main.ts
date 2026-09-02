@@ -22,6 +22,7 @@
  */
 import { Player, system, world } from "@minecraft/server";
 import { createSettingsPoller } from "@qol/shared/engine/packSettings";
+import { safeGetBlock } from "@qol/shared/engine/safeBlock";
 import {
   DEFAULT_SETTINGS,
   describeSettings,
@@ -100,9 +101,31 @@ world.afterEvents.worldLoad.subscribe(() => {
   });
 
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
-    if (ev.id !== "fluidworks:debug") return;
     const player = ev.sourceEntity;
     if (!(player instanceof Player)) return;
+
+    // The design's `rebuild`: index every funnel near the caller. Pistons,
+    // /fill and structures do not fire playerPlaceBlock, so this is how a
+    // funnel that arrived any other way gets picked up - GameTest rigs included.
+    if (ev.id === "fluidworks:rescan") {
+      const r = Math.min(32, Math.max(1, Number(ev.message) || 16));
+      const o = { x: Math.floor(player.location.x), y: Math.floor(player.location.y), z: Math.floor(player.location.z) };
+      const dim = player.dimension;
+      let found = 0;
+      for (let dx = -r; dx <= r; dx++)
+        for (let dy = -r; dy <= r; dy++)
+          for (let dz = -r; dz <= r; dz++) {
+            const pos = { x: o.x + dx, y: o.y + dy, z: o.z + dz };
+            const b = safeGetBlock(dim, pos);
+            if (!b || !b.isValid || b.typeId !== FUNNEL) continue;
+            found++;
+            if (!funnels.find({ dimId: dim.id, ...pos })) funnels.put({ dimId: dim.id, ...pos, wear: 0, sleepUntil: 0 });
+          }
+      player.sendMessage(`§7rescan r=${r}: §f${found}§7 funnel(s) found, §f${funnels.count()}§7 indexed`);
+      return;
+    }
+
+    if (ev.id !== "fluidworks:debug") return;
     player.sendMessage(`§7panel: §f${describeSettings(settings.current())}`);
     player.sendMessage(
       `§7weather here: §f${weather.describe(player.dimension.id)}`,

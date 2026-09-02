@@ -76,7 +76,8 @@ want to disturb them.
 | `npm run build` | `tsc` typecheck, then an esbuild bundle per pack into `dist/<pack>/`. |
 | `npm run deploy` | Build, then copy each pack into `development_behavior_packs`. |
 | `npm run local-deploy` | Deploy, then watch and repeat on save. |
-| `npm run mcaddon` | Produce `dist/packages/<pack>.mcaddon` per pack. |
+| `npm run mcaddon` | Produce `dist/packages/<pack>.mcaddon` per shipped pack. |
+| `npm run assets` | Regenerate textures, models and GameTest structures from `tools/`. |
 
 Per-pack variants exist for everything: `npx just-scripts build:qol_times`,
 `deploy:qol_times`, `mcaddon:qol_times`, `clean:qol_times`.
@@ -122,6 +123,7 @@ packages/
   hearthstone/   behavior_pack/ + resource_pack/ + scripts/ + tests/
   graves/        per-player item preservation; same shape
   fluidworks/    funnels and tanks; the cauldron rules live in shared/core/fluids
+  gametest/      in-game tests on the GameTest framework; dev only, never shipped
   probe/         throwaway diagnostic pack, hand-deployed, plain JS
 tools/           texture and model generators (see Models and textures)
 dist/<pack>/     per-pack build output
@@ -226,6 +228,15 @@ is represented.
 See [docs/phase0-results.md](docs/phase0-results.md) for the measured engine
 behaviour this is built on, including why velocity is unusable as a signal and
 why levels go through block states rather than `fluid_container.fillLevel`.
+
+## In-game tests
+
+`packages/gametest` runs regression tests inside the game on Mojang's GameTest
+framework: a dispenser really fills a cauldron, a funnel really makes concrete,
+a player who dies really keeps their diamonds. It needs the **Beta APIs**
+experiment and a throwaway world, is deployed like any pack, and is excluded
+from `mcaddon`. `/gametest runset qol` runs the lot. See
+[`packages/gametest/README.md`](packages/gametest/README.md).
 
 ## The probe pack
 

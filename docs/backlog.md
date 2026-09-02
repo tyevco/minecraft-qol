@@ -89,9 +89,10 @@ and Harvester funnels, the Collector and tank labels. The pipe already carries
 its connection states; the planner in `core/machine.ts` is where a pipe walk
 would plug in.
 
-## GameTest pack
+## GameTest pack: grow the suite
 
-Worth it for world-interaction regression tests ("does the dispenser actually
-fill the cauldron"), not for measurements. `@minecraft/server-gametest` has no
-stable release, so it needs the Beta APIs experiment in a throwaway world and
-must stay out of every shipped `.mcaddon`.
+`packages/gametest` exists (dev only, Beta APIs, never shipped) with one test
+per pack. Worth adding as behaviour lands: Lens marker placement against a
+known dark room, Graves retrieval by interacting with the stone (needs
+`interactWithEntity` on a simulated player), pipe connection states, and the
+Guardian damage table once it is built.

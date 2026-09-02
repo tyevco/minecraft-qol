@@ -8,13 +8,13 @@ import {
   type EntitySpawnAfterEvent,
   type ItemStack,
 } from "@minecraft/server";
-import { ALL_CLAIMED } from "../core/items";
-import { RULES, type DispenseResult, type ItemRef } from "../core/rules";
+import { ALL_CLAIMED } from "@qol/shared/core/fluids";
+import { RULES, type ItemRef, type RuleResult } from "../core/rules";
 import { isEnabled } from "../settings/store";
 import { findSourceDispenser } from "./geometry";
 import {
   applyCauldron,
-  buildResidue,
+  buildOutput,
   planCauldronPermutation,
   readCauldron,
   readItemColor,
@@ -92,7 +92,7 @@ function onItemSpawn(ev: EntitySpawnAfterEvent, log: (...parts: unknown[]) => vo
   };
 
   let featureId: string | undefined;
-  let result: DispenseResult | undefined;
+  let result: RuleResult | undefined;
   for (const [id, rule] of Object.entries(RULES)) {
     if (!isEnabled(id)) continue;
     const r = rule({ item, cauldron });
@@ -124,7 +124,7 @@ function commit(
   ejected: ItemStack,
   dispenser: Block,
   cauldronBlock: Block,
-  result: Extract<DispenseResult, { kind: "apply" }>,
+  result: Extract<RuleResult, { kind: "apply" }>,
   sourceSlot: number,
   now: Slots,
   log: (...parts: unknown[]) => void,
@@ -136,7 +136,7 @@ function commit(
   const container = dispenser.getComponent(BlockComponentTypes.Inventory)?.container;
   if (!container || !container.isValid) return;
 
-  const residue = buildResidue(result.residue, ejected);
+  const residue = buildOutput(result.output, ejected);
 
   // Write the residue into the slot the item just left. It is known free, and a
   // fixed index is exactly invertible - unlike addItem, whose placement we
@@ -169,7 +169,7 @@ function commit(
 
     // ---- Step 3: the cauldron. --------------------------------------------
     try {
-      applyCauldron(cauldronBlock, result.cauldron, permutation, result.addDye);
+      applyCauldron(cauldronBlock, result.cauldron, permutation, result.effects);
     } catch (e) {
       if (residue) container.setItem(residueSlot, undefined); // exact compensation
       throw e;

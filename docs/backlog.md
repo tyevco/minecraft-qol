@@ -72,14 +72,22 @@ game. Also the two parity features — dispenser places armour stands
 (MCPE-41432 / MCPE-76479) — which need the interceptor generalised, since it
 currently assumes a cauldron target.
 
-## Shared library: extract the block index
+## Shared library: finish the block index
 
-`packages/qol-times/scripts/dispenser/rigRegistry.ts` holds a world-index pattern
-all three planned packs need. Roughly 40 of its 193 lines are generic. Extracting
-it wants three things it lacks: **chunk keying** (it stores every entry in one
-dynamic property, which will hit the per-property cap), a **schema version**, and
-a **tick budget** (it polls every tick, unyielded). Do this when the second
-consumer appears — Hearthstone — not before.
+`packages/shared/engine/positionIndex.ts` is the generic position-keyed index,
+with a schema version, used by Fluidworks. Hearthstone and Graves still carry
+their own copies of the same pattern and should move onto it. Still missing
+from the shared one: **chunk keying** (every row in one dynamic property will
+hit the per-property cap eventually) and a **tick budget** (Fluidworks yields
+every four funnels inside a job, which is a start, not a budget).
+
+## Fluidworks: the rest of the design
+
+Phase 2 is potions (`setPotion` exists, `getPotion` does not - the pack must
+shadow which potion is in a tank), Phase 3 is fluid through pipes, the Filter
+and Harvester funnels, the Collector and tank labels. The pipe already carries
+its connection states; the planner in `core/machine.ts` is where a pipe walk
+would plug in.
 
 ## GameTest pack
 

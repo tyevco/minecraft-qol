@@ -32,6 +32,7 @@
  *   /scriptevent qolprobe:death      arm; die; logs inventory state at entityDie
  *                                    and the drop/entityDie ordering (Graves)
  *   /scriptevent qolprobe:keepflag   set keepOnDeath on everything you carry
+ *   /scriptevent qolprobe:sky        getTopmostBlock for your column (Fluidworks rain)
  */
 import { world, system, BlockPermutation } from "@minecraft/server";
 
@@ -658,5 +659,24 @@ world.afterEvents.worldLoad.subscribe(() => {
         log("keepflag: flagged " + n + " stack(s) keepOnDeath=true. Arm qolprobe:death and die to compare.");
       } catch (err) { log("keepflag THREW: " + err); }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F1: what getTopmostBlock reports for the column you stand in, for the
+// Fluidworks Rain Collector. Stand on the funnel's future spot and run it.
+//   /scriptevent qolprobe:sky
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "qolprobe:sky") return;
+    const p = ev.sourceEntity;
+    if (!p || p.typeId !== "minecraft:player") { log("sky: run this as a player"); return; }
+    const feet = { x: Math.floor(p.location.x), y: Math.floor(p.location.y), z: Math.floor(p.location.z) };
+    let top;
+    try { top = p.dimension.getTopmostBlock({ x: feet.x, z: feet.z }); } catch (e) { log("F1 getTopmostBlock THREW: " + e); return; }
+    log("F1 SKY feet=" + feet.x + "," + feet.y + "," + feet.z +
+        " topmost=" + (top ? top.typeId + " @y=" + top.y : "undefined") +
+        " -> " + (!top || top.y <= feet.y - 1 ? "OPEN above the block you stand on" : "covered"));
   });
 });

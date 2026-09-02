@@ -1,6 +1,6 @@
-import { MAX_LEVEL, isFull, type Fluid } from "../cauldron";
-import { BUCKET, LAVA_BUCKET, POWDER_SNOW_BUCKET, WATER_BUCKET } from "../items";
-import { NONE, type DispenseResult, type Rule } from "./types";
+import { MAX_LEVEL, isFull, type Fluid } from "./cauldron";
+import { BUCKET, LAVA_BUCKET, POWDER_SNOW_BUCKET, WATER_BUCKET } from "./items";
+import { NONE, type RuleResult, type Rule } from "./types";
 
 const FLUID_OF: Record<string, Fluid> = {
   [WATER_BUCKET]: "water",
@@ -33,7 +33,7 @@ const EMPTY_SOUND: Record<string, string> = {
  * Draining deliberately requires a FULL cauldron, matching vanilla hand
  * behaviour - you cannot scoop a partial cauldron with a bucket.
  */
-export const bucketRule: Rule = ({ item, cauldron }): DispenseResult => {
+export const bucketRule: Rule = ({ item, cauldron }): RuleResult => {
   if (!cauldron) return NONE;
 
   const fluid = FLUID_OF[item.typeId];
@@ -47,7 +47,7 @@ export const bucketRule: Rule = ({ item, cauldron }): DispenseResult => {
     return {
       kind: "apply",
       cauldron: { fluid, level: MAX_LEVEL },
-      residue: { mode: "new", typeId: BUCKET, amount: 1 },
+      output: { mode: "new", typeId: BUCKET, amount: 1 },
       sound: EMPTY_SOUND[fluid],
     };
   }
@@ -60,7 +60,7 @@ export const bucketRule: Rule = ({ item, cauldron }): DispenseResult => {
     return {
       kind: "apply",
       cauldron: { fluid: "empty", level: 0 },
-      residue: { mode: "new", typeId: filled, amount: 1 },
+      output: { mode: "new", typeId: filled, amount: 1 },
       sound: FILL_SOUND[cauldron.fluid],
     };
   }

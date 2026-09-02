@@ -183,6 +183,13 @@ Resource changes never hot-reload: exit to the main menu and re-enter for a
 texture or model, restart the game for a manifest. `npm run deploy` prints the
 reminder.
 
+**Viewer.** `npm run viewer` builds a static page into `dist/viewer` that
+renders every model above with its atlas: orbit, texture variants (turret
+tiers), bone toggles (pipe arms). Serve the folder with any static server
+(`npx http-server dist/viewer`). GitHub Pages publishes the same page from
+`main` via `.github/workflows/pages.yml`, so the live page always shows what
+the repo generates.
+
 **Why we don't use the library's `copyTask`.** It reads `PROJECT_NAME` from
 `process.env` inside its returned closure, making the deploy destination a
 process global — so two packs cannot deploy from one build process. `deployPack`

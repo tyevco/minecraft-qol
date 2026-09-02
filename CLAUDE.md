@@ -112,6 +112,11 @@ registration) and never resources; a new pack folder or manifest change needs
 a full restart. `console.warn` reaches the content log; `console.log` does
 not by default.
 
+## Where the work is tracked
+
+`TASKS.md` is the queue: what is next, what is later, what is blocked, what
+merged. Start there; move items as you go.
+
 ## Documentation
 
 - `docs/design/*.md` — intent, written before implementation; proposals for

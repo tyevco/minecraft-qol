@@ -44,6 +44,9 @@ export function withBlock<T>(
   }
 }
 
-export function blockKey(dimId: string, b: { x: number; y: number; z: number }): string {
+export function blockKey(
+  dimId: string,
+  b: { x: number; y: number; z: number },
+): string {
   return `${dimId}|${b.x},${b.y},${b.z}`;
 }

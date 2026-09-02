@@ -58,6 +58,35 @@ export const WASHABLE: readonly string[] = [
   "minecraft:wolf_armor",
 ];
 
+export const COLORS: readonly string[] = [
+  "white",
+  "light_gray",
+  "gray",
+  "black",
+  "brown",
+  "red",
+  "orange",
+  "yellow",
+  "lime",
+  "green",
+  "cyan",
+  "light_blue",
+  "blue",
+  "purple",
+  "magenta",
+  "pink",
+];
+
+export const CONCRETE_POWDERS: readonly string[] = COLORS.map(
+  (c) => `minecraft:${c}_concrete_powder`,
+);
+
+/** The concrete a powder sets into, or undefined if the id is not a powder. */
+export function concreteFor(powderId: string): string | undefined {
+  const m = /^minecraft:([a-z_]+)_concrete_powder$/.exec(powderId);
+  return m && COLORS.includes(m[1]!) ? `minecraft:${m[1]}_concrete` : undefined;
+}
+
 const set = (xs: readonly string[]) => new Set(xs);
 
 const FILLED_BUCKET_SET = set(FILLED_BUCKETS);
@@ -68,7 +97,7 @@ export const isFilledBucket = (id: string) => FILLED_BUCKET_SET.has(id);
 export const isDye = (id: string) => DYE_SET.has(id);
 export const isWashable = (id: string) => WASHABLE_SET.has(id);
 
-/** Every item id this addon ever claims from a dispenser ejection. */
+/** Every item id QOL Times claims from a dispenser ejection. Concrete is Fluidworks-only. */
 export const ALL_CLAIMED: readonly string[] = [
   BUCKET,
   ...FILLED_BUCKETS,

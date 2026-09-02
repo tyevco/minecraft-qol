@@ -1,6 +1,6 @@
-import { BOTTLE_LEVELS, MAX_LEVEL, normalise } from "../cauldron";
-import { GLASS_BOTTLE, POTION, WATER_POTION_EFFECT } from "../items";
-import { NONE, type DispenseResult, type Rule } from "./types";
+import { BOTTLE_LEVELS, MAX_LEVEL, normalise } from "./cauldron";
+import { GLASS_BOTTLE, POTION, WATER_POTION_EFFECT } from "./items";
+import { NONE, type RuleResult, type Rule } from "./types";
 
 /**
  * Water bottle adds 2 levels, glass bottle takes 2 back out.
@@ -10,7 +10,7 @@ import { NONE, type DispenseResult, type Rule } from "./types";
  * this rule takes potionEffectId rather than guessing from typeId: every potion
  * variant shares the id "minecraft:potion".
  */
-export const bottleRule: Rule = ({ item, cauldron }): DispenseResult => {
+export const bottleRule: Rule = ({ item, cauldron }): RuleResult => {
   if (!cauldron) return NONE;
 
   const isWaterBottle =
@@ -24,8 +24,11 @@ export const bottleRule: Rule = ({ item, cauldron }): DispenseResult => {
 
     return {
       kind: "apply",
-      cauldron: normalise({ fluid: "water", level: (empty ? 0 : cauldron.level) + BOTTLE_LEVELS }),
-      residue: { mode: "new", typeId: GLASS_BOTTLE, amount: 1 },
+      cauldron: normalise({
+        fluid: "water",
+        level: (empty ? 0 : cauldron.level) + BOTTLE_LEVELS,
+      }),
+      output: { mode: "new", typeId: GLASS_BOTTLE, amount: 1 },
       sound: "bucket.empty_water",
     };
   }
@@ -36,9 +39,12 @@ export const bottleRule: Rule = ({ item, cauldron }): DispenseResult => {
 
     return {
       kind: "apply",
-      cauldron: normalise({ fluid: "water", level: cauldron.level - BOTTLE_LEVELS }),
+      cauldron: normalise({
+        fluid: "water",
+        level: cauldron.level - BOTTLE_LEVELS,
+      }),
       // A fresh water bottle: no state to preserve, so `new` is safe here.
-      residue: { mode: "new", typeId: POTION, amount: 1 },
+      output: { mode: "new", typeId: POTION, amount: 1 },
       sound: "bucket.fill_water",
     };
   }

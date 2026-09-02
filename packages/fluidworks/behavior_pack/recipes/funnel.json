@@ -1,0 +1,14 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "fluidworks:funnel" },
+    "tags": ["crafting_table"],
+    "pattern": [" C ", "CBC", " C "],
+    "key": {
+      "C": { "item": "minecraft:copper_ingot" },
+      "B": { "item": "minecraft:bucket" }
+    },
+    "unlock": [{ "context": "AlwaysUnlocked" }],
+    "result": { "item": "fluidworks:funnel", "count": 1 }
+  }
+}

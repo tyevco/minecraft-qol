@@ -1,9 +1,9 @@
 /**
- * Pure cauldron model. NOTHING in scripts/core may import @minecraft/* - this
+ * Pure cauldron model. Nothing under core/ may import @minecraft/* - this
  * layer is plain data so it runs under Vitest in Node with no game and no mocks.
  *
  * Levels are always expressed in Bedrock's 0..6 block-state units. The engine
- * adapter (scripts/dispenser/io.ts) is the only place allowed to convert, which
+ * adapter (packages/shared/engine/cauldron.ts) is the only place allowed to convert, which
  * matters because BlockFluidContainerComponent.fillLevel is documented only as
  * "relative fill level" and its scale is unverified.
  */

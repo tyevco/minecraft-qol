@@ -121,6 +121,7 @@ packages/
   qol-times/     behavior_pack/ + scripts/ + tests/
   hearthstone/   behavior_pack/ + resource_pack/ + scripts/ + tests/
   graves/        per-player item preservation; same shape
+  fluidworks/    funnels and tanks; the cauldron rules live in shared/core/fluids
   probe/         throwaway diagnostic pack, hand-deployed, plain JS
 tools/           texture and model generators (see Models and textures)
 dist/<pack>/     per-pack build output
@@ -172,7 +173,7 @@ What exists today:
 | --- | --- | --- |
 | Hearthstone | `geometry.hearthstone` | Stone-brick hearth with a walled bowl of embers and a flame. The flame faces use a second material instance (`alpha_test`, no face dimming) so they cut out and stay bright. |
 | Lens | `spawn_lens` item icon | The Lens's first resource pack. Icon only; the item does not render on the head. |
-| Fluidworks | `geometry.fluidworks_funnel`, `geometry.fluidworks_pipe` | Visual definitions only; behaviour is still unbuilt. See the pack README for the two things to verify in game. |
+| Fluidworks | `geometry.fluidworks_funnel`, `geometry.fluidworks_pipe` | Funnel behaviour is Phase 1 of the design; pipes are visual only. See the pack README for what to verify in game. |
 | Bulwark | `geometry.bulwark_turret_base` (block), `geometry.bulwark_turret_head` (entity) | The head has one texture per damage tier, picked by the `bulwark:tier` entity property. |
 | Graves | `geometry.graves_gravestone` (entity) | A headstone at the head of a mound; the entity holds the dead player's items. |
 

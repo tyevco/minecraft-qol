@@ -15,7 +15,8 @@
     "textures": "ts-node -P tools/tsconfig.json tools/textures/generate.ts",
     "models": "ts-node -P tools/tsconfig.json tools/models/generate.ts",
     "structures": "ts-node -P tools/tsconfig.json tools/structures/generate.ts",
-    "assets": "npm run textures && npm run models && npm run structures"
+    "assets": "npm run textures && npm run models && npm run structures",
+    "viewer": "ts-node -P tools/tsconfig.json tools/viewer/build.ts"
   },
   "dependencies": {
     "@minecraft/server": "2.9.0",

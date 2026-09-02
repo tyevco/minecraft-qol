@@ -53,6 +53,29 @@ into `just.config.ts`. `ItemCustomComponent.onUse` is stable and ready.
 sealed dark rooms floored with each material, left overnight against a stone
 control. Automatable with the same self-building-rig trick as the light matrix.
 
+## Hearthstone: verify the waypoints in game
+
+The locator-bar markers (`packages/hearthstone/scripts/engine/waypoints.ts`)
+are built on stable API and typecheck, but three engine behaviours are inferred
+from the typings rather than measured, and each has a fallback that should be
+confirmed harmless:
+
+- **Do waypoints survive `/reload`?** Module state does not, so the handles are
+  lost either way. `reset()` sweeps `locatorBar.getAllWaypoints()` on `worldLoad`
+  and on `initialSpawn` before rebuilding. The typings say the bar only exposes
+  this pack's own waypoints, so the sweep cannot touch vanilla player markers —
+  worth watching the bar through a `/reload` to see neither duplicates nor a gap.
+- **Is `deadEntity.location` readable in `entityDie` for a player?** The grave
+  is recorded from it. If it throws, the handler logs and no grave is marked;
+  the fix would be to snapshot each player's position on the sweep instead.
+- **Cross-dimension markers.** The pure layer withholds a marker whose dimension
+  is not the player's current one, so the engine's own handling is never
+  exercised. If the engine already hides them, nothing changes.
+
+Also deferred, in the design doc's own order: pack settings for the default
+(markers on, respawn message on), and per-anchor "show waypoint" once anchors
+have a config form.
+
 ## QOL Times: unverified features
 
 Bottles, dye and wash are implemented and unit-tested but never exercised in

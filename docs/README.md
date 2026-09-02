@@ -50,10 +50,13 @@ a cauldron's potion and detect that one is present, never read back *which*.
 Note also that QOL Times already implements four of its machines at the rules
 layer (`packages/qol-times/scripts/core/rules/`).
 
-**[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1). Its
-"must prototype" list is resolved in `hearthstone-spawn-results.md`:
-`getSpawnPoint()` really does return `undefined` for a player who never slept,
-and non-Overworld anchors work — verified by dying in the Nether.
+**[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1, plus
+the locator-bar waypoints from Phase 2). Its "must prototype" list is resolved in
+`hearthstone-spawn-results.md`: `getSpawnPoint()` really does return `undefined`
+for a player who never slept, and non-Overworld anchors work — verified by dying
+in the Nether. The waypoints go further than the doc's "one per anchor": each
+player gets their own bed, the Hearthstone they will wake at, and their last
+death location. See [`../packages/hearthstone/README.md`](../packages/hearthstone/README.md).
 
 ## Plans
 

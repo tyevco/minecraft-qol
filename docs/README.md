@@ -96,3 +96,9 @@ That loop — question, probe, results doc, build against measurements — caugh
 `total − sky` formula being wrong, the Nether roof reading as a dimension failure,
 and `minecraft:block_entity` being a preview-only feature. Each would have been a
 plausible-looking implementation that was quietly incorrect.
+
+The GameTest pack (`packages/gametest/`) is the other half of the loop: once
+behaviour is built, an in-game test pins it. It runs on Mojang's GameTest
+framework, which needs the Beta APIs experiment, so it lives in a throwaway
+world and is never packaged. Probe first to learn what the engine does; test
+afterwards so it keeps doing it. `/gametest runset qol` runs every test.

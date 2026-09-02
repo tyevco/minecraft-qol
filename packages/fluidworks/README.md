@@ -41,7 +41,7 @@ wherever the caller wants), `addDye` became a structured `CauldronEffect`, and
 
 | Rig | What happens |
 | --- | --- |
-| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: the nearest cauldron (or water/lava source) next to any pipe in the run stands in for the adjacent block. Up to 64 pipes. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. |
+| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: the nearest cauldron (or water/lava source) next to any pipe in the run stands in for the adjacent block. Up to 64 pipes. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. The arm bones are named for the world face they reach, not the geometry axis: Bedrock renders block geometry with x mirrored, so the east arm is authored on -x (`docs/block-geometry-results.md`). |
 | a mature **crop** at the mouth, a container at the spout | the **Harvester**: the crop is harvested with the engine's own loot table, one seed is withheld to replant it, the rest goes into the container. Wheat, carrots, potatoes, beetroot, nether wart, cocoa. Crops need farmland, so the rig lies sideways: farmland and crop, funnel, chest. |
 | an **open** mouth, a container at the spout | the **Collector**: dropped items within two and a half blocks of the mouth go into the container. An item entity is removed only once the container took all of it. |
 | any tank a funnel uses | a floating **label** over it with the fluid and level, visible to everyone, refreshed each cycle. |
@@ -114,3 +114,9 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
 7. **Labels**: that a `TextPrimitive` with no `visibleTo` is visible to all.
 8. **Drips**: a few drops at the spout after every completed operation
    (`fluidworks:drip`, spawned from script; cosmetic, never fails the cycle).
+9. **Pipe arms, north–south.** An east–west pair of pipes reached away from
+   each other before the east and west bones were swapped in the generator
+   (`docs/block-geometry-results.md`). A north–south pair is assumed to join
+   up. If it also reaches away, z is mirrored as well: swap the `north` and
+   `south` arms in `tools/models/generate.ts` the same way, and expect the
+   funnel's spout to be pointing against its state too.

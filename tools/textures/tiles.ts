@@ -421,3 +421,53 @@ export function spawnLensIcon(): Canvas {
     gold,
   );
 }
+
+// ---------------------------------------------------------------------------
+// Gravestone
+// ---------------------------------------------------------------------------
+
+/** Weathered headstone face with a cross and two lines of worn inscription. */
+export function gravestoneFace(r: Ramp): Canvas {
+  const c = roughStone(r, 61);
+  c.art(
+    3,
+    1,
+    [
+      "....dd....", //
+      "....dd....",
+      "..dddddd..",
+      "....dd....",
+      "....dd....",
+      "....dd....",
+      "..........",
+      ".dd.d.ddd.",
+      "..........",
+      "d.ddd.d.d.",
+      "..........",
+      "..dd.ddd..",
+    ],
+    { ".": "transparent", d: r.deep },
+  );
+  // A little lichen.
+  c.set(1, 12, 0x6b7f3a).set(2, 13, 0x7f9444).set(13, 3, 0x6b7f3a);
+  return c;
+}
+
+/** Freshly turned earth with a few grass blades. */
+export function mound(seed = 62): Canvas {
+  const dirt: Ramp = {
+    light: 0x9b6d4a,
+    mid: 0x79553a,
+    dark: 0x5c3f2b,
+    deep: 0x3f2a1c,
+  };
+  return roughStone(dirt, seed).speckle(
+    0,
+    0,
+    16,
+    4,
+    [0x5d8a3a, 0x4a7030],
+    0.25,
+    seed + 1,
+  );
+}

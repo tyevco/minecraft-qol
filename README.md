@@ -120,6 +120,7 @@ packages/
   shared/        code reused across packs (core/ pure, engine/ engine-facing)
   qol-times/     behavior_pack/ + scripts/ + tests/
   hearthstone/   behavior_pack/ + resource_pack/ + scripts/ + tests/
+  graves/        per-player item preservation; same shape
   probe/         throwaway diagnostic pack, hand-deployed, plain JS
 tools/           texture and model generators (see Models and textures)
 dist/<pack>/     per-pack build output
@@ -173,6 +174,7 @@ What exists today:
 | Lens | `spawn_lens` item icon | The Lens's first resource pack. Icon only; the item does not render on the head. |
 | Fluidworks | `geometry.fluidworks_funnel`, `geometry.fluidworks_pipe` | Visual definitions only; behaviour is still unbuilt. See the pack README for the two things to verify in game. |
 | Bulwark | `geometry.bulwark_turret_base` (block), `geometry.bulwark_turret_head` (entity) | The head has one texture per damage tier, picked by the `bulwark:tier` entity property. |
+| Graves | `geometry.graves_gravestone` (entity) | A headstone at the head of a mound; the entity holds the dead player's items. |
 
 Resource changes never hot-reload: exit to the main menu and re-enter for a
 texture or model, restart the game for a manifest. `npm run deploy` prints the

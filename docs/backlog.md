@@ -48,6 +48,13 @@ the player model. A goggles-style attachable geometry plus
 `attachables/spawn_lens.json` in the resource pack would make a Lens-wearer
 visible to other players. Purely cosmetic, so it waits.
 
+## Graves: experience
+
+Vanilla drops XP orbs on death whatever the mode. Re-granting `getTotalXp()`
+on respawn would duplicate whatever orbs the player then walks over, so it
+needs the orbs removed on the death tick — the drop-chasing the design avoided.
+Worth it only if XP loss turns out to be what actually frustrates the kids.
+
 ## Lens: verify the DENY list
 
 `surface.ts#DENY` lists surfaces mobs will not spawn on despite blocking water

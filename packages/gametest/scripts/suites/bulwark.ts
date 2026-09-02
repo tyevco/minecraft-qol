@@ -36,8 +36,8 @@ function heads(test: Test): number {
     .length;
 }
 
-async function placeTurret(test: Test): Promise<void> {
-  await floor(test);
+function placeTurret(test: Test): void {
+  floor(test);
   const player = test.spawnSimulatedPlayer({ x: 2, y: 1, z: 2 }, "bw_tester", GameMode.Survival);
   player.lookAtBlock(UNDER);
   const ok = player.useItemOnBlock(item(BLOCK), UNDER, Direction.Up);
@@ -53,7 +53,7 @@ async function waitFor(test: Test, cond: () => boolean, ticks: number): Promise<
 }
 
 registerAsync("qol", "turret_grows_head", async (test) => {
-  await placeTurret(test);
+  placeTurret(test);
   test.succeedWhen(() => {
     test.assertBlockPresent(BLOCK, TURRET, true);
     const n = heads(test);
@@ -64,7 +64,7 @@ registerAsync("qol", "turret_grows_head", async (test) => {
   .maxTicks(200);
 
 registerAsync("qol", "turret_replaces_killed_head", async (test) => {
-  await placeTurret(test);
+  placeTurret(test);
   const grew = await waitFor(test, () => heads(test) === 1, 100);
   test.assert(grew, `head never appeared (found ${heads(test)})`);
 
@@ -87,7 +87,7 @@ registerAsync("qol", "turret_replaces_killed_head", async (test) => {
   .maxTicks(400);
 
 registerAsync("qol", "turret_drains_feeding_hopper", async (test) => {
-  await placeTurret(test);
+  placeTurret(test);
   // A hopper to the east, facing west (4) into the turret.
   const hopper: Vector3 = { x: 6, y: 1, z: 5 };
   test.setBlockPermutation(
@@ -106,7 +106,7 @@ registerAsync("qol", "turret_drains_feeding_hopper", async (test) => {
   .maxTicks(200);
 
 registerAsync("qol", "turret_break_returns_arrows", async (test) => {
-  await placeTurret(test);
+  placeTurret(test);
   const hopper: Vector3 = { x: 6, y: 1, z: 5 };
   test.setBlockPermutation(
     BlockPermutation.resolve("minecraft:hopper", { facing_direction: 4 }),

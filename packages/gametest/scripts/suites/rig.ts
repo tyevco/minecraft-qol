@@ -18,24 +18,26 @@ export const STRUCTURE = "qol:arena";
 export const SIZE = 8;
 
 /**
- * Lay the floor.
+ * Lay the floor, leaving test-relative (0,0,0) alone.
  *
- * The leading idle was an attempt at "Could not find StructureBlockActor
- * associated to this test", which every test in the suite throws at the
- * setBlockType below. It did NOT fix it - the error simply moved to after the
- * await - so do not read the idle as load-bearing. It is kept only because a
- * tick's grace before the first block write is harmless.
+ * That cell holds the test's own structure block. Writing it replaces the
+ * block, and every later call through `test` then throws "Could not find
+ * StructureBlockActor associated to this test" - which is what made all
+ * fifteen tests fail on their first line. Measured on BDS 1.26.45.1:
+ * writing 63 floor blocks and skipping (0,0,0) passes; writing (0,0,0) and
+ * then any second block fails on the second write. See
+ * docs/gametest-structure-results.md.
  *
- * Ruled out so far: the structure loads (/structure load qol:arena clears an
- * 8x8x8 volume), its NBT is complete with structure_world_origin 0,0,0,
- * structureName is set on every test, all pack UUIDs are unique, and the module
- * resolves (the suite registers). The open question is whether the structure
- * block is placed at all when the runner starts a test.
+ * Nothing is lost by skipping it: the structure block occupies the cell, so
+ * the floor still reads as a full 8x8, and no rig in the suite uses x = 0 or
+ * z = 0. Keep it that way - treat the (0, *, 0) column as reserved.
  */
-export async function floor(test: Test, type = "minecraft:stone"): Promise<void> {
-  await test.idle(1);
+export function floor(test: Test, type = "minecraft:stone"): void {
   for (let x = 0; x < SIZE; x++)
-    for (let z = 0; z < SIZE; z++) test.setBlockType(type, { x, y: 0, z });
+    for (let z = 0; z < SIZE; z++) {
+      if (x === 0 && z === 0) continue;
+      test.setBlockType(type, { x, y: 0, z });
+    }
 }
 
 export function cauldron(

@@ -10,7 +10,7 @@ import { floor, item, STRUCTURE } from "./rig";
  * pack registers anchors on playerPlaceBlock.
  */
 registerAsync("qol", "anchor_sets_spawn", async (test) => {
-  await floor(test);
+  floor(test);
   const player = test.spawnSimulatedPlayer(
     { x: 2, y: 1, z: 2 },
     "hs_tester",

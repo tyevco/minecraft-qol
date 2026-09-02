@@ -190,7 +190,7 @@ registerAsync("qol", "collector_funnel", async (test) => {
       `cobblestone in the chest: ${count(test, out, "minecraft:cobblestone")}, want 5`,
     );
     test.assertItemEntityCountIs(
-      item("minecraft:cobblestone"),
+      "minecraft:cobblestone",
       { x: 2, y: 1, z: 3 },
       2,
       0,

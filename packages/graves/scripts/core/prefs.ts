@@ -29,6 +29,8 @@ export interface Policy {
   announce: boolean;
   /** Anyone may open any gravestone, not just its owner and operators. */
   publicGraves: boolean;
+  /** Mark a player's own gravestones on their locator bar. */
+  waypoint: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export const DEFAULT_POLICY: Policy = {
   modes: { visitor: "keep", member: "grave", operator: "off" },
   announce: true,
   publicGraves: false,
+  waypoint: true,
 };
 
 /** Setting names as declared in behavior_pack/manifest.json. */
@@ -49,6 +52,7 @@ export const SETTING = {
   operator: "graves:operators",
   announce: "graves:announce",
   publicGraves: "graves:public",
+  waypoint: "graves:waypoint",
 } as const;
 
 export function parseMode(raw: unknown, fallback: Mode = "off"): Mode {
@@ -72,6 +76,7 @@ export function parsePolicy(raw: Readonly<Record<string, unknown>>): Policy {
     modes,
     announce: bool(SETTING.announce, DEFAULT_POLICY.announce),
     publicGraves: bool(SETTING.publicGraves, DEFAULT_POLICY.publicGraves),
+    waypoint: bool(SETTING.waypoint, DEFAULT_POLICY.waypoint),
   };
 }
 
@@ -79,6 +84,7 @@ export function samePolicy(a: Policy, b: Policy): boolean {
   return (
     a.announce === b.announce &&
     a.publicGraves === b.publicGraves &&
+    a.waypoint === b.waypoint &&
     ROLES.every((r) => a.modes[r] === b.modes[r])
   );
 }

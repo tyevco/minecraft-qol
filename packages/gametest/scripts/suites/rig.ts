@@ -18,13 +18,19 @@ export const STRUCTURE = "qol:arena";
 export const SIZE = 8;
 
 /**
- * Lay the floor, and wait a tick first.
+ * Lay the floor.
  *
- * The idle is load-bearing, not politeness. An async test's body starts running
- * before its structure block is associated with the test, and every block call
- * before that association throws "Could not find StructureBlockActor associated
- * to this test" - which is what every test in the suite did, identically, at
- * this exact call.
+ * The leading idle was an attempt at "Could not find StructureBlockActor
+ * associated to this test", which every test in the suite throws at the
+ * setBlockType below. It did NOT fix it - the error simply moved to after the
+ * await - so do not read the idle as load-bearing. It is kept only because a
+ * tick's grace before the first block write is harmless.
+ *
+ * Ruled out so far: the structure loads (/structure load qol:arena clears an
+ * 8x8x8 volume), its NBT is complete with structure_world_origin 0,0,0,
+ * structureName is set on every test, all pack UUIDs are unique, and the module
+ * resolves (the suite registers). The open question is whether the structure
+ * block is placed at all when the runner starts a test.
  */
 export async function floor(test: Test, type = "minecraft:stone"): Promise<void> {
   await test.idle(1);

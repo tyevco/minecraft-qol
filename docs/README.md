@@ -19,6 +19,15 @@ Three kinds of document live here, and they carry very different authority.
   behaviour, including that anchors work in the Nether.
 - [`backlog.md`](backlog.md) — deferred work with enough context to pick up cold.
 
+**Awaiting measurement:**
+
+- [`bulwark-turret-probe.md`](bulwark-turret-probe.md) — the protocol for the
+  turret's block-to-entity pairing: entity persistence, stationary ranged AI,
+  head rotation, mob caps, and reconciliation under fire. Built as
+  `/scriptevent qolprobe:turret-*` in the probe pack, with `bulwark:debug` for
+  the counters. Not a findings document until it has been run; it says so at
+  the top.
+
 ## Design docs — read with the corrections below
 
 `design/` predates implementation. Several load-bearing claims turned out to be
@@ -40,10 +49,15 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
 | Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
 
-**[`design/bulwark-turret.md`](design/bulwark-turret.md)** — not yet built.
-Additional correction: the doc treats the `on_kill` fix as good news for a turret,
-but that fix covers **melee goals only**; `ranged_attack` is not in the list, so a
-ranged turret needs a script-side kill hook.
+**[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
+(block, paired entity, reconciliation, vanilla ranged AI, hopper ammo), not yet
+measured in game; see `bulwark-turret-probe.md`. Additional corrections: the doc
+treats the `on_kill` fix as good news for a turret, but that fix covers **melee
+goals only**; `ranged_attack` is not in the list, so kills come from `entityDie`
+in script. And `ranged_attack.attack_interval` did not replace the min/max pair
+so much as join it — both load. What the doc misses and a turret needs is
+`in_range_movement_mode: hold_position` and raising the default 30° head-rotation
+caps. The lens half of that design shipped separately as `packages/lens`.
 
 **[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
 (funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times

@@ -13,7 +13,7 @@ one of the "to verify in game" items in a pack README.
 ## Running
 
 1. A flat creative world with **Beta APIs** on. Enable this pack **and** the
-   packs under test (QOL Times, Fluidworks, Graves, Hearthstone). `npm run
+   packs under test (QOL Times, Fluidworks, Graves, Hearthstone, Bulwark). `npm run
    deploy` puts them all in `development_behavior_packs`.
 2. `/gametest runset qol` runs everything; `/gametest run qol:<name>` runs one.
    Results appear in chat and the content log (`[QOL GameTests]`).
@@ -29,6 +29,10 @@ one of the "to verify in game" items in a pack README.
 | `collector_funnel` | Fluidworks | Cobblestone dropped by an open mouth ends up in the chest, and the item entity is gone. |
 | `death_keeps_items` | Graves | Items survive death in the inventory or in a gravestone — accepts either, since the panel decides, and prints which. Fails only if they dropped. |
 | `anchor_sets_spawn` | Hearthstone | A placed anchor gives a spawn-less player a spawn point beside it. |
+| `turret_grows_head` | Bulwark | A placed turret grows exactly one head entity in its socket. |
+| `turret_replaces_killed_head` | Bulwark | Removing the head regrows exactly one, after the block's grace period; never two. |
+| `turret_drains_feeding_hopper` | Bulwark | A hopper facing into the turret is emptied into its ammo buffer. |
+| `turret_break_returns_arrows` | Bulwark | Breaking the base removes the head and drops the buffered arrows; also whether `destroyBlock` reaches `onBreak`, or the sweep has to catch it. |
 
 ## How the rigs work
 

@@ -26,10 +26,10 @@ the queue.
 
 ## Later
 
-- [ ] **Bulwark Phase 2** — turret core: entity AI, hopper-fed ammo,
-      block-to-entity reconciliation. Riskiest item on the roadmap; probe
-      reconciliation across unload / reload / restart first
-      (`packages/bulwark/README.md`).
+- [ ] **Bulwark Phase 2: measure it.** The core is built — block, head,
+      reconciliation, hopper ammo — but nothing has been observed. Run
+      `docs/bulwark-turret-probe.md` (P0–P5) and the `turret_*` GameTests,
+      write the results doc, fix what they find.
 - [ ] **Hearthstone Phase 2** — labels, config, respawn notification
       (`docs/design/hearthstone.md` §8).
 - [ ] **Lens** — compute block light by BFS so outdoor readings are exact;

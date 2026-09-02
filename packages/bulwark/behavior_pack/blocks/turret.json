@@ -9,6 +9,14 @@
       }
     },
     "components": {
+      "bulwark:turret": {},
+      "minecraft:tick": {
+        "interval_range": [
+          20,
+          40
+        ],
+        "looping": true
+      },
       "minecraft:display_name": "Bulwark Turret",
       "minecraft:geometry": "geometry.bulwark_turret_base",
       "minecraft:material_instances": {
@@ -17,10 +25,36 @@
           "render_method": "opaque"
         }
       },
-      "minecraft:collision_box": { "origin": [-8, 0, -8], "size": [16, 14, 16] },
-      "minecraft:selection_box": { "origin": [-8, 0, -8], "size": [16, 14, 16] },
-      "minecraft:destructible_by_mining": { "seconds_to_destroy": 4 },
-      "minecraft:destructible_by_explosion": { "explosion_resistance": 6 },
+      "minecraft:collision_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          14,
+          16
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          14,
+          16
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 4
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 6
+      },
       "minecraft:light_dampening": 0,
       "minecraft:map_color": "#B8B8B8"
     }

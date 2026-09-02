@@ -37,6 +37,13 @@
  *                                    run again to remove it. Reports maxCount and what
  *                                    the bar lists, so /reload and dimension behaviour
  *                                    are measured (Waypoints W1-W4)
+ *   /scriptevent qolprobe:turret-persist  spawn an UNLINKED turret head here (Bulwark T1)
+ *   /scriptevent qolprobe:turret-check    look every remembered head up by id
+ *   /scriptevent qolprobe:turret-watch    sample the nearest head's rotation and
+ *                                         arrow spawns for 10 s (T2/T3), log-only
+ *   /scriptevent qolprobe:turret-target   MUTATES: spawn a zombie 8 blocks ahead, then watch
+ *   /scriptevent qolprobe:turret-census   monsters / heads / entities within 64 (T4)
+ *   /scriptevent qolprobe:turret-cleanup  remove everything the turret probes spawned
  */
 import { world, system, BlockPermutation, LocationWaypoint } from "@minecraft/server";
 
@@ -736,5 +743,174 @@ world.afterEvents.worldLoad.subscribe(() => {
     } catch (e) {
       log("W1 addWaypoint THREW: " + e + (e && e.reason ? " reason=" + e.reason : ""));
     }
+// T1-T4: the Bulwark turret head, for docs/bulwark-turret-probe.md.
+//
+// Needs the Bulwark pack enabled alongside this one: every question here is
+// about its entity definition (bulwark:turret_head). The heads spawned here
+// are UNLINKED - no bw:link property - which Bulwark's reconciliation treats
+// as inert and never touches, so this measures the engine alone.
+//
+//   qolprobe:turret-persist  spawn one where you stand, stamped, id remembered
+//                            in a world property so a check survives restart
+//   qolprobe:turret-check    world.getEntity(id) for each remembered head:
+//                            found? valid? stamp intact?
+//   qolprobe:turret-watch    for 200 ticks: the nearest head's rotation every
+//                            half second, and every arrow spawn - with whether
+//                            its projectile owner is set AT spawn or only a
+//                            tick later, which decides how Bulwark charges ammo
+//   qolprobe:turret-target   MUTATES: a zombie 8 blocks ahead of you, then watch
+//   qolprobe:turret-census   monsters, heads and entities within 64 blocks
+//   qolprobe:turret-cleanup  remove every entity tagged qolprobe:turret
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  const HEAD = "bulwark:turret_head";
+  const TAG = "qolprobe:turret";
+  const PROP_IDS = "qolprobe:turret-ids";
+  const PROP_STAMP = "qolprobe:turret-stamp";
+  const DIMS = ["minecraft:overworld", "minecraft:nether", "minecraft:the_end"];
+
+  const readIds = () => {
+    try {
+      const raw = world.getDynamicProperty(PROP_IDS);
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+    } catch (e) { return []; }
+  };
+  const writeIds = (ids) => world.setDynamicProperty(PROP_IDS, ids.length ? JSON.stringify(ids) : undefined);
+  const feet = (p) => ({ x: Math.floor(p.location.x), y: Math.floor(p.location.y), z: Math.floor(p.location.z) });
+
+  // Arrow spawns are watched all the time so a watch window can report them;
+  // cheap, since nearly every spawn exits at the typeId test.
+  let arrowLog = null; // { started, rows: [] } while a watch is running
+  world.afterEvents.entitySpawn.subscribe((ev) => {
+    let e;
+    try { e = ev.entity; } catch (err) { return; }
+    if (!e || e.typeId !== "minecraft:arrow" || !arrowLog) return;
+    const tick = system.currentTick;
+    const ownerAt = (arrow) => {
+      try { const o = arrow.getComponent("minecraft:projectile")?.owner; return o ? o.typeId : "none"; }
+      catch (err) { return "ERR " + err; }
+    };
+    const atSpawn = ownerAt(e);
+    const row = { tick, cause: ev.cause, atSpawn, nextTick: "?" };
+    arrowLog.rows.push(row);
+    system.run(() => { row.nextTick = e.isValid ? ownerAt(e) : "arrow gone"; });
+  });
+
+  const nearestHead = (p) => {
+    try {
+      return p.dimension.getEntities({ type: HEAD, location: p.location, maxDistance: 24, closest: 1 })[0];
+    } catch (e) { return undefined; }
+  };
+
+  const watch = (p) => {
+    const head = nearestHead(p);
+    if (!head) { log("T3 watch: no " + HEAD + " within 24 blocks"); return; }
+    let armed = "?", link = "?";
+    try { armed = String(head.getDynamicProperty("bw:armed")); link = String(head.getDynamicProperty("bw:link")); } catch (e) { /* ignore */ }
+    log("T3 watching head id=" + head.id + " link=" + link + " armed=" + armed + " for 200 ticks");
+    arrowLog = { started: system.currentTick, rows: [] };
+    let samples = 0, lastRot = "";
+    const id = system.runInterval(() => {
+      samples++;
+      try {
+        if (!head.isValid) { log("T3 head became invalid mid-watch"); system.clearRun(id); arrowLog = null; return; }
+        const r = head.getRotation();
+        const rot = "yaw=" + r.y.toFixed(1) + " pitch=" + r.x.toFixed(1);
+        if (rot !== lastRot) { log("T3 t+" + samples * 10 + " " + rot + " @" + v3(head.location)); lastRot = rot; }
+      } catch (e) { log("T3 sample failed: " + e); }
+      if (samples >= 20) {
+        system.clearRun(id);
+        const rows = arrowLog ? arrowLog.rows : [];
+        arrowLog = null;
+        log("T2 arrows spawned during the watch: " + rows.length);
+        for (const r of rows) log("  tick=" + r.tick + " cause=" + r.cause + " owner@spawn=" + r.atSpawn + " owner@+1=" + r.nextTick);
+        log("T2/T3 read it as: owner@spawn=" + HEAD + " means Bulwark can charge ammo at spawn;" +
+            " only owner@+1 set means it must defer a tick; neither means geometric attribution." +
+            " A changing yaw means the body turns; a flat one with arrows means only the head bone tracks.");
+      }
+    }, 10);
+  };
+
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id.indexOf("qolprobe:turret-") !== 0) return;
+    const cmd = ev.id.slice("qolprobe:turret-".length);
+    const p = ev.sourceEntity;
+
+    if (cmd === "cleanup") {
+      let removed = 0;
+      for (const d of DIMS) {
+        try { for (const e of world.getDimension(d).getEntities({ tags: [TAG] })) { e.remove(); removed++; } } catch (e) { /* ignore */ }
+      }
+      writeIds([]);
+      log("turret-cleanup: removed " + removed + " (loaded chunks only)");
+      return;
+    }
+    if (!p || p.typeId !== "minecraft:player") { log("turret-" + cmd + ": run this as a player"); return; }
+
+    if (cmd === "persist") {
+      const at = feet(p);
+      try {
+        const e = p.dimension.spawnEntity(HEAD, { x: at.x + 0.5, y: at.y, z: at.z + 0.5 }, { initialPersistence: true });
+        e.addTag(TAG);
+        const stamp = String(system.currentTick);
+        e.setDynamicProperty(PROP_STAMP, stamp);
+        const ids = readIds(); ids.push(e.id); writeIds(ids);
+        log("T1 spawned probe head id=" + e.id + " @" + v3(e.location) + " in " + p.dimension.id + " stamp=" + stamp +
+            ". Now unload the chunk / reload / rejoin / change dimension / restart, come back, and run qolprobe:turret-check.");
+      } catch (err) {
+        log("T1 spawn FAILED: " + err + " <-- is the Bulwark pack enabled? Check the content log for an entity definition error.");
+      }
+      return;
+    }
+
+    if (cmd === "check") {
+      const ids = readIds();
+      if (!ids.length) { log("T1 check: no probe heads remembered; run qolprobe:turret-persist first"); return; }
+      for (const id of ids) {
+        let e;
+        try { e = world.getEntity(id); } catch (err) { log("T1 id=" + id + " getEntity THREW " + err); continue; }
+        if (!e) {
+          log("T1 id=" + id + " NOT FOUND (you are in " + p.dimension.id + "). Unloaded chunk, or gone: stand within simulation distance and re-run before concluding.");
+          continue;
+        }
+        let stamp = "?", valid = "?", tags = "?";
+        try { valid = e.isValid; stamp = e.getDynamicProperty(PROP_STAMP); tags = e.getTags().join(","); } catch (err) { stamp = "ERR " + err; }
+        log("T1 id=" + id + " FOUND type=" + e.typeId + " valid=" + valid + " dim=" + e.dimension.id + " @" + v3(e.location) +
+            " stamp=" + stamp + " (" + (typeof stamp === "string" ? "intact" : "LOST") + ") tags=" + tags);
+      }
+      return;
+    }
+
+    if (cmd === "watch") { watch(p); return; }
+
+    if (cmd === "target") {
+      const at = feet(p);
+      const dir = p.getViewDirection();
+      const len = Math.hypot(dir.x, dir.z) || 1;
+      const where = { x: at.x + (dir.x / len) * 8 + 0.5, y: at.y, z: at.z + (dir.z / len) * 8 + 0.5 };
+      try {
+        const z = p.dimension.spawnEntity("minecraft:zombie", where);
+        z.addTag(TAG);
+        log("T2 spawned a probe zombie id=" + z.id + " @" + v3(where) + "; watching the nearest head");
+      } catch (err) { log("T2 could not spawn a zombie: " + err); return; }
+      watch(p);
+      return;
+    }
+
+    if (cmd === "census") {
+      const opts = { location: p.location, maxDistance: 64 };
+      let monsters = -1, heads = -1, all = -1;
+      try {
+        monsters = p.dimension.getEntities(Object.assign({}, opts, { families: ["monster"] })).length;
+        heads = p.dimension.getEntities(Object.assign({}, opts, { type: HEAD })).length;
+        all = p.dimension.getEntities(opts).length;
+      } catch (err) { log("T4 census failed: " + err); }
+      log("T4 census r=64 in " + p.dimension.id + " tick=" + system.currentTick + " time=" + world.getTimeOfDay() +
+          ": monsters=" + monsters + " heads=" + heads + " entities=" + all);
+      return;
+    }
+
+    log("unknown qolprobe:turret-" + cmd);
   });
 });

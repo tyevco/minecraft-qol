@@ -120,6 +120,31 @@ a per-block configuration surface, which without commands means either block
 entities reaching retail or an in-world idiom (an item frame on the funnel as
 its filter is the obvious one). The Linked Pair and Lava Kiln are Phase 4.
 
+## Bulwark: run the probe protocol
+
+`docs/bulwark-turret-probe.md` is a protocol, not results. Until it has been
+run, the turret rests on the roadmap's riskiest unproven assumption. Fifteen
+minutes with a test world and the content log open; the doc says what each
+reading means and which code path it changes.
+
+## Bulwark: shot attribution fallback
+
+Ammo accounting reads `EntityProjectileComponent.owner` off each spawned
+arrow, at spawn and again one tick later. `qolprobe:turret-watch` reports
+which of those is populated. If neither is, switch to geometric attribution
+(arrows appearing within a block of a head) — the same tier structure as the
+QOL Times dispenser interceptor, minus the container-diff proof, since a head
+cannot be thrown at.
+
+## Bulwark: phases 3–5
+
+Upgrades via the existing `bulwark:tier` entity property, the config form
+(`CustomForm`, no `image` grid on stable), ownership and friendly-fire
+filters, the player-targeting toggle (off by default, from the settings
+panel), density caps, waypoints. All gated on Phase 2 measuring clean. Rows
+are schema-versioned so tier and owner fields can be added with a migration
+rather than a wipe.
+
 ## GameTest pack: grow the suite
 
 `packages/gametest` exists (dev only, Beta APIs, never shipped) with one test

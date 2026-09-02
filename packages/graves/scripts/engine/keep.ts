@@ -5,7 +5,7 @@ import {
   type Player,
 } from "@minecraft/server";
 import { keepsItems } from "../core/prefs";
-import { getMode } from "./prefs";
+import { modeFor } from "./settings";
 
 /**
  * The substrate: `ItemStack.keepOnDeath`.
@@ -30,7 +30,7 @@ export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
 
 /** Bring one player's stacks into line with their mode. Returns stacks rewritten. */
 export function reconcile(player: Player): number {
-  const desired = keepsItems(getMode(player));
+  const desired = keepsItems(modeFor(player));
   let changed = 0;
 
   const container = player.getComponent(

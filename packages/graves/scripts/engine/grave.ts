@@ -12,6 +12,7 @@ import { gravePosition, type GroundSample } from "../core/placement";
 import { parseEquipmentAt, planTransfer, type Source } from "../core/transfer";
 import { playerId } from "./identity";
 import * as registry from "./registry";
+import { policy } from "./settings";
 
 export const GRAVE_ENTITY = "graves:gravestone";
 

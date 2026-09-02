@@ -39,6 +39,8 @@ are stable (`world.getPackSettings()`, four control types) but need manifest
 `format_version` 3, which brings SemVer version strings and a required
 `metadata.authors`. Deferred so the pack could be confirmed loading first.
 `PackSettingChangeAfterEventSignal` is beta-only, so changes need polling.
+Graves now does exactly this (`packages/graves/behavior_pack/manifest.json`,
+`scripts/engine/settings.ts`); once it is confirmed loading, copy the shape.
 
 ## Lens: render the worn Lens
 

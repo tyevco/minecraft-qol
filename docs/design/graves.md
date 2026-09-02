@@ -1,6 +1,6 @@
 # Graves — Design Document
 
-**Per-player item preservation on death for Minecraft: Bedrock Edition**
+**Item preservation on death, chosen per player role, for Minecraft: Bedrock Edition**
 
 Target: `@minecraft/server` 2.9.0 · no experiments · Draft v0.2, written alongside the implementation
 
@@ -13,7 +13,7 @@ for whom "I lost everything" ends the session. Others want the vanilla stakes.
 The `keepInventory` game rule cannot serve both: it is one switch for the whole
 world.
 
-Graves makes the choice **per player**:
+Graves makes the choice **per player role**, from the pack's settings panel:
 
 | Mode | On death |
 | --- | --- |
@@ -21,8 +21,11 @@ Graves makes the choice **per player**:
 | `grave` | Items move into a **gravestone** at the death site. Walk back and interact to take them. |
 | `keep` | Items stay in your inventory. Like `keepInventory`, for you alone. |
 
-An operator can set anyone's mode and can **lock** the world so non-operators
-cannot change their own — the kids' setting stays where a parent put it.
+Behaviour-pack settings are per world, so the panel cannot name individual
+players. The handle it does have is the **permission role** — visitor, member,
+operator — which on a Realm is already assigned per player from the member
+list. Kids as Members and parents as Operators is per-player control from the
+panel, with nothing for a child to toggle back.
 
 ### Design stance
 
@@ -92,23 +95,35 @@ entity inventory onto the ground, so even that loses nothing.
 
 ---
 
-## 4. Commands
+## 4. Configuration — the settings panel, no commands
 
-| Command | Who | Does |
+The behaviour pack's `manifest.json` is **format version 3**, the first in the
+repo, which is what unlocks a `settings` section: SemVer strings for every
+version, and `metadata.authors` set (a documented temporary requirement). The
+panel is reachable from the world's pack list, and in game from Settings →
+Behavior Packs → the pack → the gear icon.
+
+| Setting | Type | Default |
 | --- | --- | --- |
-| `/graves:mode [off\|grave\|keep]` | anyone | show or set your own mode |
-| `/graves:admin <player> <mode>` | game directors | set someone else's |
-| `/graves:lock on\|off` | game directors | stop non-operators changing their own |
-| `/graves:list` | anyone | coordinates of your gravestones |
+| Visitors | dropdown off / grave / keep | keep |
+| Members | dropdown | grave |
+| Operators | dropdown | off |
+| Tell a player where their gravestone is | toggle | on |
+| Anyone can open any gravestone | toggle | off |
 
-Every command has a `/scriptevent graves:…` twin that works straight after a
-`/reload`, since custom commands added since world entry do not exist until
-re-entry (see the root README).
+Defaults are deliberate: Members is the role a Realm gives a new player, so a
+newcomer gets a gravestone; operators keep vanilla; visitors, who cannot build
+anyway, keep everything.
 
-Default mode is `off`: installing the pack changes nothing for anyone until a
-choice is made.
+Script reads the panel with `world.getPackSettings()`, which is stable. The
+change event is beta-only, so the pack polls every five seconds and diffs; a
+change takes effect on the next keep-on-death sweep after it, under a second.
+A missing or malformed value falls back to its **default**, not to vanilla, so a
+half-loaded settings blob never silently unprotects anyone.
 
----
+There are no commands. The one script event, `/scriptevent graves:debug`,
+prints what the pack believes the panel says, the caller's role and mode, and
+their gravestones — the same diagnostic shape as Hearthstone's `hs:debug`.
 
 ## 5. What was verified, and what to measure
 
@@ -120,6 +135,10 @@ exist; `world.getEntity(id)` resolves a loaded entity.
 
 **To measure in game** (the probe pack has `qolprobe:death` and
 `qolprobe:keepflag` for it):
+
+0. That the format-version-3 manifest loads and the panel appears with all five
+   controls, and that `getPackSettings()` returns the dropdown's option **name**
+   (`"grave"`), not its display text. `graves:debug` shows what was read.
 
 1. Is a dead player's inventory container readable and writable inside
    `entityDie`? If not, `grave` degrades to `keep` — the flag still holds — and

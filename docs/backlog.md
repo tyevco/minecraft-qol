@@ -70,6 +70,35 @@ dynamic property, which will hit the per-property cap), a **schema version**, an
 a **tick budget** (it polls every tick, unyielded). Do this when the second
 consumer appears — Hearthstone — not before.
 
+## Bulwark: run the probe protocol
+
+`docs/bulwark-turret-probe.md` is a protocol, not results. Until it has been
+run, the turret rests on the roadmap's riskiest unproven assumption. Fifteen
+minutes with a test world and the content log open; the doc says what each
+reading means and which code path it changes.
+
+## Bulwark: shot attribution fallback
+
+Ammo accounting reads `EntityProjectileComponent.owner` off each spawned
+arrow, at spawn and again one tick later. If the probe shows the owner is
+never populated for AI-fired arrows, switch to geometric attribution (arrows
+appearing within a block of a head) — the same tier structure as the QOL Times
+dispenser interceptor, minus the container-diff proof, since a head cannot be
+thrown at.
+
+## Bulwark: phases 3–5
+
+Upgrades via component groups and entity properties, the config form
+(`CustomForm`, no `image` grid on stable), ownership and friendly-fire filters,
+the player-targeting toggle (off by default), density caps, waypoints. All
+gated on Phase 2 measuring clean. Records are schema-versioned from the first
+commit so tier and owner fields can be added without a migration.
+
+## Repo: lint task has no config
+
+`npm run lint` fails immediately: `coreLint` wants an ESLint config at the
+root and none exists. Either add one or drop the task; today it is a trap.
+
 ## GameTest pack
 
 Worth it for world-interaction regression tests ("does the dispenser actually

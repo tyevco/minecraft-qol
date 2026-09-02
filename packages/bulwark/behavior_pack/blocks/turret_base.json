@@ -1,0 +1,29 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "bulwark:turret_base",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "bulwark:turret": {},
+      "minecraft:tick": {
+        "interval_range": [20, 40],
+        "looping": true
+      },
+      "minecraft:display_name": "Bulwark Turret",
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "bulwark_turret_base",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 2.5 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 6 },
+      "minecraft:map_color": "#4F5359"
+    }
+  }
+}

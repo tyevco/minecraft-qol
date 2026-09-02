@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Bulwark Resources",
+    "description": "Textures, model and names for the Bulwark turret.",
+    "uuid": "55a9bbb6-fdaa-482a-a6b3-6fc8d4f4c0ec",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Bulwark resources",
+      "type": "resources",
+      "uuid": "75f65279-9f0c-4218-865c-91ac89894c7b",
+      "version": [0, 1, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

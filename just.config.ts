@@ -50,15 +50,16 @@ const PACKS: Pack[] = [
     external: ["@minecraft/server"],
     hasResourcePack: true,
   },
-  // Scaffolds: buildable and deployable, but nothing implemented yet.
-  {
-    name: "fluidworks",
-    dir: "packages/fluidworks",
-    external: ["@minecraft/server"],
-  },
   {
     name: "bulwark",
     dir: "packages/bulwark",
+    external: ["@minecraft/server"],
+    hasResourcePack: true,
+  },
+  // Scaffold: buildable and deployable, but nothing implemented yet.
+  {
+    name: "fluidworks",
+    dir: "packages/fluidworks",
     external: ["@minecraft/server"],
   },
 ];

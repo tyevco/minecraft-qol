@@ -53,6 +53,8 @@ export interface BoneSpec<Name extends string> {
   parent?: string;
   rotation?: Vec3;
   cubes: CubeSpec<Name>[];
+  /** Named points, in model units, that animations attach particles to. */
+  locators?: Record<string, Vec3>;
 }
 
 export interface GeometrySpec<Name extends string> {
@@ -83,6 +85,7 @@ interface BoneJson {
   pivot: Vec3;
   rotation?: Vec3;
   cubes: CubeJson[];
+  locators?: Record<string, Vec3>;
 }
 
 /** The window a face needs, in texture pixels: width along u, height along v. */
@@ -157,6 +160,7 @@ export function buildGeometry<Name extends string>(
     ...(bone.parent ? { parent: bone.parent } : {}),
     pivot: bone.pivot ?? [0, 0, 0],
     ...(bone.rotation ? { rotation: bone.rotation } : {}),
+    ...(bone.locators ? { locators: bone.locators } : {}),
     cubes: bone.cubes.map((cube) => {
       const uv: Partial<Record<Face, FaceJson>> = {};
       for (const face of FACES) {

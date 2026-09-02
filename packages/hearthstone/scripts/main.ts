@@ -38,6 +38,10 @@ const PROP_OWNED = "hs:owned";
 const DEFAULT_RADIUS = 64;
 /** Ticks between sweeps. Player count is small and bounded; anchors are not. */
 const EVALUATE_TICKS = 60;
+/** Ticks between ember puffs. Only anchors within EMBER_RANGE of a player emit. */
+const EMBER_TICKS = 8;
+const EMBER_RANGE = 32;
+const EMBER_PARTICLE = "hearthstone:ember";
 
 // ---------------------------------------------------------------------------
 // Ownership record
@@ -56,7 +60,10 @@ function readOwned(player: Player): SpawnRef | undefined {
 
 function writeOwned(player: Player, ref: SpawnRef | undefined): void {
   try {
-    player.setDynamicProperty(PROP_OWNED, ref ? JSON.stringify(ref) : undefined);
+    player.setDynamicProperty(
+      PROP_OWNED,
+      ref ? JSON.stringify(ref) : undefined,
+    );
   } catch (e) {
     log(`failed to record ownership: ${e}`);
   }
@@ -77,20 +84,39 @@ function currentSpawn(player: Player): SpawnRef | undefined {
 // ---------------------------------------------------------------------------
 
 /** Room for a player to stand: two clear blocks with something solid beneath. */
-function isStandingSpot(dimId: string, x: number, y: number, z: number): boolean {
+function isStandingSpot(
+  dimId: string,
+  x: number,
+  y: number,
+  z: number,
+): boolean {
   const dim = world.getDimension(dimId);
   const clear = (loc: Vector3) =>
-    withBlock(dim, loc, (b) => b.isAir || !b.isLiquidBlocking(LiquidType.Water)) ?? false;
+    withBlock(
+      dim,
+      loc,
+      (b) => b.isAir || !b.isLiquidBlocking(LiquidType.Water),
+    ) ?? false;
   const solid = (loc: Vector3) =>
-    withBlock(dim, loc, (b) => !b.isAir && !b.isLiquid && b.isLiquidBlocking(LiquidType.Water)) ??
-    false;
+    withBlock(
+      dim,
+      loc,
+      (b) => !b.isAir && !b.isLiquid && b.isLiquidBlocking(LiquidType.Water),
+    ) ?? false;
 
-  return clear({ x, y, z }) && clear({ x, y: y + 1, z }) && solid({ x, y: y - 1, z });
+  return (
+    clear({ x, y, z }) && clear({ x, y: y + 1, z }) && solid({ x, y: y - 1, z })
+  );
 }
 
 function toDimensionLocation(ref: SpawnRef): DimensionLocation | undefined {
   try {
-    return { x: ref.x, y: ref.y, z: ref.z, dimension: world.getDimension(ref.dimId) };
+    return {
+      x: ref.x,
+      y: ref.y,
+      z: ref.z,
+      dimension: world.getDimension(ref.dimId),
+    };
   } catch {
     return undefined;
   }
@@ -128,7 +154,9 @@ function evaluate(player: Player): void {
   const anchor = nearestAnchor(at, registry.all());
   if (!anchor) return;
 
-  const target = chooseRespawn(anchor, (x, y, z) => isStandingSpot(anchor.dimId, x, y, z));
+  const target = chooseRespawn(anchor, (x, y, z) =>
+    isStandingSpot(anchor.dimId, x, y, z),
+  );
   if (!target) {
     // Visible failure over silent: an obstructed anchor that says so is
     // debuggable, one that quietly does nothing is a support ticket.
@@ -152,6 +180,38 @@ function evaluate(player: Player): void {
   }
 }
 
+/**
+ * The hearth glows. Blocks cannot carry a particle emitter, so script puffs a
+ * short-lived custom effect over each anchor that has a player nearby; an
+ * unloaded chunk throws and is skipped. Cost is bounded by anchors near
+ * players, not by anchors.
+ */
+function embers(): void {
+  const players = world.getAllPlayers();
+  if (players.length === 0) return;
+  for (const anchor of registry.all()) {
+    const near = players.some(
+      (p) =>
+        p.dimension.id === anchor.dimId &&
+        Math.abs(p.location.x - anchor.x) < EMBER_RANGE &&
+        Math.abs(p.location.z - anchor.z) < EMBER_RANGE &&
+        Math.abs(p.location.y - anchor.y) < EMBER_RANGE,
+    );
+    if (!near) continue;
+    try {
+      world
+        .getDimension(anchor.dimId)
+        .spawnParticle(EMBER_PARTICLE, {
+          x: anchor.x + 0.5,
+          y: anchor.y + 0.8,
+          z: anchor.z + 0.5,
+        });
+    } catch {
+      /* unloaded, or the block is gone; the registry sorts that out elsewhere */
+    }
+  }
+}
+
 function sweep(): void {
   for (const player of world.getAllPlayers()) {
     try {
@@ -170,6 +230,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   registry.load();
 
   system.runInterval(sweep, EVALUATE_TICKS);
+  system.runInterval(embers, EMBER_TICKS);
 
   world.afterEvents.playerPlaceBlock.subscribe((ev) => {
     if (!ev.block.isValid || ev.block.typeId !== ANCHOR_BLOCK) return;
@@ -190,7 +251,9 @@ world.afterEvents.worldLoad.subscribe(() => {
   world.afterEvents.playerBreakBlock.subscribe((ev) => {
     if (ev.brokenBlockPermutation.type.id !== ANCHOR_BLOCK) return;
     // We own deregistration: without block entities, nothing cleans this up.
-    if (registry.remove(ev.block.dimension.id, ev.block.x, ev.block.y, ev.block.z)) {
+    if (
+      registry.remove(ev.block.dimension.id, ev.block.x, ev.block.y, ev.block.z)
+    ) {
       ev.player.sendMessage("§7Hearthstone unbound.");
     }
   });
@@ -236,5 +299,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     );
   });
 
-  log(`ready at tick ${system.currentTick}, ${registry.count()} anchor(s) known`);
+  log(
+    `ready at tick ${system.currentTick}, ${registry.count()} anchor(s) known`,
+  );
 });

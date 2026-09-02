@@ -110,6 +110,28 @@ function step(row: FunnelRow, settings: Settings, now: number, log: Log): void {
     return;
   }
   execute(p, row, dim, inBlock!, outBlock!, input, mouth, log);
+  drip(dim, row, facing);
+}
+
+const DRIP_PARTICLE = "fluidworks:drip";
+
+/** Working is visible: a few drops at the spout on every completed operation. */
+function drip(
+  dim: Dimension,
+  row: FunnelRow,
+  facing: NonNullable<ReturnType<typeof parseFacing>>,
+): void {
+  const spout = outputOf(row, facing);
+  const at = {
+    x: (row.x + spout.x) / 2 + 0.5,
+    y: (row.y + spout.y) / 2 + 0.5,
+    z: (row.z + spout.z) / 2 + 0.5,
+  };
+  try {
+    dim.spawnParticle(DRIP_PARTICLE, at);
+  } catch {
+    /* particle spawn is cosmetic; never let it fail the cycle */
+  }
 }
 
 function execute(

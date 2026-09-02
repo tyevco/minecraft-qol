@@ -95,6 +95,183 @@ function buildModel(geo, texture) {
 }
 
 // ---------------------------------------------------------------------------
+// Particles. A small interpreter for the subset of Bedrock's particle
+// components the packs use: box emitter shape, instant or steady rate, once or
+// looping lifetime, lifetime and speed as numbers or math.random(a, b),
+// dynamic motion (acceleration + drag), billboard size, and a colour gradient
+// over particle age. Enough to preview the effect; not a full Molang engine.
+// ---------------------------------------------------------------------------
+
+function molangNumber(v, fallback = 0) {
+  if (typeof v === "number") return () => v;
+  if (typeof v !== "string") return () => fallback;
+  const m = /math\.random\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(v);
+  if (m) {
+    const a = parseFloat(m[1]), b = parseFloat(m[2]);
+    return () => a + Math.random() * (b - a);
+  }
+  const n = parseFloat(v);
+  return () => (Number.isFinite(n) ? n : fallback);
+}
+
+function parseGradient(tint) {
+  const g = tint?.color?.gradient;
+  if (!g) return null;
+  return Object.entries(g)
+    .map(([k, hex]) => {
+      const h = hex.replace("#", "");
+      const argb = h.length === 8 ? h : "FF" + h;
+      return {
+        t: parseFloat(k),
+        a: parseInt(argb.slice(0, 2), 16) / 255,
+        r: parseInt(argb.slice(2, 4), 16) / 255,
+        g: parseInt(argb.slice(4, 6), 16) / 255,
+        b: parseInt(argb.slice(6, 8), 16) / 255,
+      };
+    })
+    .sort((x, y) => x.t - y.t);
+}
+
+function sampleGradient(stops, t) {
+  if (!stops || stops.length === 0) return { r: 1, g: 1, b: 1, a: 1 };
+  if (t <= stops[0].t) return stops[0];
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i].t) {
+      const p = stops[i - 1], q = stops[i];
+      const f = (t - p.t) / Math.max(1e-6, q.t - p.t);
+      return { r: p.r + (q.r - p.r) * f, g: p.g + (q.g - p.g) * f, b: p.b + (q.b - p.b) * f, a: p.a + (q.a - p.a) * f };
+    }
+  }
+  return stops[stops.length - 1];
+}
+
+class Emitter {
+  constructor(def, texture, origin, retriggerEvery) {
+    const c = def.particle_effect.components;
+    const rp = def.particle_effect.description.basic_render_parameters ?? {};
+    this.origin = origin; // THREE.Vector3, world space
+    this.shape = c["minecraft:emitter_shape_box"] ?? { offset: [0, 0, 0], half_dimensions: [0, 0, 0], direction: [0, 1, 0] };
+    this.instant = c["minecraft:emitter_rate_instant"]?.num_particles ?? 0;
+    this.steady = c["minecraft:emitter_rate_steady"] ?? null;
+    this.loop = c["minecraft:emitter_lifetime_looping"] ?? null;
+    this.once = c["minecraft:emitter_lifetime_once"] ?? null;
+    this.lifetime = molangNumber(c["minecraft:particle_lifetime_expression"]?.max_lifetime, 1);
+    this.speed = molangNumber(c["minecraft:particle_initial_speed"], 0);
+    const dyn = c["minecraft:particle_motion_dynamic"] ?? {};
+    this.accel = new THREE.Vector3(...(dyn.linear_acceleration ?? [0, 0, 0]));
+    this.drag = dyn.linear_drag_coefficient ?? 0;
+    this.size = (c["minecraft:particle_appearance_billboard"]?.size ?? [0.1, 0.1])[0];
+    this.gradient = parseGradient(c["minecraft:particle_appearance_tinting"]);
+    this.retriggerEvery = retriggerEvery ?? 0.5;
+    this.clock = 0;
+    this.spawnDebt = 0;
+    this.particles = [];
+    this.max = 256;
+
+    this.positions = new Float32Array(this.max * 3);
+    this.colors = new Float32Array(this.max * 4);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
+    g.setAttribute("color", new THREE.BufferAttribute(this.colors, 4));
+    g.setDrawRange(0, 0);
+    this.points = new THREE.Points(
+      g,
+      new THREE.PointsMaterial({
+        map: texture,
+        size: this.size * 2,
+        sizeAttenuation: true,
+        transparent: true,
+        depthWrite: false,
+        vertexColors: true,
+        blending: rp.material === "particles_add" ? THREE.AdditiveBlending : THREE.NormalBlending,
+      }),
+    );
+    this.points.frustumCulled = false;
+  }
+
+  spawn() {
+    if (this.particles.length >= this.max) return;
+    const h = this.shape.half_dimensions;
+    const off = this.shape.offset ?? [0, 0, 0];
+    const pos = new THREE.Vector3(
+      this.origin.x + off[0] + (Math.random() * 2 - 1) * h[0],
+      this.origin.y + off[1] + (Math.random() * 2 - 1) * h[1],
+      this.origin.z + off[2] + (Math.random() * 2 - 1) * h[2],
+    );
+    let dir;
+    if (Array.isArray(this.shape.direction)) dir = new THREE.Vector3(...this.shape.direction);
+    else dir = pos.clone().sub(this.origin).add(new THREE.Vector3(0, 0.01, 0));
+    if (this.shape.direction === "inwards") dir.negate();
+    if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0);
+    dir.normalize().multiplyScalar(this.speed());
+    this.particles.push({ pos, vel: dir, age: 0, life: Math.max(0.05, this.lifetime()) });
+  }
+
+  update(dt) {
+    this.clock += dt;
+    // Emission
+    if (this.steady) {
+      let active = true;
+      if (this.loop) {
+        const period = (this.loop.active_time ?? 1) + (this.loop.sleep_time ?? 0);
+        active = this.clock % period < (this.loop.active_time ?? 1);
+      }
+      if (active) {
+        this.spawnDebt += (this.steady.spawn_rate ?? 1) * dt;
+        while (this.spawnDebt >= 1 && this.particles.length < (this.steady.max_particles ?? this.max)) {
+          this.spawn();
+          this.spawnDebt -= 1;
+        }
+      }
+    } else if (this.instant) {
+      // A once-emitter is something a script re-fires; re-trigger on a cadence.
+      if (this.clock >= this.retriggerEvery) {
+        this.clock -= this.retriggerEvery;
+        for (let i = 0; i < this.instant; i++) this.spawn();
+      }
+    }
+    // Integration
+    const keep = [];
+    for (const p of this.particles) {
+      p.age += dt;
+      if (p.age >= p.life) continue;
+      p.vel.addScaledVector(this.accel, dt);
+      p.vel.multiplyScalar(Math.max(0, 1 - this.drag * dt));
+      p.pos.addScaledVector(p.vel, dt);
+      keep.push(p);
+    }
+    this.particles = keep;
+    // Upload
+    for (let i = 0; i < keep.length; i++) {
+      const p = keep[i];
+      this.positions.set([p.pos.x, p.pos.y, p.pos.z], i * 3);
+      const c = sampleGradient(this.gradient, p.age / p.life);
+      this.colors.set([c.r, c.g, c.b, c.a], i * 4);
+    }
+    const g = this.points.geometry;
+    g.attributes.position.needsUpdate = true;
+    g.attributes.color.needsUpdate = true;
+    g.setDrawRange(0, keep.length);
+  }
+}
+
+/** World-space point for a catalogue particle entry, honouring the x mirror. */
+function particleOrigin(entry, geo, spec) {
+  let at = spec.at;
+  if (spec.locator) {
+    for (const bone of geo.bones) {
+      const l = bone.locators?.[spec.locator];
+      if (l) at = l;
+    }
+  }
+  if (!at) return new THREE.Vector3(0, 0.5, 0);
+  return new THREE.Vector3(-at[0] / 16, at[1] / 16, at[2] / 16);
+}
+
+let emitters = [];
+const clock = new THREE.Clock();
+
+// ---------------------------------------------------------------------------
 
 const canvas = document.getElementById("c");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
@@ -158,6 +335,21 @@ async function show(entry) {
   current = { entry, geo, textures, root, groups };
   frame(root, entry.kind);
 
+  // Particles
+  for (const e of emitters) scene.remove(e.points);
+  emitters = [];
+  for (const spec of entry.particles ?? []) {
+    try {
+      const def = await (await fetch(spec.definition)).json();
+      const tex = await loadTexture(spec.texture);
+      const em = new Emitter(def, tex, particleOrigin(entry, geo, spec), spec.every);
+      scene.add(em.points);
+      emitters.push(em);
+    } catch (err) {
+      console.warn("particle failed", spec, err);
+    }
+  }
+
   // Texture variants
   const sel = document.getElementById("texture");
   sel.innerHTML = "";
@@ -192,6 +384,7 @@ async function show(entry) {
   document.getElementById("info").textContent =
     `${entry.pack} · ${entry.kind}\n${geo.description.identifier}\n` +
     `${geo.bones.length} bones, ${cubes} cubes\natlas ${geo.description.texture_width}×${geo.description.texture_height}` +
+    (entry.particles?.length ? `\nparticles: ${entry.particles.map((p) => p.effect).join(", ")}` : "") +
     (entry.notes ? `\n\n${entry.notes}` : "");
 
   for (const b of document.querySelectorAll("#models button")) b.classList.toggle("active", b.dataset.id === entry.id);
@@ -217,6 +410,8 @@ async function main() {
   });
   renderer.setAnimationLoop(() => {
     resize();
+    const dt = Math.min(0.05, clock.getDelta());
+    for (const e of emitters) e.update(dt);
     controls.update();
     renderer.render(scene, camera);
   });

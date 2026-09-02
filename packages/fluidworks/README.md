@@ -112,3 +112,5 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
    beetroot; `age` for nether wart and cocoa) - `qol:harvester_funnel` in the
    GameTest pack checks wheat.
 7. **Labels**: that a `TextPrimitive` with no `visibleTo` is visible to all.
+8. **Drips**: a few drops at the spout after every completed operation
+   (`fluidworks:drip`, spawned from script; cosmetic, never fails the cycle).

@@ -142,3 +142,21 @@ write(
     dark: T.flatDark(T.DARK_STONE),
   }),
 );
+
+// Particle sprites, one per pack that emits something.
+write(
+  "packages/hearthstone/resource_pack/textures/particle/ember.png",
+  T.softDot(T.HEARTH.flameTip, T.HEARTH.ember),
+);
+write(
+  "packages/graves/resource_pack/textures/particle/wisp.png",
+  T.softDot(0xf2fbff, 0x7fc8ff),
+);
+write(
+  "packages/bulwark/resource_pack/textures/particle/vent.png",
+  T.softDot(0xd8d8d8, 0x6a6a6a),
+);
+write(
+  "packages/fluidworks/resource_pack/textures/particle/drip.png",
+  T.softDot(0xbfe6ff, 0x2f7fd6),
+);

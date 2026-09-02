@@ -11,10 +11,6 @@ the queue.
       game. In a Beta APIs world with every pack enabled: `/gametest runset qol`,
       then each pack README's "to confirm in game" list. Paste the content log
       into the next session and fix what fails. Gates everything below.
-- [ ] **Model viewer on GitHub Pages.** `npm run viewer` builds `dist/viewer`
-      from the generated geometry and atlases; `.github/workflows/pages.yml`
-      publishes it. Needs Pages set to "GitHub Actions" in the repo settings
-      once.
 
 ## Next
 
@@ -58,6 +54,8 @@ the queue.
 
 ## Done
 
+- [x] Model viewer on GitHub Pages: https://tyevco.github.io/minecraft-qol/ (#5)
+- [x] Particles: hearth embers, gravestone wisp, turret vent steam, funnel drip; previewed in the viewer
 - [x] Generated models and textures for every block; Lens icon (#1)
 - [x] Graves, configured per role from the settings panel (#2)
 - [x] Fluidworks Phase 1; shared cauldron rules; GameTest pack; CLAUDE.md (#3)

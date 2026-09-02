@@ -3,10 +3,29 @@
   "minecraft:client_entity": {
     "description": {
       "identifier": "graves:gravestone",
-      "materials": { "default": "entity_alphatest" },
-      "textures": { "default": "textures/entity/gravestone" },
-      "geometry": { "default": "geometry.graves_gravestone" },
-      "render_controllers": ["controller.render.graves_gravestone"]
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/entity/gravestone"
+      },
+      "geometry": {
+        "default": "geometry.graves_gravestone"
+      },
+      "render_controllers": [
+        "controller.render.graves_gravestone"
+      ],
+      "particle_effects": {
+        "wisp": "graves:wisp"
+      },
+      "animations": {
+        "idle": "animation.graves_gravestone.idle"
+      },
+      "scripts": {
+        "animate": [
+          "idle"
+        ]
+      }
     }
   }
 }

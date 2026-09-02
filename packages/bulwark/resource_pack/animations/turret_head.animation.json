@@ -1,0 +1,12 @@
+{
+  "format_version": "1.10.0",
+  "animations": {
+    "animation.bulwark_turret_head.idle": {
+      "loop": true,
+      "animation_length": 3.0,
+      "particle_effects": {
+        "0.0": { "effect": "vent", "locator": "vents" }
+      }
+    }
+  }
+}

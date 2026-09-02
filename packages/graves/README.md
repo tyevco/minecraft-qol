@@ -16,6 +16,7 @@ Open it from the world's pack list, or in game from Settings → Behavior Packs
 | Visitors / Members / Operators | one of **Off** (items drop, vanilla), **Gravestone** (items wait in a gravestone where they died; interact to take them back), **Keep** (items stay in their inventory) |
 | Tell a player where their gravestone is | a chat line with coordinates on death |
 | Anyone can open any gravestone | otherwise only the owner and operators can |
+| Show a player's gravestone on their locator bar | a red circle at each stone the player owns, in the dimension they are in, until it is emptied |
 
 Behaviour-pack settings are per world, so the role is the per-player handle:
 on a Realm every player has one, set from the member list. Kids as Members
@@ -34,10 +35,18 @@ real container. No drop-chasing, no serialisation, no duplication path.
 
 Every failure lands on "the player keeps the item".
 
+The locator-bar marker is drawn through `packages/shared/engine/waypoints.ts`
+(design: [`docs/design/waypoints.md`](../../docs/design/waypoints.md)). The
+gravestone registry is its whole input: a stone placed or emptied by any path
+shows or clears on the next sync, without a second bookkeeping trail. Each
+player sees only their own stones; an operator emptying someone else's clears
+the owner's marker on their next sync.
+
 ## Layout
 
 ```
-scripts/core/       pure: policy parsing, placement, transfer planning   <- vitest
+scripts/core/       pure: policy parsing, placement, transfer planning,
+                    which stones to mark                                 <- vitest
 scripts/engine/     settings poll, keep-on-death sweep, gravestone IO, index
 behavior_pack/      manifest (format 3, with the settings panel), the gravestone entity
 resource_pack/      gravestone model + texture (generated, see root README)
@@ -53,3 +62,11 @@ See §5 of the design doc. Two things the design rests on, measured by
 readable inside `entityDie`, and that a script-set `keepOnDeath` really stops
 the drop. Plus one thing about the panel: that a dropdown reads back as its
 option name (`"grave"`), which `graves:debug` shows.
+
+The locator-bar marker is unmeasured; `qolprobe:waypoint` covers the engine
+questions and `docs/backlog.md` lists the fallbacks. For this pack: die with
+items in `grave` mode and, on respawn, a red circle points at the stone
+(`graves:debug` lists `gv:grave:<id>@x,y,z`); empty the stone and the circle
+goes; die twice without collecting and two circles show. If the marker sits
+one block off the stone, `placeGrave` floors the position and the marker
+centres on that block - check which the stone entity itself renders at.

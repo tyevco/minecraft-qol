@@ -65,6 +65,15 @@ lists what to measure in game; the probe pack has `qolprobe:death` for it.
 `getSpawnPoint()` really does return `undefined` for a player who never slept,
 and non-Overworld anchors work — verified by dying in the Nether.
 
+**[`design/waypoints.md`](design/waypoints.md)** — **built** (Phase 1 plus the
+bed marker from Phase 2): `packages/shared/engine/waypoints.ts`, used by
+Hearthstone for the bed and hearth markers and by Graves for the gravestone.
+Nothing in it has been measured yet; its §4 "must prototype" list maps onto
+`qolprobe:waypoint` in the probe pack, and each pack README says what to look
+for. One deliberate divergence: the hearth marker stays while Hearthstone still
+owns the player's spawn point, rather than clearing when they leave the anchor's
+radius, because that is still where they will wake up.
+
 ## Proposals — not yet built
 
 Written against the installed 2.9.0 typings, each with its own “must
@@ -72,10 +81,10 @@ prototype” list. In suggested order:
 
 - [`design/guardian.md`](design/guardian.md) — per-role damage scaling and
   safety switches, on the stable `entityHurt` before-event. Pets in phase 3.
-- [`design/waypoints.md`](design/waypoints.md) — locator-bar markers for your
-  bed, gravestone and Hearthstone; a shared module, not a pack.
 - [`design/waystones.md`](design/waystones.md) — placed teleport points; the
-  other half of Hearthstone's tagline.
+  other half of Hearthstone's tagline. A full design, verified against the
+  installed typings, with the list of what moves into `packages/shared`
+  first (its §8.3).
 - [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.

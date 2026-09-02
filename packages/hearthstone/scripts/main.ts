@@ -14,18 +14,39 @@
  *   getSpawnPoint() returns undefined for a player who never set one
  *   setSpawnPoint works, and is honoured on respawn, in the Nether too
  *   it throws LocationOutOfWorldBoundariesError outside the dimension's range
+ *
+ * Getting back is the other half of the problem, so the pack also marks the
+ * player's spawn point on the locator bar: their bed (or respawn anchor), or
+ * the Hearthstone they will wake at. Both toggles live in the settings panel.
+ * The gravestone marker is Graves' - it knows when a stone is placed and
+ * emptied - through the same shared module.
  */
 import {
   LiquidType,
+  WaypointTexture,
   system,
   world,
   type DimensionLocation,
   type Player,
   type Vector3,
 } from "@minecraft/server";
+import { createSettingsPoller } from "@qol/shared/engine/packSettings";
 import { withBlock } from "@qol/shared/engine/safeBlock";
+import * as waypoints from "@qol/shared/engine/waypoints";
 import { chooseRespawn, nearestAnchor, type Point } from "./core/anchors";
 import { decide, sameSpawn, type SpawnRef } from "./core/ownership";
+import {
+  DEFAULT_SETTINGS,
+  describeSettings,
+  parseSettings,
+  sameSettings,
+} from "./core/settings";
+import {
+  WAYPOINT_KEY,
+  isOurKey,
+  wantedWaypoints,
+  type WaypointKind,
+} from "./core/waypoints";
 import * as registry from "./engine/registry";
 
 const TAG = "[Hearthstone]";
@@ -42,6 +63,22 @@ const EVALUATE_TICKS = 60;
 const EMBER_TICKS = 8;
 const EMBER_RANGE = 32;
 const EMBER_PARTICLE = "hearthstone:ember";
+/** Ticks between settings-panel polls. The change event is beta-only. */
+const SETTINGS_TICKS = 100;
+
+const settings = createSettingsPoller(
+  parseSettings,
+  sameSettings,
+  DEFAULT_SETTINGS,
+  log,
+  describeSettings,
+);
+
+/** Marker styles. The hearth is ember orange, matching the pack's §6 messages. */
+const STYLE: Record<WaypointKind, waypoints.WaypointStyle> = {
+  bed: { color: { red: 0.6, green: 0.8, blue: 1 }, texture: WaypointTexture.Square },
+  hearth: { color: { red: 1, green: 0.6, blue: 0.15 }, texture: WaypointTexture.SmallStar },
+};
 
 // ---------------------------------------------------------------------------
 // Ownership record
@@ -77,6 +114,15 @@ function currentSpawn(player: Player): SpawnRef | undefined {
   } catch {
     return undefined;
   }
+}
+
+function whereIs(player: Player): Point {
+  return {
+    dimId: player.dimension.id,
+    x: Math.floor(player.location.x),
+    y: Math.floor(player.location.y),
+    z: Math.floor(player.location.z),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +180,11 @@ function toDimensionLocation(ref: SpawnRef): DimensionLocation | undefined {
  * string compare, and that is the majority of players in an established world.
  */
 function evaluate(player: Player): void {
+  assignSpawn(player);
+  syncWaypoints(player);
+}
+
+function assignSpawn(player: Player): void {
   const current = currentSpawn(player);
   const owned = readOwned(player);
   const verdict = decide(current, owned);
@@ -144,12 +195,7 @@ function evaluate(player: Player): void {
     return;
   }
 
-  const at: Point = {
-    dimId: player.dimension.id,
-    x: Math.floor(player.location.x),
-    y: Math.floor(player.location.y),
-    z: Math.floor(player.location.z),
-  };
+  const at = whereIs(player);
 
   const anchor = nearestAnchor(at, registry.all());
   if (!anchor) return;
@@ -210,6 +256,26 @@ function embers(): void {
       /* unloaded, or the block is gone; the registry sorts that out elsewhere */
     }
   }
+ * Bring the player's locator bar in line with where they will wake up.
+ *
+ * Runs after assignSpawn on every sweep, so a freshly assigned hearth shows
+ * within the same tick, and a bed slept in shows by the next sweep at the latest.
+ */
+function syncWaypoints(player: Player): void {
+  const { showBed, showHearth } = settings.current();
+  const wanted = wantedWaypoints({
+    at: whereIs(player),
+    spawn: currentSpawn(player),
+    owned: readOwned(player),
+    showBed,
+    showHearth,
+  });
+  waypoints.sync(
+    player,
+    wanted.map((w) => ({ key: WAYPOINT_KEY[w.kind], target: w, style: STYLE[w.kind] })),
+    isOurKey,
+    log,
+  );
 }
 
 function sweep(): void {
@@ -228,9 +294,18 @@ function sweep(): void {
 
 world.afterEvents.worldLoad.subscribe(() => {
   registry.load();
+  settings.refresh();
+
+  // A /reload discards our waypoint handles but not, necessarily, the waypoints.
+  // Sweep whatever this pack left on each bar before the first sync rebuilds it.
+  for (const player of world.getAllPlayers()) waypoints.reset(player, log);
 
   system.runInterval(sweep, EVALUATE_TICKS);
   system.runInterval(embers, EMBER_TICKS);
+  system.runInterval(() => {
+    // A changed panel takes effect on the next sweep, not the one after.
+    if (settings.refresh()) sweep();
+  }, SETTINGS_TICKS);
 
   world.afterEvents.playerPlaceBlock.subscribe((ev) => {
     if (!ev.block.isValid || ev.block.typeId !== ANCHOR_BLOCK) return;
@@ -262,12 +337,17 @@ world.afterEvents.worldLoad.subscribe(() => {
   world.afterEvents.playerSpawn.subscribe((ev) => {
     system.run(() => {
       try {
+        // A joining player's handles went with their last session, and the
+        // bar may or may not have kept the waypoints; start clean.
+        if (ev.initialSpawn) waypoints.reset(ev.player, log);
         evaluate(ev.player);
       } catch (e) {
         log(`spawn evaluate failed: ${e}`);
       }
     });
   });
+
+  world.afterEvents.playerLeave.subscribe((ev) => waypoints.forget(ev.playerId));
 
   world.afterEvents.playerDimensionChange.subscribe((ev) => {
     system.run(() => {
@@ -296,6 +376,11 @@ world.afterEvents.worldLoad.subscribe(() => {
     p.sendMessage(
       `§7owned by us: §f${owned ? `${owned.x},${owned.y},${owned.z}` : "no"}§7 ` +
         `-> decision §f${decide(current, owned)}`,
+    );
+    p.sendMessage(`§7panel: §f${describeSettings(settings.current())}`);
+    p.sendMessage(
+      `§7waypoints: §f${waypoints.describe(p.id)}§7 ` +
+        `(bar ${p.locatorBar.count}/${p.locatorBar.maxCount})`,
     );
   });
 

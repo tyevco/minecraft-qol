@@ -64,6 +64,34 @@ Worth it only if XP loss turns out to be what actually frustrates the kids.
 sealed dark rooms floored with each material, left overnight against a stone
 control. Automatable with the same self-building-rig trick as the light matrix.
 
+## Waypoints: verify the shared module in game
+
+The locator-bar markers (`packages/shared/engine/waypoints.ts`, used by
+Hearthstone and Graves) are built on stable API and typecheck, but the engine
+behaviours in `docs/design/waypoints.md` §4 are inferred from the typings, not
+measured. `qolprobe:waypoint` in the probe pack measures them; each has a
+fallback that should be confirmed harmless:
+
+- **Do waypoints survive `/reload`?** Module state does not, so the handles are
+  lost either way. `reset()` sweeps `locatorBar.getAllWaypoints()` on `worldLoad`
+  and on `initialSpawn` before rebuilding. The typings say the bar only exposes
+  the asking pack's own waypoints, so the sweep cannot touch vanilla player
+  markers or another pack's — watch the bar through a `/reload` with both
+  packs on and confirm neither duplicates nor a gap.
+- **`LocatorBar.maxCount`.** Three markers per pack should be nowhere near it;
+  the shared module logs `WaypointLimitExceeded` rather than failing silently.
+- **Cross-dimension markers.** Both packs withhold a marker whose dimension is
+  not the player's, so the engine's own handling is never exercised. If the
+  engine already hides them, the guard is merely redundant.
+- **The `playerWaypoints` game rule.** Whether "off" hides pack waypoints too.
+  If it does not, a world that turned the bar off still sees ours, and the
+  packs' panel toggles are the remedy.
+
+Also deferred: a gravestone visible to operators (the design doc's "a parent
+finding a kid's stone"), which is one more toggle and a second `graveMarkers`
+call once the per-viewer bar is confirmed; and Waystones markers when that
+pack exists.
+
 ## QOL Times: unverified features
 
 Bottles, dye and wash are implemented and unit-tested but never exercised in
@@ -80,6 +108,9 @@ their own copies of the same pattern and should move onto it. Still missing
 from the shared one: **chunk keying** (every row in one dynamic property will
 hit the per-property cap eventually) and a **tick budget** (Fluidworks yields
 every four funnels inside a job, which is a start, not a budget).
+[`design/waystones.md`](design/waystones.md) §8.3 lists the other extractions
+that are due at the same time (player identity, the standing-spot validator,
+labels), since Waystones is the pack that needs all of them.
 
 ## Fluidworks: what is left
 

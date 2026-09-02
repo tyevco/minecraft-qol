@@ -1,0 +1,46 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "fluidworks:pipe",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.redstoneContainers"
+      },
+      "states": {
+        "fluidworks:north": [false, true],
+        "fluidworks:south": [false, true],
+        "fluidworks:east": [false, true],
+        "fluidworks:west": [false, true],
+        "fluidworks:up": [false, true],
+        "fluidworks:down": [false, true]
+      }
+    },
+    "components": {
+      "minecraft:display_name": "Fluid Pipe",
+      "minecraft:geometry": {
+        "identifier": "geometry.fluidworks_pipe",
+        "bone_visibility": {
+          "north": "q.block_state('fluidworks:north')",
+          "south": "q.block_state('fluidworks:south')",
+          "east": "q.block_state('fluidworks:east')",
+          "west": "q.block_state('fluidworks:west')",
+          "up": "q.block_state('fluidworks:up')",
+          "down": "q.block_state('fluidworks:down')"
+        }
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "fluidworks_pipe",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:collision_box": { "origin": [-3, 5, -3], "size": [6, 6, 6] },
+      "minecraft:selection_box": { "origin": [-4, 4, -4], "size": [8, 8, 8] },
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 1 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 3 },
+      "minecraft:light_dampening": 0,
+      "minecraft:map_color": "#C47D4F"
+    }
+  }
+}

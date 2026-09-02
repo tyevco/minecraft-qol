@@ -30,6 +30,12 @@ interface Pack {
   external: string[];
   /** Set when the pack also ships a resource_pack/ folder. */
   hasResourcePack?: boolean;
+  /**
+   * Deployable but never packaged: no mcaddon task, excluded from `mcaddon`.
+   * The GameTest pack depends on a beta module and must stay out of anything
+   * that could reach a real world.
+   */
+  devOnly?: boolean;
 }
 
 const PACKS: Pack[] = [
@@ -43,10 +49,17 @@ const PACKS: Pack[] = [
     dir: "packages/lens",
     // No server-ui: the Lens has no forms. Must match its manifest.
     external: ["@minecraft/server"],
+    hasResourcePack: true,
   },
   {
     name: "hearthstone",
     dir: "packages/hearthstone",
+    external: ["@minecraft/server"],
+    hasResourcePack: true,
+  },
+  {
+    name: "graves",
+    dir: "packages/graves",
     external: ["@minecraft/server"],
     hasResourcePack: true,
   },
@@ -55,11 +68,20 @@ const PACKS: Pack[] = [
     name: "fluidworks",
     dir: "packages/fluidworks",
     external: ["@minecraft/server"],
+    hasResourcePack: true,
   },
   {
     name: "bulwark",
     dir: "packages/bulwark",
     external: ["@minecraft/server"],
+    hasResourcePack: true,
+  },
+  // In-game tests. Beta-only module, throwaway world, never shipped.
+  {
+    name: "qol_gametest",
+    dir: "packages/gametest",
+    external: ["@minecraft/server", "@minecraft/server-gametest"],
+    devOnly: true,
   },
 ];
 
@@ -163,12 +185,13 @@ for (const pack of PACKS) {
   task(`bundle:${pack.name}`, bundleTask(bundleOptions));
   task(`deploy:${pack.name}`, deployPack(pack));
   task(`clean:${pack.name}`, cleanPack(pack));
-  task(`mcaddon:${pack.name}`, mcaddonTask(mcaddonOptions));
+  if (!pack.devOnly) task(`mcaddon:${pack.name}`, mcaddonTask(mcaddonOptions));
   task(`build:${pack.name}`, series("typescript", `bundle:${pack.name}`));
   task(`local-deploy:${pack.name}`, series(`build:${pack.name}`, `deploy:${pack.name}`));
 }
 
 const packNames = PACKS.map((p) => p.name);
+const shippedPackNames = PACKS.filter((p) => !p.devOnly).map((p) => p.name);
 
 task("lint", coreLint(["packages/**/*.ts"], argv().fix));
 task("clean-local", cleanTask(DEFAULT_CLEAN_DIRECTORIES));
@@ -178,7 +201,7 @@ task("bundle", parallel(...packNames.map((n) => `bundle:${n}`)));
 task("build", series("typescript", "bundle"));
 task("deploy", series(...packNames.map((n) => `deploy:${n}`)));
 task("package", series("build", "deploy"));
-task("mcaddon", series("build", ...packNames.map((n) => `mcaddon:${n}`)));
+task("mcaddon", series("build", ...shippedPackNames.map((n) => `mcaddon:${n}`)));
 
 task(
   "local-deploy",

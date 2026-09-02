@@ -29,8 +29,16 @@
  *   /scriptevent qolprobe:spawn      report your spawn point (H1)
  *   /scriptevent qolprobe:setspawn   set it to where you stand (reversible)
  *   /scriptevent qolprobe:clearspawn clear it again
+ *   /scriptevent qolprobe:death      arm; die; logs inventory state at entityDie
+ *                                    and the drop/entityDie ordering (Graves)
+ *   /scriptevent qolprobe:keepflag   set keepOnDeath on everything you carry
+ *   /scriptevent qolprobe:sky        getTopmostBlock for your column (Fluidworks rain)
+ *   /scriptevent qolprobe:waypoint   add a locator-bar marker 16 blocks north of you;
+ *                                    run again to remove it. Reports maxCount and what
+ *                                    the bar lists, so /reload and dimension behaviour
+ *                                    are measured (Waypoints W1-W4)
  */
-import { world, system, BlockPermutation } from "@minecraft/server";
+import { world, system, BlockPermutation, LocationWaypoint } from "@minecraft/server";
 
 const P = "[QOLPROBE]";
 const log = (...a) => console.warn(P, ...a);
@@ -548,6 +556,185 @@ world.afterEvents.worldLoad.subscribe(() => {
         if (facesCauldron) { registerRig(dim, b); pairs++; }
       }
       log("scan done: " + dispensers + " dispenser(s), " + cauldrons + " cauldron(s), " + pairs + " rig(s) registered");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D1-D3: death behaviour, for the Graves pack.
+//
+//   /scriptevent qolprobe:death    arm; then die. Logs, for the next player
+//                                  death: whether the inventory container is
+//                                  still readable inside entityDie and how
+//                                  many slots are filled, the same for armour,
+//                                  which stacks carry keepOnDeath, and every
+//                                  item entity that spawns within 6 blocks in
+//                                  the surrounding ticks - with tick numbers,
+//                                  so the ordering of drops vs entityDie is
+//                                  measured rather than assumed.
+//   /scriptevent qolprobe:keepflag flag every stack you carry keepOnDeath=true
+//                                  (the Graves substrate). Die again with the
+//                                  probe armed and compare.
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  let armed = false;
+  let watching = null; // { dimId, loc, tick, name }
+  const recentSpawns = []; // { tick, typeId, amount, loc }
+
+  world.afterEvents.entitySpawn.subscribe((ev) => {
+    let e;
+    try { e = ev.entity; } catch (err) { return; }
+    if (!e || e.typeId !== "minecraft:item") return;
+    if (!armed && !watching) return;
+    let stack;
+    try { stack = e.getComponent("minecraft:item")?.itemStack; } catch (err) { stack = undefined; }
+    recentSpawns.push({
+      tick: system.currentTick,
+      typeId: stack ? stack.typeId : "?",
+      amount: stack ? stack.amount : 0,
+      loc: e.location,
+      dimId: e.dimension.id,
+    });
+    while (recentSpawns.length > 200) recentSpawns.shift();
+  });
+
+  world.afterEvents.entityDie.subscribe((ev) => {
+    if (!armed) return;
+    const p = ev.deadEntity;
+    if (!p || p.typeId !== "minecraft:player") return;
+    armed = false;
+    const tick = system.currentTick;
+    log("D1 DEATH " + p.name + " tick=" + tick + " cause=" + ev.damageSource.cause +
+        " @" + v3(p.location) + " onGround=" + p.isOnGround + " keepInventory=" + world.gameRules.keepInventory);
+
+    let filled = 0, kept = 0, size = "?";
+    try {
+      const c = p.getComponent("minecraft:inventory")?.container;
+      size = c ? c.size : "NO CONTAINER";
+      if (c) for (let i = 0; i < c.size; i++) {
+        const it = c.getItem(i);
+        if (!it) continue;
+        filled++;
+        if (it.keepOnDeath) kept++;
+      }
+      log("D2 inventory readable: size=" + size + " filled=" + filled + " keepOnDeath=" + kept);
+    } catch (err) { log("D2 inventory READ THREW: " + err); }
+    try {
+      const eq = p.getComponent("minecraft:equippable");
+      const slots = ["Head", "Chest", "Legs", "Feet", "Offhand"];
+      const worn = slots.filter((s) => { try { return !!eq.getEquipment(s); } catch (e2) { return false; } });
+      log("D2 equipment readable: worn=" + JSON.stringify(worn));
+    } catch (err) { log("D2 equipment READ THREW: " + err); }
+
+    watching = { dimId: p.dimension.id, loc: p.location, tick, name: p.name };
+    // Report drops seen before this event, then keep listening for two more ticks.
+    const report = () => {
+      const near = recentSpawns.filter((s) => s.dimId === watching.dimId &&
+        Math.abs(s.loc.x - watching.loc.x) < 6 && Math.abs(s.loc.y - watching.loc.y) < 6 && Math.abs(s.loc.z - watching.loc.z) < 6);
+      log("D3 item spawns within 6 blocks, ticks " + (tick - 2) + ".." + (tick + 2) + ": " + near.length);
+      for (const s of near) log("  tick=" + s.tick + (s.tick < tick ? " (BEFORE entityDie)" : s.tick === tick ? " (SAME tick)" : " (AFTER)") +
+                                " " + s.typeId + "x" + s.amount + " @" + v3(s.loc));
+      watching = null;
+      recentSpawns.length = 0;
+    };
+    system.runTimeout(report, 3);
+  });
+
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id === "qolprobe:death") {
+      armed = true;
+      recentSpawns.length = 0;
+      log("D1 death probe ARMED - now die (fall, lava, /kill @s)");
+      return;
+    }
+    if (ev.id === "qolprobe:keepflag") {
+      const p = ev.sourceEntity;
+      if (!p || p.typeId !== "minecraft:player") { log("keepflag: run this as a player"); return; }
+      let n = 0;
+      try {
+        const c = p.getComponent("minecraft:inventory").container;
+        for (let i = 0; i < c.size; i++) {
+          const it = c.getItem(i);
+          if (!it) continue;
+          it.keepOnDeath = true;
+          c.setItem(i, it);
+          n++;
+        }
+        log("keepflag: flagged " + n + " stack(s) keepOnDeath=true. Arm qolprobe:death and die to compare.");
+      } catch (err) { log("keepflag THREW: " + err); }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F1: what getTopmostBlock reports for the column you stand in, for the
+// Fluidworks Rain Collector. Stand on the funnel's future spot and run it.
+//   /scriptevent qolprobe:sky
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "qolprobe:sky") return;
+    const p = ev.sourceEntity;
+    if (!p || p.typeId !== "minecraft:player") { log("sky: run this as a player"); return; }
+    const feet = { x: Math.floor(p.location.x), y: Math.floor(p.location.y), z: Math.floor(p.location.z) };
+    let top;
+    try { top = p.dimension.getTopmostBlock({ x: feet.x, z: feet.z }); } catch (e) { log("F1 getTopmostBlock THREW: " + e); return; }
+    log("F1 SKY feet=" + feet.x + "," + feet.y + "," + feet.z +
+        " topmost=" + (top ? top.typeId + " @y=" + top.y : "undefined") +
+        " -> " + (!top || top.y <= feet.y - 1 ? "OPEN above the block you stand on" : "covered"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W1-W4: locator-bar waypoints, for docs/design/waypoints.md §4 and the shared
+// module packages/shared/engine/waypoints.ts. Adds ONE marker 16 blocks north
+// of you (so it is not under your feet); a second call removes it.
+//
+//   W1 what the bar lists: getAllWaypoints() before and after, and maxCount.
+//   W2 whether a marker survives /reload. Add one, /reload, run again: if the
+//      bar still lists 1 while this module holds nothing, waypoints outlive a
+//      reload and packs must sweep them (the shared module's reset() does).
+//   W3 whether a marker in another dimension shows. Add one, go through a
+//      portal, look at the bar. The packs withhold cross-dimension markers
+//      themselves, so this only decides whether that guard is redundant.
+//   W4 whether the playerWaypoints game rule off hides ours too. Add one,
+//      /gamerule playerWaypoints off (if the rule is settable), look.
+//
+//   /scriptevent qolprobe:waypoint
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  let held = null; // { waypoint, playerId }
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "qolprobe:waypoint") return;
+    const p = ev.sourceEntity;
+    if (!p || p.typeId !== "minecraft:player") { log("waypoint: run this as a player"); return; }
+
+    let bar;
+    try { bar = p.locatorBar; } catch (e) { log("W1 locatorBar THREW: " + e); return; }
+    const listed = () => { try { return bar.getAllWaypoints().length; } catch (e) { return "THREW " + e; } };
+    log("W1 bar count=" + bar.count + " maxCount=" + bar.maxCount + " listed=" + listed() +
+        " held-by-module=" + (held ? "yes" : "no (fresh module: a listed marker survived /reload)"));
+
+    if (held && held.playerId === p.id) {
+      try { held.waypoint.remove(); log("W1 removed the probe marker; listed now=" + listed()); }
+      catch (e) { log("W1 remove THREW: " + e); }
+      held = null;
+      return;
+    }
+
+    const at = { x: Math.floor(p.location.x) + 0.5, y: Math.floor(p.location.y), z: Math.floor(p.location.z) - 16 + 0.5 };
+    try {
+      const wp = new LocationWaypoint(
+        { dimension: p.dimension, x: at.x, y: at.y, z: at.z },
+        { textureBoundsList: [{ lowerBound: 0, texture: "minecraft:circle" }] },
+        { red: 0.9, green: 0.25, blue: 0.25 },
+      );
+      bar.addWaypoint(wp);
+      held = { waypoint: wp, playerId: p.id };
+      log("W1 added a red circle at " + v3(at) + " in " + p.dimension.id + "; listed now=" + listed() +
+          ". Now: /reload and run again (W2); portal and look (W3); playerWaypoints off and look (W4)");
+    } catch (e) {
+      log("W1 addWaypoint THREW: " + e + (e && e.reason ? " reason=" + e.reason : ""));
     }
   });
 });

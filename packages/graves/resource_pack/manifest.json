@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Graves Resources",
+    "description": "The gravestone model and texture.",
+    "uuid": "65b20b45-e07c-49d7-bf8a-697ca62ee10b",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Graves resources",
+      "type": "resources",
+      "uuid": "7a1d3c52-9f0e-4b8a-9c1d-2e6f5a4b3c21",
+      "version": [1, 0, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

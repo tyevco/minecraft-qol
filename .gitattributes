@@ -1,0 +1,17 @@
+# Normalise line endings to LF everywhere.
+#
+# Without this, generated assets are rewritten with LF by `npm run assets` and
+# then flagged as modified purely because git checked them out as CRLF on
+# Windows - which breaks the pipeline's central property, that a changed file in
+# a diff always corresponds to a source change under tools/.
+* text=auto eol=lf
+
+# Binary assets. Git's heuristic already detects these, but say so explicitly:
+# a line-ending conversion applied to a PNG silently corrupts it.
+*.png binary
+*.mcaddon binary
+*.mcpack binary
+*.mcstructure binary
+*.tga binary
+*.ogg binary
+*.fsb binary

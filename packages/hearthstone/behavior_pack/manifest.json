@@ -1,25 +1,25 @@
 {
-  "format_version": 2,
+  "format_version": 3,
   "header": {
     "name": "Hearthstone",
-    "description": "Respawn anchors that catch players who die nearby without a spawn point set.",
+    "description": "Respawn anchors that catch players who die nearby without a spawn point set, and locator-bar markers for the way back.",
     "uuid": "bbbfdde2-341e-4302-a241-03e57720557c",
-    "version": [1, 0, 0],
-    "min_engine_version": [1, 26, 40]
+    "version": "1.1.0",
+    "min_engine_version": "1.26.40"
   },
   "modules": [
     {
       "description": "Hearthstone blocks and recipes",
       "type": "data",
       "uuid": "9fad8281-4251-4908-8331-6ce3395904eb",
-      "version": [1, 0, 0]
+      "version": "1.1.0"
     },
     {
       "description": "Hearthstone scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "56180282-fde6-4d2e-8138-fd255b8d5eda",
-      "version": [1, 0, 0],
+      "version": "1.1.0",
       "entry": "scripts/main.js"
     }
   ],
@@ -27,5 +27,23 @@
   "metadata": {
     "authors": ["tyevco"],
     "product_type": "addon"
-  }
+  },
+  "settings": [
+    {
+      "type": "label",
+      "text": "Markers on the locator bar for the way back. Each player sees only their own, and only in the dimension they are in."
+    },
+    {
+      "type": "toggle",
+      "text": "Show your bed (or respawn anchor)",
+      "name": "hearthstone:show_bed",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Show the Hearthstone you will respawn at",
+      "name": "hearthstone:show_hearth",
+      "default": true
+    }
+  ]
 }

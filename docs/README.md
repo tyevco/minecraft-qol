@@ -36,13 +36,19 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `Player.persistentId` for ownership | **Beta-only.** Mint an id into a player dynamic property instead. |
 | `PackSettingsChangeAfterEvent` | Beta-only, and misnamed (`PackSettingChangeAfterEventSignal`). `world.getPackSettings()` itself is stable — poll and diff. |
 | `CustomForm.image` grids | server-ui **2.2.0**, which has no stable release. `CustomForm` itself *is* stable in 2.1.0. |
+| `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
+| Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
+| Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — not yet built.
 Additional correction: the doc treats the `on_kill` fix as good news for a turret,
 but that fix covers **melee goals only**; `ranged_attack` is not in the list, so a
 ranged turret needs a script-side kill hook.
 
-**[`design/fluidworks.md`](design/fluidworks.md)** — not yet built. Its two open
+**[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
+(funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times
+machines through the shared rules; pipes, Harvester, Collector, tank labels).
+Phase 2, potions, is blocked - see the table. Its two open
 questions are now answered: cauldron `fill_level` is **0–6** (not Java's 0–3), and
 dyed water is fully round-trippable via `BlockFluidContainerComponent.fluidColor`.
 But **potions are not** — there is `setPotion` and no `getPotion`, so you can set
@@ -50,13 +56,36 @@ a cauldron's potion and detect that one is present, never read back *which*.
 Note also that QOL Times already implements four of its machines at the rules
 layer (`packages/qol-times/scripts/core/rules/`).
 
-**[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1, plus
-the locator-bar waypoints from Phase 2). Its "must prototype" list is resolved in
-`hearthstone-spawn-results.md`: `getSpawnPoint()` really does return `undefined`
-for a player who never slept, and non-Overworld anchors work — verified by dying
-in the Nether. The waypoints go further than the doc's "one per anchor": each
-player gets their own bed, the Hearthstone they will wake at, and their last
-death location. See [`../packages/hearthstone/README.md`](../packages/hearthstone/README.md).
+**[`design/graves.md`](design/graves.md)** — **built**, written alongside the
+implementation rather than before it, so it carries no corrections. Its §5
+lists what to measure in game; the probe pack has `qolprobe:death` for it.
+
+**[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1). Its
+"must prototype" list is resolved in `hearthstone-spawn-results.md`:
+`getSpawnPoint()` really does return `undefined` for a player who never slept,
+and non-Overworld anchors work — verified by dying in the Nether.
+
+**[`design/waypoints.md`](design/waypoints.md)** — **built** (Phase 1 plus the
+bed marker from Phase 2): `packages/shared/engine/waypoints.ts`, used by
+Hearthstone for the bed and hearth markers and by Graves for the gravestone.
+Nothing in it has been measured yet; its §4 "must prototype" list maps onto
+`qolprobe:waypoint` in the probe pack, and each pack README says what to look
+for. One deliberate divergence: the hearth marker stays while Hearthstone still
+owns the player's spawn point, rather than clearing when they leave the anchor's
+radius, because that is still where they will wake up.
+
+## Proposals — not yet built
+
+Written against the installed 2.9.0 typings, each with its own “must
+prototype” list. In suggested order:
+
+- [`design/guardian.md`](design/guardian.md) — per-role damage scaling and
+  safety switches, on the stable `entityHurt` before-event. Pets in phase 3.
+- [`design/waystones.md`](design/waystones.md) — placed teleport points; the
+  other half of Hearthstone's tagline.
+- [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
+  and replant.
+- [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
 
 ## Plans
 
@@ -76,3 +105,9 @@ That loop — question, probe, results doc, build against measurements — caugh
 `total − sky` formula being wrong, the Nether roof reading as a dimension failure,
 and `minecraft:block_entity` being a preview-only feature. Each would have been a
 plausible-looking implementation that was quietly incorrect.
+
+The GameTest pack (`packages/gametest/`) is the other half of the loop: once
+behaviour is built, an in-game test pins it. It runs on Mojang's GameTest
+framework, which needs the Beta APIs experiment, so it lives in a throwaway
+world and is never packaged. Probe first to learn what the engine does; test
+afterwards so it keeps doing it. `/gametest runset qol` runs every test.

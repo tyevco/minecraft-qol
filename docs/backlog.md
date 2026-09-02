@@ -39,12 +39,23 @@ are stable (`world.getPackSettings()`, four control types) but need manifest
 `format_version` 3, which brings SemVer version strings and a required
 `metadata.authors`. Deferred so the pack could be confirmed loading first.
 `PackSettingChangeAfterEventSignal` is beta-only, so changes need polling.
+Graves now does exactly this (`packages/graves/behavior_pack/manifest.json`,
+`scripts/engine/settings.ts`); once it is confirmed loading, copy the shape.
 
-## Lens: custom item
+## Lens: render the worn Lens
 
-The doc's original framing is a held lens item rather than a command. Needs the
-repo's first **resource pack** — texture, name, and `copyToResourcePacks` wired
-into `just.config.ts`. `ItemCustomComponent.onUse` is stable and ready.
+The Spawn Lens item, its resource pack and icon exist. What it still lacks is
+an **attachable**: worn on the head it occupies the slot but draws nothing on
+the player model. A goggles-style attachable geometry plus
+`attachables/spawn_lens.json` in the resource pack would make a Lens-wearer
+visible to other players. Purely cosmetic, so it waits.
+
+## Graves: experience
+
+Vanilla drops XP orbs on death whatever the mode. Re-granting `getTotalXp()`
+on respawn would duplicate whatever orbs the player then walks over, so it
+needs the orbs removed on the death tick — the drop-chasing the design avoided.
+Worth it only if XP loss turns out to be what actually frustrates the kids.
 
 ## Lens: verify the DENY list
 
@@ -53,28 +64,33 @@ into `just.config.ts`. `ItemCustomComponent.onUse` is stable and ready.
 sealed dark rooms floored with each material, left overnight against a stone
 control. Automatable with the same self-building-rig trick as the light matrix.
 
-## Hearthstone: verify the waypoints in game
+## Waypoints: verify the shared module in game
 
-The locator-bar markers (`packages/hearthstone/scripts/engine/waypoints.ts`)
-are built on stable API and typecheck, but three engine behaviours are inferred
-from the typings rather than measured, and each has a fallback that should be
-confirmed harmless:
+The locator-bar markers (`packages/shared/engine/waypoints.ts`, used by
+Hearthstone and Graves) are built on stable API and typecheck, but the engine
+behaviours in `docs/design/waypoints.md` §4 are inferred from the typings, not
+measured. `qolprobe:waypoint` in the probe pack measures them; each has a
+fallback that should be confirmed harmless:
 
 - **Do waypoints survive `/reload`?** Module state does not, so the handles are
   lost either way. `reset()` sweeps `locatorBar.getAllWaypoints()` on `worldLoad`
   and on `initialSpawn` before rebuilding. The typings say the bar only exposes
-  this pack's own waypoints, so the sweep cannot touch vanilla player markers —
-  worth watching the bar through a `/reload` to see neither duplicates nor a gap.
-- **Is `deadEntity.location` readable in `entityDie` for a player?** The grave
-  is recorded from it. If it throws, the handler logs and no grave is marked;
-  the fix would be to snapshot each player's position on the sweep instead.
-- **Cross-dimension markers.** The pure layer withholds a marker whose dimension
-  is not the player's current one, so the engine's own handling is never
-  exercised. If the engine already hides them, nothing changes.
+  the asking pack's own waypoints, so the sweep cannot touch vanilla player
+  markers or another pack's — watch the bar through a `/reload` with both
+  packs on and confirm neither duplicates nor a gap.
+- **`LocatorBar.maxCount`.** Three markers per pack should be nowhere near it;
+  the shared module logs `WaypointLimitExceeded` rather than failing silently.
+- **Cross-dimension markers.** Both packs withhold a marker whose dimension is
+  not the player's, so the engine's own handling is never exercised. If the
+  engine already hides them, the guard is merely redundant.
+- **The `playerWaypoints` game rule.** Whether "off" hides pack waypoints too.
+  If it does not, a world that turned the bar off still sees ours, and the
+  packs' panel toggles are the remedy.
 
-Also deferred, in the design doc's own order: pack settings for the default
-(markers on, respawn message on), and per-anchor "show waypoint" once anchors
-have a config form.
+Also deferred: a gravestone visible to operators (the design doc's "a parent
+finding a kid's stone"), which is one more toggle and a second `graveMarkers`
+call once the per-viewer bar is confirmed; and Waystones markers when that
+pack exists.
 
 ## QOL Times: unverified features
 
@@ -84,18 +100,27 @@ game. Also the two parity features — dispenser places armour stands
 (MCPE-41432 / MCPE-76479) — which need the interceptor generalised, since it
 currently assumes a cauldron target.
 
-## Shared library: extract the block index
+## Shared library: finish the block index
 
-`packages/qol-times/scripts/dispenser/rigRegistry.ts` holds a world-index pattern
-all three planned packs need. Roughly 40 of its 193 lines are generic. Extracting
-it wants three things it lacks: **chunk keying** (it stores every entry in one
-dynamic property, which will hit the per-property cap), a **schema version**, and
-a **tick budget** (it polls every tick, unyielded). Do this when the second
-consumer appears — Hearthstone — not before.
+`packages/shared/engine/positionIndex.ts` is the generic position-keyed index,
+with a schema version, used by Fluidworks. Hearthstone and Graves still carry
+their own copies of the same pattern and should move onto it. Still missing
+from the shared one: **chunk keying** (every row in one dynamic property will
+hit the per-property cap eventually) and a **tick budget** (Fluidworks yields
+every four funnels inside a job, which is a start, not a budget).
 
-## GameTest pack
+## Fluidworks: what is left
 
-Worth it for world-interaction regression tests ("does the dispenser actually
-fill the cauldron"), not for measurements. `@minecraft/server-gametest` has no
-stable release, so it needs the Beta APIs experiment in a throwaway world and
-must stay out of every shipped `.mcaddon`.
+Potions are blocked until the stable API can construct a potion of a chosen
+effect (`ItemStack.createPotion` is absent in 2.9.0). The Filter Funnel needs
+a per-block configuration surface, which without commands means either block
+entities reaching retail or an in-world idiom (an item frame on the funnel as
+its filter is the obvious one). The Linked Pair and Lava Kiln are Phase 4.
+
+## GameTest pack: grow the suite
+
+`packages/gametest` exists (dev only, Beta APIs, never shipped) with one test
+per pack. Worth adding as behaviour lands: Lens marker placement against a
+known dark room, Graves retrieval by interacting with the stone (needs
+`interactWithEntity` on a simulated player), pipe connection states, and the
+Guardian damage table once it is built.

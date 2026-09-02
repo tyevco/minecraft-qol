@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Lens Resources",
+    "description": "Icon and name for the Spawn Lens.",
+    "uuid": "423b19ea-c7cf-4ef9-84a7-2fe52ec2d095",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Lens resources",
+      "type": "resources",
+      "uuid": "adfe405d-30f5-413e-905c-28dd81cfb977",
+      "version": [1, 0, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

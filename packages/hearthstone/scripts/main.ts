@@ -15,25 +15,39 @@
  *   setSpawnPoint works, and is honoured on respawn, in the Nether too
  *   it throws LocationOutOfWorldBoundariesError outside the dimension's range
  *
- * Getting back is the other half of the problem, so the pack also puts markers
- * on the locator bar: the player's bed (or respawn anchor), the Hearthstone they
- * will wake at, and their last death location until they return to it.
- * /scriptevent hs:waypoints toggles them per player.
+ * Getting back is the other half of the problem, so the pack also marks the
+ * player's spawn point on the locator bar: their bed (or respawn anchor), or
+ * the Hearthstone they will wake at. Both toggles live in the settings panel.
+ * The gravestone marker is Graves' - it knows when a stone is placed and
+ * emptied - through the same shared module.
  */
 import {
   LiquidType,
+  WaypointTexture,
   system,
   world,
   type DimensionLocation,
   type Player,
   type Vector3,
 } from "@minecraft/server";
+import { createSettingsPoller } from "@qol/shared/engine/packSettings";
 import { withBlock } from "@qol/shared/engine/safeBlock";
+import * as waypoints from "@qol/shared/engine/waypoints";
 import { chooseRespawn, nearestAnchor, type Point } from "./core/anchors";
 import { decide, sameSpawn, type SpawnRef } from "./core/ownership";
-import { describeDimension, reachedGrave, wantedWaypoints } from "./core/waypoints";
+import {
+  DEFAULT_SETTINGS,
+  describeSettings,
+  parseSettings,
+  sameSettings,
+} from "./core/settings";
+import {
+  WAYPOINT_KEY,
+  isOurKey,
+  wantedWaypoints,
+  type WaypointKind,
+} from "./core/waypoints";
 import * as registry from "./engine/registry";
-import * as waypoints from "./engine/waypoints";
 
 const TAG = "[Hearthstone]";
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
@@ -41,22 +55,34 @@ const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 const ANCHOR_BLOCK = "hearthstone:hearthstone";
 /** Player dynamic property recording the spawn point we assigned. */
 const PROP_OWNED = "hs:owned";
-/** Player dynamic property recording where they last died, until they return. */
-const PROP_GRAVE = "hs:grave";
-/** Player dynamic property: locator-bar markers on (default) or off. */
-const PROP_WAYPOINTS = "hs:wp";
 /** Default catch radius. Pack settings will back this later; see docs/backlog.md. */
 const DEFAULT_RADIUS = 64;
 /** Ticks between sweeps. Player count is small and bounded; anchors are not. */
 const EVALUATE_TICKS = 60;
+/** Ticks between settings-panel polls. The change event is beta-only. */
+const SETTINGS_TICKS = 100;
+
+const settings = createSettingsPoller(
+  parseSettings,
+  sameSettings,
+  DEFAULT_SETTINGS,
+  log,
+  describeSettings,
+);
+
+/** Marker styles. The hearth is ember orange, matching the pack's §6 messages. */
+const STYLE: Record<WaypointKind, waypoints.WaypointStyle> = {
+  bed: { color: { red: 0.6, green: 0.8, blue: 1 }, texture: WaypointTexture.Square },
+  hearth: { color: { red: 1, green: 0.6, blue: 0.15 }, texture: WaypointTexture.SmallStar },
+};
 
 // ---------------------------------------------------------------------------
 // Ownership record
 // ---------------------------------------------------------------------------
 
-function readRef(player: Player, prop: string): SpawnRef | undefined {
+function readOwned(player: Player): SpawnRef | undefined {
   try {
-    const raw = player.getDynamicProperty(prop);
+    const raw = player.getDynamicProperty(PROP_OWNED);
     if (typeof raw !== "string") return undefined;
     const parsed = JSON.parse(raw) as SpawnRef;
     return typeof parsed?.dimId === "string" ? parsed : undefined;
@@ -65,17 +91,13 @@ function readRef(player: Player, prop: string): SpawnRef | undefined {
   }
 }
 
-function writeRef(player: Player, prop: string, ref: SpawnRef | undefined): void {
+function writeOwned(player: Player, ref: SpawnRef | undefined): void {
   try {
-    player.setDynamicProperty(prop, ref ? JSON.stringify(ref) : undefined);
+    player.setDynamicProperty(PROP_OWNED, ref ? JSON.stringify(ref) : undefined);
   } catch (e) {
-    log(`failed to write ${prop}: ${e}`);
+    log(`failed to record ownership: ${e}`);
   }
 }
-
-const readOwned = (player: Player) => readRef(player, PROP_OWNED);
-const writeOwned = (player: Player, ref: SpawnRef | undefined) =>
-  writeRef(player, PROP_OWNED, ref);
 
 function currentSpawn(player: Player): SpawnRef | undefined {
   try {
@@ -86,34 +108,6 @@ function currentSpawn(player: Player): SpawnRef | undefined {
     return undefined;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Grave and waypoint preferences
-// ---------------------------------------------------------------------------
-
-const readGrave = (player: Player) => readRef(player, PROP_GRAVE);
-const writeGrave = (player: Player, ref: SpawnRef | undefined) =>
-  writeRef(player, PROP_GRAVE, ref);
-
-function waypointsEnabled(player: Player): boolean {
-  try {
-    return player.getDynamicProperty(PROP_WAYPOINTS) !== false;
-  } catch {
-    return true;
-  }
-}
-
-function setWaypointsEnabled(player: Player, enabled: boolean): void {
-  try {
-    // Absent means on, so only ever store the opt-out.
-    player.setDynamicProperty(PROP_WAYPOINTS, enabled ? undefined : false);
-  } catch (e) {
-    log(`failed to record waypoint preference: ${e}`);
-  }
-}
-
-/** Players who died since they last spawned, so the respawn message fires once. */
-const freshGraves = new Set<string>();
 
 function whereIs(player: Player): Point {
   return {
@@ -205,55 +199,26 @@ function assignSpawn(player: Player): void {
 }
 
 /**
- * Bring the player's locator bar in line with where they can get back to.
+ * Bring the player's locator bar in line with where they will wake up.
  *
  * Runs after assignSpawn on every sweep, so a freshly assigned hearth shows
  * within the same tick, and a bed slept in shows by the next sweep at the latest.
  */
 function syncWaypoints(player: Player): void {
-  const at = whereIs(player);
-  const grave = readGrave(player);
-
-  // Reaching the grave retires it for good - the property, not just the marker.
-  // Otherwise a player who leaves and comes back would find it resurrected.
-  const back = reachedGrave(at, grave);
-  if (back) writeGrave(player, undefined);
-
+  const { showBed, showHearth } = settings.current();
+  const wanted = wantedWaypoints({
+    at: whereIs(player),
+    spawn: currentSpawn(player),
+    owned: readOwned(player),
+    showBed,
+    showHearth,
+  });
   waypoints.sync(
     player,
-    wantedWaypoints({
-      at,
-      spawn: currentSpawn(player),
-      owned: readOwned(player),
-      grave: back ? undefined : grave,
-      enabled: waypointsEnabled(player),
-    }),
+    wanted.map((w) => ({ key: WAYPOINT_KEY[w.kind], target: w, style: STYLE[w.kind] })),
+    isOurKey,
+    log,
   );
-}
-
-function recordDeath(player: Player): void {
-  try {
-    const at = whereIs(player);
-    writeGrave(player, at);
-    freshGraves.add(player.id);
-  } catch (e) {
-    // The dead entity is documented as still readable in the after-event, but
-    // this is the one place where losing the location is not worth a throw.
-    log(`could not record death location: ${e}`);
-  }
-}
-
-function announceGrave(player: Player): void {
-  if (!freshGraves.delete(player.id)) return;
-  const grave = readGrave(player);
-  if (!grave) return;
-
-  const where = `§f${grave.x}, ${grave.y}, ${grave.z}§7`;
-  const dim = grave.dimId === player.dimension.id ? "" : ` in ${describeDimension(grave.dimId)}`;
-  const hint = waypointsEnabled(player)
-    ? " Your grave is on the locator bar until you get back to it."
-    : "";
-  player.sendMessage(`§7You died at ${where}${dim}.${hint}`);
 }
 
 function sweep(): void {
@@ -272,12 +237,17 @@ function sweep(): void {
 
 world.afterEvents.worldLoad.subscribe(() => {
   registry.load();
+  settings.refresh();
 
   // A /reload discards our waypoint handles but not, necessarily, the waypoints.
   // Sweep whatever this pack left on each bar before the first sync rebuilds it.
-  for (const player of world.getAllPlayers()) waypoints.reset(player);
+  for (const player of world.getAllPlayers()) waypoints.reset(player, log);
 
   system.runInterval(sweep, EVALUATE_TICKS);
+  system.runInterval(() => {
+    // A changed panel takes effect on the next sweep, not the one after.
+    if (settings.refresh()) sweep();
+  }, SETTINGS_TICKS);
 
   world.afterEvents.playerPlaceBlock.subscribe((ev) => {
     if (!ev.block.isValid || ev.block.typeId !== ANCHOR_BLOCK) return;
@@ -303,36 +273,21 @@ world.afterEvents.worldLoad.subscribe(() => {
     }
   });
 
-  // Where they died is where their things are. Filtered to players by the
-  // engine, so this never runs for the mob that killed them.
-  world.afterEvents.entityDie.subscribe(
-    (ev) => {
-      const player = ev.deadEntity;
-      if (!("sendMessage" in player)) return;
-      recordDeath(player as Player);
-    },
-    { entityTypes: ["minecraft:player"] },
-  );
-
   // Cover a player the moment they arrive rather than up to a sweep later.
   world.afterEvents.playerSpawn.subscribe((ev) => {
     system.run(() => {
       try {
-        // A joining player's handles are gone with their last session, and
-        // the bar may or may not have kept the waypoints; start clean.
-        if (ev.initialSpawn) waypoints.reset(ev.player);
+        // A joining player's handles went with their last session, and the
+        // bar may or may not have kept the waypoints; start clean.
+        if (ev.initialSpawn) waypoints.reset(ev.player, log);
         evaluate(ev.player);
-        announceGrave(ev.player);
       } catch (e) {
         log(`spawn evaluate failed: ${e}`);
       }
     });
   });
 
-  world.afterEvents.playerLeave.subscribe((ev) => {
-    waypoints.forget(ev.playerId);
-    freshGraves.delete(ev.playerId);
-  });
+  world.afterEvents.playerLeave.subscribe((ev) => waypoints.forget(ev.playerId));
 
   world.afterEvents.playerDimensionChange.subscribe((ev) => {
     system.run(() => {
@@ -347,26 +302,13 @@ world.afterEvents.worldLoad.subscribe(() => {
   // Diagnostics, in the same shape as the other packs: /reload-safe because
   // scriptEventReceive is subscribed here rather than at startup.
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
-    if (ev.id !== "hs:debug" && ev.id !== "hs:waypoints") return;
+    if (ev.id !== "hs:debug") return;
     const player = ev.sourceEntity;
     if (!player || !("sendMessage" in player)) return;
     const p = player as Player;
 
-    if (ev.id === "hs:waypoints") {
-      const enabled = !waypointsEnabled(p);
-      setWaypointsEnabled(p, enabled);
-      syncWaypoints(p);
-      p.sendMessage(
-        enabled
-          ? "§6Hearthstone waypoints on.§7 Bed, hearth and grave show on the locator bar."
-          : "§7Hearthstone waypoints off.",
-      );
-      return;
-    }
-
     const current = currentSpawn(p);
     const owned = readOwned(p);
-    const grave = readGrave(p);
     p.sendMessage(`§7anchors: §f${registry.count()}§7 registered`);
     p.sendMessage(
       `§7spawn: §f${current ? `${current.x},${current.y},${current.z} in ${current.dimId}` : "unset"}`,
@@ -375,12 +317,10 @@ world.afterEvents.worldLoad.subscribe(() => {
       `§7owned by us: §f${owned ? `${owned.x},${owned.y},${owned.z}` : "no"}§7 ` +
         `-> decision §f${decide(current, owned)}`,
     );
+    p.sendMessage(`§7panel: §f${describeSettings(settings.current())}`);
     p.sendMessage(
-      `§7grave: §f${grave ? `${grave.x},${grave.y},${grave.z} in ${grave.dimId}` : "none"}`,
-    );
-    p.sendMessage(
-      `§7waypoints: §f${waypointsEnabled(p) ? "on" : "off"}§7, on bar: §f${waypoints.describe(p.id)}` +
-        `§7 (${p.locatorBar.count}/${p.locatorBar.maxCount} used)`,
+      `§7waypoints: §f${waypoints.describe(p.id)}§7 ` +
+        `(bar ${p.locatorBar.count}/${p.locatorBar.maxCount})`,
     );
   });
 

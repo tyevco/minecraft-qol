@@ -1,0 +1,9 @@
+{
+  "resource_pack_name": "bulwark",
+  "texture_name": "atlas.terrain",
+  "padding": 8,
+  "num_mip_levels": 4,
+  "texture_data": {
+    "bulwark_turret_base": { "textures": "textures/blocks/turret_base" }
+  }
+}

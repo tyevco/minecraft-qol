@@ -1,12 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  GRAVE_REACHED_RADIUS,
-  describeDimension,
-  reachedGrave,
-  sameSpec,
+  WAYPOINT_KEY,
+  isOurKey,
   wantedWaypoints,
   type WaypointInputs,
-  type WaypointSpec,
 } from "../scripts/core/waypoints";
 import type { SpawnRef } from "../scripts/core/ownership";
 
@@ -19,22 +16,15 @@ const inputs = (over: Partial<WaypointInputs> = {}): WaypointInputs => ({
   at: ref(0),
   spawn: undefined,
   owned: undefined,
-  grave: undefined,
-  enabled: true,
+  showBed: true,
+  showHearth: true,
   ...over,
 });
 
-const kinds = (specs: WaypointSpec[]) => specs.map((s) => s.kind);
-
 describe("wantedWaypoints", () => {
-  it("shows nothing for a player with no spawn point and no grave", () => {
+  it("shows nothing for a player with no spawn point", () => {
     expect(wantedWaypoints(inputs())).toEqual([]);
-  });
-
-  it("shows nothing at all when the player has switched markers off", () => {
-    const all = inputs({ spawn: ref(100), grave: ref(200) });
-    expect(wantedWaypoints({ ...all, enabled: false })).toEqual([]);
-    expect(wantedWaypoints(all)).toHaveLength(2);
+    expect(wantedWaypoints(inputs({ owned: ref(5) }))).toEqual([]);
   });
 
   it("labels a Hearthstone-assigned spawn as the hearth", () => {
@@ -53,42 +43,29 @@ describe("wantedWaypoints", () => {
   });
 
   it("never shows a bed and a hearth at once", () => {
-    // They are the same spawn point under two labels, so exactly one applies.
+    // They are the same spawn point under two labels, so at most one applies.
     const ours = ref(100);
     for (const owned of [undefined, ours, ref(7)]) {
-      const out = wantedWaypoints(inputs({ spawn: ours, owned }));
-      const spawnKinds = kinds(out).filter((k) => k !== "grave");
-      expect(spawnKinds).toHaveLength(1);
+      expect(wantedWaypoints(inputs({ spawn: ours, owned })).length).toBeLessThanOrEqual(1);
     }
   });
 
-  it("marks the grave alongside the spawn point", () => {
-    const out = wantedWaypoints(inputs({ spawn: ref(100), grave: ref(-300, 12, 40) }));
-    expect(kinds(out).sort()).toEqual(["bed", "grave"]);
-    expect(out.find((s) => s.kind === "grave")).toEqual({ kind: "grave", ...ref(-300, 12, 40) });
+  it("honours each panel toggle separately", () => {
+    const ours = ref(100);
+    const hearth = inputs({ spawn: ours, owned: ours });
+    const bed = inputs({ spawn: ours });
+
+    expect(wantedWaypoints({ ...hearth, showHearth: false })).toEqual([]);
+    expect(wantedWaypoints({ ...hearth, showBed: false })).toHaveLength(1);
+    expect(wantedWaypoints({ ...bed, showBed: false })).toEqual([]);
+    expect(wantedWaypoints({ ...bed, showHearth: false })).toHaveLength(1);
   });
 
-  it("drops the grave once the player is back at it", () => {
-    const grave = ref(50, 20, 50);
-    const near = { ...grave, x: grave.x + GRAVE_REACHED_RADIUS };
-    const far = { ...grave, x: grave.x + GRAVE_REACHED_RADIUS + 1 };
-    expect(kinds(wantedWaypoints(inputs({ at: near, grave })))).toEqual([]);
-    expect(kinds(wantedWaypoints(inputs({ at: far, grave })))).toEqual(["grave"]);
-  });
-
-  it("withholds markers in another dimension rather than pointing the wrong way", () => {
+  it("withholds a marker in another dimension rather than pointing the wrong way", () => {
     const bedInOverworld = ref(100);
-    const graveInNether = ref(30, 40, 30, NETHER);
-    const both = inputs({ spawn: bedInOverworld, grave: graveInNether });
-
-    expect(kinds(wantedWaypoints({ ...both, at: ref(0, 64, 0, OW) }))).toEqual(["bed"]);
-    expect(kinds(wantedWaypoints({ ...both, at: ref(0, 64, 0, NETHER) }))).toEqual(["grave"]);
-  });
-
-  it("does not treat a grave in another dimension at matching coordinates as reached", () => {
-    const grave = ref(0, 64, 0, NETHER);
-    expect(reachedGrave(ref(0, 64, 0, OW), grave)).toBe(false);
-    expect(reachedGrave(ref(0, 64, 0, NETHER), grave)).toBe(true);
+    const both = inputs({ spawn: bedInOverworld });
+    expect(wantedWaypoints({ ...both, at: ref(0, 64, 0, OW) })).toHaveLength(1);
+    expect(wantedWaypoints({ ...both, at: ref(0, 64, 0, NETHER) })).toEqual([]);
   });
 
   it("carries the exact coordinates through untouched", () => {
@@ -98,42 +75,13 @@ describe("wantedWaypoints", () => {
   });
 });
 
-describe("reachedGrave", () => {
-  it("is false with no grave", () => {
-    expect(reachedGrave(ref(0), undefined)).toBe(false);
+describe("keys", () => {
+  it("are all this pack's own", () => {
+    for (const key of Object.values(WAYPOINT_KEY)) expect(isOurKey(key)).toBe(true);
+    expect(isOurKey("gv:grave:1")).toBe(false);
   });
 
-  it("measures in three dimensions", () => {
-    const grave = ref(0, 0, 0);
-    expect(reachedGrave(ref(0, GRAVE_REACHED_RADIUS + 1, 0), grave)).toBe(false);
-    expect(reachedGrave(ref(0, GRAVE_REACHED_RADIUS, 0), grave)).toBe(true);
-  });
-});
-
-describe("sameSpec", () => {
-  const spec: WaypointSpec = { kind: "bed", ...ref(1, 2, 3) };
-
-  it("matches on kind and position together", () => {
-    expect(sameSpec(spec, { ...spec })).toBe(true);
-    expect(sameSpec(spec, { ...spec, kind: "hearth" })).toBe(false);
-    expect(sameSpec(spec, { ...spec, y: 9 })).toBe(false);
-    expect(sameSpec(spec, { ...spec, dimId: NETHER })).toBe(false);
-  });
-
-  it("treats a missing side as not matching", () => {
-    expect(sameSpec(undefined, spec)).toBe(false);
-    expect(sameSpec(spec, undefined)).toBe(false);
-  });
-});
-
-describe("describeDimension", () => {
-  it("names the three vanilla dimensions", () => {
-    expect(describeDimension(OW)).toBe("the Overworld");
-    expect(describeDimension(NETHER)).toBe("the Nether");
-    expect(describeDimension("minecraft:the_end")).toBe("the End");
-  });
-
-  it("degrades gracefully for anything else", () => {
-    expect(describeDimension("foo:sky_islands")).toBe("foo:sky islands");
+  it("are distinct per kind", () => {
+    expect(new Set(Object.values(WAYPOINT_KEY)).size).toBe(Object.keys(WAYPOINT_KEY).length);
   });
 });

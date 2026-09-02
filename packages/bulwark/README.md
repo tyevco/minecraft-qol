@@ -1,0 +1,63 @@
+# Bulwark — scaffold
+
+Automated base defense: a placeable turret that acquires and attacks hostile
+mobs, upgraded by feeding it items. **Nothing is implemented yet**; this is a
+buildable, deployable shell.
+
+Design: [`docs/design/bulwark-turret.md`](../../docs/design/bulwark-turret.md).
+**Read [`docs/README.md`](../../docs/README.md) first.**
+
+Note the design doc pairs the turret with a spawn-proofing lens as one "base
+defense" pack. The lens **already shipped separately** as `packages/lens` — it
+turned out to be a complete product on its own, which is what the doc predicted.
+So Bulwark is the turret alone.
+
+## The decision that determines viability
+
+**Use engine AI, not script targeting.** `minecraft:behavior.nearest_attackable_target`
+for acquisition, `minecraft:behavior.ranged_attack` for timing, `minecraft:shooter`
+for the projectile. All three run in engine code, so a hundred turrets cost
+effectively nothing on the script budget. Script then only runs on upgrade,
+config change, and a slow reconciliation sweep.
+
+The alternative — `dimension.getEntities` on an interval with hand-rolled
+ballistics — puts every turret on the script clock every cycle. Only reach for it
+if targeting genuinely cannot be expressed in AI JSON.
+
+## What the design doc gets wrong
+
+| Doc says | Reality |
+| --- | --- |
+| `on_kill` was misrouted to `on_attack` and now fires correctly — "exactly what you want for kill counts" | The fix covers **melee goals only**. `ranged_attack` is **not** in the fixed list, so a ranged turret gets no `on_kill`. Kill tracking needs a script-side hook. |
+| `minecraft:block_entity` for tier/ammo/ownership state | **Still experimental.** Use world dynamic properties keyed by position — see `packages/hearthstone/scripts/engine/registry.ts`. |
+| `CustomForm.image` grid for upgrade slots | server-ui **2.2.0**, no stable release. `CustomForm` itself is stable in 2.1.0; use `ActionFormData` button icons or glyphs. |
+| Store the owner's `persistentId` | **Beta-only.** Mint an id into a player dynamic property on `initialSpawn`. |
+
+Confirmed correct in the doc, and worth keeping: entity JSON validation went
+strict at `format_version` 1.26.40 (invalid data now **fails to load** rather than
+being ignored); `ranged_attack.attack_interval` is now a float range replacing
+the old min/max pair; `float_wander.float_duration` must be a min/max object; and
+`minecraft:variant` + component groups + `Entity.triggerEvent` is the sanctioned
+way to swap tiers in place. Note `EntityVariantComponent.value` is **read-only**,
+so tier changes must go through an entity event — or consider **entity properties**
+(`description.properties` + `setProperty`), which are directly writable and avoid
+the component-group churn.
+
+## Must prototype before committing to the architecture
+
+The doc is right that the block↔entity pairing is the load-bearing assumption.
+Test reconciliation across chunk unload/reload, world reload, `/reload`, dimension
+travel and restart before building on it. Use the probe pack — it already has the
+build-a-rig-and-restore-it pattern.
+
+Also unresolved and worth an early answer: **do custom entities with no
+`spawn_rules` file count toward mob caps?** The docs do not say, and a hundred
+turrets is exactly the scale where it would matter — a perimeter that silently
+suppresses legitimate spawns would be a confusing bug to chase later.
+
+## Social design worth not deferring
+
+Player targeting **off by default**, behind a clearly labelled setting. Friendly
+fire exclusions (owner, tamed mobs, villagers, iron golems, named mobs) via
+`type_family` filters so they stay in engine. A density cap on placement, because
+turrets are an obvious lag vector and it is cheaper to prevent than to diagnose.

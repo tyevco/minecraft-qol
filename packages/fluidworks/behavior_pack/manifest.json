@@ -1,0 +1,31 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Fluidworks",
+    "description": "Fluid logistics: cauldrons are tanks, funnels are pipes, dispensers are ports.",
+    "uuid": "b1a7f5b3-97bd-468c-afd4-66aa916f806a",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Fluidworks blocks and recipes",
+      "type": "data",
+      "uuid": "816d1438-464c-41fb-a5f9-48ac86e6cebb",
+      "version": [0, 1, 0]
+    },
+    {
+      "description": "Fluidworks scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "a4bd91a4-b950-4405-a4fa-8ca06b314c5e",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

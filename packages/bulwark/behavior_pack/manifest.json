@@ -1,0 +1,31 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Bulwark",
+    "description": "Automated base defense: a placeable turret that acquires and attacks hostile mobs.",
+    "uuid": "ef636387-82d2-4a7b-a1fb-b8f25e034aee",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Bulwark blocks, entities and recipes",
+      "type": "data",
+      "uuid": "2717e182-934d-4b13-b8d1-542e2277b925",
+      "version": [0, 1, 0]
+    },
+    {
+      "description": "Bulwark scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "958e67c0-3a4d-411a-a9e1-74ff044a4e64",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

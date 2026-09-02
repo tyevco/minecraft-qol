@@ -29,6 +29,9 @@
  *   /scriptevent qolprobe:spawn      report your spawn point (H1)
  *   /scriptevent qolprobe:setspawn   set it to where you stand (reversible)
  *   /scriptevent qolprobe:clearspawn clear it again
+ *   /scriptevent qolprobe:death      arm; die; logs inventory state at entityDie
+ *                                    and the drop/entityDie ordering (Graves)
+ *   /scriptevent qolprobe:keepflag   set keepOnDeath on everything you carry
  */
 import { world, system, BlockPermutation } from "@minecraft/server";
 
@@ -548,6 +551,112 @@ world.afterEvents.worldLoad.subscribe(() => {
         if (facesCauldron) { registerRig(dim, b); pairs++; }
       }
       log("scan done: " + dispensers + " dispenser(s), " + cauldrons + " cauldron(s), " + pairs + " rig(s) registered");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D1-D3: death behaviour, for the Graves pack.
+//
+//   /scriptevent qolprobe:death    arm; then die. Logs, for the next player
+//                                  death: whether the inventory container is
+//                                  still readable inside entityDie and how
+//                                  many slots are filled, the same for armour,
+//                                  which stacks carry keepOnDeath, and every
+//                                  item entity that spawns within 6 blocks in
+//                                  the surrounding ticks - with tick numbers,
+//                                  so the ordering of drops vs entityDie is
+//                                  measured rather than assumed.
+//   /scriptevent qolprobe:keepflag flag every stack you carry keepOnDeath=true
+//                                  (the Graves substrate). Die again with the
+//                                  probe armed and compare.
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  let armed = false;
+  let watching = null; // { dimId, loc, tick, name }
+  const recentSpawns = []; // { tick, typeId, amount, loc }
+
+  world.afterEvents.entitySpawn.subscribe((ev) => {
+    let e;
+    try { e = ev.entity; } catch (err) { return; }
+    if (!e || e.typeId !== "minecraft:item") return;
+    if (!armed && !watching) return;
+    let stack;
+    try { stack = e.getComponent("minecraft:item")?.itemStack; } catch (err) { stack = undefined; }
+    recentSpawns.push({
+      tick: system.currentTick,
+      typeId: stack ? stack.typeId : "?",
+      amount: stack ? stack.amount : 0,
+      loc: e.location,
+      dimId: e.dimension.id,
+    });
+    while (recentSpawns.length > 200) recentSpawns.shift();
+  });
+
+  world.afterEvents.entityDie.subscribe((ev) => {
+    if (!armed) return;
+    const p = ev.deadEntity;
+    if (!p || p.typeId !== "minecraft:player") return;
+    armed = false;
+    const tick = system.currentTick;
+    log("D1 DEATH " + p.name + " tick=" + tick + " cause=" + ev.damageSource.cause +
+        " @" + v3(p.location) + " onGround=" + p.isOnGround + " keepInventory=" + world.gameRules.keepInventory);
+
+    let filled = 0, kept = 0, size = "?";
+    try {
+      const c = p.getComponent("minecraft:inventory")?.container;
+      size = c ? c.size : "NO CONTAINER";
+      if (c) for (let i = 0; i < c.size; i++) {
+        const it = c.getItem(i);
+        if (!it) continue;
+        filled++;
+        if (it.keepOnDeath) kept++;
+      }
+      log("D2 inventory readable: size=" + size + " filled=" + filled + " keepOnDeath=" + kept);
+    } catch (err) { log("D2 inventory READ THREW: " + err); }
+    try {
+      const eq = p.getComponent("minecraft:equippable");
+      const slots = ["Head", "Chest", "Legs", "Feet", "Offhand"];
+      const worn = slots.filter((s) => { try { return !!eq.getEquipment(s); } catch (e2) { return false; } });
+      log("D2 equipment readable: worn=" + JSON.stringify(worn));
+    } catch (err) { log("D2 equipment READ THREW: " + err); }
+
+    watching = { dimId: p.dimension.id, loc: p.location, tick, name: p.name };
+    // Report drops seen before this event, then keep listening for two more ticks.
+    const report = () => {
+      const near = recentSpawns.filter((s) => s.dimId === watching.dimId &&
+        Math.abs(s.loc.x - watching.loc.x) < 6 && Math.abs(s.loc.y - watching.loc.y) < 6 && Math.abs(s.loc.z - watching.loc.z) < 6);
+      log("D3 item spawns within 6 blocks, ticks " + (tick - 2) + ".." + (tick + 2) + ": " + near.length);
+      for (const s of near) log("  tick=" + s.tick + (s.tick < tick ? " (BEFORE entityDie)" : s.tick === tick ? " (SAME tick)" : " (AFTER)") +
+                                " " + s.typeId + "x" + s.amount + " @" + v3(s.loc));
+      watching = null;
+      recentSpawns.length = 0;
+    };
+    system.runTimeout(report, 3);
+  });
+
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id === "qolprobe:death") {
+      armed = true;
+      recentSpawns.length = 0;
+      log("D1 death probe ARMED - now die (fall, lava, /kill @s)");
+      return;
+    }
+    if (ev.id === "qolprobe:keepflag") {
+      const p = ev.sourceEntity;
+      if (!p || p.typeId !== "minecraft:player") { log("keepflag: run this as a player"); return; }
+      let n = 0;
+      try {
+        const c = p.getComponent("minecraft:inventory").container;
+        for (let i = 0; i < c.size; i++) {
+          const it = c.getItem(i);
+          if (!it) continue;
+          it.keepOnDeath = true;
+          c.setItem(i, it);
+          n++;
+        }
+        log("keepflag: flagged " + n + " stack(s) keepOnDeath=true. Arm qolprobe:death and die to compare.");
+      } catch (err) { log("keepflag THREW: " + err); }
     }
   });
 });

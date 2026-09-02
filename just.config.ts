@@ -51,6 +51,12 @@ const PACKS: Pack[] = [
     external: ["@minecraft/server"],
     hasResourcePack: true,
   },
+  {
+    name: "graves",
+    dir: "packages/graves",
+    external: ["@minecraft/server"],
+    hasResourcePack: true,
+  },
   // Scaffolds: buildable and deployable, but nothing implemented yet.
   {
     name: "fluidworks",

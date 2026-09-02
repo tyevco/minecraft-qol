@@ -51,10 +51,29 @@ a cauldron's potion and detect that one is present, never read back *which*.
 Note also that QOL Times already implements four of its machines at the rules
 layer (`packages/qol-times/scripts/core/rules/`).
 
+**[`design/graves.md`](design/graves.md)** — **built**, written alongside the
+implementation rather than before it, so it carries no corrections. Its §5
+lists what to measure in game; the probe pack has `qolprobe:death` for it.
+
 **[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1). Its
 "must prototype" list is resolved in `hearthstone-spawn-results.md`:
 `getSpawnPoint()` really does return `undefined` for a player who never slept,
 and non-Overworld anchors work — verified by dying in the Nether.
+
+## Proposals — not yet built
+
+Written against the installed 2.9.0 typings, each with its own “must
+prototype” list. In suggested order:
+
+- [`design/guardian.md`](design/guardian.md) — per-role damage scaling and
+  safety switches, on the stable `entityHurt` before-event. Pets in phase 3.
+- [`design/waypoints.md`](design/waypoints.md) — locator-bar markers for your
+  bed, gravestone and Hearthstone; a shared module, not a pack.
+- [`design/waystones.md`](design/waystones.md) — placed teleport points; the
+  other half of Hearthstone's tagline.
+- [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
+  and replant.
+- [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
 
 ## Plans
 

@@ -77,3 +77,11 @@ export const TURRET_HEAD = layout(64, {
   vents: [3, 1],
   barrelV: [0, 2],
 });
+
+export const GRAVESTONE = layout(64, {
+  stone: [0, 0],
+  face: [1, 0],
+  top: [2, 0],
+  mound: [3, 0],
+  dark: [0, 1],
+});

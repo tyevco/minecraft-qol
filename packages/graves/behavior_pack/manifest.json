@@ -1,0 +1,82 @@
+{
+  "format_version": 3,
+  "header": {
+    "name": "Graves",
+    "description": "Item preservation on death, chosen per player role: keep everything, or collect it from a gravestone.",
+    "uuid": "663034fc-4a5e-42a7-b663-4863dcc8291c",
+    "version": "1.0.0",
+    "min_engine_version": "1.26.40"
+  },
+  "modules": [
+    {
+      "description": "Graves entities",
+      "type": "data",
+      "uuid": "b2c43810-ae79-4a2b-813a-9efe0f055176",
+      "version": "1.0.0"
+    },
+    {
+      "description": "Graves scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "2c9f5200-ba22-47f6-a4f1-3b584c2b737e",
+      "version": "1.0.0",
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  },
+  "settings": [
+    {
+      "type": "label",
+      "text": "What happens to a player's items when they die, by permission role. §7Off§r: items drop where they died (vanilla). §7Gravestone§r: items wait in a gravestone where they died; interact with it to take them back. §7Keep§r: items stay in their inventory."
+    },
+    {
+      "type": "dropdown",
+      "text": "Visitors",
+      "name": "graves:visitors",
+      "options": [
+        { "name": "off", "text": "Off" },
+        { "name": "grave", "text": "Gravestone" },
+        { "name": "keep", "text": "Keep" }
+      ],
+      "default": "keep"
+    },
+    {
+      "type": "dropdown",
+      "text": "Members",
+      "name": "graves:members",
+      "options": [
+        { "name": "off", "text": "Off" },
+        { "name": "grave", "text": "Gravestone" },
+        { "name": "keep", "text": "Keep" }
+      ],
+      "default": "grave"
+    },
+    {
+      "type": "dropdown",
+      "text": "Operators",
+      "name": "graves:operators",
+      "options": [
+        { "name": "off", "text": "Off" },
+        { "name": "grave", "text": "Gravestone" },
+        { "name": "keep", "text": "Keep" }
+      ],
+      "default": "off"
+    },
+    {
+      "type": "toggle",
+      "text": "Tell a player where their gravestone is",
+      "name": "graves:announce",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Anyone can open any gravestone",
+      "name": "graves:public",
+      "default": false
+    }
+  ]
+}

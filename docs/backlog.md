@@ -39,6 +39,8 @@ are stable (`world.getPackSettings()`, four control types) but need manifest
 `format_version` 3, which brings SemVer version strings and a required
 `metadata.authors`. Deferred so the pack could be confirmed loading first.
 `PackSettingChangeAfterEventSignal` is beta-only, so changes need polling.
+Graves now does exactly this (`packages/graves/behavior_pack/manifest.json`,
+`scripts/engine/settings.ts`); once it is confirmed loading, copy the shape.
 
 ## Lens: render the worn Lens
 
@@ -47,6 +49,13 @@ an **attachable**: worn on the head it occupies the slot but draws nothing on
 the player model. A goggles-style attachable geometry plus
 `attachables/spawn_lens.json` in the resource pack would make a Lens-wearer
 visible to other players. Purely cosmetic, so it waits.
+
+## Graves: experience
+
+Vanilla drops XP orbs on death whatever the mode. Re-granting `getTotalXp()`
+on respawn would duplicate whatever orbs the player then walks over, so it
+needs the orbs removed on the death tick — the drop-chasing the design avoided.
+Worth it only if XP loss turns out to be what actually frustrates the kids.
 
 ## Lens: verify the DENY list
 

@@ -1,0 +1,104 @@
+{
+  "format_version": 3,
+  "header": {
+    "name": "Guardian",
+    "description": "Per-role damage scaling and safety switches: kids take less damage and never fall to their deaths; adults play vanilla.",
+    "uuid": "a20c792b-039c-4ebe-bf63-15498b928d09",
+    "version": "1.0.0",
+    "min_engine_version": "1.26.40"
+  },
+  "modules": [
+    {
+      "description": "Guardian scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "48570ebb-cccd-4315-a5af-87fd806a8b95",
+      "version": "1.0.0",
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  },
+  "settings": [
+    {
+      "type": "label",
+      "text": "How much of the damage a player would take actually lands, by permission role. Guardian only ever reduces damage: a role at §7100%§r plays vanilla and is never touched."
+    },
+    {
+      "type": "dropdown",
+      "text": "Visitors take",
+      "name": "guardian:visitors",
+      "options": [
+        { "name": "100", "text": "100% (vanilla)" },
+        { "name": "75", "text": "75%" },
+        { "name": "50", "text": "50%" },
+        { "name": "25", "text": "25%" },
+        { "name": "0", "text": "No damage" }
+      ],
+      "default": "25"
+    },
+    {
+      "type": "dropdown",
+      "text": "Members take",
+      "name": "guardian:members",
+      "options": [
+        { "name": "100", "text": "100% (vanilla)" },
+        { "name": "75", "text": "75%" },
+        { "name": "50", "text": "50%" },
+        { "name": "25", "text": "25%" },
+        { "name": "0", "text": "No damage" }
+      ],
+      "default": "50"
+    },
+    {
+      "type": "dropdown",
+      "text": "Operators take",
+      "name": "guardian:operators",
+      "options": [
+        { "name": "100", "text": "100% (vanilla)" },
+        { "name": "75", "text": "75%" },
+        { "name": "50", "text": "50%" },
+        { "name": "25", "text": "25%" },
+        { "name": "0", "text": "No damage" }
+      ],
+      "default": "100"
+    },
+    {
+      "type": "label",
+      "text": "Safety switches for §7Visitors and Members§r. Each one removes a whole kind of damage, whatever the percentage above says. Operators are never affected by these."
+    },
+    {
+      "type": "toggle",
+      "text": "No fall damage",
+      "name": "guardian:no_fall",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "No fire, lava or magma damage",
+      "name": "guardian:no_burn",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "No drowning",
+      "name": "guardian:no_drown",
+      "default": false
+    },
+    {
+      "type": "toggle",
+      "text": "Void catch: a player who falls out of the world is put back where they last stood",
+      "name": "guardian:void_catch",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Tell a player when Guardian softened a hit",
+      "name": "guardian:announce",
+      "default": false
+    }
+  ]
+}

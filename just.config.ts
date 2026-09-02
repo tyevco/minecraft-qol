@@ -63,6 +63,12 @@ const PACKS: Pack[] = [
     external: ["@minecraft/server"],
     hasResourcePack: true,
   },
+  {
+    name: "guardian",
+    dir: "packages/guardian",
+    // Scripts only: no blocks, entities or visuals, so no resource pack.
+    external: ["@minecraft/server"],
+  },
   // Scaffolds: buildable and deployable, but nothing implemented yet.
   {
     name: "fluidworks",

@@ -22,9 +22,9 @@
  * lose an item that vanilla would have kept.
  */
 import { Player, WaypointTexture, system, world } from "@minecraft/server";
+import { createGroundTracker } from "@qol/shared/engine/groundTracker";
 import * as waypoints from "@qol/shared/engine/waypoints";
 import { graveMarkers, isGraveKey } from "./core/markers";
-import type { GroundSample } from "./core/placement";
 import { describeMode } from "./core/prefs";
 import { playerId } from "./engine/identity";
 import {
@@ -50,7 +50,8 @@ const SETTINGS_TICKS = 100;
 /** Ticks between locator-bar syncs. Cheap: a registry filter per player. */
 const WAYPOINT_TICKS = 40;
 
-const lastGround = new Map<string, GroundSample>();
+/** Where each player last stood, shared with Guardian's void catch. */
+const ground = createGroundTracker();
 
 /** A red circle: a warning, and the one marker you most want to spot. */
 const GRAVE_STYLE: waypoints.WaypointStyle = {
@@ -107,17 +108,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   system.runInterval(() => sweep(log), SWEEP_TICKS);
   system.runInterval(syncAllWaypoints, WAYPOINT_TICKS);
 
-  system.runInterval(() => {
-    const tick = system.currentTick;
-    for (const player of world.getAllPlayers()) {
-      try {
-        if (player.isOnGround)
-          lastGround.set(player.id, { pos: player.location, tick });
-      } catch {
-        /* player mid-transfer; skip this sample */
-      }
-    }
-  }, GROUND_TICKS);
+  system.runInterval(() => ground.sampleAll(system.currentTick), GROUND_TICKS);
 
   world.afterEvents.entityDie.subscribe((ev) => {
     const dead = ev.deadEntity;
@@ -131,7 +122,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     if (settings.modeFor(dead) !== "grave") return;
 
     try {
-      const grave = placeGrave(dead, lastGround.get(dead.id), log);
+      const grave = placeGrave(dead, ground.get(dead.id), log);
       if (!grave || !settings.policy().announce) return;
       const p = grave.location;
       dead.sendMessage(
@@ -204,7 +195,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   });
 
   world.afterEvents.playerLeave.subscribe((ev) => {
-    lastGround.delete(ev.playerId);
+    ground.forget(ev.playerId);
     waypoints.forget(ev.playerId);
   });
 

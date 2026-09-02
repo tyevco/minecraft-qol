@@ -48,6 +48,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
 | Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
 | Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
+| "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
 (block, paired entity, reconciliation, vanilla ranged AI, hopper ammo), not yet
@@ -74,6 +75,12 @@ layer (`packages/qol-times/scripts/core/rules/`).
 implementation rather than before it, so it carries no corrections. Its §5
 lists what to measure in game; the probe pack has `qolprobe:death` for it.
 
+**[`design/guardian.md`](design/guardian.md)** — **built** (Phases 1 and 2:
+the damage table and the void catch; pets are Phase 3). Updated alongside the
+implementation. One correction, in the table above: there is no `void` damage
+cause. Its remaining "must prototype" items are measured by `qolprobe:hurt`
+and listed in the pack README under "To confirm in game".
+
 **[`design/hearthstone.md`](design/hearthstone.md)** — **built** (Phase 1). Its
 "must prototype" list is resolved in `hearthstone-spawn-results.md`:
 `getSpawnPoint()` really does return `undefined` for a player who never slept,
@@ -93,8 +100,6 @@ radius, because that is still where they will wake up.
 Written against the installed 2.9.0 typings, each with its own “must
 prototype” list. In suggested order:
 
-- [`design/guardian.md`](design/guardian.md) — per-role damage scaling and
-  safety switches, on the stable `entityHurt` before-event. Pets in phase 3.
 - [`design/waystones.md`](design/waystones.md) — placed teleport points; the
   other half of Hearthstone's tagline. A full design, verified against the
   installed typings, with the list of what moves into `packages/shared`

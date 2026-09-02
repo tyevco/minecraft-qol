@@ -3,23 +3,16 @@
  *
  * The death location is usually right, but not always: a player who fell into
  * the void died below the world, and one shot out of the air died in mid-air.
- * The engine tracks where each player last stood on solid ground; this decides
- * when to prefer that.
+ * The shared ground tracker remembers where each player last stood on solid
+ * ground; this decides when to prefer that.
  */
-export interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
+import { freshGround, type GroundSample, type Vec3 } from "@qol/shared/core/ground";
+
+export type { GroundSample, Vec3 } from "@qol/shared/core/ground";
 
 export interface HeightRange {
   min: number;
   max: number;
-}
-
-export interface GroundSample {
-  pos: Vec3;
-  tick: number;
 }
 
 export interface PlacementOptions {
@@ -61,13 +54,8 @@ export function gravePosition(
 ): Vec3 {
   if (onGround && insideRange(death.y, range)) return snapToBlock(death);
 
-  if (
-    lastGround &&
-    nowTick - lastGround.tick <= opts.maxAgeTicks &&
-    insideRange(lastGround.pos.y, range)
-  ) {
-    return snapToBlock(lastGround.pos);
-  }
+  const ground = freshGround(lastGround, nowTick, opts.maxAgeTicks);
+  if (ground && insideRange(ground.pos.y, range)) return snapToBlock(ground.pos);
 
   const y = Math.min(Math.max(death.y, range.min + 1), range.max - 2);
   return snapToBlock({ x: death.x, y, z: death.z });

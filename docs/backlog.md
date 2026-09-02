@@ -57,6 +57,22 @@ on respawn would duplicate whatever orbs the player then walks over, so it
 needs the orbs removed on the death tick — the drop-chasing the design avoided.
 Worth it only if XP loss turns out to be what actually frustrates the kids.
 
+## Guardian: pets (Phase 3)
+
+Tamed animals dying is the other thing that ends a session. The same
+`entityHurt` before-event covers the first half: if `hurtEntity` has
+`minecraft:tameable` with a `tamedToPlayerId`, and the source is a player, a
+fall, fire, or the owner's own arrow, cancel. Hostile mobs still hurt pets: a
+wolf that could not die would break the wolf. Note the handler is currently
+filtered to `minecraft:player` in the engine; a pet shield means a second
+subscription, not a wider filter.
+
+**Pet insurance** needs a probe first: on a tamed pet's `entityDie`, spawn a
+fresh one of the same type, `tameable.tame(owner)`, restore `nameTag` and
+`minecraft:color`. Unknown until measured: whether `tame()` accepts an
+offline owner, and whether a respawned cat or parrot keeps its variant
+(`minecraft:variant` is read-only from script, so the answer decides scope).
+
 ## Lens: verify the DENY list
 
 `surface.ts#DENY` lists surfaces mobs will not spawn on despite blocking water
@@ -150,5 +166,6 @@ rather than a wipe.
 `packages/gametest` exists (dev only, Beta APIs, never shipped) with one test
 per pack. Worth adding as behaviour lands: Lens marker placement against a
 known dark room, Graves retrieval by interacting with the stone (needs
-`interactWithEntity` on a simulated player), pipe connection states, and the
-Guardian damage table once it is built.
+`interactWithEntity` on a simulated player), and pipe connection states.
+Guardian has two tests; a third could pin the fire switch by standing a
+simulated player in lava, once the pre/post-armour question is measured.

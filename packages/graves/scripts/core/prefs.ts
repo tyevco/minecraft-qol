@@ -14,13 +14,14 @@
  * member list, which makes this per-player control in practice - the kids are
  * Members, the parents are Operators.
  */
+import { ROLES, type Role } from "@qol/shared/core/roles";
+
+export type { Role } from "@qol/shared/core/roles";
+export { ROLES } from "@qol/shared/core/roles";
+
 export type Mode = "off" | "grave" | "keep";
 
 export const MODES: readonly Mode[] = ["off", "grave", "keep"];
-
-export type Role = "visitor" | "member" | "operator";
-
-export const ROLES: readonly Role[] = ["visitor", "member", "operator"];
 
 export interface Policy {
   /** Mode per role. */

@@ -32,6 +32,8 @@
  *   /scriptevent qolprobe:death      arm; die; logs inventory state at entityDie
  *                                    and the drop/entityDie ordering (Graves)
  *   /scriptevent qolprobe:keepflag   set keepOnDeath on everything you carry
+ *   /scriptevent qolprobe:hurt       watch your own hurt events for 60s: before-event
+ *                                    damage vs after-event damage vs health lost
  *   /scriptevent qolprobe:sky        getTopmostBlock for your column (Fluidworks rain)
  *   /scriptevent qolprobe:waypoint   add a locator-bar marker 16 blocks north of you;
  *                                    run again to remove it. Reports maxCount and what
@@ -670,6 +672,78 @@ world.afterEvents.worldLoad.subscribe(() => {
         log("keepflag: flagged " + n + " stack(s) keepOnDeath=true. Arm qolprobe:death and die to compare.");
       } catch (err) { log("keepflag THREW: " + err); }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G1-G3: hurt-event behaviour, for the Guardian pack.
+//
+//   /scriptevent qolprobe:hurt    watch the caller's own hurt events for 60s.
+//                                 For each: the before-event's cause and
+//                                 `damage`, the after-event's `damage`, and the
+//                                 health actually lost - so three questions are
+//                                 measured rather than assumed:
+//     G1 is before.damage pre- or post-armour? Wear full iron, take a zombie
+//        hit, compare before.damage to the health lost. Equal -> post-armour,
+//        and the panel's "50%" means half of what would have landed.
+//     G2 does entityHurt fire for the void at all, and with what cause? There
+//        is no `void` in EntityDamageCause 2.9.0. Jump into the void watching
+//        (creative flight back out, or accept the death).
+//     G3 does a fractional `damage` land as a fraction, or round?
+//   Log-only; nothing is modified. Guardian should be DISABLED while probing,
+//   or its own writes show up in the after-event numbers.
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  const watching = new Map(); // playerId -> { until, name, pending: {tick, cause, before, health} }
+
+  const health = (p) => {
+    try { return p.getComponent("minecraft:health").currentValue; } catch (e) { return NaN; }
+  };
+
+  world.beforeEvents.entityHurt.subscribe((ev) => {
+    const p = ev.hurtEntity;
+    if (!p || p.typeId !== "minecraft:player") return;
+    const w = watching.get(p.id);
+    if (!w) return;
+    const rec = { tick: system.currentTick, cause: ev.damageSource.cause, before: ev.damage,
+                  health: health(p), attacker: ev.damageSource.damagingEntity ? ev.damageSource.damagingEntity.typeId : "-" };
+    w.pending = rec;
+    log("G1 BEFORE tick=" + rec.tick + " cause=" + rec.cause + " damage=" + rec.before +
+        " health=" + rec.health + " by=" + rec.attacker + " y=" + p.location.y.toFixed(1));
+  });
+
+  world.afterEvents.entityHurt.subscribe((ev) => {
+    const p = ev.hurtEntity;
+    if (!p || p.typeId !== "minecraft:player") return;
+    const w = watching.get(p.id);
+    if (!w) return;
+    const after = ev.damage;
+    const h = health(p);
+    const b = w.pending && w.pending.tick >= system.currentTick - 1 ? w.pending : null;
+    const lost = b ? (b.health - h) : NaN;
+    log("G1 AFTER  tick=" + system.currentTick + " cause=" + ev.damageSource.cause + " damage=" + after +
+        " health=" + h + (b ? " | before.damage=" + b.before + " lost=" + lost.toFixed(2) +
+        (Math.abs(b.before - lost) < 0.01 ? " => before.damage is what LANDS (post-armour)" :
+         Math.abs(after - lost) < 0.01 ? " => after.damage is what lands; before.damage differs (pre-armour?)" :
+         " => neither matches health lost; armour/absorption/regen in play") : " | NO before-event seen for this hit"));
+    w.pending = null;
+  });
+
+  world.afterEvents.entityDie.subscribe((ev) => {
+    const p = ev.deadEntity;
+    if (!p || p.typeId !== "minecraft:player" || !watching.has(p.id)) return;
+    log("G2 DIED cause=" + ev.damageSource.cause + " y=" + p.location.y.toFixed(1) +
+        (watching.get(p.id).pending ? " (a before-event preceded it)" : " (NO before-event for the killing blow)"));
+  });
+
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "qolprobe:hurt") return;
+    const p = ev.sourceEntity;
+    if (!p || p.typeId !== "minecraft:player") { log("hurt: run this as a player"); return; }
+    const until = system.currentTick + 1200;
+    watching.set(p.id, { until, name: p.name, pending: null });
+    log("G1 hurt probe WATCHING " + p.name + " for 60s (health now " + health(p) + "). Disable Guardian first.");
+    system.runTimeout(() => { if (watching.get(p.id) && watching.get(p.id).until === until) { watching.delete(p.id); log("hurt probe: done watching " + p.name); } }, 1200);
   });
 });
 

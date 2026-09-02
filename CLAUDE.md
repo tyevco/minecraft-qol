@@ -15,6 +15,7 @@ and is marked `devOnly` so it can never be packaged.
 
 Packs: `qol-times` (dispensers use cauldrons), `lens` (spawn-proofing overlay),
 `hearthstone` (respawn anchors), `graves` (item preservation on death),
+`guardian` (per-role damage scaling and safety switches),
 `fluidworks` (funnels and tanks), `bulwark` (turret: block, head, hopper ammo),
 `probe` (throwaway diagnostics), `gametest` (in-game tests). Shared code is
 under `packages/shared`.

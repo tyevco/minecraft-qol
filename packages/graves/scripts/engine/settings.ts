@@ -1,12 +1,14 @@
-import { PlayerPermissionLevel, world, type Player } from "@minecraft/server";
+import { world, type Player } from "@minecraft/server";
+import { roleOf } from "@qol/shared/engine/roles";
 import {
   DEFAULT_POLICY,
   parsePolicy,
   samePolicy,
   type Mode,
   type Policy,
-  type Role,
 } from "../core/prefs";
+
+export { roleOf };
 
 /**
  * The pack's settings panel, as policy.
@@ -40,17 +42,6 @@ export function refresh(log: Log): boolean {
 
 export function policy(): Policy {
   return current;
-}
-
-export function roleOf(player: Player): Role {
-  switch (player.playerPermissionLevel) {
-    case PlayerPermissionLevel.Operator:
-      return "operator";
-    case PlayerPermissionLevel.Member:
-      return "member";
-    default:
-      return "visitor";
-  }
 }
 
 export function modeFor(player: Player): Mode {

@@ -104,6 +104,13 @@ Two mitigations: registration logs success or failure explicitly
 swallowed `NamespaceNameError`), and `/scriptevent qol:settings` opens the same
 menu. That path is subscribed at `worldLoad`, so it works right after a `/reload`.
 
+## Documentation
+
+[`docs/README.md`](docs/README.md) indexes everything and, importantly, lists
+which claims in the original design docs turned out to be wrong. Several describe
+preview-only features that have not reached retail — read the corrections before
+building on them.
+
 ## Repo layout
 
 This is a monorepo building several independent packs from a shared library.

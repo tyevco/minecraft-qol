@@ -170,6 +170,15 @@ Conventions: block models are centred on x/z and stand on y = 0; a directional
 block's front is authored on +z, the default placement-direction value; entity
 models face -z, the vanilla convention. Both are in the generator's header.
 
+**Particles.** Each emitting pack ships a custom particle definition under
+`resource_pack/particles/` with an 8x8 sprite from the generator. Entities
+attach theirs through a looping idle animation and a geometry locator, so the
+engine drives them at no script cost (the gravestone's wisp, the turret's vent
+steam). Blocks cannot carry an emitter, so script fires a short once-emitter:
+Hearthstone puffs embers every 8 ticks while a player is within 32 blocks, and
+a funnel drips at its spout on every completed operation. The viewer previews
+all four with a small interpreter for the components they use.
+
 What exists today:
 
 | Pack | Asset | Notes |

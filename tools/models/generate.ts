@@ -393,6 +393,8 @@ write("packages/bulwark/resource_pack/models/entity/turret_head.geo.json", {
       name: "head",
       parent: "base",
       pivot: [0, 2, 0],
+      // Where the idle vent steam and, later, the muzzle flash attach.
+      locators: { vents: [-7.5, 8.5, 0.5], muzzle: [0, 5.5, -17.5] },
       cubes: [
         {
           origin: [-4, 2, -4],
@@ -440,6 +442,8 @@ write("packages/graves/resource_pack/models/entity/gravestone.geo.json", {
   bones: [
     {
       name: "gravestone",
+      // The wisp rises from just in front of the inscription.
+      locators: { wisp: [0, 10, -2] },
       cubes: [
         // Plinth under the stone.
         {

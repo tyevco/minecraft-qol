@@ -13,7 +13,7 @@ one of the "to verify in game" items in a pack README.
 ## Running
 
 1. A flat creative world with **Beta APIs** on. Enable this pack **and** the
-   packs under test (QOL Times, Fluidworks, Graves, Guardian, Hearthstone). `npm run
+   packs under test (QOL Times, Fluidworks, Graves, Guardian, Hearthstone, Bulwark). `npm run
    deploy` puts them all in `development_behavior_packs`.
 2. `/gametest runset qol` runs everything; `/gametest run qol:<name>` runs one.
    Results appear in chat and the content log (`[QOL GameTests]`).
@@ -31,6 +31,10 @@ one of the "to verify in game" items in a pack README.
 | `guardian_never_adds_damage` | Guardian | Three `applyDamage` hits (attack, fall, lava) on a simulated player; prints what each cost against what was proposed, and fails only if a hit cost **more**. The printed numbers are the role × cause table measured. |
 | `guardian_void_catch` | Guardian | A simulated player with a known footing is dropped below the dimension floor and must come back alive. Skips itself if the simulated player is an operator, whom the switches never touch. |
 | `anchor_sets_spawn` | Hearthstone | A placed anchor gives a spawn-less player a spawn point beside it. |
+| `turret_grows_head` | Bulwark | A placed turret grows exactly one head entity in its socket. |
+| `turret_replaces_killed_head` | Bulwark | Removing the head regrows exactly one, after the block's grace period; never two. |
+| `turret_drains_feeding_hopper` | Bulwark | A hopper facing into the turret is emptied into its ammo buffer. |
+| `turret_break_returns_arrows` | Bulwark | Breaking the base removes the head and drops the buffered arrows; also whether `destroyBlock` reaches `onBreak`, or the sweep has to catch it. |
 
 ## How the rigs work
 

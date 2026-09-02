@@ -3,16 +3,33 @@
   "minecraft:client_entity": {
     "description": {
       "identifier": "bulwark:turret_head",
-      "materials": { "default": "entity" },
+      "materials": {
+        "default": "entity"
+      },
       "textures": {
         "iron": "textures/entity/turret_head_iron",
         "diamond": "textures/entity/turret_head_diamond",
         "netherite": "textures/entity/turret_head_netherite"
       },
-      "geometry": { "default": "geometry.bulwark_turret_head" },
-      "animations": { "look_at_target": "animation.common.look_at_target" },
-      "scripts": { "animate": ["look_at_target"] },
-      "render_controllers": ["controller.render.bulwark_turret_head"]
+      "geometry": {
+        "default": "geometry.bulwark_turret_head"
+      },
+      "animations": {
+        "look_at_target": "animation.common.look_at_target",
+        "idle": "animation.bulwark_turret_head.idle"
+      },
+      "scripts": {
+        "animate": [
+          "look_at_target",
+          "idle"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.bulwark_turret_head"
+      ],
+      "particle_effects": {
+        "vent": "bulwark:vent"
+      }
     }
   }
 }

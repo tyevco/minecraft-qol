@@ -24,6 +24,19 @@ interface Model {
   /** Bones shown on load; default all. */
   defaultVisible?: string[];
   notes?: string;
+  /** Particle effects to preview, each a particle definition plus its sprite. */
+  particles?: Particle[];
+}
+
+interface Particle {
+  effect: string;
+  definition: string;
+  texture: string;
+  /** Model-unit point to emit from, or a locator name from the geometry. */
+  at?: [number, number, number];
+  locator?: string;
+  /** For once-emitters that script re-fires: seconds between fires. */
+  every?: number;
 }
 
 const MODELS: Model[] = [
@@ -34,7 +47,16 @@ const MODELS: Model[] = [
     kind: "block",
     geometry: "packages/hearthstone/resource_pack/models/blocks/hearthstone.geo.json",
     textures: { default: "packages/hearthstone/resource_pack/textures/blocks/hearthstone.png" },
-    notes: "The flame faces use a second material instance (alpha_test, no face dimming).",
+    notes: "The flame faces use a second material instance (alpha_test, no face dimming). Script puffs embers every 8 ticks while a player is near.",
+    particles: [
+      {
+        effect: "hearthstone:ember",
+        definition: "packages/hearthstone/resource_pack/particles/ember.json",
+        texture: "packages/hearthstone/resource_pack/textures/particle/ember.png",
+        at: [0, 12.8, 0],
+        every: 0.4,
+      },
+    ],
   },
   {
     id: "funnel",
@@ -43,7 +65,16 @@ const MODELS: Model[] = [
     kind: "block",
     geometry: "packages/fluidworks/resource_pack/models/blocks/funnel.geo.json",
     textures: { default: "packages/fluidworks/resource_pack/textures/blocks/funnel.png" },
-    notes: "Spout on +z (south, the facing_direction default); mouth on -z.",
+    notes: "Spout on +z (south, the facing_direction default); mouth on -z. Drips at the spout on every completed operation.",
+    particles: [
+      {
+        effect: "fluidworks:drip",
+        definition: "packages/fluidworks/resource_pack/particles/drip.json",
+        texture: "packages/fluidworks/resource_pack/textures/particle/drip.png",
+        at: [0, 8, 8],
+        every: 2,
+      },
+    ],
   },
   {
     id: "pipe",
@@ -74,7 +105,15 @@ const MODELS: Model[] = [
       diamond: "packages/bulwark/resource_pack/textures/entity/turret_head_diamond.png",
       netherite: "packages/bulwark/resource_pack/textures/entity/turret_head_netherite.png",
     },
-    notes: "Texture chosen in game by the bulwark:tier entity property. Faces -z.",
+    notes: "Texture chosen in game by the bulwark:tier entity property. Faces -z. Vents steam from the idle animation.",
+    particles: [
+      {
+        effect: "bulwark:vent",
+        definition: "packages/bulwark/resource_pack/particles/vent.json",
+        texture: "packages/bulwark/resource_pack/textures/particle/vent.png",
+        locator: "vents",
+      },
+    ],
   },
   {
     id: "gravestone",
@@ -83,7 +122,15 @@ const MODELS: Model[] = [
     kind: "entity",
     geometry: "packages/graves/resource_pack/models/entity/gravestone.geo.json",
     textures: { default: "packages/graves/resource_pack/textures/entity/gravestone.png" },
-    notes: "Holds the dead player's items in its minecraft:inventory. Inscription faces -z.",
+    notes: "Holds the dead player's items in its minecraft:inventory. Inscription faces -z. A wisp rises from the idle animation.",
+    particles: [
+      {
+        effect: "graves:wisp",
+        definition: "packages/graves/resource_pack/particles/wisp.json",
+        texture: "packages/graves/resource_pack/textures/particle/wisp.png",
+        locator: "wisp",
+      },
+    ],
   },
 ];
 
@@ -103,7 +150,14 @@ const catalog = {
       copyFileSync(resolve(ROOT, src), resolve(dir, file));
       textures[name] = `assets/${m.id}/${file}`;
     }
-    return { ...m, geometry: `assets/${m.id}/${geoName}`, textures };
+    const particles = (m.particles ?? []).map((pt) => {
+      const def = basename(pt.definition);
+      const tex = basename(pt.texture);
+      copyFileSync(resolve(ROOT, pt.definition), resolve(dir, def));
+      copyFileSync(resolve(ROOT, pt.texture), resolve(dir, tex));
+      return { ...pt, definition: `assets/${m.id}/${def}`, texture: `assets/${m.id}/${tex}` };
+    });
+    return { ...m, geometry: `assets/${m.id}/${geoName}`, textures, particles };
   }),
 };
 

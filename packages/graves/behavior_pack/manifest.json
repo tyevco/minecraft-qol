@@ -77,6 +77,12 @@
       "text": "Anyone can open any gravestone",
       "name": "graves:public",
       "default": false
+    },
+    {
+      "type": "toggle",
+      "text": "Show a player's gravestone on their locator bar",
+      "name": "graves:waypoint",
+      "default": true
     }
   ]
 }

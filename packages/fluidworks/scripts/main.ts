@@ -102,20 +102,46 @@ world.afterEvents.worldLoad.subscribe(() => {
   });
 
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
-    const player = ev.sourceEntity;
-    if (!(player instanceof Player)) return;
-
-    // The design's `rebuild`: index every funnel near the caller. Pistons,
+    // The design's `rebuild`: index every funnel near a point. Pistons,
     // /fill and structures do not fire playerPlaceBlock, so this is how a
     // funnel that arrived any other way gets picked up - GameTest rigs included.
+    //
+    //   scriptevent fluidworks:rescan <radius> [x y z]
+    //
+    // The origin is the caller's own position, or the coordinates when they are
+    // given. Coordinates are not a convenience: a command run by anything other
+    // than a real player - a SimulatedPlayer, or the server console - arrives
+    // with sourceType Entity and *no* sourceEntity (measured on BDS 1.26.45.1,
+    // see docs/gametest-structure-results.md), so there is no position to read
+    // and no player to reply to. Without them the hatch is unreachable from a
+    // test or a console.
     if (ev.id === "fluidworks:rescan") {
-      const r = Math.min(32, Math.max(1, Number(ev.message) || 16));
+      const caller = ev.sourceEntity instanceof Player ? ev.sourceEntity : undefined;
+      const parts = ev.message.trim().split(/\s+/).filter(Boolean);
+      const r = Math.min(32, Math.max(1, Number(parts[0]) || 16));
+      const [cx, cy, cz] = parts.slice(1, 4).map(Number);
+      const at =
+        cx !== undefined &&
+        cy !== undefined &&
+        cz !== undefined &&
+        Number.isFinite(cx) &&
+        Number.isFinite(cy) &&
+        Number.isFinite(cz)
+          ? { x: cx, y: cy, z: cz }
+          : caller?.location;
+      if (!at) {
+        console.warn(
+          "[Fluidworks] rescan: no caller position to scan from - pass x y z",
+        );
+        return;
+      }
       const o = {
-        x: Math.floor(player.location.x),
-        y: Math.floor(player.location.y),
-        z: Math.floor(player.location.z),
+        x: Math.floor(at.x),
+        y: Math.floor(at.y),
+        z: Math.floor(at.z),
       };
-      const dim = player.dimension;
+      // An origin given as coordinates carries no dimension with it.
+      const dim = caller?.dimension ?? world.getDimension("minecraft:overworld");
       let found = 0;
       for (let dx = -r; dx <= r; dx++)
         for (let dy = -r; dy <= r; dy++)
@@ -127,12 +153,15 @@ world.afterEvents.worldLoad.subscribe(() => {
             if (!funnels.find({ dimId: dim.id, ...pos }))
               funnels.put({ dimId: dim.id, ...pos, wear: 0, sleepUntil: 0 });
           }
-      player.sendMessage(
-        `§7rescan r=${r}: §f${found}§7 funnel(s) found, §f${funnels.count()}§7 indexed`,
-      );
+      const report = `rescan r=${r} at ${o.x},${o.y},${o.z}: ${found} funnel(s) found, ${funnels.count()} indexed`;
+      caller?.sendMessage(`§7${report}`);
+      // Also to the content log, so a console-run rescan reports somewhere.
+      console.warn(`[Fluidworks] ${report}`);
       return;
     }
 
+    const player = ev.sourceEntity;
+    if (!(player instanceof Player)) return;
     if (ev.id !== "fluidworks:debug") return;
     player.sendMessage(`§7panel: §f${describeSettings(settings.current())}`);
     player.sendMessage(

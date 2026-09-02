@@ -85,7 +85,12 @@ Setup, once:
    `Experiment(s) active: gtst`.
 4. In `server.properties`: `allow-cheats=true`, `online-mode=false`,
    `allow-list=false`, and `content-log-console-output-enabled=true` — that last
-   one is what puts script errors on stdout.
+   one is what puts script errors on stdout. Leaving `allow-list=true` with
+   `online-mode=false` is fatal, not ignored: the server refuses to start.
+5. **Allow `bedrock_server.exe` through the Windows Firewall.** It binds 19132
+   and 19133 on first run and blocks on the prompt, which is invisible to a
+   script driving it — the run just stalls before `Server started.`. The
+   harness now says so after 60s rather than timing out silently.
 
 Deploy into it without touching `.env`:
 
@@ -104,29 +109,62 @@ and it moves between runs. Sequential runs keep every test near the console's
 origin and are reproducible. A ticking area does not rescue `runset`: BDS caps
 one at 100 chunks, far less than the spread.
 
+## A script event run by anything but a real player has no `sourceEntity`
+
+Measured while the six Fluidworks tests were all failing with an empty tank.
+
+`SimulatedPlayer.runCommand("scriptevent fluidworks:rescan 8")` **does** reach
+`system.afterEvents.scriptEventReceive`, but it arrives as:
+
+```
+id=fluidworks:rescan  sourceType=Entity  sourceEntity=undefined
+```
+
+`sourceType` says `Entity` while `sourceEntity` is undefined, so the pack's
+`instanceof Player` guard dropped the event and nothing was ever indexed.
+Waiting two ticks after spawning the player does not populate it — this is not
+a timing problem. The same hole applies to a rescan typed at a server console.
+
+The absence of a reply was **not** the evidence: the handler answered with
+`player.sendMessage`, which goes to the caller, not the log. It took a probe
+logging every event before any filtering to see what actually arrived.
+
+So `fluidworks:rescan` now takes an optional origin, and reports to the content
+log as well as to the caller:
+
+```
+scriptevent fluidworks:rescan <radius> [x y z]
+```
+
+Coordinates carry no dimension, so an explicit origin is scanned in the
+overworld. Omitting them keeps the old behaviour exactly. Tests pass
+`test.worldBlockLocation(...)` and need no simulated player at all.
+
 ## What the suite says now
 
-Infrastructure failures are gone. As of this measurement, five pass and ten
-fail on **their own assertions**, which is the point — each message carries the
-observed value:
+Infrastructure failures are gone. **Ten pass, five fail**, and every failure is
+now the test's own assertion carrying the observed value.
 
-**Passing:** `dispenser_fills_cauldron`, `death_keeps_items`,
-`guardian_never_adds_damage`, `turret_grows_head`,
-`turret_drains_feeding_hopper`.
+**Passing:** `dispenser_fills_cauldron`, `funnel_makes_concrete`,
+`funnel_fills_from_source`, `funnel_through_pipes`, `harvester_funnel`,
+`collector_funnel`, `death_keeps_items`, `guardian_never_adds_damage`,
+`turret_grows_head`, `turret_drains_feeding_hopper`.
 
-**Failing, and now diagnosable:**
+`funnel_makes_concrete` passing answers what it was written to ask: the funnel's
+facing state names the **spout's** direction, not the mouth's.
 
-- All six Fluidworks tests report the tank or chest still empty. The tests do
-  ask the pack to notice their blocks — a simulated player runs
-  `scriptevent fluidworks:rescan 8` — but the pack logs nothing in reply and
-  still reports `0 funnel(s) indexed`. Whether the script event arrives at all
-  is the first thing to check.
+**Still failing, not yet investigated:**
+
+- `rain_collector` — tank still 0 in rain. The test calls `setWeather(Rain)`,
+  but the pack can only learn the weather from the `weatherChange` after-event
+  (`Dimension.getWeather` is beta-only), so whether that event fires for a
+  scripted `setWeather` is the thing to measure.
 - `turret_replaces_killed_head` (regrew 0 heads) and
   `turret_break_returns_arrows` (hopper still holds 10) — Bulwark's other two
-  turret tests pass, so the block and head basics work.
-- `guardian_void_catch` — the player was still at `y=-104` and not caught.
-- `anchor_sets_spawn` — a spawn point was set, but three blocks off the anchor.
+  turret tests pass, so the block, the head and hopper draw all work.
+- `guardian_void_catch` — the player was still at `y=-104`, not caught.
+- `anchor_sets_spawn` — a spawn point *was* set, but three blocks off the
+  anchor, so this looks like the standing-spot choice rather than the assignment.
 
-None of these has been investigated yet. They are recorded here as observations,
-not as verdicts about the packs: some may still turn out to be artefacts of
-running with no real player.
+These five are recorded as observations, not verdicts about the packs: some may
+still be artefacts of running with no real player.

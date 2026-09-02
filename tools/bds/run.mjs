@@ -154,8 +154,29 @@ function stop() {
   setTimeout(() => child.kill(), 20000).unref();
 }
 
+/**
+ * How long to wait for "Server started." before saying why it probably has not.
+ *
+ * A healthy boot takes a few seconds. The usual cause of a hang is the Windows
+ * Firewall prompt: BDS binds 19132/19133 on first run and blocks on the dialog,
+ * which is invisible from here and otherwise just looks like a silent stall.
+ */
+const STARTUP_GRACE_MS = 60000;
+let warnedSlowStart = false;
+
 const startedAt = Date.now();
 const tick = setInterval(() => {
+  if (!started && !warnedSlowStart && Date.now() - startedAt > STARTUP_GRACE_MS) {
+    warnedSlowStart = true;
+    const hint =
+      `harness: no "Server started." after ${STARTUP_GRACE_MS / 1000}s. ` +
+      `If this is the first run, check for a Windows Firewall prompt for ` +
+      `bedrock_server.exe - it blocks startup until answered. Allow it once, ` +
+      `or pre-authorise with: netsh advfirewall firewall add rule ` +
+      `name="BDS" dir=in action=allow program="${EXE}" enable=yes`;
+    lines.push(`>>> ${hint}`);
+    console.error(hint);
+  }
   if (Date.now() - startedAt > timeoutMs) {
     lines.push(`>>> harness: timeout after ${timeoutMs}ms`);
     stop();

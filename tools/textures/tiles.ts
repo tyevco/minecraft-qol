@@ -471,3 +471,27 @@ export function mound(seed = 62): Canvas {
     seed + 1,
   );
 }
+
+// ---------------------------------------------------------------------------
+// Particles: 8x8 soft dots. Alpha falls off from the centre so additive and
+// blended materials both read as a glow rather than a square.
+// ---------------------------------------------------------------------------
+
+export function softDot(inner: Color, outer: Color, size = 8): Canvas {
+  const c = new Canvas(size, size);
+  const mid = (size - 1) / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = Math.hypot(x - mid, y - mid) / (size / 2);
+      if (d > 1) continue;
+      const t = Math.min(1, d);
+      c.set(
+        x,
+        y,
+        mix(inner, outer, t),
+        Math.round(255 * (1 - t) * (1 - t * 0.5)),
+      );
+    }
+  }
+  return c;
+}

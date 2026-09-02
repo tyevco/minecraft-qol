@@ -54,6 +54,9 @@ resource_pack/      gravestone model + texture (generated, see root README)
 
 ## To confirm in game
 
+A pale wisp should rise from in front of the inscription: the client entity's
+idle animation emits `graves:wisp` at the `wisp` locator, engine-driven.
+
 See §5 of the design doc. Two things the design rests on, measured by
 `qolprobe:death` in the probe pack: that a dead player's inventory is still
 readable inside `entityDie`, and that a script-set `keepOnDeath` really stops

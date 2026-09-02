@@ -3,6 +3,7 @@ import {
   type Block,
   type Dimension,
 } from "@minecraft/server";
+import { cropOf, isMature } from "@qol/shared/core/crops";
 import type { ItemRef } from "@qol/shared/core/fluids";
 import {
   isCauldron,
@@ -15,10 +16,24 @@ import type { Endpoint } from "../core/machine";
 const WATER_SOURCE = "minecraft:water";
 const LAVA_SOURCE = "minecraft:lava";
 
-/** What the planner needs to know about a block. Never throws. */
-export function describeBlock(block: Block | undefined): Endpoint {
+/**
+ * What the planner needs to know about a block. Never throws.
+ * `sky` says whether an air block here is open to the weather; the caller
+ * knows the column, so it decides.
+ */
+export function describeBlock(block: Block | undefined, sky = false): Endpoint {
   if (!block || !block.isValid) return { kind: "other" };
   try {
+    if (block.isAir) return { kind: "open", sky };
+    const crop = cropOf(block.typeId);
+    if (crop)
+      return {
+        kind: "crop",
+        mature: isMature(
+          crop,
+          block.permutation.getState(crop.ageState as never),
+        ),
+      };
     if (isCauldron(block)) {
       const state = readCauldron(block);
       return state ? { kind: "cauldron", state } : { kind: "other" };

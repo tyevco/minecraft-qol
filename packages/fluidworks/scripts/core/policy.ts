@@ -11,6 +11,10 @@ export const SETTING = {
   wash: "fluidworks:wash",
   transfer: "fluidworks:transfer",
   rain: "fluidworks:rain",
+  harvest: "fluidworks:harvest",
+  collect: "fluidworks:collect",
+  pipes: "fluidworks:pipes",
+  labels: "fluidworks:labels",
   cycleSeconds: "fluidworks:cycle_seconds",
   concretePerLevel: "fluidworks:concrete_per_level",
 } as const;
@@ -28,6 +32,10 @@ export interface Settings {
   policy: Policy;
   /** Ticks between cycles. */
   cycleTicks: number;
+  /** Funnels read and write through connected pipes. */
+  pipes: boolean;
+  /** Floating level labels over tanks that funnels use. */
+  labels: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,9 +49,13 @@ export const DEFAULT_SETTINGS: Settings = {
     },
     transfer: true,
     rain: true,
+    harvest: true,
+    collect: true,
     concretePerLevel: 16,
   },
   cycleTicks: 40,
+  pipes: true,
+  labels: true,
 };
 
 export function parseSettings(
@@ -69,6 +81,8 @@ export function parseSettings(
       rules,
       transfer: bool(SETTING.transfer, DEFAULT_SETTINGS.policy.transfer),
       rain: bool(SETTING.rain, DEFAULT_SETTINGS.policy.rain),
+      harvest: bool(SETTING.harvest, DEFAULT_SETTINGS.policy.harvest),
+      collect: bool(SETTING.collect, DEFAULT_SETTINGS.policy.collect),
       concretePerLevel: num(
         SETTING.concretePerLevel,
         DEFAULT_SETTINGS.policy.concretePerLevel,
@@ -78,6 +92,8 @@ export function parseSettings(
     },
     cycleTicks:
       num(SETTING.cycleSeconds, DEFAULT_SETTINGS.cycleTicks / 20, 1, 10) * 20,
+    pipes: bool(SETTING.pipes, DEFAULT_SETTINGS.pipes),
+    labels: bool(SETTING.labels, DEFAULT_SETTINGS.labels),
   };
 }
 
@@ -101,5 +117,9 @@ export function describeSettings(s: Settings): string {
     .filter(([, v]) => v)
     .map(([k]) => k.replace("cauldron_", ""))
     .join(",");
-  return `rules=[${on}] transfer=${s.policy.transfer} rain=${s.policy.rain} concretePerLevel=${s.policy.concretePerLevel} cycle=${s.cycleTicks}t`;
+  return (
+    `rules=[${on}] transfer=${s.policy.transfer} rain=${s.policy.rain} harvest=${s.policy.harvest}` +
+    ` collect=${s.policy.collect} pipes=${s.pipes} labels=${s.labels}` +
+    ` concretePerLevel=${s.policy.concretePerLevel} cycle=${s.cycleTicks}t`
+  );
 }

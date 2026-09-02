@@ -37,22 +37,40 @@ README asked: `Residue` became an `Output` (what the item becomes, delivered
 wherever the caller wants), `addDye` became a structured `CauldronEffect`, and
 `concrete` joined them. Both packs run the same 28-case rule suite.
 
-**Pipes** are visual for now. Placing a pipe, funnel or cauldron next to a
-pipe sets its arm states so it joins up; fluid through pipes is Phase 3.
+## Phase 3, built: logistics
+
+| Rig | What happens |
+| --- | --- |
+| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: the nearest cauldron (or water/lava source) next to any pipe in the run stands in for the adjacent block. Up to 64 pipes. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. |
+| a mature **crop** at the mouth, a container at the spout | the **Harvester**: the crop is harvested with the engine's own loot table, one seed is withheld to replant it, the rest goes into the container. Wheat, carrots, potatoes, beetroot, nether wart, cocoa. Crops need farmland, so the rig lies sideways: farmland and crop, funnel, chest. |
+| an **open** mouth, a container at the spout | the **Collector**: dropped items within two and a half blocks of the mouth go into the container. An item entity is removed only once the container took all of it. |
+| any tank a funnel uses | a floating **label** over it with the fluid and level, visible to everyone, refreshed each cycle. |
+
+Every one is a toggle in the panel.
+
+**Phase 2 (potions) is blocked on the stable API.** `setPotion` exists but
+there is no `getPotion` and, decisively, no `ItemStack.createPotion` and the
+potion component is read-only: script cannot build a potion of a chosen
+effect, so a Bottling Line for potions cannot exist however the cauldron
+side is solved. Recorded in `docs/README.md`.
+
+**Not built:** the Filter Funnel (there is no per-block configuration surface
+without commands or block entities) and the Linked Pair.
 
 ## The panel
 
 One toggle per machine (Concrete Mixer, buckets, Bottling Line, Dye Vat, Wash
-Station, fluid transfer, Rain Collector), a slider for seconds between cycles
-(default 2), and a slider for concrete blocks per water level (default 16).
+Station, fluid transfer, Rain Collector, Harvester, Collector, pipes, labels),
+a slider for seconds between cycles (default 2), and a slider for concrete
+blocks per water level (default 16).
 No commands; `/scriptevent fluidworks:debug` prints the panel, the weather the
 pack believes, and the funnels near you with their wear.
 
 ## Layout
 
 ```
-scripts/core/       pure: facing, the cycle planner, pipe connections, the panel   <- vitest
-scripts/engine/     funnel index, endpoints, the cycle executor, pipes, weather
+scripts/core/       pure: facing, the cycle planner, pipe walk and connections, the panel   <- vitest
+scripts/engine/     funnel index, endpoints, the cycle executor, pipe resolution, labels, weather
 behavior_pack/      manifest (format 3, with the panel), funnel + pipe blocks, recipes
 resource_pack/      models and textures (generated, see root README)
 ```
@@ -90,3 +108,7 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
    return the funnel itself when nothing stands above it.
 5. **Powder snow** transfer: `cauldron_liquid: "powder_snow"` is unverified,
    and the adapter falls back to the fluid-container component if rejected.
+6. **Crop age state names** (`growth` for wheat, carrots, potatoes and
+   beetroot; `age` for nether wart and cocoa) - `qol:harvester_funnel` in the
+   GameTest pack checks wheat.
+7. **Labels**: that a `TextPrimitive` with no `visibleTo` is visible to all.

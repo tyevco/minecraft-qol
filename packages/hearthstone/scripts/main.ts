@@ -256,6 +256,9 @@ function embers(): void {
       /* unloaded, or the block is gone; the registry sorts that out elsewhere */
     }
   }
+}
+
+/**
  * Bring the player's locator bar in line with where they will wake up.
  *
  * Runs after assignSpawn on every sweep, so a freshly assigned hearth shows

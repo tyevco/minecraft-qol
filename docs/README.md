@@ -75,7 +75,9 @@ prototype” list. In suggested order:
 - [`design/waypoints.md`](design/waypoints.md) — locator-bar markers for your
   bed, gravestone and Hearthstone; a shared module, not a pack.
 - [`design/waystones.md`](design/waystones.md) — placed teleport points; the
-  other half of Hearthstone's tagline.
+  other half of Hearthstone's tagline. A full design, verified against the
+  installed typings, with the list of what moves into `packages/shared`
+  first (its §8.3).
 - [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.

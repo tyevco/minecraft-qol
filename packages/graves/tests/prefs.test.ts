@@ -28,11 +28,13 @@ describe("parsePolicy", () => {
       [SETTING.operator]: "grave",
       [SETTING.announce]: false,
       [SETTING.publicGraves]: true,
+      [SETTING.waypoint]: false,
     });
     expect(p).toEqual({
       modes: { visitor: "off", member: "keep", operator: "grave" },
       announce: false,
       publicGraves: true,
+      waypoint: false,
     });
   });
 
@@ -58,6 +60,9 @@ describe("samePolicy", () => {
       false,
     );
     expect(samePolicy(a, parsePolicy({ [SETTING.publicGraves]: true }))).toBe(
+      false,
+    );
+    expect(samePolicy(a, parsePolicy({ [SETTING.waypoint]: false }))).toBe(
       false,
     );
   });

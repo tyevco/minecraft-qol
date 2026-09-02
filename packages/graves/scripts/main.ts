@@ -21,8 +21,10 @@
  * Every failure path lands on "the player keeps the item". Nothing here can
  * lose an item that vanilla would have kept.
  */
-import { Player, system, world } from "@minecraft/server";
+import { Player, WaypointTexture, system, world } from "@minecraft/server";
 import { createGroundTracker } from "@qol/shared/engine/groundTracker";
+import * as waypoints from "@qol/shared/engine/waypoints";
+import { graveMarkers, isGraveKey } from "./core/markers";
 import { describeMode } from "./core/prefs";
 import { playerId } from "./engine/identity";
 import {
@@ -45,19 +47,66 @@ const SWEEP_TICKS = 20;
 const GROUND_TICKS = 10;
 /** Ticks between settings-panel polls. The change event is beta-only. */
 const SETTINGS_TICKS = 100;
+/** Ticks between locator-bar syncs. Cheap: a registry filter per player. */
+const WAYPOINT_TICKS = 40;
 
 /** Where each player last stood, shared with Guardian's void catch. */
 const ground = createGroundTracker();
+
+/** A red circle: a warning, and the one marker you most want to spot. */
+const GRAVE_STYLE: waypoints.WaypointStyle = {
+  color: { red: 0.9, green: 0.25, blue: 0.25 },
+  texture: WaypointTexture.Circle,
+};
+
+/**
+ * Mark the player's own gravestones on their locator bar - the ones in the
+ * registry, in their current dimension, if the panel allows. The registry is
+ * the whole input, so a stone placed or emptied by any path shows or clears
+ * on the next sync without a second bookkeeping trail.
+ */
+function syncWaypoints(player: Player): void {
+  const wanted = graveMarkers(
+    registry.all(),
+    playerId(player),
+    player.dimension.id,
+    settings.policy().waypoint,
+  );
+  waypoints.sync(
+    player,
+    wanted.map((m) => ({ key: m.key, target: m, style: GRAVE_STYLE })),
+    isGraveKey,
+    log,
+  );
+}
+
+function syncAllWaypoints(): void {
+  for (const player of world.getAllPlayers()) {
+    try {
+      syncWaypoints(player);
+    } catch (e) {
+      log(`waypoint sync failed: ${e}`);
+    }
+  }
+}
 
 world.afterEvents.worldLoad.subscribe(() => {
   registry.load();
   settings.refresh(log);
 
+  // A /reload discards our waypoint handles but not, necessarily, the waypoints.
+  // Sweep whatever this pack left on each bar before the first sync rebuilds it.
+  for (const player of world.getAllPlayers()) waypoints.reset(player, log);
+
   system.runInterval(() => {
     // A changed panel takes effect on the very next sweep, not the one after.
-    if (settings.refresh(log)) sweep(log);
+    if (settings.refresh(log)) {
+      sweep(log);
+      syncAllWaypoints();
+    }
   }, SETTINGS_TICKS);
   system.runInterval(() => sweep(log), SWEEP_TICKS);
+  system.runInterval(syncAllWaypoints, WAYPOINT_TICKS);
 
   system.runInterval(() => ground.sampleAll(system.currentTick), GROUND_TICKS);
 
@@ -97,10 +146,15 @@ world.afterEvents.worldLoad.subscribe(() => {
         return;
       }
       const { taken, remaining } = retrieve(player, target, log);
-      if (remaining === 0)
+      if (remaining === 0) {
         player.sendMessage(
           `§6Recovered ${taken} stack(s).§7 The gravestone crumbles.`,
         );
+        // The stone is gone from the registry; drop its marker now rather
+        // than on the next sync. (An operator emptying someone else's stone
+        // clears the owner's marker on their next sync.)
+        syncWaypoints(player);
+      }
       else if (taken > 0)
         player.sendMessage(
           `§6Recovered ${taken} stack(s);§7 ${remaining} still in the stone. Make room and try again.`,
@@ -118,10 +172,32 @@ world.afterEvents.worldLoad.subscribe(() => {
       } catch (e) {
         log(`spawn reconcile failed: ${e}`);
       }
+      try {
+        // A joining player's handles went with their last session, and the
+        // bar may or may not have kept the waypoints; start clean. A respawn
+        // after death is where a freshly placed stone first shows.
+        if (ev.initialSpawn) waypoints.reset(ev.player, log);
+        syncWaypoints(ev.player);
+      } catch (e) {
+        log(`spawn waypoint sync failed: ${e}`);
+      }
     });
   });
 
-  world.afterEvents.playerLeave.subscribe((ev) => ground.forget(ev.playerId));
+  world.afterEvents.playerDimensionChange.subscribe((ev) => {
+    system.run(() => {
+      try {
+        syncWaypoints(ev.player);
+      } catch (e) {
+        log(`dimension waypoint sync failed: ${e}`);
+      }
+    });
+  });
+
+  world.afterEvents.playerLeave.subscribe((ev) => {
+    ground.forget(ev.playerId);
+    waypoints.forget(ev.playerId);
+  });
 
   // Diagnostics, in the same shape as the other packs: /reload-safe because
   // scriptEventReceive is subscribed here rather than at startup.
@@ -132,7 +208,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     const pol = settings.policy();
     player.sendMessage(
       `§7panel: visitors=§f${pol.modes.visitor}§7 members=§f${pol.modes.member}§7 operators=§f${pol.modes.operator}` +
-        `§7 announce=§f${pol.announce}§7 public=§f${pol.publicGraves}`,
+        `§7 announce=§f${pol.announce}§7 public=§f${pol.publicGraves}§7 waypoint=§f${pol.waypoint}`,
     );
     player.sendMessage(
       `§7you: role §f${settings.roleOf(player)}§7 -> ${describeMode(settings.modeFor(player))}`,
@@ -145,6 +221,10 @@ world.afterEvents.worldLoad.subscribe(() => {
       player.sendMessage(
         `§7- §f${g.x} ${g.y} ${g.z}§7 in ${g.dimId.replace("minecraft:", "")}`,
       );
+    player.sendMessage(
+      `§7waypoints: §f${waypoints.describe(player.id)}§7 ` +
+        `(bar ${player.locatorBar.count}/${player.locatorBar.maxCount})`,
+    );
   });
 
   log(

@@ -35,8 +35,12 @@
  *   /scriptevent qolprobe:hurt       watch your own hurt events for 60s: before-event
  *                                    damage vs after-event damage vs health lost
  *   /scriptevent qolprobe:sky        getTopmostBlock for your column (Fluidworks rain)
+ *   /scriptevent qolprobe:waypoint   add a locator-bar marker 16 blocks north of you;
+ *                                    run again to remove it. Reports maxCount and what
+ *                                    the bar lists, so /reload and dimension behaviour
+ *                                    are measured (Waypoints W1-W4)
  */
-import { world, system, BlockPermutation } from "@minecraft/server";
+import { world, system, BlockPermutation, LocationWaypoint } from "@minecraft/server";
 
 const P = "[QOLPROBE]";
 const log = (...a) => console.warn(P, ...a);
@@ -752,5 +756,59 @@ world.afterEvents.worldLoad.subscribe(() => {
     log("F1 SKY feet=" + feet.x + "," + feet.y + "," + feet.z +
         " topmost=" + (top ? top.typeId + " @y=" + top.y : "undefined") +
         " -> " + (!top || top.y <= feet.y - 1 ? "OPEN above the block you stand on" : "covered"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W1-W4: locator-bar waypoints, for docs/design/waypoints.md §4 and the shared
+// module packages/shared/engine/waypoints.ts. Adds ONE marker 16 blocks north
+// of you (so it is not under your feet); a second call removes it.
+//
+//   W1 what the bar lists: getAllWaypoints() before and after, and maxCount.
+//   W2 whether a marker survives /reload. Add one, /reload, run again: if the
+//      bar still lists 1 while this module holds nothing, waypoints outlive a
+//      reload and packs must sweep them (the shared module's reset() does).
+//   W3 whether a marker in another dimension shows. Add one, go through a
+//      portal, look at the bar. The packs withhold cross-dimension markers
+//      themselves, so this only decides whether that guard is redundant.
+//   W4 whether the playerWaypoints game rule off hides ours too. Add one,
+//      /gamerule playerWaypoints off (if the rule is settable), look.
+//
+//   /scriptevent qolprobe:waypoint
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  let held = null; // { waypoint, playerId }
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "qolprobe:waypoint") return;
+    const p = ev.sourceEntity;
+    if (!p || p.typeId !== "minecraft:player") { log("waypoint: run this as a player"); return; }
+
+    let bar;
+    try { bar = p.locatorBar; } catch (e) { log("W1 locatorBar THREW: " + e); return; }
+    const listed = () => { try { return bar.getAllWaypoints().length; } catch (e) { return "THREW " + e; } };
+    log("W1 bar count=" + bar.count + " maxCount=" + bar.maxCount + " listed=" + listed() +
+        " held-by-module=" + (held ? "yes" : "no (fresh module: a listed marker survived /reload)"));
+
+    if (held && held.playerId === p.id) {
+      try { held.waypoint.remove(); log("W1 removed the probe marker; listed now=" + listed()); }
+      catch (e) { log("W1 remove THREW: " + e); }
+      held = null;
+      return;
+    }
+
+    const at = { x: Math.floor(p.location.x) + 0.5, y: Math.floor(p.location.y), z: Math.floor(p.location.z) - 16 + 0.5 };
+    try {
+      const wp = new LocationWaypoint(
+        { dimension: p.dimension, x: at.x, y: at.y, z: at.z },
+        { textureBoundsList: [{ lowerBound: 0, texture: "minecraft:circle" }] },
+        { red: 0.9, green: 0.25, blue: 0.25 },
+      );
+      bar.addWaypoint(wp);
+      held = { waypoint: wp, playerId: p.id };
+      log("W1 added a red circle at " + v3(at) + " in " + p.dimension.id + "; listed now=" + listed() +
+          ". Now: /reload and run again (W2); portal and look (W3); playerWaypoints off and look (W4)");
+    } catch (e) {
+      log("W1 addWaypoint THREW: " + e + (e && e.reason ? " reason=" + e.reason : ""));
+    }
   });
 });

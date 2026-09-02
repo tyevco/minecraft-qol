@@ -35,7 +35,7 @@ export function refresh(log: Log): boolean {
   current = next;
   log(
     `settings: visitors=${next.modes.visitor} members=${next.modes.member} operators=${next.modes.operator}` +
-      ` announce=${next.announce} public=${next.publicGraves}`,
+      ` announce=${next.announce} public=${next.publicGraves} waypoint=${next.waypoint}`,
   );
   return true;
 }

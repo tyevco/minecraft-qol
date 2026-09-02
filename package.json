@@ -11,7 +11,10 @@
     "clean": "just-scripts clean",
     "deploy": "just-scripts package",
     "local-deploy": "just-scripts local-deploy",
-    "mcaddon": "just-scripts mcaddon"
+    "mcaddon": "just-scripts mcaddon",
+    "textures": "ts-node -P tools/tsconfig.json tools/textures/generate.ts",
+    "models": "ts-node -P tools/tsconfig.json tools/models/generate.ts",
+    "assets": "npm run textures && npm run models"
   },
   "dependencies": {
     "@minecraft/server": "2.9.0",

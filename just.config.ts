@@ -43,6 +43,7 @@ const PACKS: Pack[] = [
     dir: "packages/lens",
     // No server-ui: the Lens has no forms. Must match its manifest.
     external: ["@minecraft/server"],
+    hasResourcePack: true,
   },
   {
     name: "hearthstone",
@@ -55,11 +56,13 @@ const PACKS: Pack[] = [
     name: "fluidworks",
     dir: "packages/fluidworks",
     external: ["@minecraft/server"],
+    hasResourcePack: true,
   },
   {
     name: "bulwark",
     dir: "packages/bulwark",
     external: ["@minecraft/server"],
+    hasResourcePack: true,
   },
 ];
 

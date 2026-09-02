@@ -1,0 +1,11 @@
+{
+  // ts-node config for the repo's build-time tools. The root tsconfig targets
+  // ES modules for esbuild; ts-node loads these as CommonJS.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": true
+  },
+  "include": ["./**/*.ts"]
+}

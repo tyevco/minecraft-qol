@@ -36,6 +36,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `Player.persistentId` for ownership | **Beta-only.** Mint an id into a player dynamic property instead. |
 | `PackSettingsChangeAfterEvent` | Beta-only, and misnamed (`PackSettingChangeAfterEventSignal`). `world.getPackSettings()` itself is stable — poll and diff. |
 | `CustomForm.image` grids | server-ui **2.2.0**, which has no stable release. `CustomForm` itself *is* stable in 2.1.0. |
+| `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — not yet built.
 Additional correction: the doc treats the `on_kill` fix as good news for a turret,

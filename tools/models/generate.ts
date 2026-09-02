@@ -9,6 +9,13 @@
  *     of the placement-direction state; permutations rotate from there.
  *   - Entity models face -z (north), the vanilla convention, so a yaw of 0
  *     points the model where the entity is looking.
+ *   - Block geometry is rendered with x MIRRORED: geometry +x lands on the
+ *     world's WEST side and -x on its east. Measured with the pipe, whose arm
+ *     bones are shown per world face: the arm authored on +x appeared on the
+ *     west, so two pipes side by side reached away from each other. z is not
+ *     mirrored (-z is north; the funnel's spout follows its state). So a bone
+ *     or feature that must sit on the world's east is authored on -x. See
+ *     docs/block-geometry-results.md.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -266,8 +273,11 @@ write("packages/fluidworks/resource_pack/models/blocks/pipe.geo.json", {
         faces: { all: "junction", south: flangeFace },
       },
     ),
+    // Bones are named for the WORLD face they reach, which is what the block
+    // JSON's bone_visibility keys on. x is mirrored in rendering (see the
+    // header), so the world-east arm is authored on -x and world-west on +x.
     pipeArm(
-      "west",
+      "east",
       {
         origin: [-8, 6, -2],
         size: [6, 4, 4],
@@ -280,7 +290,7 @@ write("packages/fluidworks/resource_pack/models/blocks/pipe.geo.json", {
       },
     ),
     pipeArm(
-      "east",
+      "west",
       {
         origin: [2, 6, -2],
         size: [6, 4, 4],

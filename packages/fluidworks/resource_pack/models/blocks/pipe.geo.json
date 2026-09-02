@@ -376,7 +376,7 @@
           ]
         },
         {
-          "name": "west",
+          "name": "east",
           "pivot": [
             0,
             0,
@@ -514,7 +514,7 @@
           ]
         },
         {
-          "name": "east",
+          "name": "west",
           "pivot": [
             0,
             0,

@@ -17,6 +17,9 @@ Three kinds of document live here, and they carry very different authority.
   light.
 - [`hearthstone-spawn-results.md`](hearthstone-spawn-results.md) — spawn-point
   behaviour, including that anchors work in the Nether.
+- [`block-geometry-results.md`](block-geometry-results.md) — custom block
+  geometry renders with x mirrored: +x is the world's west. Found with the
+  pipe's arms.
 - [`backlog.md`](backlog.md) — deferred work with enough context to pick up cold.
 
 **Awaiting measurement:**
@@ -48,6 +51,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
 | Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
 | Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
+| Block geometry axes match world axes (implicit in the model generator and the pipe) | **x is mirrored.** Geometry +x renders on the world's west side; -z is still north. The pipe's arm bones are named for the world face they reach, so the east arm is authored on -x. See `block-geometry-results.md`. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**

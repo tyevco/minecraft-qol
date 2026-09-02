@@ -37,7 +37,7 @@
         },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
-          "attack_interval": 1.5,
+          "attack_interval": { "min": 1.0, "max": 2.0 },
           "attack_radius": 16,
           "in_range_movement_mode": "hold_position",
           "x_max_rotation": 90,

@@ -14,7 +14,7 @@
       "minecraft:material_instances": {
         "*": {
           "texture": "hearthstone",
-          "render_method": "opaque"
+          "render_method": "alpha_test"
         },
         "flame": {
           "texture": "hearthstone",

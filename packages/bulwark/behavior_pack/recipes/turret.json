@@ -10,6 +10,7 @@
       "S": { "item": "minecraft:stone" },
       "R": { "item": "minecraft:redstone" }
     },
+    "unlock": [{ "item": "minecraft:dispenser" }],
     "result": { "item": "bulwark:turret", "count": 1 }
   }
 }

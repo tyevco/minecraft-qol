@@ -122,6 +122,7 @@ packages/
   qol-times/     behavior_pack/ + scripts/ + tests/
   hearthstone/   behavior_pack/ + resource_pack/ + scripts/ + tests/
   graves/        per-player item preservation; same shape
+  guardian/      per-role damage scaling and safety switches; scripts only, no resource pack
   fluidworks/    funnels and tanks; the cauldron rules live in shared/core/fluids
   gametest/      in-game tests on the GameTest framework; dev only, never shipped
   probe/         throwaway diagnostic pack, hand-deployed, plain JS
@@ -233,7 +234,8 @@ why levels go through block states rather than `fluid_container.fillLevel`.
 
 `packages/gametest` runs regression tests inside the game on Mojang's GameTest
 framework: a dispenser really fills a cauldron, a funnel really makes concrete,
-a player who dies really keeps their diamonds. It needs the **Beta APIs**
+a player who dies really keeps their diamonds, a player dropped out of the
+world really comes back. It needs the **Beta APIs**
 experiment and a throwaway world, is deployed like any pack, and is excluded
 from `mcaddon`. `/gametest runset qol` runs the lot. See
 [`packages/gametest/README.md`](packages/gametest/README.md).
@@ -250,4 +252,5 @@ Deploy it the same way, enable it instead of the main pack, then:
 /scriptevent qolprobe:scan     register rigs near you + dump cauldron readout
 /scriptevent qolprobe:arm      arm ONE removal test on the next item spawn
 /scriptevent qolprobe:status   show what is registered
+/scriptevent qolprobe:hurt     watch your own hurt events for 60s (Guardian's questions)
 ```

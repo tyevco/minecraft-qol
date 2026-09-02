@@ -17,6 +17,7 @@
 import "./suites/qoltimes";
 import "./suites/fluidworks";
 import "./suites/graves";
+import "./suites/guardian";
 import "./suites/hearthstone";
 
 console.warn("[QOL GameTests] registered suite qol");

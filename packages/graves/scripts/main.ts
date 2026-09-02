@@ -22,7 +22,7 @@
  * lose an item that vanilla would have kept.
  */
 import { Player, system, world } from "@minecraft/server";
-import type { GroundSample } from "./core/placement";
+import { createGroundTracker } from "@qol/shared/engine/groundTracker";
 import { describeMode } from "./core/prefs";
 import { playerId } from "./engine/identity";
 import {
@@ -46,7 +46,8 @@ const GROUND_TICKS = 10;
 /** Ticks between settings-panel polls. The change event is beta-only. */
 const SETTINGS_TICKS = 100;
 
-const lastGround = new Map<string, GroundSample>();
+/** Where each player last stood, shared with Guardian's void catch. */
+const ground = createGroundTracker();
 
 world.afterEvents.worldLoad.subscribe(() => {
   registry.load();
@@ -58,17 +59,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   }, SETTINGS_TICKS);
   system.runInterval(() => sweep(log), SWEEP_TICKS);
 
-  system.runInterval(() => {
-    const tick = system.currentTick;
-    for (const player of world.getAllPlayers()) {
-      try {
-        if (player.isOnGround)
-          lastGround.set(player.id, { pos: player.location, tick });
-      } catch {
-        /* player mid-transfer; skip this sample */
-      }
-    }
-  }, GROUND_TICKS);
+  system.runInterval(() => ground.sampleAll(system.currentTick), GROUND_TICKS);
 
   world.afterEvents.entityDie.subscribe((ev) => {
     const dead = ev.deadEntity;
@@ -82,7 +73,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     if (settings.modeFor(dead) !== "grave") return;
 
     try {
-      const grave = placeGrave(dead, lastGround.get(dead.id), log);
+      const grave = placeGrave(dead, ground.get(dead.id), log);
       if (!grave || !settings.policy().announce) return;
       const p = grave.location;
       dead.sendMessage(
@@ -130,9 +121,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     });
   });
 
-  world.afterEvents.playerLeave.subscribe((ev) =>
-    lastGround.delete(ev.playerId),
-  );
+  world.afterEvents.playerLeave.subscribe((ev) => ground.forget(ev.playerId));
 
   // Diagnostics, in the same shape as the other packs: /reload-safe because
   // scriptEventReceive is subscribed here rather than at startup.

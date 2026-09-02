@@ -1,8 +1,12 @@
-# Guardian — Proposal
+# Guardian — Design Document
 
 **Per-role difficulty and safety for a family realm**
 
-Target: `@minecraft/server` 2.9.0 · no experiments · pack settings panel, no commands · Proposal v0.1
+Target: `@minecraft/server` 2.9.0 · no experiments · pack settings panel, no commands · v0.2, updated alongside the Phase 1–2 implementation
+
+> **Status:** Phases 1 and 2 are built (`packages/guardian`). Sections marked
+> *as built* record where the implementation settled a question this proposal
+> left open. Pets (§4) remain Phase 3.
 
 ---
 
@@ -59,19 +63,36 @@ Before-event handlers run in read-only mode, which is fine here: setting
 | Members take | dropdown | 50% |
 | Operators take | dropdown | 100% |
 | Members and Visitors: no fall damage | toggle | on |
-| Members and Visitors: no fire or lava damage | toggle | on |
+| Members and Visitors: no fire, lava or magma damage | toggle | on |
 | Members and Visitors: no drowning | toggle | off |
 | Void catch for Members and Visitors | toggle | on |
+| Tell a player when Guardian softened a hit | toggle | off |
 
 The multiplier is a dropdown rather than a slider so the choices read as
 sentences (“Members take half damage”) and the values stay to a small tested
 set. The immunity toggles apply only to the protected roles; an Operator set
 to 100% is untouched by any of them.
 
+*As built:* "protected" means **Visitors and Members, full stop**, not "any
+role below 100%". The switches are the specific promise ("never falls to
+their death") and hold for a Member at 100%; an Operator at 50% gets the
+scale and none of the switches. That keeps "set Operators to 50%" a one-line
+change with no surprise attached. The switches cover: fall, stalagmite and
+elytra crash; fire, burning, lava, magma, campfires; drowning. `override`
+(the `/kill` and `/damage` commands) and `none` are never touched by anything.
+
 **Void catch** reuses Graves' ground tracker: a protected player whose `y`
 drops below the dimension floor is teleported to where they last stood, with a
 message, instead of dying. The tracker moves to `packages/shared/engine/` for
 both packs.
+
+*As built:* the tracker is `packages/shared/engine/groundTracker.ts` and
+Graves now uses it too. The catch fires two blocks below the dimension floor,
+trusts a footing up to twenty seconds old (the age of the sample is the length
+of the fall), falls back to the player's spawn point when the tracker has
+nothing for them (a `/reload` mid-fall), and otherwise leaves vanilla to it.
+Falls are cancelled for three seconds after a catch, whatever the panel says,
+in case the fall distance survives the teleport.
 
 Script reads the panel with `world.getPackSettings()` and polls, exactly as
 Graves does; a malformed value falls back to its default, never to vanilla.
@@ -115,13 +136,21 @@ the common case is one `instanceof` and a return. No intervals, no scans.
    says.
 2. Whether `entityHurt` fires for void damage at all. If not, void catch is
    the only cover, which is why it is a separate toggle.
+   *Answered at the typings:* **there is no `void` in `EntityDamageCause`
+   2.9.0.** Whatever the event does, the void cannot be matched by cause, so
+   the catch is the cover. `none` is left untouched so that if the void does
+   arrive unattributed, a 0% role is never cancelled into an endless fall.
 3. The pet questions in §4.
+
+Items 1 and 3 are measured by `qolprobe:hurt` in the probe pack; the pack
+README lists the one-line change for each outcome.
 
 **Design questions:**
 
 - Should a protected player *see* that they were protected? A brief action-bar
   “§7Guardian softened that” makes the mechanic legible. Leaning yes, as a
   toggle, default off — the whole point is that dying stops being an event.
+  *As built:* yes, as the last toggle, default off, at most once a second.
 - Does 25% for Visitors make sense, or should Visitors simply be immune?
   Visitors cannot build, so they are spectators with a health bar.
 
@@ -139,8 +168,9 @@ role-based panel shape and, once extracted, the ground tracker.
 ## 8. Phasing
 
 **Phase 1 — Damage table.** The before-event, the role × cause table, the
-three dropdowns and three immunity toggles. Shippable alone.
+three dropdowns and three immunity toggles. Shippable alone. *Built.*
 
 **Phase 2 — Void catch.** Extract the ground tracker to shared; teleport.
+*Built.*
 
 **Phase 3 — Pets.** Pet shield, then pet insurance once probed.

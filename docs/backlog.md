@@ -108,6 +108,9 @@ their own copies of the same pattern and should move onto it. Still missing
 from the shared one: **chunk keying** (every row in one dynamic property will
 hit the per-property cap eventually) and a **tick budget** (Fluidworks yields
 every four funnels inside a job, which is a start, not a budget).
+[`design/waystones.md`](design/waystones.md) §8.3 lists the other extractions
+that are due at the same time (player identity, the standing-spot validator,
+labels), since Waystones is the pack that needs all of them.
 
 ## Fluidworks: what is left
 

@@ -1,0 +1,28 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "bulwark:turret",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.redstone"
+      }
+    },
+    "components": {
+      "minecraft:display_name": "Bulwark Turret",
+      "minecraft:geometry": "geometry.bulwark_turret_base",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "bulwark_turret_base",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:collision_box": { "origin": [-8, 0, -8], "size": [16, 14, 16] },
+      "minecraft:selection_box": { "origin": [-8, 0, -8], "size": [16, 14, 16] },
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 4 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 6 },
+      "minecraft:light_dampening": 0,
+      "minecraft:map_color": "#B8B8B8"
+    }
+  }
+}

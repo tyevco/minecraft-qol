@@ -40,11 +40,13 @@ are stable (`world.getPackSettings()`, four control types) but need manifest
 `metadata.authors`. Deferred so the pack could be confirmed loading first.
 `PackSettingChangeAfterEventSignal` is beta-only, so changes need polling.
 
-## Lens: custom item
+## Lens: render the worn Lens
 
-The doc's original framing is a held lens item rather than a command. Needs the
-repo's first **resource pack** — texture, name, and `copyToResourcePacks` wired
-into `just.config.ts`. `ItemCustomComponent.onUse` is stable and ready.
+The Spawn Lens item, its resource pack and icon exist. What it still lacks is
+an **attachable**: worn on the head it occupies the slot but draws nothing on
+the player model. A goggles-style attachable geometry plus
+`attachables/spawn_lens.json` in the resource pack would make a Lens-wearer
+visible to other players. Purely cosmetic, so it waits.
 
 ## Lens: verify the DENY list
 

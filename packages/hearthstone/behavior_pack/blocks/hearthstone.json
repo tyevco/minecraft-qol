@@ -10,13 +10,21 @@
     },
     "components": {
       "minecraft:display_name": "Hearthstone",
-      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:geometry": "geometry.hearthstone",
       "minecraft:material_instances": {
         "*": {
           "texture": "hearthstone",
           "render_method": "opaque"
+        },
+        "flame": {
+          "texture": "hearthstone",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
         }
       },
+      "minecraft:collision_box": { "origin": [-8, 0, -8], "size": [16, 13, 16] },
+      "minecraft:selection_box": { "origin": [-8, 0, -8], "size": [16, 13, 16] },
       "minecraft:destructible_by_mining": { "seconds_to_destroy": 3 },
       "minecraft:destructible_by_explosion": { "explosion_resistance": 6 },
       "minecraft:light_emission": 7,

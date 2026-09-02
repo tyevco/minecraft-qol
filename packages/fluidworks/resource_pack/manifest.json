@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Fluidworks Resources",
+    "description": "Models and textures for Fluidworks funnels and pipes.",
+    "uuid": "37a96441-7d23-441b-85d0-3b91ef347ecf",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Fluidworks resources",
+      "type": "resources",
+      "uuid": "1e4023bf-2667-41b5-9272-186ecc40cc36",
+      "version": [0, 1, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  }
+}

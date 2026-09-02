@@ -98,6 +98,54 @@ Deploy into it without touching `.env`:
 CUSTOM_DEPLOYMENT_PATH="C:/bds/server" MINECRAFT_PRODUCT="Custom" npx just-scripts local-deploy
 ```
 
+## Sequential tests contaminate each other
+
+`--seq` places every test in the **same x/z column, one block higher** than the
+last. Reloading a structure restores *blocks* — it does not remove entities,
+item drops, or a pack's own position-keyed records. So a test inherits the
+previous one's leavings, and three separate mechanisms were measured:
+
+- **Entities.** A Bulwark test found the previous test's turret head sitting
+  ~0.8 blocks inside its own placement cell — within the pack's 1.5-block
+  `headsAt` radius — so the new turret was never placed.
+  `turret_replaces_killed_head` **failed in a sequence and passed alone**.
+- **A pack's own sweep.** Bulwark retires a stale turret record every 200 ticks
+  and drops its buffered ammo. Landing mid-test, that gave
+  `turret_break_returns_arrows` **20 arrows where it wanted 10**.
+- **Loose items.** Whatever the previous test dropped is still lying there.
+
+The harness now does all three before each test: `gametest clearall`, then a
+`--gap` (default 12s) so each pack's sweep drops what it is going to drop
+*before* the next test starts, then `kill @e[type=item]`. With that, all four
+Bulwark tests pass in sequence.
+
+**Both "turret failures" were this, not Bulwark.** A failing test here is not
+evidence about a pack until it has also been run alone.
+
+`harvester_funnel` still passes alone and intermittently fails in sequence
+("crop tile is air; expected it replanted"), so the sweep is not yet complete.
+
+## A SimulatedPlayer is invisible to every other pack
+
+On headless BDS a `SimulatedPlayer` marshals as **`undefined`** into any
+behaviour pack that does not itself bind `@minecraft/server-gametest` — every
+`world.getAllPlayers()` entry and every after-event `.player`.
+
+The evidence is in `dist/bds/seq3.log`: `cannot read property 'id' of undefined`
+from Graves, Hearthstone and Lens begins at the first `Player Spawned: gv_tester`
+and never stops. It is the same hole as the `sourceEntity=undefined` finding
+above — a simulated player is not a player to anyone but its own test.
+
+This makes `anchor_sets_spawn` a harness artefact, not a Hearthstone bug.
+Hearthstone never saw the player, so it never assigned anything; the spawn point
+the test read back is the **engine's own** spawn cell for the simulated player,
+which is why the reported offset is exactly the rig's player-to-anchor
+separation and not any candidate `chooseRespawn` could return.
+
+**Consequence: any test whose subject is one pack reacting to a player cannot be
+written with a simulated player on headless BDS.** It has to be confirmed in
+game, or restructured so the pack is driven by something other than a player.
+
 ### Run tests one at a time
 
 `--seq` waits for each `onTestPassed`/`onTestFailed` before sending the next.
@@ -142,29 +190,34 @@ overworld. Omitting them keeps the old behaviour exactly. Tests pass
 
 ## What the suite says now
 
-Infrastructure failures are gone. **Ten pass, five fail**, and every failure is
-now the test's own assertion carrying the observed value.
+**Eleven of fifteen pass**, and — this is the finding, not a footnote — **no
+shipped pack code has been changed to get there.** Every failure investigated so
+far has been the harness or the test, not the add-on.
 
 **Passing:** `dispenser_fills_cauldron`, `funnel_makes_concrete`,
-`funnel_fills_from_source`, `funnel_through_pipes`, `harvester_funnel`,
-`collector_funnel`, `death_keeps_items`, `guardian_never_adds_damage`,
-`turret_grows_head`, `turret_drains_feeding_hopper`.
+`funnel_fills_from_source`, `funnel_through_pipes`, `collector_funnel`,
+`death_keeps_items`, `guardian_never_adds_damage`, and all four Bulwark turret
+tests. `harvester_funnel` passes alone (see the sequence flake above).
 
 `funnel_makes_concrete` passing answers what it was written to ask: the funnel's
 facing state names the **spout's** direction, not the mouth's.
 
-**Still failing, not yet investigated:**
+**Still failing:**
 
-- `rain_collector` — tank still 0 in rain. The test calls `setWeather(Rain)`,
-  but the pack can only learn the weather from the `weatherChange` after-event
-  (`Dimension.getWeather` is beta-only), so whether that event fires for a
-  scripted `setWeather` is the thing to measure.
-- `turret_replaces_killed_head` (regrew 0 heads) and
-  `turret_break_returns_arrows` (hopper still holds 10) — Bulwark's other two
-  turret tests pass, so the block, the head and hopper draw all work.
-- `guardian_void_catch` — the player was still at `y=-104`, not caught.
-- `anchor_sets_spawn` — a spawn point *was* set, but three blocks off the
-  anchor, so this looks like the standing-spot choice rather than the assignment.
-
-These five are recorded as observations, not verdicts about the packs: some may
-still be artefacts of running with no real player.
+- `anchor_sets_spawn` — **harness artefact, understood.** Hearthstone never saw
+  the simulated player at all (see above), so it assigned nothing. Cannot be
+  fixed in the harness; needs confirming in game, or a rig that does not depend
+  on another pack noticing a player.
+- `guardian_void_catch` — same family, and unconfirmed. Guardian's sweep walks
+  `getAllPlayers()`, which is exactly what a simulated player is missing from.
+- `rain_collector` — **not yet measured, and deliberately not fixed.** Two
+  mechanisms produce this identical symptom and nothing in any log separates
+  them: either `weatherChange` does not fire for a scripted `setWeather`, or it
+  fires with a `dimension` string that does not match the `Dimension.id` the
+  funnel rows are keyed by. `WeatherChangeAfterEvent.dimension` is `string` and
+  is the *only* `dimension: string` in the whole 2.9.0 surface, so its format is
+  a legacy special case that this repo has never measured. The next step is a
+  `qolprobe:weather` handler in `packages/probe` logging the raw value —
+  probe first, then build, per CLAUDE.md. Changing `weather.ts` now would edit a
+  shipped pack on a coin flip.
+- `harvester_funnel` — passes alone, intermittent in sequence.

@@ -40,6 +40,9 @@ let logPath = join(REPO, "dist", "bds", "last-run.log");
 let quiet = false;
 
 let sequential = false;
+/** Wall time between sequential tests, for each pack's sweep to settle. */
+let gapMs = 12000;
+let waiting = false;
 
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -48,6 +51,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--log") logPath = resolve(args[++i]);
   else if (a === "--quiet") quiet = true;
   else if (a === "--seq") sequential = true;
+  else if (a === "--gap") gapMs = Number(args[++i]);
   else commands.push(a);
 }
 
@@ -126,13 +130,39 @@ let next = 0;
  * Only `gametest run` produces an onTestPassed/onTestFailed line, so anything
  * else (setup like `tickingarea add`) is sent and stepped straight past -
  * otherwise the chain waits forever for a marker that never comes.
+ *
+ * Before each test the previous one's leavings are swept up, because sequential
+ * tests are placed in the same x/z column one block higher each time and a
+ * structure reload restores blocks but NOT entities, item drops, or a pack's own
+ * position-keyed records. Measured, all three separately:
+ *
+ *   without `gametest clearall`, a turret test inherits the previous test's head
+ *     sitting inside its own placement cell, and the regrow test fails in a
+ *     sequence while passing alone;
+ *   the gap lets each pack's sweep (Bulwark retires a stale turret every 200
+ *     ticks) finish and drop what it is going to drop BEFORE the next test
+ *     starts, rather than in the middle of it;
+ *   `kill @e[type=item]` then clears those drops, so the break test counts its
+ *     own 10 arrows instead of the previous test's as well.
  */
 function sendNext() {
   while (next < commands.length) {
     const cmd = commands[next++];
-    send(cmd);
+    if (!/^gametest\s+run/i.test(cmd)) {
+      send(cmd);
+      lastOutput = Date.now();
+      continue;
+    }
+    send("gametest clearall");
+    waiting = true;
+    setTimeout(() => {
+      waiting = false;
+      send("kill @e[type=item]");
+      send(cmd);
+      lastOutput = Date.now();
+    }, gapMs).unref();
     lastOutput = Date.now();
-    if (/^gametest\s+run/i.test(cmd)) return;
+    return;
   }
 }
 
@@ -182,7 +212,7 @@ const tick = setInterval(() => {
     stop();
     return;
   }
-  if (started && !stopping && Date.now() - lastOutput > idleMs) stop();
+  if (started && !stopping && !waiting && Date.now() - lastOutput > idleMs) stop();
 }, 500);
 
 child.on("exit", async (code) => {

@@ -942,3 +942,77 @@ export function mane(r: Ramp): Canvas {
     564,
   );
 }
+
+// ---------------------------------------------------------------------------
+// Hatchling egg. The shell is a pale version of the variant's coat with soft
+// grain and nothing else: at seven pixels a face, a spot reads as a bar.
+// Cracks are transparent overlays. The tile is four 8x8 quadrants, one per
+// side of the egg; in each, rows 0-2 are the upper band's window and rows 3-6
+// the middle band's, so a crack drawn down a quadrant runs continuously
+// across the two cubes of that side. The first stage cracks two sides; the
+// second cracks all four and chips the first.
+// ---------------------------------------------------------------------------
+
+/** Eggshell: pale coat colour with soft grain. */
+export function eggShell(r: Ramp, seed = 571): Canvas {
+  const pale = mix(r.light, GLINT, 0.55);
+  return tile()
+    .fill(0, 0, 16, 16, pale)
+    .grain(0, 0, 16, 16, pale, GLINT, r.light, 0.35, seed, 5);
+}
+
+const CRACK_ROWS_A = [
+  // north quadrant (0,0)      east quadrant (8,0)
+  "...d....", "........",
+  "...d....", "........",
+  "..d.....", "........",
+  "..d.....", "........",
+  "...d....", "........",
+  "...d....", "........",
+  "....d...", "........",
+  "........", "........",
+  // south quadrant (0,8)      west quadrant (8,8)
+  "........", ".....d..",
+  "........", ".....d..",
+  "........", "....d...",
+  "........", "....d...",
+  "........", "...d....",
+  "........", "...d....",
+  "........", "...d....",
+  "........", "........",
+];
+
+const CRACK_ROWS_B = [
+  "...d....", "....d...",
+  "..dd....", "....d...",
+  "..d.d...", "...d....",
+  ".dd.....", "...d....",
+  "...d....", "..d.....",
+  "...dd...", "..d.d...",
+  "....d...", "..d.....",
+  "........", "........",
+  "..d.....", ".....d..",
+  "..d.....", ".....dd.",
+  "...d....", "....d...",
+  "...d....", "....d...",
+  "..d.....", "...d....",
+  "..d.....", "...d....",
+  "...d....", "..dd....",
+  "........", "........",
+];
+
+function crackTile(rows: readonly string[], ink: Color): Canvas {
+  const merged: string[] = [];
+  for (let i = 0; i < rows.length; i += 2) merged.push(rows[i]! + rows[i + 1]!);
+  return tile().art(0, 0, merged, { ".": "transparent", d: ink });
+}
+
+/** First crack stage: a hairline down two sides. */
+export function crackA(r: Ramp): Canvas {
+  return crackTile(CRACK_ROWS_A, r.deep);
+}
+
+/** Second crack stage: every side, with branches. */
+export function crackB(r: Ramp): Canvas {
+  return crackTile(CRACK_ROWS_B, r.deep);
+}

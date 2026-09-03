@@ -552,3 +552,93 @@ emit(CONCEPTS, "mule", {
     },
   ],
 });
+
+// ---------------------------------------------------------------------------
+// Hatchling egg: still until it starts to crack, then rocks in bursts; the
+// hatch is a squash, a shudder and a stretch as the shell gives.
+// ---------------------------------------------------------------------------
+
+emit(CONCEPTS, "egg", {
+  name: "concept_egg",
+  bones: bonesOf(`${CONCEPTS}/models/egg.geo.json`),
+  animations: [
+    {
+      key: "idle",
+      loop: true,
+      bones: {
+        egg: { scale: [1, "1 + math.sin(query.life_time * 60) * 0.01", 1] },
+      },
+    },
+    {
+      key: "wobble",
+      loop: true,
+      length: 2.4,
+      bones: {
+        egg: {
+          rotation: [
+            [0, [0, 0, 0]],
+            [0.1, [0, 0, 9]],
+            [0.2, [0, 0, -9]],
+            [0.3, [0, 0, 6]],
+            [0.4, [0, 0, -4]],
+            [0.5, [0, 0, 2]],
+            [0.6, [0, 0, 0]],
+            [1.4, [0, 0, 0]],
+            [1.5, [-7, 0, 0]],
+            [1.6, [6, 0, 0]],
+            [1.7, [-3, 0, 0]],
+            [1.8, [0, 0, 0]],
+            [2.4, [0, 0, 0]],
+          ],
+        },
+      },
+    },
+    {
+      key: "hatch",
+      length: 1.2,
+      bones: {
+        egg: {
+          scale: [
+            [0, [1, 1, 1]],
+            [0.3, [1.15, 0.8, 1.15]],
+            [0.5, [0.9, 1.25, 0.9]],
+            [0.7, [1.1, 0.9, 1.1]],
+            [0.9, [1, 1, 1]],
+            [1.2, [1, 1, 1]],
+          ],
+          rotation: [
+            [0, [0, 0, 0]],
+            [0.55, [0, 0, 12]],
+            [0.65, [0, 0, -12]],
+            [0.75, [0, 0, 8]],
+            [0.85, [0, 0, -5]],
+            [0.95, [0, 0, 0]],
+          ],
+        },
+      },
+    },
+  ],
+  controllers: [
+    {
+      key: "general",
+      initial: "idle",
+      states: {
+        idle: {
+          animations: ["idle"],
+          transitions: [
+            ["hatch", "query.property('concept:hatching')"],
+            ["wobble", "query.property('concept:cracks') > 0"],
+          ],
+        },
+        wobble: {
+          animations: ["wobble"],
+          transitions: [
+            ["hatch", "query.property('concept:hatching')"],
+            ["idle", "query.property('concept:cracks') == 0"],
+          ],
+        },
+        hatch: { animations: ["hatch"], transitions: [["idle", FINISHED]] },
+      },
+    },
+  ],
+});

@@ -265,3 +265,17 @@ write(
     dark: T.flatDark(T.HIDE),
   }),
 );
+
+/** The egg atlas, parameterised like the hatchling so the two match. */
+function egg(r: T.Ramp): Canvas {
+  return atlas(A.EGG, {
+    shell: T.eggShell(r),
+    crackA: T.crackA(r),
+    crackB: T.crackB(r),
+    straw: T.straw(T.STRAW, 572),
+    dark: T.flatDark(T.OAK),
+  });
+}
+write(`${CONCEPTS}/egg_ember.png`, egg(T.EMBER));
+write(`${CONCEPTS}/egg_moss.png`, egg(T.MOSS));
+write(`${CONCEPTS}/egg_frost.png`, egg(T.FROST));

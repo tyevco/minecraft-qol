@@ -154,3 +154,11 @@ export const MULE = layout(64, {
   strap: [3, 1],
   dark: [0, 2],
 });
+
+export const EGG = layout(64, {
+  shell: [0, 0],
+  crackA: [1, 0],
+  crackB: [2, 0],
+  straw: [3, 0],
+  dark: [0, 1],
+});

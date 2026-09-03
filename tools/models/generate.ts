@@ -1028,3 +1028,76 @@ write(`${CONCEPT_MODELS}/mule.geo.json`, {
     mulePack("right_pack", -9),
   ],
 });
+
+// ---------------------------------------------------------------------------
+// Hatchling egg - the thing a hatchling comes from. An egg stacked from five
+// cubes on a straw nest. The `egg` bone wobbles and hatches; `crack_1` and
+// `crack_2` are alpha-tested overlay cubes a quarter pixel proud of the
+// shell, shown by bone visibility as the egg's crack property advances.
+// ---------------------------------------------------------------------------
+
+type EG = keyof typeof A.EGG.tiles;
+
+const eggShell: Cube<EG>[] = [
+  { origin: [-2.5, 2, -2.5], size: [5, 2, 5], faces: { all: "shell" } },
+  { origin: [-3.5, 4, -3.5], size: [7, 4, 7], faces: { all: "shell" } },
+  { origin: [-3, 8, -3], size: [6, 3, 6], faces: { all: "shell" } },
+  { origin: [-2, 11, -2], size: [4, 2, 4], faces: { all: "shell" } },
+  { origin: [-1, 13, -1], size: [2, 1, 2], faces: { all: "shell" } },
+];
+
+// Each side reads its own quadrant of the crack tile: the middle band rows
+// 3-6 and the upper band rows 0-2 of that quadrant, so a crack runs on from
+// one cube to the next.
+const eggCracks = (tile: EG): Cube<EG>[] => [
+  {
+    origin: [-3.5, 4, -3.5],
+    size: [7, 4, 7],
+    inflate: 0.25,
+    faces: {
+      north: { tile, at: [0, 3] },
+      east: { tile, at: [8, 3] },
+      south: { tile, at: [0, 11] },
+      west: { tile, at: [8, 11] },
+    },
+  },
+  {
+    origin: [-3, 8, -3],
+    size: [6, 3, 6],
+    inflate: 0.25,
+    faces: {
+      north: { tile, at: [1, 0] },
+      east: { tile, at: [9, 0] },
+      south: { tile, at: [1, 8] },
+      west: { tile, at: [9, 8] },
+    },
+  },
+];
+
+write(`${CONCEPT_MODELS}/egg.geo.json`, {
+  identifier: "geometry.concept_egg",
+  atlas: A.EGG,
+  visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "nest",
+      cubes: [
+        { origin: [-4, 0, -4], size: [8, 2, 8], faces: { all: "straw", down: "dark" } },
+        { origin: [-6, 0, -6], size: [12, 2, 2], faces: { all: "straw", down: "dark" } },
+        { origin: [-6, 0, 4], size: [12, 2, 2], faces: { all: "straw", down: "dark" } },
+        { origin: [4, 0, -4], size: [2, 2, 8], faces: { all: "straw", down: "dark" } },
+        { origin: [-6, 0, -4], size: [2, 2, 8], faces: { all: "straw", down: "dark" } },
+      ] satisfies Cube<EG>[],
+    },
+    {
+      name: "egg",
+      parent: "nest",
+      pivot: [0, 2, 0],
+      // Where the hatch burst and the wobble's dust attach.
+      locators: { top: [0, 14, 0] },
+      cubes: eggShell,
+    },
+    { name: "crack_1", parent: "egg", pivot: [0, 2, 0], cubes: eggCracks("crackA") },
+    { name: "crack_2", parent: "egg", pivot: [0, 2, 0], cubes: eggCracks("crackB") },
+  ],
+});

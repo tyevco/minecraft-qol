@@ -1,0 +1,15 @@
+{
+  "format_version": "1.10.0",
+  "render_controllers": {
+    "controller.render.hatchling": {
+      "arrays": {
+        "textures": {
+          "Array.variant": ["Texture.ember", "Texture.moss", "Texture.frost"]
+        }
+      },
+      "geometry": "Geometry.default",
+      "materials": [{ "*": "Material.default" }],
+      "textures": ["Array.variant[math.clamp(q.property('hatchling:variant'), 0, 2)]"]
+    }
+  }
+}

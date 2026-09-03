@@ -1,0 +1,46 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.hatchling_egg.general": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": [
+            "idle"
+          ],
+          "transitions": [
+            {
+              "hatch": "query.property('hatchling:hatching')"
+            },
+            {
+              "wobble": "query.property('hatchling:cracks') > 0"
+            }
+          ]
+        },
+        "wobble": {
+          "animations": [
+            "wobble"
+          ],
+          "transitions": [
+            {
+              "hatch": "query.property('hatchling:hatching')"
+            },
+            {
+              "idle": "query.property('hatchling:cracks') == 0"
+            }
+          ]
+        },
+        "hatch": {
+          "animations": [
+            "hatch"
+          ],
+          "transitions": [
+            {
+              "idle": "query.all_animations_finished"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

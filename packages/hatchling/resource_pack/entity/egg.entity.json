@@ -1,0 +1,23 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "hatchling:egg",
+      "materials": { "default": "entity_alphatest" },
+      "textures": {
+        "ember": "textures/entity/egg_ember",
+        "moss": "textures/entity/egg_moss",
+        "frost": "textures/entity/egg_frost"
+      },
+      "geometry": { "default": "geometry.hatchling_egg" },
+      "animations": {
+        "idle": "animation.hatchling_egg.idle",
+        "wobble": "animation.hatchling_egg.wobble",
+        "hatch": "animation.hatchling_egg.hatch",
+        "general": "controller.animation.hatchling_egg.general"
+      },
+      "scripts": { "animate": ["general"] },
+      "render_controllers": ["controller.render.hatchling_egg"]
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.concept_patrol_golem.idle": {
+      "loop": true,
+      "bones": {
+        "head": {
+          "rotation": [
+            0,
+            "math.sin(query.life_time * 30) * 10",
+            0
+          ]
+        },
+        "body": {
+          "position": [
+            0,
+            "math.sin(query.life_time * 60) * 0.25",
+            0
+          ]
+        }
+      }
+    },
+    "animation.concept_patrol_golem.walk": {
+      "loop": true,
+      "bones": {
+        "left_leg": {
+          "rotation": [
+            "math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 55",
+            0,
+            0
+          ]
+        },
+        "right_leg": {
+          "rotation": [
+            "-math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 55",
+            0,
+            0
+          ]
+        },
+        "left_arm": {
+          "rotation": [
+            "-math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 30",
+            0,
+            0
+          ]
+        },
+        "right_arm": {
+          "rotation": [
+            "math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 30",
+            0,
+            0
+          ]
+        },
+        "body": {
+          "position": [
+            0,
+            "math.abs(math.cos(query.modified_distance_moved * 38.17)) * query.modified_move_speed * 0.6",
+            0
+          ]
+        }
+      }
+    },
+    "animation.concept_patrol_golem.attack": {
+      "animation_length": 0.6,
+      "bones": {
+        "right_arm": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.15": [
+              -120,
+              0,
+              0
+            ],
+            "0.3": [
+              25,
+              0,
+              0
+            ],
+            "0.6": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "body": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.3": [
+              8,
+              0,
+              0
+            ],
+            "0.6": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    }
+  }
+}

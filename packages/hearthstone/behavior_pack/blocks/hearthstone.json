@@ -14,12 +14,12 @@
       "minecraft:material_instances": {
         "*": {
           "texture": "hearthstone",
-          "render_method": "opaque"
+          "render_method": "alpha_test"
         },
         "flame": {
           "texture": "hearthstone",
           "render_method": "alpha_test",
-          "ambient_occlusion": false,
+          "ambient_occlusion": 0.0,
           "face_dimming": false
         }
       },

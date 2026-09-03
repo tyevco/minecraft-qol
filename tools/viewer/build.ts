@@ -26,6 +26,8 @@ interface Model {
   notes?: string;
   /** Particle effects to preview, each a particle definition plus its sprite. */
   particles?: Particle[];
+  /** Animation file and, optionally, the controller that sequences it. */
+  animations?: { file: string; controller?: string };
 }
 
 interface Particle {
@@ -132,6 +134,108 @@ const MODELS: Model[] = [
       },
     ],
   },
+  // Concept entities: proposals from docs/design/entities.md, generated into
+  // concepts/ and shipped by no pack. Here so they can be judged as models.
+  {
+    id: "concept_decoy",
+    name: "Decoy Dummy (concept)",
+    pack: "concept · bulwark",
+    kind: "entity",
+    geometry: "concepts/entities/models/decoy.geo.json",
+    animations: {
+      file: "concepts/entities/animations/decoy.animation.json",
+      controller: "concepts/entities/animation_controllers/decoy.animation_controllers.json",
+    },
+    textures: { default: "concepts/entities/textures/decoy.png" },
+    notes: "A scarecrow in the player type family so hostiles target it. Head and body are separate bones so a hit can rock them; straw puffs from the chest locator.",
+  },
+  {
+    id: "concept_patrol_golem",
+    name: "Patrol Golem (concept)",
+    pack: "concept · bulwark",
+    kind: "entity",
+    geometry: "concepts/entities/models/patrol_golem.geo.json",
+    animations: {
+      file: "concepts/entities/animations/patrol_golem.animation.json",
+      controller: "concepts/entities/animation_controllers/patrol_golem.animation_controllers.json",
+    },
+    textures: { default: "concepts/entities/textures/patrol_golem.png" },
+    notes: "Bulwark's mobile sibling: stone limbs, iron plate and boots, lit eyes. Limbs on their own bones for a walk cycle; the head yaws with look_at_target.",
+  },
+  {
+    id: "concept_runner",
+    name: "Runner (concept)",
+    pack: "concept · companions",
+    kind: "entity",
+    geometry: "concepts/entities/models/runner.geo.json",
+    animations: {
+      file: "concepts/entities/animations/runner.animation.json",
+      controller: "concepts/entities/animation_controllers/runner.animation_controllers.json",
+    },
+    textures: { default: "concepts/entities/textures/runner.png" },
+    notes: "A clockwork fetcher in Fluidworks copper. The carried item shows through the glass front at the hand locator; the wings are fan blades on their own bones.",
+  },
+  {
+    id: "hatchling",
+    name: "Hatchling",
+    pack: "hatchling",
+    kind: "entity",
+    geometry: "packages/hatchling/resource_pack/models/entity/hatchling.geo.json",
+    textures: {
+      ember: "packages/hatchling/resource_pack/textures/entity/hatchling_ember.png",
+      moss: "packages/hatchling/resource_pack/textures/entity/hatchling_moss.png",
+      frost: "packages/hatchling/resource_pack/textures/entity/hatchling_frost.png",
+    },
+    animations: {
+      file: "packages/hatchling/resource_pack/animations/hatchling.animation.json",
+      controller: "packages/hatchling/resource_pack/animation_controllers/hatchling.animation_controllers.json",
+    },
+    notes: "The pet. Texture by the hatchling:variant property; size by the stage component group (0.55, 0.8, 1.1). The flap plays when hatchling:happy is set after a feeding.",
+  },
+  {
+    id: "hatchling_egg",
+    name: "Hatchling Egg",
+    pack: "hatchling",
+    kind: "entity",
+    geometry: "packages/hatchling/resource_pack/models/entity/egg.geo.json",
+    textures: {
+      ember: "packages/hatchling/resource_pack/textures/entity/egg_ember.png",
+      moss: "packages/hatchling/resource_pack/textures/entity/egg_moss.png",
+      frost: "packages/hatchling/resource_pack/textures/entity/egg_frost.png",
+    },
+    animations: {
+      file: "packages/hatchling/resource_pack/animations/egg.animation.json",
+      controller: "packages/hatchling/resource_pack/animation_controllers/egg.animation_controllers.json",
+    },
+    defaultVisible: ["nest", "egg"],
+    notes: "Placed from its item, warmed by hand. crack_1 and crack_2 are shown by the render controller as hatchling:cracks advances; toggle them here. It wobbles once cracked and plays hatch on hatchling:hatching.",
+  },
+  {
+    id: "concept_messenger",
+    name: "Messenger (concept)",
+    pack: "concept · companions",
+    kind: "entity",
+    geometry: "concepts/entities/models/messenger.geo.json",
+    animations: {
+      file: "concepts/entities/animations/messenger.animation.json",
+      controller: "concepts/entities/animation_controllers/messenger.animation_controllers.json",
+    },
+    textures: { default: "concepts/entities/textures/messenger.png" },
+    notes: "A pigeon with a satchel. Wings fold along the body and can open on their bones; the letter renders at the letter locator on the chest.",
+  },
+  {
+    id: "concept_mule",
+    name: "Pack Mule (concept)",
+    pack: "concept · companions",
+    kind: "entity",
+    geometry: "concepts/entities/models/mule.geo.json",
+    animations: {
+      file: "concepts/entities/animations/mule.animation.json",
+      controller: "concepts/entities/animation_controllers/mule.animation_controllers.json",
+    },
+    textures: { default: "concepts/entities/textures/mule.png" },
+    notes: "A donkey with panniers and a harness. Each pannier is its own bone so an empty side can be hidden by bone visibility.",
+  },
 ];
 
 rmSync(OUT, { recursive: true, force: true });
@@ -157,7 +261,18 @@ const catalog = {
       copyFileSync(resolve(ROOT, pt.texture), resolve(dir, tex));
       return { ...pt, definition: `assets/${m.id}/${def}`, texture: `assets/${m.id}/${tex}` };
     });
-    return { ...m, geometry: `assets/${m.id}/${geoName}`, textures, particles };
+    let animations: Model["animations"];
+    if (m.animations) {
+      const file = basename(m.animations.file);
+      copyFileSync(resolve(ROOT, m.animations.file), resolve(dir, file));
+      animations = { file: `assets/${m.id}/${file}` };
+      if (m.animations.controller) {
+        const ctl = basename(m.animations.controller);
+        copyFileSync(resolve(ROOT, m.animations.controller), resolve(dir, ctl));
+        animations.controller = `assets/${m.id}/${ctl}`;
+      }
+    }
+    return { ...m, geometry: `assets/${m.id}/${geoName}`, textures, particles, animations };
   }),
 };
 

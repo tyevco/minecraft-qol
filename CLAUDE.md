@@ -17,6 +17,7 @@ Packs: `qol-times` (dispensers use cauldrons), `lens` (spawn-proofing overlay),
 `hearthstone` (respawn anchors), `graves` (item preservation on death),
 `guardian` (per-role damage scaling and safety switches),
 `fluidworks` (funnels and tanks), `bulwark` (turret: block, head, hopper ammo),
+`hatchling` (a pet dragon: egg, warming, hatching, feeding, growth),
 `probe` (throwaway diagnostics), `gametest` (in-game tests). Shared code is
 under `packages/shared`.
 
@@ -46,10 +47,12 @@ under `packages/shared`.
    before performing any; consume inputs before producing outputs; drop as
    the last resort rather than lose. Read Graves' `placeGrave` and Fluidworks'
    `execute` for the shape.
-5. **Generated assets are never hand-edited.** Textures, geometry and
-   GameTest structures come from `tools/` via `npm run assets`, and are
-   committed. A changed PNG or `.geo.json` in a diff must correspond to a
-   change under `tools/`.
+5. **Generated assets are never hand-edited.** Textures, geometry,
+   animation sets and GameTest structures come from `tools/` via
+   `npm run assets`, and are committed. A changed PNG, `.geo.json` or
+   `.animation.json` in a diff must correspond to a change under `tools/`.
+   (The two particle-only idle animations in Bulwark and Graves predate the
+   animation generator and are still hand-written.)
 6. **Per-block state lives in a world dynamic property keyed by position**
    (`packages/shared/engine/positionIndex.ts`), registered on
    `playerPlaceBlock` and removed on `playerBreakBlock`, with a schema version.
@@ -61,7 +64,7 @@ under `packages/shared`.
 npm test              vitest over every pure layer; no game needed
 npx tsc --noEmit      typecheck, including tools/
 npm run build         typecheck + esbuild bundle per pack into dist/<pack>/
-npm run assets        regenerate textures, models and GameTest structures
+npm run assets        regenerate textures, models, animations and GameTest structures
 npm run deploy        build, then copy packs into development_behavior_packs
 npm run mcaddon       .mcaddon per shipped pack (dev-only packs excluded)
 ```
@@ -78,7 +81,11 @@ reflows them and buries your change.
   runtime with no build error. `hasResourcePack` if it ships one; `devOnly`
   if it must never be packaged.
 - Fresh UUIDs for every pack and module. Reusing one makes packs mutually
-  exclusive in game.
+  exclusive in game. A behavior pack lists its own resource pack under
+  `dependencies` by uuid, at the resource pack's version, so enabling one
+  brings the other; every manifest carries `metadata.authors`, `metadata.url`
+  and a pack-list description. `packages/shared/tests/manifests.test.ts`
+  checks all of this, uuid uniqueness included.
 - Format versions in use: manifests 2, or 3 when a settings panel is needed
   (SemVer strings throughout and `metadata.authors` set); blocks and items
   `1.26.30`; entities `1.26.40` (validation is strict from there: invalid JSON

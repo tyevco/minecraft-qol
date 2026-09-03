@@ -37,9 +37,8 @@
         },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
-          "attack_interval": 1.5,
+          "attack_interval": { "min": 1.0, "max": 2.0 },
           "attack_radius": 16,
-          "in_range_movement_mode": "hold_position",
           "x_max_rotation": 90,
           "y_max_head_rotation": 180
         },
@@ -83,10 +82,6 @@
       "minecraft:health": {
         "value": 20,
         "max": 20
-      },
-      "minecraft:pushable": {
-        "is_pushable": false,
-        "is_pushable_by_piston": false
       },
       "minecraft:knockback_resistance": {
         "value": 1.0

@@ -1,0 +1,14 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "hatchling:egg_ember" },
+    "tags": ["crafting_table"],
+    "pattern": ["###", "#E#", "###"],
+    "key": {
+      "#": { "item": "minecraft:coal" },
+      "E": { "item": "minecraft:egg" }
+    },
+    "unlock": [{ "item": "minecraft:egg" }],
+    "result": { "item": "hatchling:egg_ember" }
+  }
+}

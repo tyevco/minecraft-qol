@@ -29,12 +29,34 @@ one of the "to verify in game" items in a pack README.
 | `collector_funnel` | Fluidworks | Cobblestone dropped by an open mouth ends up in the chest, and the item entity is gone. |
 | `death_keeps_items` | Graves | Items survive death in the inventory or in a gravestone — accepts either, since the panel decides, and prints which. Fails only if they dropped. |
 | `guardian_never_adds_damage` | Guardian | Three `applyDamage` hits (attack, fall, lava) on a simulated player; prints what each cost against what was proposed, and fails only if a hit cost **more**. The printed numbers are the role × cause table measured. |
-| `guardian_void_catch` | Guardian | A simulated player with a known footing is dropped below the dimension floor and must come back alive. Skips itself if the simulated player is an operator, whom the switches never touch. |
-| `anchor_sets_spawn` | Hearthstone | A placed anchor gives a spawn-less player a spawn point beside it. |
+| `guardian_void_catch` | Guardian | **Expected to fail normally — see below.** A simulated player with a known footing is dropped below the dimension floor and must come back alive. Skips itself if the simulated player is an operator, whom the switches never touch. |
+| `anchor_sets_spawn` | Hearthstone | **Expected to fail normally — see below.** A placed anchor gives a spawn-less player a spawn point beside it. |
 | `turret_grows_head` | Bulwark | A placed turret grows exactly one head entity in its socket. |
 | `turret_replaces_killed_head` | Bulwark | Removing the head regrows exactly one, after the block's grace period; never two. |
 | `turret_drains_feeding_hopper` | Bulwark | A hopper facing into the turret is emptied into its ammo buffer. |
 | `turret_break_returns_arrows` | Bulwark | Breaking the base removes the head and drops the buffered arrows; also whether `destroyBlock` reaches `onBreak`, or the sweep has to catch it. |
+
+## Two tests are expected to fail
+
+`guardian_void_catch` and `anchor_sets_spawn` **fail in a normal run, and that
+is not a regression.** Read them as "not measured", never as "the pack is
+broken": both packs are proven correct in
+[`../../docs/gametest-structure-results.md`](../../docs/gametest-structure-results.md).
+
+A `SimulatedPlayer` marshals as `undefined` into every pack that does not itself
+bind `@minecraft/server-gametest`, so Guardian's `getAllPlayers()` sweep never
+sees the faller and Hearthstone never sees the anchor's placer.
+
+They are kept because each is a genuine full-path test, and they are worth
+running deliberately when changing those paths. To run one: temporarily add
+`@minecraft/server-gametest` to that pack in **all three** places — the
+manifest's `dependencies`, its `external` list in `just.config.ts`, and a
+side-effect `import` in its `main.ts` (the declaration alone does nothing; the
+bundle must actually reference the module) — then **revert all three**. That
+module is a Beta API. It flags the pack experimental, and the Realm keeps its
+achievements, so it must never ship.
+
+Under that binding both pass, which is how the packs were cleared.
 
 ## How the rigs work
 

@@ -1,0 +1,46 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.hatchling.general": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": [
+            "idle"
+          ],
+          "transitions": [
+            {
+              "flap": "query.property('hatchling:happy')"
+            },
+            {
+              "walk": "query.modified_move_speed > 0.05"
+            }
+          ]
+        },
+        "walk": {
+          "animations": [
+            "idle",
+            "walk"
+          ],
+          "transitions": [
+            {
+              "idle": "query.modified_move_speed <= 0.05"
+            }
+          ],
+          "blend_transition": 0.2
+        },
+        "flap": {
+          "animations": [
+            "idle",
+            "flap"
+          ],
+          "transitions": [
+            {
+              "idle": "query.all_animations_finished"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

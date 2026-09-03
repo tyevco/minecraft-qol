@@ -1,0 +1,23 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Hatchling Resources",
+    "description": "Models, textures, animations and names for the hatchling and its egg. Enabled automatically with the Hatchling behavior pack.",
+    "uuid": "2ac4ec91-9e06-46f5-a653-21fa66020c10",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Hatchling resources",
+      "type": "resources",
+      "uuid": "3d445a46-96c7-432c-a386-35812fcac73d",
+      "version": [0, 1, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Sweetpotato Games"],
+    "url": "https://sweetpotato.games",
+    "product_type": "addon"
+  }
+}

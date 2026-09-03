@@ -1,0 +1,148 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.concept_mule.idle": {
+      "loop": true,
+      "bones": {
+        "tail": {
+          "rotation": [
+            0,
+            "math.sin(query.life_time * 120) * 15",
+            "math.sin(query.life_time * 60) * 5"
+          ]
+        },
+        "head": {
+          "rotation": [
+            "math.sin(query.life_time * 25) * 4",
+            0,
+            0
+          ]
+        }
+      }
+    },
+    "animation.concept_mule.walk": {
+      "loop": true,
+      "bones": {
+        "front_left_leg": {
+          "rotation": [
+            "math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 45",
+            0,
+            0
+          ]
+        },
+        "back_right_leg": {
+          "rotation": [
+            "math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 45",
+            0,
+            0
+          ]
+        },
+        "front_right_leg": {
+          "rotation": [
+            "-math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 45",
+            0,
+            0
+          ]
+        },
+        "back_left_leg": {
+          "rotation": [
+            "-math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 45",
+            0,
+            0
+          ]
+        },
+        "neck": {
+          "rotation": [
+            "math.sin(query.modified_distance_moved * 38.17) * query.modified_move_speed * 3",
+            0,
+            0
+          ]
+        },
+        "left_pack": {
+          "rotation": [
+            0,
+            0,
+            "math.sin(query.modified_distance_moved * 38.17) * query.modified_move_speed * 3"
+          ]
+        },
+        "right_pack": {
+          "rotation": [
+            0,
+            0,
+            "-math.sin(query.modified_distance_moved * 38.17) * query.modified_move_speed * 3"
+          ]
+        },
+        "body": {
+          "position": [
+            0,
+            "math.abs(math.cos(query.modified_distance_moved * 38.17)) * query.modified_move_speed * 0.4",
+            0
+          ]
+        }
+      }
+    },
+    "animation.concept_mule.graze": {
+      "animation_length": 2.4,
+      "bones": {
+        "neck": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.5": [
+              38,
+              0,
+              0
+            ],
+            "1.9": [
+              38,
+              0,
+              0
+            ],
+            "2.4": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "head": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.5": [
+              20,
+              0,
+              0
+            ],
+            "1.0": [
+              24,
+              0,
+              0
+            ],
+            "1.4": [
+              18,
+              0,
+              0
+            ],
+            "1.9": [
+              22,
+              0,
+              0
+            ],
+            "2.4": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Fluidworks Resources",
-    "description": "Models and textures for Fluidworks funnels and pipes.",
+    "description": "Models, textures, particles and names for Fluidworks funnels and pipes. Enabled automatically with the Fluidworks behavior pack.",
     "uuid": "37a96441-7d23-441b-85d0-3b91ef347ecf",
     "version": [0, 1, 0],
     "min_engine_version": [1, 26, 40]
@@ -16,7 +16,8 @@
     }
   ],
   "metadata": {
-    "authors": ["tyevco"],
+    "authors": ["Sweetpotato Games"],
+    "url": "https://sweetpotato.games",
     "product_type": "addon"
   }
 }

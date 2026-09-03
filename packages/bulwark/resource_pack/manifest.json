@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Bulwark Resources",
-    "description": "Models and textures for the Bulwark turret.",
+    "description": "Models, textures, particles and names for the Bulwark turret. Enabled automatically with the Bulwark behavior pack.",
     "uuid": "23010022-7a90-4f23-acdf-abf72b76b5e9",
     "version": [0, 1, 0],
     "min_engine_version": [1, 26, 40]
@@ -16,7 +16,8 @@
     }
   ],
   "metadata": {
-    "authors": ["tyevco"],
+    "authors": ["Sweetpotato Games"],
+    "url": "https://sweetpotato.games",
     "product_type": "addon"
   }
 }

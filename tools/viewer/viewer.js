@@ -81,7 +81,7 @@ function buildModel(geo, texture) {
     g.position.set(...pivot);
     if (bone.rotation) g.rotation.copy(euler(bone.rotation));
     g.add(buildBone(bone, desc.texture_width, desc.texture_height, material));
-    groups.set(bone.name, { group: g, pivot });
+    groups.set(bone.name, { group: g, pivot, rest: bone.rotation ?? [0, 0, 0] });
   }
   for (const bone of geo.bones) {
     const { group, pivot } = groups.get(bone.name);
@@ -90,6 +90,7 @@ function buildModel(geo, texture) {
       group.position.set(pivot[0] - parent.pivot[0], pivot[1] - parent.pivot[1], pivot[2] - parent.pivot[2]);
       parent.group.add(group);
     } else root.add(group);
+    groups.get(bone.name).restPos = group.position.clone();
   }
   return { root, groups };
 }
@@ -255,6 +256,228 @@ class Emitter {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Animations. A Molang evaluator for the subset the generated animation files
+// use (arithmetic, comparisons, ?:, math.*, query.* and variable.* reads,
+// query.property('name')), keyframe interpolation, and a player that runs
+// either one animation or an animation controller's state machine. Rotations
+// add to the bone's rest rotation, positions to its rest position, scales
+// multiply, as in game. Trig is in degrees, as in Molang.
+// ---------------------------------------------------------------------------
+
+function tokenize(src) {
+  const out = [];
+  const re = /\s*(?:(\d+\.?\d*|\.\d+)|([A-Za-z_][\w.]*)|('[^']*')|(<=|>=|==|!=|&&|\|\||[-+*\/()<>!?:,]))/gy;
+  let m;
+  re.lastIndex = 0;
+  while (re.lastIndex < src.length && (m = re.exec(src))) {
+    if (m[1] !== undefined) out.push({ t: "num", v: parseFloat(m[1]) });
+    else if (m[2] !== undefined) out.push({ t: "id", v: m[2].toLowerCase() });
+    else if (m[3] !== undefined) out.push({ t: "str", v: m[3].slice(1, -1) });
+    else out.push({ t: "op", v: m[4] });
+  }
+  return out;
+}
+
+const MATH = {
+  sin: (a) => Math.sin((a * Math.PI) / 180),
+  cos: (a) => Math.cos((a * Math.PI) / 180),
+  abs: Math.abs,
+  floor: Math.floor,
+  ceil: Math.ceil,
+  round: Math.round,
+  trunc: Math.trunc,
+  sqrt: Math.sqrt,
+  pow: Math.pow,
+  min: Math.min,
+  max: Math.max,
+  mod: (a, b) => a % b,
+  clamp: (v, lo, hi) => Math.min(hi, Math.max(lo, v)),
+  lerp: (a, b, t) => a + (b - a) * t,
+  random: (a, b) => a + Math.random() * (b - a),
+  pi: Math.PI,
+};
+
+/** Compile a Molang string to (ctx) => number. Numbers compile to constants. */
+function molang(src) {
+  if (typeof src === "number") return () => src;
+  if (typeof src !== "string") return () => 0;
+  const toks = tokenize(src.replace(/;\s*$/, ""));
+  let i = 0;
+  const peek = () => toks[i];
+  const take = (v) => {
+    const t = toks[i++];
+    if (v !== undefined && (!t || t.v !== v)) throw new Error(`molang: expected ${v} in "${src}"`);
+    return t;
+  };
+  const primary = () => {
+    const t = take();
+    if (!t) throw new Error(`molang: unexpected end of "${src}"`);
+    if (t.t === "num") return () => t.v;
+    if (t.t === "str") return () => t.v;
+    if (t.t === "op" && t.v === "(") { const e = ternary(); take(")"); return e; }
+    if (t.t === "op" && t.v === "-") { const e = unary(); return (c) => -e(c); }
+    if (t.t === "op" && t.v === "!") { const e = unary(); return (c) => (e(c) ? 0 : 1); }
+    if (t.t === "id") {
+      const [ns, ...rest] = t.v.split(".");
+      const name = rest.join(".");
+      if (peek()?.v === "(") {
+        take("(");
+        const args = [];
+        if (peek()?.v !== ")") { args.push(ternary()); while (peek()?.v === ",") { take(","); args.push(ternary()); } }
+        take(")");
+        if ((ns === "math" || ns === "m") && typeof MATH[name] === "function") return (c) => MATH[name](...args.map((a) => a(c)));
+        if ((ns === "query" || ns === "q") && name === "property") return (c) => c.property[args[0](c)] ?? 0;
+        return () => 0;
+      }
+      if (ns === "math" && name in MATH) return () => MATH[name];
+      if (ns === "query" || ns === "q") return (c) => c.query[name] ?? 0;
+      if (ns === "variable" || ns === "v") return (c) => c.variable[name] ?? 0;
+      return () => 0;
+    }
+    throw new Error(`molang: unexpected ${t.v} in "${src}"`);
+  };
+  const unary = () => primary();
+  const binary = (next, ops) => () => {
+    let l = next();
+    while (peek()?.t === "op" && ops[peek().v]) { const f = ops[take().v]; const r = next(); const ll = l; l = (c) => f(ll(c), r(c)); }
+    return l;
+  };
+  const mul = binary(unary, { "*": (a, b) => a * b, "/": (a, b) => (b === 0 ? 0 : a / b) });
+  const add = binary(mul, { "+": (a, b) => a + b, "-": (a, b) => a - b });
+  const cmp = binary(add, { "<": (a, b) => +(a < b), ">": (a, b) => +(a > b), "<=": (a, b) => +(a <= b), ">=": (a, b) => +(a >= b) });
+  const eq = binary(cmp, { "==": (a, b) => +(a === b), "!=": (a, b) => +(a !== b) });
+  const and = binary(eq, { "&&": (a, b) => +(!!a && !!b) });
+  const or = binary(and, { "||": (a, b) => +(!!a || !!b) });
+  const ternary = () => {
+    const cond = or();
+    if (peek()?.v !== "?") return cond;
+    take("?");
+    const a = ternary();
+    take(":");
+    const b = ternary();
+    return (c) => (cond(c) ? a(c) : b(c));
+  };
+  const e = ternary();
+  if (i < toks.length) throw new Error(`molang: trailing ${toks[i].v} in "${src}"`);
+  return e;
+}
+
+/** A vec3 channel: a static triple of expressions, or keyframes of them. */
+function compileChannel(v) {
+  if (Array.isArray(v)) { const fs = v.map(molang); return (c) => fs.map((f) => f(c)); }
+  const keys = Object.entries(v)
+    .map(([t, val]) => ({ t: parseFloat(t), fs: (Array.isArray(val) ? val : val.post ?? val.pre ?? [0, 0, 0]).map(molang) }))
+    .sort((a, b) => a.t - b.t);
+  return (c) => {
+    const t = c.query.anim_time;
+    if (t <= keys[0].t) return keys[0].fs.map((f) => f(c));
+    for (let k = 1; k < keys.length; k++) {
+      if (t <= keys[k].t) {
+        const p = keys[k - 1], q = keys[k];
+        const f = (t - p.t) / Math.max(1e-6, q.t - p.t);
+        return p.fs.map((pf, j) => { const a = pf(c), b = q.fs[j](c); return a + (b - a) * f; });
+      }
+    }
+    return keys[keys.length - 1].fs.map((f) => f(c));
+  };
+}
+
+class Animator {
+  /**
+   * @param anims  the file's `animations` object, keyed by full identifier
+   * @param controllers  the file's `animation_controllers` object, or null
+   * @param groups  bone name -> { group, rest, restPos } from buildModel
+   */
+  constructor(anims, controllers, groups) {
+    this.groups = groups;
+    this.anims = new Map();
+    for (const [id, def] of Object.entries(anims)) {
+      const key = id.split(".").pop();
+      const bones = Object.entries(def.bones ?? {}).map(([bone, ch]) => ({
+        bone,
+        rotation: ch.rotation ? compileChannel(ch.rotation) : null,
+        position: ch.position ? compileChannel(ch.position) : null,
+        scale: ch.scale ? compileChannel(ch.scale) : null,
+      }));
+      this.anims.set(key, { id, key, loop: def.loop === true, length: def.animation_length ?? 0, bones, start: 0 });
+    }
+    const ctl = controllers ? Object.values(controllers)[0] : null;
+    this.controller = ctl
+      ? {
+          initial: ctl.initial_state ?? "default",
+          states: Object.fromEntries(Object.entries(ctl.states).map(([name, st]) => [name, {
+            animations: st.animations ?? [],
+            transitions: (st.transitions ?? []).flatMap((tr) => Object.entries(tr).map(([to, cond]) => ({ to, cond: molang(cond) }))),
+          }])),
+        }
+      : null;
+    this.ctx = { query: { life_time: 0, anim_time: 0, modified_move_speed: 0, modified_distance_moved: 0, is_on_ground: 1, hurt_time: 0, all_animations_finished: 0 }, variable: {}, property: {} };
+    this.moving = false;
+    this.airborne = false;
+    this.mode = this.controller ? "controller" : [...this.anims.keys()][0];
+    this.state = this.controller?.initial;
+    this.stateSince = 0;
+  }
+
+  /** Animation keys for the UI: the controller first if there is one. */
+  get modes() { return [...(this.controller ? ["controller"] : []), ...this.anims.keys()]; }
+
+  setMode(mode) { this.mode = mode; this.state = this.controller?.initial; this.enter(this.mode === "controller" ? this.controller.states[this.state].animations : [mode]); }
+
+  enter(keys) { for (const k of keys) { const a = this.anims.get(k); if (a) a.start = this.ctx.query.life_time; } this.stateSince = this.ctx.query.life_time; }
+
+  active() {
+    if (this.mode !== "controller") return [this.mode];
+    return this.controller.states[this.state].animations;
+  }
+
+  update(dt) {
+    const q = this.ctx.query;
+    q.life_time += dt;
+    q.modified_move_speed = this.moving ? 1 : 0;
+    q.modified_distance_moved += (this.moving ? 4.3 : 0) * dt; // blocks per second at a walk
+    q.is_on_ground = this.airborne ? 0 : 1;
+    q.all_animations_finished = this.active().every((k) => { const a = this.anims.get(k); return !a || a.loop || a.length === 0 || q.life_time - a.start >= a.length; }) ? 1 : 0;
+
+    if (this.mode === "controller") {
+      const st = this.controller.states[this.state];
+      for (const tr of st.transitions) {
+        if (tr.cond(this.ctx)) { this.state = tr.to; this.enter(this.controller.states[tr.to].animations); break; }
+      }
+    } else {
+      // Previewing a one-shot on its own: replay it with a short rest between runs.
+      const a = this.anims.get(this.mode);
+      if (a && !a.loop && a.length > 0 && q.life_time - a.start > a.length + 0.6) a.start = q.life_time;
+    }
+
+    // Rest pose, then every active animation added on top.
+    for (const { group, rest, restPos } of this.groups.values()) {
+      group.rotation.copy(euler(rest));
+      group.position.copy(restPos);
+      group.scale.set(1, 1, 1);
+    }
+    for (const key of this.active()) {
+      const a = this.anims.get(key);
+      if (!a) continue;
+      const local = q.life_time - a.start;
+      q.anim_time = a.loop && a.length > 0 ? local % a.length : a.length > 0 ? Math.min(local, a.length) : local;
+      for (const b of a.bones) {
+        const g = this.groups.get(b.bone);
+        if (!g) continue;
+        if (b.rotation) {
+          const [x, y, z] = b.rotation(this.ctx);
+          const cur = g.group.rotation;
+          const d = Math.PI / 180;
+          g.group.rotation.set(cur.x - x * d, cur.y - y * d, cur.z + z * d, "ZYX");
+        }
+        if (b.position) { const [x, y, z] = b.position(this.ctx); g.group.position.x += x; g.group.position.y += y; g.group.position.z += z; }
+        if (b.scale) { const [x, y, z] = b.scale(this.ctx); g.group.scale.x *= x; g.group.scale.y *= y; g.group.scale.z *= z; }
+      }
+    }
+  }
+}
+
 /** World-space point for a catalogue particle entry, honouring the x mirror. */
 function particleOrigin(entry, geo, spec) {
   let at = spec.at;
@@ -289,6 +512,15 @@ const grid = new THREE.GridHelper(4, 16, 0x3a3c48, 0x2a2b33);
 scene.add(grid);
 
 let current = null; // { entry, geo, textures: Map<name, THREE.Texture>, root, groups }
+let animator = null;
+// Screenshot tooling can freeze the clock and step it: viewer.pause(); viewer.step(1 / 12).
+let paused = false;
+window.viewer = {
+  pause: () => (paused = true),
+  resume: () => (paused = false),
+  step: (dt) => { advance(dt); renderer.render(scene, camera); },
+  get animator() { return animator; },
+};
 const loader = new THREE.TextureLoader();
 
 function resize() {
@@ -350,6 +582,36 @@ async function show(entry) {
     }
   }
 
+  // Animations
+  animator = null;
+  const animBox = document.getElementById("animation");
+  const animSel = document.getElementById("anim");
+  const stateLine = document.getElementById("anim-state");
+  animSel.innerHTML = "";
+  stateLine.textContent = "";
+  if (entry.animations) {
+    try {
+      const file = await (await fetch(entry.animations.file)).json();
+      const ctl = entry.animations.controller ? await (await fetch(entry.animations.controller)).json() : null;
+      animator = new Animator(file.animations, ctl?.animation_controllers ?? null, groups);
+      for (const mode of animator.modes) {
+        const o = document.createElement("option");
+        o.value = mode;
+        o.textContent = mode === "controller" ? "controller (auto)" : mode;
+        animSel.appendChild(o);
+      }
+      animSel.onchange = () => animator.setMode(animSel.value);
+      const moving = document.getElementById("moving");
+      const airborne = document.getElementById("airborne");
+      moving.checked = airborne.checked = false;
+      moving.onchange = () => (animator.moving = moving.checked);
+      airborne.onchange = () => (animator.airborne = airborne.checked);
+    } catch (err) {
+      console.warn("animation failed", entry.animations, err);
+    }
+  }
+  animBox.hidden = document.getElementById("animation-h").hidden = !animator;
+
   // Texture variants
   const sel = document.getElementById("texture");
   sel.innerHTML = "";
@@ -385,10 +647,20 @@ async function show(entry) {
     `${entry.pack} · ${entry.kind}\n${geo.description.identifier}\n` +
     `${geo.bones.length} bones, ${cubes} cubes\natlas ${geo.description.texture_width}×${geo.description.texture_height}` +
     (entry.particles?.length ? `\nparticles: ${entry.particles.map((p) => p.effect).join(", ")}` : "") +
+    (animator ? `\nanimations: ${[...animator.anims.keys()].join(", ")}` : "") +
     (entry.notes ? `\n\n${entry.notes}` : "");
 
   for (const b of document.querySelectorAll("#models button")) b.classList.toggle("active", b.dataset.id === entry.id);
   location.hash = entry.id;
+}
+
+function advance(dt) {
+  for (const e of emitters) e.update(dt);
+  if (animator) {
+    animator.update(dt);
+    const line = document.getElementById("anim-state");
+    line.textContent = animator.mode === "controller" ? `state: ${animator.state}` : "";
+  }
 }
 
 async function main() {
@@ -411,7 +683,7 @@ async function main() {
   renderer.setAnimationLoop(() => {
     resize();
     const dt = Math.min(0.05, clock.getDelta());
-    for (const e of emitters) e.update(dt);
+    if (!paused) advance(dt);
     controls.update();
     renderer.render(scene, camera);
   });

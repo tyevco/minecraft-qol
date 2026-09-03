@@ -1297,3 +1297,126 @@ export function iconProbe(): Canvas {
     { ".": "transparent", g: 0x5a4a2a, L: 0xbfe6ff, W: 0xffffff, h: 0x8a5a1c },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Peoples (docs/design/npcs.md). One set of painters draws every people and
+// job: a people is skin, hair and eyes plus a feature or two on the model; a
+// job is cloth, trim and what sits on the shirt. Faces that a model samples
+// through a centred window get their features placed for that window, so a
+// short broad head and a tall narrow one both get eyes where eyes go.
+// ---------------------------------------------------------------------------
+
+export interface Look {
+  skin: Color;
+  hair: Color;
+  eye: Color;
+  cloth: Ramp;
+  trim: Color;
+  trousers: Color;
+  boot: Color;
+  /** What the shirt front shows: nothing, an iron plate, an apron, or a coat's buttons. */
+  front: "plain" | "plate" | "apron" | "coat";
+}
+
+const win = (w: number, h: number) => [Math.floor((16 - w) / 2), Math.floor((16 - h) / 2)] as const;
+
+export function skinTile(skin: Color): Canvas {
+  return tile().fill(0, 0, 16, 16, skin).grain(0, 0, 16, 16, skin, mix(skin, GLINT, 0.3), shade(skin, 0.85), 0.35, 601, 5);
+}
+
+/** A face for a w x h front window: hair fringe, two eyes, a mouth; a beard if asked. */
+export function faceTile(look: Look, w: number, h: number, beard = false): Canvas {
+  const c = skinTile(look.skin);
+  const [x0, y0] = win(w, h);
+  const fringe = Math.max(1, Math.round(h * 0.2));
+  c.fill(x0, y0, w, fringe, look.hair);
+  c.fill(x0, y0 + fringe, 1, 1, look.hair).fill(x0 + w - 1, y0 + fringe, 1, 1, look.hair);
+  const ey = y0 + Math.round(h * 0.45);
+  const ex1 = x0 + Math.max(1, Math.round(w * 0.25)) - 1;
+  const ex2 = x0 + w - Math.max(1, Math.round(w * 0.25)) - 1;
+  for (const ex of [ex1, ex2]) {
+    c.set(ex, ey, GLINT).set(ex + 1, ey, look.eye);
+  }
+  c.fill(x0 + Math.round(w / 2) - 1, y0 + Math.round(h * 0.75), 2, 1, shade(look.skin, 0.65));
+  if (beard) {
+    c.fill(x0, y0 + Math.round(h * 0.7), w, h - Math.round(h * 0.7), look.hair);
+    c.fill(x0 + Math.round(w / 2) - 1, y0 + Math.round(h * 0.75), 2, 1, shade(look.hair, 0.6));
+  }
+  return c;
+}
+
+export function hairTile(hair: Color): Canvas {
+  return tile().fill(0, 0, 16, 16, hair).grain(0, 0, 16, 16, hair, mix(hair, GLINT, 0.25), shade(hair, 0.75), 0.5, 602, 3);
+}
+
+/** Shirt front for a w x h window: cloth, then what the job wears over it. */
+export function shirtTile(look: Look, w: number, h: number): Canvas {
+  const r = look.cloth;
+  const c = tile().fill(0, 0, 16, 16, r.mid).grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.3, 603, 4);
+  const [x0, y0] = win(w, h);
+  // Collar.
+  c.fill(x0 + Math.round(w / 2) - 1, y0, 2, 1, look.trim);
+  switch (look.front) {
+    case "plate": {
+      // An iron breastplate with a tabard stripe down the middle.
+      c.fill(x0, y0 + 1, w, h - 1, IRON.mid).grain(x0, y0 + 1, w, h - 1, IRON.mid, IRON.light, IRON.dark, 0.25, 604, 4);
+      c.fill(x0 + Math.round(w / 2) - 1, y0 + 1, 2, h - 1, look.trim);
+      c.fill(x0, y0 + 1, w, 1, IRON.light);
+      break;
+    }
+    case "apron": {
+      const ax = x0 + 1;
+      c.fill(ax, y0 + Math.round(h * 0.25), w - 2, h - Math.round(h * 0.25), LEATHER.mid);
+      c.fill(ax, y0 + Math.round(h * 0.25), w - 2, 1, LEATHER.light);
+      c.fill(ax + 1, y0 + Math.round(h * 0.6), w - 4, 1, LEATHER.deep);
+      break;
+    }
+    case "coat": {
+      c.fill(x0, y0 + 1, 1, h - 1, look.trim).fill(x0 + w - 1, y0 + 1, 1, h - 1, look.trim);
+      for (let y = y0 + 3; y < y0 + h - 1; y += 3) c.set(x0 + Math.round(w / 2), y, look.trim);
+      break;
+    }
+    default:
+      c.fill(x0, y0 + h - 1, w, 1, look.trim);
+  }
+  return c;
+}
+
+export function clothTile(r: Ramp, seed = 605): Canvas {
+  return tile().fill(0, 0, 16, 16, r.mid).grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.3, seed, 4);
+}
+
+/** A sleeve for an arm h tall: cloth with a cuff and the hand's skin at the bottom. */
+export function sleeveTile(look: Look, w: number, h: number): Canvas {
+  const c = clothTile(look.cloth, 606);
+  const [x0, y0] = win(w, h);
+  const hand = Math.max(2, Math.round(h * 0.25));
+  c.fill(x0, y0 + h - hand, w, hand, look.skin);
+  c.fill(x0, y0 + h - hand - 1, w, 1, look.trim);
+  return c;
+}
+
+/** Trousers for a leg h tall, with boots in the bottom rows. */
+export function trousersTile(look: Look, w: number, h: number): Canvas {
+  const c = tile().fill(0, 0, 16, 16, look.trousers).grain(0, 0, 16, 16, look.trousers, mix(look.trousers, GLINT, 0.2), shade(look.trousers, 0.8), 0.35, 607, 4);
+  const [x0, y0] = win(w, h);
+  const boot = Math.max(2, Math.round(h * 0.25));
+  c.fill(x0, y0 + h - boot, w, boot, look.boot);
+  c.fill(x0, y0 + h - boot, w, 1, mix(look.boot, GLINT, 0.25));
+  return c;
+}
+
+/** Iron helmet: plate with a band at the brow. */
+export function helmetTile(): Canvas {
+  return rivetedPlate(IRON, 608).fill(0, 12, 16, 2, IRON.deep).fill(0, 14, 16, 1, IRON.light);
+}
+
+/** A leather pack: a flap and a buckle. */
+export function packTile(): Canvas {
+  return satchel(LEATHER).fill(0, 0, 16, 5, LEATHER.dark).fill(0, 5, 16, 1, LEATHER.light);
+}
+
+/** A tool head: iron with a bright edge. */
+export function toolTile(): Canvas {
+  return tile().fill(0, 0, 16, 16, IRON.mid).grain(0, 0, 16, 16, IRON.mid, IRON.light, IRON.dark, 0.3, 609, 4).fill(0, 0, 16, 2, IRON.light);
+}

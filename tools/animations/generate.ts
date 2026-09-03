@@ -645,3 +645,81 @@ emit(HATCHLING_RP, "egg", {
     },
   ],
 });
+
+// ---------------------------------------------------------------------------
+// Peoples: one set for every biped. A breathing idle with the head glancing
+// about, a vanilla-style walk, and a work swing with the right arm (the tool
+// bone rides on it) gated on a property the job would set.
+// ---------------------------------------------------------------------------
+
+function bipedSet(file: string, name: string): void {
+  emit(CONCEPTS, file, {
+    name,
+    bones: bonesOf(`${CONCEPTS}/models/${file}.geo.json`),
+    animations: [
+      {
+        key: "idle",
+        loop: true,
+        bones: {
+          head: { rotation: ["math.sin(query.life_time * 35) * 3", "math.sin(query.life_time * 22) * 12", 0] },
+          left_arm: { rotation: [0, 0, "-2 - math.sin(query.life_time * 60) * 1.5"] },
+          right_arm: { rotation: [0, 0, "2 + math.sin(query.life_time * 60) * 1.5"] },
+        },
+      },
+      {
+        key: "walk",
+        loop: true,
+        bones: {
+          left_leg: { rotation: [walk(45), 0, 0] },
+          right_leg: { rotation: [walk(45, -1), 0, 0] },
+          left_arm: { rotation: [walk(35, -1), 0, 0] },
+          right_arm: { rotation: [walk(35), 0, 0] },
+          body: { position: [0, `math.abs(math.cos(${STRIDE})) * ${SPEED} * 0.4`, 0] },
+        },
+      },
+      {
+        key: "work",
+        loop: true,
+        length: 0.8,
+        bones: {
+          right_arm: {
+            rotation: [
+              [0, [-20, 0, 0]],
+              [0.3, [-110, 0, 0]],
+              [0.45, [10, 0, 0]],
+              [0.8, [-20, 0, 0]],
+            ],
+          },
+          body: {
+            rotation: [
+              [0, [0, 0, 0]],
+              [0.45, [6, 0, 0]],
+              [0.8, [0, 0, 0]],
+            ],
+          },
+        },
+      },
+    ],
+    controllers: [
+      {
+        key: "general",
+        initial: "idle",
+        states: {
+          idle: {
+            animations: ["idle"],
+            transitions: [
+              ["work", "query.property('concept:working')"],
+              ["walk", MOVING],
+            ],
+          },
+          walk: { animations: ["walk"], transitions: [["idle", STOPPED]], blendTransition: 0.2 },
+          work: { animations: ["idle", "work"], transitions: [["idle", "!query.property('concept:working')"]] },
+        },
+      },
+    ],
+  });
+}
+bipedSet("stonefolk", "concept_stonefolk");
+bipedSet("reedfolk", "concept_reedfolk");
+bipedSet("tinker", "concept_tinker");
+bipedSet("tallfolk", "concept_tallfolk");

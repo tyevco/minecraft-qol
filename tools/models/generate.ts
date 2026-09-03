@@ -1104,3 +1104,123 @@ write(`${HATCHLING_MODELS}/egg.geo.json`, {
     { name: "crack_2", parent: "egg", pivot: [0, 2, 0], cubes: eggCracks("crackB") },
   ],
 });
+
+// ===========================================================================
+// Peoples (docs/design/npcs.md). One biped builder, four sets of proportions.
+// Bone names are vanilla's (head, body, arms, legs) so vanilla look_at_target
+// and our own walk cycle apply to all four. Accessories are their own bones
+// so a job can show them by bone visibility: helmet, hat, pack, tool.
+// Window sizes here must match the face painters' arguments in
+// tools/textures/generate.ts (head w x h, body w x h, arm, leg).
+// ===========================================================================
+
+type BP = keyof typeof A.BIPED.tiles;
+
+interface BipedSpec {
+  file: string;
+  identifier: string;
+  head: [number, number, number];
+  body: [number, number, number];
+  arm: [number, number, number];
+  leg: [number, number, number];
+  beard?: boolean;
+  goggles?: boolean;
+  hat: "cap" | "reed" | "straw";
+}
+
+function biped(spec: BipedSpec): void {
+  const [hw, hh, hd] = spec.head;
+  const [bw, bh, bd] = spec.body;
+  const [aw, ah, ad] = spec.arm;
+  const [lw, lh, ld] = spec.leg;
+  const hip = lh;
+  const shoulder = hip + bh;
+  const top = shoulder + hh;
+  const handY = shoulder - ah;
+  const rightArmX = -bw / 2 - aw;
+  const armSpec = (name: string, x: number): Bone<BP> => ({
+    name,
+    parent: "body",
+    pivot: [x + aw / 2, shoulder - 1, 0],
+    cubes: [{ origin: [x, shoulder - ah, -ad / 2], size: [aw, ah, ad], faces: { sides: "sleeve", up: "sleeve", down: "hand" } }],
+  });
+  const legSpec = (name: string, x: number): Bone<BP> => ({
+    name,
+    parent: "body",
+    pivot: [x + lw / 2, hip, 0],
+    cubes: [{ origin: [x, 0, -ld / 2], size: [lw, lh, ld], faces: { sides: "trousers", up: "dark", down: "dark" } }],
+  });
+  const headCubes: Cube<BP>[] = [
+    { origin: [-hw / 2, shoulder, -hd / 2], size: [hw, hh, hd], faces: { sides: "hair", north: "face", up: "hairTop", down: "skin" } },
+  ];
+  if (spec.beard) headCubes.push({ origin: [-hw / 2 + 1, shoulder - 3, -hd / 2 - 0.5], size: [hw - 2, 4, 1], faces: { all: "hair" } });
+  if (spec.goggles) {
+    headCubes.push({ origin: [-hw / 2 + 1, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
+    headCubes.push({ origin: [hw / 2 - 3, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
+    headCubes.push({ origin: [-hw / 2, top - 1.5, -hd / 2 - 0.5], size: [hw, 1, 1], faces: { all: "pack" } });
+  }
+  const hatCubes: Cube<BP>[] =
+    spec.hat === "reed"
+      ? [
+          { origin: [-hw / 2 - 4, top - 0.5, -hd / 2 - 4], size: [hw + 8, 1, hd + 8], faces: { all: "hat" } },
+          { origin: [-hw / 2 - 1, top + 0.5, -hd / 2 - 1], size: [hw + 2, 2, hd + 2], faces: { all: "hat" } },
+          { origin: [-1.5, top + 2.5, -1.5], size: [3, 2, 3], faces: { all: "hat" } },
+        ]
+      : spec.hat === "straw"
+        ? [
+            { origin: [-hw / 2 - 3, top - 0.5, -hd / 2 - 3], size: [hw + 6, 1, hd + 6], faces: { all: "hat" } },
+            { origin: [-hw / 2 + 1, top + 0.5, -hd / 2 + 1], size: [hw - 2, 3, hd - 2], faces: { all: "hat" } },
+          ]
+        : [
+            { origin: [-hw / 2 - 1, top - 0.5, -hd / 2 - 1], size: [hw + 2, 1, hd + 2], faces: { all: "pack" } },
+            { origin: [-hw / 2 + 1, top + 0.5, -hd / 2 + 1], size: [hw - 2, 3, hd - 2], faces: { all: "pack" } },
+          ];
+  write(`${CONCEPT_MODELS}/${spec.file}.geo.json`, {
+    identifier: spec.identifier,
+    atlas: A.BIPED,
+    visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
+    bones: [
+      {
+        name: "body",
+        pivot: [0, hip, 0],
+        cubes: [{ origin: [-bw / 2, hip, -bd / 2], size: [bw, bh, bd], faces: { north: "shirt", south: "shirtBack", east: "shirtSide", west: "shirtSide", up: "dark", down: "dark" } }],
+      },
+      { name: "head", parent: "body", pivot: [0, shoulder, 0], locators: { eyes: [0, shoulder + hh * 0.55, -hd / 2] }, cubes: headCubes },
+      armSpec("left_arm", bw / 2),
+      armSpec("right_arm", rightArmX),
+      legSpec("left_leg", 0),
+      legSpec("right_leg", -lw),
+      // Accessories, hidden or shown per job.
+      {
+        name: "helmet",
+        parent: "head",
+        pivot: [0, shoulder, 0],
+        cubes: [
+          { origin: [-hw / 2 - 0.5, shoulder + hh * 0.5, -hd / 2 - 0.5], size: [hw + 1, hh * 0.5 + 0.5, hd + 1], faces: { sides: "helmet", up: "helmet", down: "dark" } },
+          { origin: [-1, shoulder + hh * 0.3, -hd / 2 - 1], size: [2, hh * 0.3, 1], faces: { all: "helmet" } },
+        ],
+      },
+      { name: "hat", parent: "head", pivot: [0, shoulder, 0], cubes: hatCubes },
+      {
+        name: "pack",
+        parent: "body",
+        pivot: [0, hip, 0],
+        cubes: [{ origin: [-bw / 2 + 1, hip + 1, bd / 2], size: [bw - 2, bh - 2, 3], faces: { all: "pack" } }],
+      },
+      {
+        name: "tool",
+        parent: "right_arm",
+        pivot: [rightArmX + aw / 2, shoulder - 1, 0],
+        cubes: [
+          { origin: [rightArmX + aw / 2 - 0.5, handY - 6, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
+          { origin: [rightArmX + aw / 2 - 2, handY - 8, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
+        ],
+      },
+    ],
+  });
+}
+
+biped({ file: "stonefolk", identifier: "geometry.concept_stonefolk", head: [8, 7, 8], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 8, 4], beard: true, hat: "cap" });
+biped({ file: "reedfolk", identifier: "geometry.concept_reedfolk", head: [6, 8, 6], body: [6, 14, 4], arm: [3, 14, 3], leg: [3, 14, 3], hat: "reed" });
+biped({ file: "tinker", identifier: "geometry.concept_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
+biped({ file: "tallfolk", identifier: "geometry.concept_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });

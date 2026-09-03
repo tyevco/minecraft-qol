@@ -5,6 +5,12 @@
  * one tile (see tools/models/). Keeping every face on a 16x16 tile means a face
  * texture is authored once and reused by every cube of that material, and the
  * atlas layout is a table in generate.ts rather than a hand-packed sheet.
+ *
+ * Surface variation comes from `Canvas.grain`: coherent, low-contrast clusters
+ * of near-tones, as vanilla's stone and wood have. Single-pixel `speckle` is
+ * reserved for things that really are scattered points - embers in a bed of
+ * coals, a lichen spot - because at 16 pixels a face, random contrasting
+ * pixels read as artefacts, not texture.
  */
 import {
   Canvas,
@@ -12,6 +18,7 @@ import {
   prng,
   shade,
   tile,
+  valueNoise,
   type Color,
   type Palette,
 } from "./canvas";
@@ -101,14 +108,22 @@ export function stoneBricks(r: Ramp, seed = 1): Canvas {
       c.fill(bx, y + 1, 1, 2, r.light); // left highlight
     }
   }
-  return c.speckle(0, 0, 16, 16, [r.dark, r.light], 0.08, seed);
+  return c.grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.3, seed, 3);
 }
 
-/** Rough stone: plain grain. */
+/** Rough stone: soft clusters of lighter and darker tone, a few deep flecks. */
 export function roughStone(r: Ramp, seed = 2): Canvas {
-  return tile()
+  const c = tile()
     .fill(0, 0, 16, 16, r.mid)
-    .speckle(0, 0, 16, 16, [r.dark, r.light, r.deep], 0.28, seed);
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.55, seed, 4);
+  // Two-pixel flecks of the deep tone, seeded, never adjacent to each other.
+  const rand = prng(seed + 7);
+  for (let i = 0; i < 3; i++) {
+    const x = Math.floor(rand() * 15);
+    const y = Math.floor(rand() * 15);
+    c.fill(x, y, 2, 1, mix(r.dark, r.deep, 0.6));
+  }
+  return c;
 }
 
 /** Flat dark stone with a faint edge, for undersides and hidden faces. */
@@ -130,7 +145,7 @@ export function hearthCarved(): Canvas {
   const p = HEARTH;
   const c = tile()
     .fill(0, 0, 16, 16, p.stone)
-    .speckle(0, 0, 16, 16, [p.stoneDark, p.stoneLight], 0.1, 11);
+    .grain(0, 0, 16, 16, p.stone, p.stoneLight, p.stoneDark, 0.5, 11);
   // Window is x 2..13, y 5..10. Border on the window edge, slit in the middle.
   c.rect(2, 5, 12, 6, p.outline);
   c.fill(3, 6, 10, 1, p.stoneLight);
@@ -203,7 +218,7 @@ export function hearthPost(): Canvas {
   const p = HEARTH;
   return tile()
     .fill(0, 0, 16, 16, p.stone)
-    .speckle(0, 0, 16, 16, [p.stoneDark, p.stoneLight], 0.12, 41)
+    .grain(0, 0, 16, 16, p.stone, p.stoneLight, p.stoneDark, 0.5, 41)
     .fill(0, 0, 1, 16, p.stoneLight)
     .fill(15, 0, 1, 16, p.outline);
 }
@@ -212,7 +227,7 @@ export function hearthDark(): Canvas {
   const p = HEARTH;
   return tile()
     .fill(0, 0, 16, 16, p.outline)
-    .speckle(0, 0, 16, 16, [p.stoneDark], 0.15, 51);
+    .grain(0, 0, 16, 16, p.outline, p.stoneDark, p.outline, 0.6, 51);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +238,7 @@ export function hearthDark(): Canvas {
 export function rivetedPlate(r: Ramp, seed = 3): Canvas {
   const c = tile()
     .fill(0, 0, 16, 16, r.mid)
-    .speckle(0, 0, 16, 16, [r.light, r.dark], 0.06, seed)
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.18, seed, 5)
     .rect(0, 0, 16, 16, r.dark)
     .fill(1, 1, 14, 1, r.light)
     .fill(1, 1, 1, 14, r.light);
@@ -256,7 +271,8 @@ export function bands(r: Ramp, seed = 5): Canvas {
     c.fill(0, y + 1, 16, 2, r.mid);
     c.fill(0, y + 3, 16, 1, r.deep);
   }
-  return c.speckle(0, 0, 16, 16, [r.dark], 0.05, seed);
+  void seed;
+  return c;
 }
 
 /**
@@ -293,7 +309,7 @@ export function pipeAlongV(r: Ramp): Canvas {
 export function interior(r: Ramp, seed = 12): Canvas {
   const c = tile()
     .fill(0, 0, 16, 16, r.dark)
-    .speckle(0, 0, 16, 16, [r.mid, r.deep], 0.15, seed);
+    .grain(0, 0, 16, 16, r.dark, r.mid, r.deep, 0.5, seed);
   c.fill(2, 2, 12, 12, r.deep);
   c.fill(4, 4, 8, 8, shade(r.deep, 0.7));
   c.fill(6, 6, 4, 4, shade(r.deep, 0.45));
@@ -469,15 +485,10 @@ export function mound(seed = 62): Canvas {
     dark: 0x5c3f2b,
     deep: 0x3f2a1c,
   };
-  return roughStone(dirt, seed).speckle(
-    0,
-    0,
-    16,
-    4,
-    [0x5d8a3a, 0x4a7030],
-    0.25,
-    seed + 1,
-  );
+  const c = roughStone(dirt, seed);
+  // A few grass blades along the top edge, two pixels tall.
+  for (const x of [1, 5, 6, 10, 14]) c.fill(x, 0, 1, 2, x % 2 ? 0x5d8a3a : 0x4a7030);
+  return c;
 }
 
 // ---------------------------------------------------------------------------
@@ -547,10 +558,10 @@ export const PIGEON: Ramp = {
   deep: 0x3b3f45,
 };
 export const HIDE: Ramp = {
-  light: 0x9a7452,
-  mid: 0x745538,
-  dark: 0x523a25,
-  deep: 0x332314,
+  light: 0xb39272,
+  mid: 0x8c6d50,
+  dark: 0x6a4f38,
+  deep: 0x452f1f,
 };
 /** Hatchling variants: a palette swap, like the turret tiers. */
 export const EMBER: Ramp = {
@@ -583,13 +594,8 @@ export function plankV(r: Ramp, seed = 501): Canvas {
     c.fill(x, 0, 1, 16, r.light);
     c.fill(x + 3, 0, 1, 16, r.deep);
   }
-  const rand = prng(seed);
-  for (let i = 0; i < 6; i++) {
-    const x = Math.floor(rand() * 16);
-    const y = Math.floor(rand() * 12);
-    c.fill(x, y, 1, 2 + Math.floor(rand() * 4), r.dark);
-  }
-  return c;
+  // Grain along the planks: soft streaks of the dark tone.
+  return c.grain(0, 0, 16, 16, r.mid, r.mid, r.dark, 0.45, seed, 4);
 }
 
 /** The same plank running left to right: crossbars. */
@@ -613,7 +619,8 @@ export function burlap(r: Ramp, seed = 503): Canvas {
       c.set(x, y, over ? r.mid : r.dark);
       if (over && (x & 1) === 0 && (y & 1) === 0) c.set(x, y, r.light);
     }
-  return c.speckle(0, 0, 16, 16, [r.deep], 0.04, seed);
+  void seed;
+  return c;
 }
 
 /** Bundled straw: vertical strands with a few crossing wisps. */
@@ -625,10 +632,11 @@ export function straw(r: Ramp, seed = 504): Canvas {
     const col = roll < 0.25 ? r.light : roll < 0.7 ? r.mid : r.dark;
     c.fill(x, 0, 1, 16, col);
   }
-  for (let i = 0; i < 5; i++) {
+  // A few crossing wisps, short and in the dark tone rather than the deep.
+  for (let i = 0; i < 3; i++) {
     const y = Math.floor(rand() * 16);
     const x = Math.floor(rand() * 12);
-    c.fill(x, y, 3 + Math.floor(rand() * 3), 1, r.deep);
+    c.fill(x, y, 3 + Math.floor(rand() * 2), 1, r.dark);
   }
   return c;
 }
@@ -673,11 +681,13 @@ export function sackFace(cloth: Ramp, thread: Color): Canvas {
 /** Rough stone with a patch of moss creeping in from one corner. */
 export function mossStone(r: Ramp, seed = 511): Canvas {
   const c = roughStone(r, seed);
-  const rand = prng(seed + 1);
+  // Moss where the noise is high and the corner is near: one ragged patch.
+  const n = valueNoise(seed + 1, 4);
   for (let y = 0; y < 16; y++)
     for (let x = 0; x < 16; x++) {
-      const d = Math.hypot(x - 14, y - 14) / 16;
-      if (rand() > d * 1.4) c.set(x, y, rand() < 0.5 ? 0x5d8a3a : 0x4a7030);
+      const d = Math.hypot(x - 15, y - 15) / 16;
+      const v = n(x, y) * 0.6 + (1 - d);
+      if (v > 1.05) c.set(x, y, v > 1.3 ? 0x5d8a3a : 0x4a7030);
     }
   return c;
 }
@@ -759,7 +769,8 @@ export function scales(r: Ramp, seed = 531): Canvas {
       c.fill(x + 3, y + 3, 1, 1, r.dark);
     }
   }
-  return c.speckle(0, 0, 16, 16, [r.deep], 0.03, seed);
+  void seed;
+  return c;
 }
 
 /** Belly plates: wide horizontal bands in a lighter ramp. */
@@ -813,21 +824,21 @@ export function membrane(r: Ramp): Canvas {
     c.set(i, 7 + Math.floor(i / 4), r.dark);
     c.set(i, 13 + Math.floor(i / 8), r.dark);
   }
-  return c.speckle(0, 0, 16, 16, [r.deep], 0.02, 536);
+  return c;
 }
 
-/** Feathers: soft scallops with a light tip, coarser than scales. */
+/** Feathers: soft grain with a faint scallop edge every four rows. */
 export function feathers(r: Ramp, seed = 541): Canvas {
-  const c = tile().fill(0, 0, 16, 16, r.mid);
+  const c = tile()
+    .fill(0, 0, 16, 16, r.mid)
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.35, seed, 4);
+  const edge = mix(r.mid, r.dark, 0.6);
   for (let row = 0; row < 4; row++) {
-    const y = row * 4;
+    const y = row * 4 + 3;
     const off = row % 2 === 0 ? 0 : 3;
-    for (let x = -6 + off; x < 16; x += 6) {
-      c.fill(x + 1, y + 2, 4, 1, r.dark);
-      c.fill(x + 2, y + 3, 2, 1, r.light);
-    }
+    for (let x = -6 + off; x < 16; x += 6) c.fill(x + 1, y, 4, 1, edge);
   }
-  return c.speckle(0, 0, 16, 16, [r.dark, r.light], 0.04, seed);
+  return c;
 }
 
 /** Tail feathers: the same, with a dark bar across the tip. */
@@ -839,7 +850,7 @@ export function tailFeathers(r: Ramp): Canvas {
 export function birdFace(r: Ramp): Canvas {
   return tile()
     .fill(0, 0, 16, 16, r.mid)
-    .speckle(0, 0, 16, 16, [r.dark], 0.06, 543)
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.3, 543, 5)
     .art(
     6,
     6,
@@ -865,7 +876,7 @@ export function beak(base: Color): Canvas {
 export function satchel(r: Ramp): Canvas {
   const c = tile()
     .fill(0, 0, 16, 16, r.mid)
-    .speckle(0, 0, 16, 16, [r.light, r.dark], 0.08, 551)
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.4, 551)
     .rect(0, 0, 16, 16, r.deep);
   return c.art(
     6,
@@ -881,38 +892,35 @@ export function satchel(r: Ramp): Canvas {
 
 /** A leather strap: the bag's tone with a lighter centre stripe. */
 export function strap(r: Ramp): Canvas {
-  return tile()
-    .fill(0, 0, 16, 16, r.dark)
-    .fill(0, 7, 16, 2, r.mid)
-    .speckle(0, 0, 16, 16, [r.deep], 0.06, 552);
+  return tile().fill(0, 0, 16, 16, r.dark).fill(0, 7, 16, 2, r.mid);
 }
 
-/** Short hide: mid tone with vertical streaks. */
+/** Short hide: soft dappling in the coat's own tones. */
 export function hide(r: Ramp, seed = 561): Canvas {
-  const c = tile().fill(0, 0, 16, 16, r.mid);
-  const rand = prng(seed);
-  for (let i = 0; i < 22; i++) {
-    const x = Math.floor(rand() * 16);
-    const y = Math.floor(rand() * 14);
-    c.fill(x, y, 1, 1 + Math.floor(rand() * 3), rand() < 0.5 ? r.light : r.dark);
-  }
-  return c;
+  return tile()
+    .fill(0, 0, 16, 16, r.mid)
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.4, seed, 4);
 }
 
-/** The mule's face: a blaze down the middle, an eye each side. 5x5 window at (5,5). */
-export function muleFace(r: Ramp): Canvas {
+/** The mule's cheek: one eye with a glint. Head sides sample a 6x5 window at (5,5). */
+export function cheek(r: Ramp): Canvas {
   return hide(r, 562).art(
-    5,
+    6,
     5,
     [
-      "..l..", //
-      "..l..",
-      "d.l.d",
-      "..l..",
-      "..l..",
+      "......", //
+      ".Wd...",
+      ".dd...",
+      "......",
+      "......",
     ],
-    { ".": "transparent", d: EYE_DARK, l: mix(r.light, GLINT, 0.5) },
+    { ".": "transparent", d: EYE_DARK, W: GLINT },
   );
+}
+
+/** The mule's forehead: a pale blaze down the middle. 5x5 window at (5,5). */
+export function blaze(r: Ramp): Canvas {
+  return hide(r, 566).fill(7, 4, 2, 8, mix(r.light, GLINT, 0.45));
 }
 
 /** A soft muzzle: lighter hide with two nostrils. 4x3 window at (6,6). */

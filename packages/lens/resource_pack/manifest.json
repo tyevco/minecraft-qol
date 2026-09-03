@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Lens Resources",
-    "description": "Icon and name for the Spawn Lens.",
+    "description": "Icon and name for the Spawn Lens. Enabled automatically with the Lens behavior pack.",
     "uuid": "423b19ea-c7cf-4ef9-84a7-2fe52ec2d095",
     "version": [1, 0, 0],
     "min_engine_version": [1, 26, 40]
@@ -17,6 +17,7 @@
   ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   }
 }

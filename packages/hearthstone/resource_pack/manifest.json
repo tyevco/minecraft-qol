@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Hearthstone Resources",
-    "description": "Textures and names for the Hearthstone anchor.",
+    "description": "Model, textures, particles and names for the Hearthstone hearth. Enabled automatically with the Hearthstone behavior pack.",
     "uuid": "344f1bf1-e861-44d4-8c4f-6cf327839245",
     "version": [1, 0, 0],
     "min_engine_version": [1, 26, 40]
@@ -17,6 +17,7 @@
   ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   }
 }

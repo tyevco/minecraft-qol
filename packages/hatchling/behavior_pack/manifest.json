@@ -2,7 +2,7 @@
   "format_version": 3,
   "header": {
     "name": "Hatchling",
-    "description": "A pet dragon for the kids: craft an egg, warm it until it hatches, feed the hatchling to bond with it and watch it grow.",
+    "description": "A pet dragon for the kids: craft an egg, warm it until it hatches, feed the hatchling to bond with it and watch it grow. Every number is in the pack settings.",
     "uuid": "ddd56598-21bf-40e2-9a4e-3fc3f9b69407",
     "version": "0.1.0",
     "min_engine_version": "1.26.40"
@@ -23,9 +23,19 @@
       "entry": "scripts/main.js"
     }
   ],
-  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    },
+    {
+      "uuid": "2ac4ec91-9e06-46f5-a653-21fa66020c10",
+      "version": "0.1.0"
+    }
+  ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   },
   "settings": [

@@ -68,9 +68,12 @@ export const eggItemComponent: ItemCustomComponent = {
     const itemId = ev.itemStack.typeId;
     system.run(() => {
       try {
-        const egg = b.dimension.spawnEntity(EGG, at, {
-          spawnEvent: `hatchling:variant_${variant.id}`,
-        });
+        // Spawn plainly, then set the variant by event: a spawnEvent REPLACES
+        // minecraft:entity_spawned rather than running alongside it, and the
+        // hatchling's entity_spawned is what adds its stage and wild groups
+        // (measured in the GameTest suite; see docs/README.md).
+        const egg = b.dimension.spawnEntity(EGG, at);
+        egg.triggerEvent(`hatchling:variant_${variant.id}`);
         egg.setDynamicProperty(K_WARMINGS, 0);
         // Spawned before it is consumed: a failed spawn costs nothing.
         consumeOne(player, itemId);
@@ -145,9 +148,9 @@ function hatch(egg: Entity): void {
   const at = egg.location;
   let pet: Entity;
   try {
-    pet = egg.dimension.spawnEntity(PET, at, {
-      spawnEvent: `hatchling:variant_${state.variant}`,
-    });
+    // Plain spawn so entity_spawned adds stage_0 and wild; the variant follows.
+    pet = egg.dimension.spawnEntity(PET, at);
+    pet.triggerEvent(`hatchling:variant_${state.variant}`);
   } catch (e) {
     // Fail towards the player: the egg stays, un-hatched, and can be warmed again.
     log(`hatch spawn failed at ${at.x},${at.y},${at.z}: ${e}`);

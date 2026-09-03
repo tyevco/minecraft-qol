@@ -11,9 +11,9 @@ import { describe, expect, it } from "vitest";
  */
 
 const ROOT = resolve(__dirname, "../../..");
-const REPO_URL = "https://github.com/tyevco/minecraft-qol";
-/** The developer as the pack list shows it. */
+/** The developer as the pack list shows it, and its website. */
 const STUDIO = "Sweetpotato Games";
+const STUDIO_URL = "https://sweetpotato.games";
 
 interface Manifest {
   format_version: number;
@@ -54,7 +54,7 @@ describe("manifests", () => {
       expect(m.header.name.trim().length).toBeGreaterThan(0);
       expect(m.header.description.trim().length).toBeGreaterThan(20);
       expect(m.metadata?.authors).toEqual([STUDIO]);
-      expect(m.metadata?.url).toBe(REPO_URL);
+      expect(m.metadata?.url).toBe(STUDIO_URL);
       expect(m.metadata?.product_type).toBe("addon");
       expect(versionString(m.header.min_engine_version)).toBe("1.26.40");
     },

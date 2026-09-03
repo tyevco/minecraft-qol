@@ -1,0 +1,83 @@
+{
+  "format_version": 3,
+  "header": {
+    "name": "Hatchling",
+    "description": "A pet dragon for the kids: craft an egg, warm it until it hatches, feed the hatchling to bond with it and watch it grow.",
+    "uuid": "ddd56598-21bf-40e2-9a4e-3fc3f9b69407",
+    "version": "0.1.0",
+    "min_engine_version": "1.26.40"
+  },
+  "modules": [
+    {
+      "description": "Hatchling entities, items and recipes",
+      "type": "data",
+      "uuid": "85f8ade2-bf2b-47a6-8fef-c2a79713bb4b",
+      "version": "0.1.0"
+    },
+    {
+      "description": "Hatchling scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "82db9d31-bdcb-4779-b8c3-1b82b14c0797",
+      "version": "0.1.0",
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "metadata": {
+    "authors": ["tyevco"],
+    "product_type": "addon"
+  },
+  "settings": [
+    {
+      "type": "label",
+      "text": "An egg hatches after it has been warmed enough times: coal for an ember egg, bone meal for moss, a snowball for frost. Each warming is followed by a rest."
+    },
+    {
+      "type": "slider",
+      "text": "Warmings to hatch",
+      "name": "hatchling:warmings",
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "slider",
+      "text": "Rest between warmings (minutes)",
+      "name": "hatchling:warm_cooldown",
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "default": 10
+    },
+    {
+      "type": "label",
+      "text": "A hatchling bonds with the first player to feed it sweet berries, then grows through two more sizes as it is fed. Each feeding is followed by a rest."
+    },
+    {
+      "type": "slider",
+      "text": "Feedings per growth stage",
+      "name": "hatchling:feedings",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "slider",
+      "text": "Rest between feedings (minutes)",
+      "name": "hatchling:feed_cooldown",
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "default": 15
+    },
+    {
+      "type": "toggle",
+      "text": "Anyone can warm eggs and feed hatchlings, not only the owner",
+      "name": "hatchling:anyone_tends",
+      "default": true
+    }
+  ]
+}

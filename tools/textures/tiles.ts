@@ -1016,3 +1016,38 @@ export function crackA(r: Ramp): Canvas {
 export function crackB(r: Ramp): Canvas {
   return crackTile(CRACK_ROWS_B, r.deep);
 }
+
+/** The egg item icon: a spotted egg in the variant's colours, on nothing. */
+export function eggIcon(r: Ramp): Canvas {
+  const pale = mix(r.light, GLINT, 0.55);
+  return tile().art(
+    0,
+    0,
+    [
+      "................", //
+      "......dddd......",
+      ".....dLLLLd.....",
+      "....dLWWLLLd....",
+      "....dLWLLLsd....",
+      "...dLLLLLssLd...",
+      "...dLLsLLLLLd...",
+      "...dLLssLLLLd...",
+      "...dLLLLLLsLd...",
+      "...dLLLLLssLd...",
+      "...dLsLLLLLLd...",
+      "...dLssLLLLmd...",
+      "....dLLLLmmd....",
+      "....dmLLmmmd....",
+      ".....ddmmdd.....",
+      ".......dd.......",
+    ],
+    {
+      ".": "transparent",
+      d: r.deep,
+      L: pale,
+      W: GLINT,
+      s: mix(r.mid, pale, 0.35),
+      m: r.light,
+    },
+  );
+}

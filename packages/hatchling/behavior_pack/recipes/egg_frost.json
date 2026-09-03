@@ -1,0 +1,13 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "hatchling:egg_frost" },
+    "tags": ["crafting_table"],
+    "pattern": ["###", "#E#", "###"],
+    "key": {
+      "#": { "item": "minecraft:snowball" },
+      "E": { "item": "minecraft:egg" }
+    },
+    "result": { "item": "hatchling:egg_frost" }
+  }
+}

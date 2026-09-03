@@ -5,10 +5,10 @@ can be judged as a model before any pack exists. Nothing here ships: no pack
 references these files, and `npm run mcaddon` never sees them.
 
 - `entities/` — the entity concepts in `docs/design/entities.md`: decoy
-  dummy, patrol golem, runner, hatchling and its egg (three palette variants
-  each), messenger, pack mule. Each has `models/`, `textures/`, an animation
-  set under `animations/` and its state machine under
-  `animation_controllers/`.
+  dummy, patrol golem, runner, messenger, pack mule. Each has `models/`,
+  `textures/`, an animation set under `animations/` and its state machine
+  under `animation_controllers/`. The hatchling and its egg started here and
+  moved to `packages/hatchling` when they were built.
 
 Everything here is generated. Geometry comes from `tools/models/generate.ts`,
 atlases from `tools/textures/generate.ts` with painters in

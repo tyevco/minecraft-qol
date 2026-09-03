@@ -62,6 +62,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `getSpawnPoint()` is undefined for a player who has not slept (`hearthstone-spawn-results.md`, measured with a real player) | **True for a real player, false for a SimulatedPlayer** — it spawns with its own spawn cell already set. Hearthstone then correctly treats it as "foreign" and never touches it, so the test, not the pack, was wrong. `setSpawnPoint()` with no argument clears it. |
 | A GameTest starts from a clean area (implicit in the all-air arena) | **Only for blocks.** Sequential tests stack one block apart and a structure reload restores blocks but not entities, item drops, or packs' position-keyed records. Both Bulwark "failures" were this. The harness now does `clearall` + a settle gap + `kill @e[type=item]`; a failing test is not evidence about a pack until it has also been run alone. |
 | GameTest needs the interactive client (assumed while debugging by restart) | **No.** A dedicated server runs the same packs and puts the content log on stdout; `tools/bds/run.mjs` drives it. Experiments must arrive with the world, since `server.properties` cannot set them. |
+| `EntityTameableComponent.tame` / `tameToPlayer` to bond a pet from script (entities concept sheet §2) | **Not in 2.9.0.** The tameable component is read-only (`isTamed`, `tamedToPlayerId`, `getTameItems`); `tame()` and `tameToPlayer()` exist only on `EntityTameMountComponent`, for rideables. A pet is bonded the vanilla way: `minecraft:tameable` with `tame_items` and `probability` in the entity JSON, and script reads the owner back. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -84,6 +85,13 @@ But **potions are not** — there is `setPotion` and no `getPotion`, so you can 
 a cauldron's potion and detect that one is present, never read back *which*.
 Note also that QOL Times already implements four of its machines at the rules
 layer (`packages/qol-times/scripts/core/rules/`).
+
+**[`design/hatchling.md`](design/hatchling.md)** — **built** (Phase 1: egg,
+warming, hatching, bonding, feeding, growth; the panel), written alongside the
+implementation. One correction, in the table above: script cannot tame, so
+bonding is the vanilla `minecraft:tameable` component with a tame item. Its
+"to confirm in game" list is in the pack README; the probe pack has
+`qolprobe:egg` and `qolprobe:pet`.
 
 **[`design/graves.md`](design/graves.md)** — **built**, written alongside the
 implementation rather than before it, so it carries no corrections. Its §5
@@ -122,10 +130,10 @@ prototype” list. In suggested order:
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
-  seven custom entities (decoy dummy, patrol golem, runner, hatchling and
-  its egg, messenger, pack mule) with generated models under `concepts/entities/`,
-  each with its own "must prototype" list. Becomes a design doc per entity
-  when one is picked up.
+  custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
+  with generated models under `concepts/entities/`, each with its own "must
+  prototype" list. Becomes a design doc per entity when one is picked up, as
+  the hatchling and its egg were (`design/hatchling.md`, `packages/hatchling`).
 
 ## Plans
 

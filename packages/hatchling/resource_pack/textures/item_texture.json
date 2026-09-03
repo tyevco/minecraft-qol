@@ -1,0 +1,9 @@
+{
+  "resource_pack_name": "hatchling",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "hatchling:egg_ember": { "textures": "textures/items/egg_ember" },
+    "hatchling:egg_moss": { "textures": "textures/items/egg_moss" },
+    "hatchling:egg_frost": { "textures": "textures/items/egg_frost" }
+  }
+}

@@ -743,8 +743,11 @@ const hatchlingWing = (name: string, x: number): Bone<HL> => ({
   ],
 });
 
-write(`${CONCEPT_MODELS}/hatchling.geo.json`, {
-  identifier: "geometry.concept_hatchling",
+// Shipped: the hatchling and its egg live in packages/hatchling now.
+const HATCHLING_MODELS = "packages/hatchling/resource_pack/models/entity";
+
+write(`${HATCHLING_MODELS}/hatchling.geo.json`, {
+  identifier: "geometry.hatchling",
   atlas: A.HATCHLING,
   visibleBounds: { width: 2, height: 1.5, offset: [0, 0.5, 0] },
   bones: [
@@ -1074,8 +1077,8 @@ const eggCracks = (tile: EG): Cube<EG>[] => [
   },
 ];
 
-write(`${CONCEPT_MODELS}/egg.geo.json`, {
-  identifier: "geometry.concept_egg",
+write(`${HATCHLING_MODELS}/egg.geo.json`, {
+  identifier: "geometry.hatchling_egg",
   atlas: A.EGG,
   visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
   bones: [

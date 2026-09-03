@@ -1,7 +1,7 @@
 {
   "format_version": "1.8.0",
   "animations": {
-    "animation.concept_egg.idle": {
+    "animation.hatchling_egg.idle": {
       "loop": true,
       "bones": {
         "egg": {
@@ -13,7 +13,7 @@
         }
       }
     },
-    "animation.concept_egg.wobble": {
+    "animation.hatchling_egg.wobble": {
       "loop": true,
       "animation_length": 2.4,
       "bones": {
@@ -88,7 +88,7 @@
         }
       }
     },
-    "animation.concept_egg.hatch": {
+    "animation.hatchling_egg.hatch": {
       "animation_length": 1.2,
       "bones": {
         "egg": {

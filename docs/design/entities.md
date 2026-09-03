@@ -118,6 +118,10 @@ shortens the walk.
 
 ### 3.4 Hatchling — companions
 
+> **Built:** `packages/hatchling`, designed in `hatchling.md`. The notes
+> below are the concept as it was picked up; one claim in §2 proved false
+> (script cannot tame; see the corrections table).
+
 A pure fun pet for the kids. Tamed from an egg, it grows through scale tiers
 over real play sessions, takes a name, and never fights. Three variants
 (ember, moss, frost) are a palette swap of one atlas, like the turret tiers,

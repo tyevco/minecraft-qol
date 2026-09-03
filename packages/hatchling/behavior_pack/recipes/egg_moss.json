@@ -8,6 +8,7 @@
       "#": { "item": "minecraft:bone_meal" },
       "E": { "item": "minecraft:egg" }
     },
+    "unlock": [{ "item": "minecraft:egg" }],
     "result": { "item": "hatchling:egg_moss" }
   }
 }

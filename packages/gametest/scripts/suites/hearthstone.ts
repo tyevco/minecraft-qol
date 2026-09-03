@@ -8,6 +8,22 @@ import { floor, item, STRUCTURE } from "./rig";
  *
  * The anchor is placed by the simulated player, not by the test, because the
  * pack registers anchors on playerPlaceBlock.
+ *
+ * EXPECTED TO FAIL IN A NORMAL RUN. Read the failure as "not measured", never
+ * as "Hearthstone is broken" - the pack is proven correct
+ * (docs/gametest-structure-results.md). A SimulatedPlayer marshals as undefined
+ * into every pack that does not itself bind @minecraft/server-gametest, so
+ * Hearthstone never sees this player and assigns nothing; the failure reads
+ * "spawn point still unset".
+ *
+ * It is kept because it is a real full-path test - place the block, index the
+ * anchor, choose a standing spot, assign the spawn - and it is worth running
+ * deliberately when changing that path. To do so, temporarily add
+ * @minecraft/server-gametest to the Hearthstone pack in all THREE places (the
+ * manifest's dependencies, its `external` list in just.config.ts, and a
+ * side-effect import in its main.ts - the declaration alone does nothing), run
+ * it, then REVERT ALL THREE. That module is a Beta API: it flags the pack
+ * experimental and the Realm keeps its achievements, so it must never ship.
  */
 registerAsync("qol", "anchor_sets_spawn", async (test) => {
   floor(test);

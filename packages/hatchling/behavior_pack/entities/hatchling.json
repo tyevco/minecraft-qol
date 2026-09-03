@@ -53,7 +53,9 @@
     "components": {
       "minecraft:type_family": { "family": ["hatchling", "mob"] },
       "minecraft:nameable": {},
-      "minecraft:leashable": { "soft_distance": 4.0, "hard_distance": 6.0, "max_distance": 10.0 },
+      "minecraft:leashable": {
+        "presets": [{ "soft_distance": 4.0, "hard_distance": 6.0, "max_distance": 10.0 }]
+      },
       "minecraft:physics": {},
       "minecraft:collision_box": { "width": 0.6, "height": 0.6 },
       "minecraft:movement": { "value": 0.25 },
@@ -62,7 +64,6 @@
       "minecraft:jump.static": {},
       "minecraft:breathable": { "total_supply": 15, "suffocate_time": 0 },
       "minecraft:persistent": {},
-      "minecraft:pushable": { "is_pushable": true, "is_pushable_by_piston": true },
       "minecraft:behavior.float": { "priority": 0 },
       "minecraft:behavior.panic": { "priority": 1, "speed_multiplier": 1.4 },
       "minecraft:behavior.random_stroll": { "priority": 6, "speed_multiplier": 0.8 },

@@ -56,6 +56,25 @@ registerAsync("qol", "guardian_never_adds_damage", async (test) => {
   .structureName(STRUCTURE)
   .maxTicks(200);
 
+/**
+ * Guardian: a player who falls into the void is caught and put back.
+ *
+ * EXPECTED TO FAIL IN A NORMAL RUN. Read the failure as "not measured", never
+ * as "Guardian is broken" - the void catch is proven to work
+ * (docs/gametest-structure-results.md). Guardian's sweep walks
+ * getAllPlayers(), and a SimulatedPlayer marshals as undefined into every pack
+ * that does not itself bind @minecraft/server-gametest, so this player is not
+ * in the list Guardian is looking at.
+ *
+ * It is kept because it is a real full-path test - track the ground sample,
+ * notice the fall, teleport back - and it is worth running deliberately when
+ * changing that path. To do so, temporarily add @minecraft/server-gametest to
+ * the Guardian pack in all THREE places (the manifest's dependencies, its
+ * `external` list in just.config.ts, and a side-effect import in its main.ts -
+ * the declaration alone does nothing), run it, then REVERT ALL THREE. That
+ * module is a Beta API: it flags the pack experimental and the Realm keeps its
+ * achievements, so it must never ship.
+ */
 registerAsync("qol", "guardian_void_catch", async (test) => {
   floor(test);
   const player = test.spawnSimulatedPlayer(

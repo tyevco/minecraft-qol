@@ -1,4 +1,4 @@
-import { BlockPermutation, GameMode, WeatherType } from "@minecraft/server";
+import { BlockPermutation, WeatherType } from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
 import {
   cauldron,
@@ -13,9 +13,9 @@ import {
 /**
  * Fluidworks funnels.
  *
- * Funnels placed by a test do not fire playerPlaceBlock, so each test spawns
- * a player and asks the pack to rescan - the same escape hatch a player uses
- * after /fill or a piston.
+ * Funnels placed by a test do not fire playerPlaceBlock, so each test asks the
+ * pack to rescan - the same escape hatch a player uses after /fill or a piston,
+ * given the rig's coordinates rather than run by a player.
  */
 function funnel(
   test: Test,
@@ -30,23 +30,31 @@ function funnel(
   );
 }
 
-function rescan(test: Test): void {
-  const p = test.spawnSimulatedPlayer(
-    { x: 1, y: 1, z: 1 },
-    "fw_tester",
-    GameMode.Creative,
-  );
-  p.runCommand("scriptevent fluidworks:rescan 8");
+/**
+ * Ask the pack to index the rig this test just built.
+ *
+ * The rescan is told where to look rather than being run by a simulated
+ * player: a command run by a SimulatedPlayer arrives at the script event with
+ * sourceType Entity and no sourceEntity, so the pack has no position to scan
+ * from and the rig is never indexed. Measured; see
+ * docs/gametest-structure-results.md.
+ */
+async function rescan(test: Test): Promise<void> {
+  const o = test.worldBlockLocation({ x: 3, y: 1, z: 3 });
+  test
+    .getDimension()
+    .runCommand(`scriptevent fluidworks:rescan 8 ${o.x} ${o.y} ${o.z}`);
+  await test.idle(2);
 }
 
 /**
  * The flagship: powder in a chest behind the funnel, water in the tank in
  * front of it, a chest under the tank. Concrete comes out of the bottom.
  *
- * This also settles the orientation question: the funnel is set to state
- * "east" and the tank sits east of it. If the state turns out to mean the
- * mouth's direction rather than the spout's, nothing happens and the test
- * fails - which is the answer docs/design/fluidworks.md is waiting for.
+ * This settled the orientation question docs/design/fluidworks.md was waiting
+ * on: the funnel is set to state "east" and the tank sits east of it, and the
+ * concrete arrives. So the state names the **spout's** direction, not the
+ * mouth's. Had it been the mouth, nothing would have happened.
  */
 registerAsync("qol", "funnel_makes_concrete", async (test) => {
   floor(test);
@@ -59,7 +67,7 @@ registerAsync("qol", "funnel_makes_concrete", async (test) => {
   cauldron(test, tank, 6);
   test.setBlockType("minecraft:chest", out);
   put(test, source, item("minecraft:white_concrete_powder", 4));
-  rescan(test);
+  await rescan(test);
 
   test.succeedWhen(() => {
     const made = count(test, out, "minecraft:white_concrete");
@@ -83,7 +91,7 @@ registerAsync("qol", "funnel_fills_from_source", async (test) => {
   funnel(test, { x: 3, y: 1, z: 3 }, "east");
   const tank = { x: 4, y: 1, z: 3 };
   cauldron(test, tank, 0);
-  rescan(test);
+  await rescan(test);
 
   test.succeedWhen(() => {
     test.assert(
@@ -101,7 +109,7 @@ registerAsync("qol", "rain_collector", async (test) => {
   const tank = { x: 3, y: 1, z: 3 };
   cauldron(test, tank, 0);
   funnel(test, { x: 3, y: 2, z: 3 }, "down");
-  rescan(test);
+  await rescan(test);
   const dim = test.getDimension();
   dim.setWeather(WeatherType.Rain, 20 * 60);
   test.runOnFinish(() => dim.setWeather(WeatherType.Clear));
@@ -126,7 +134,7 @@ registerAsync("qol", "funnel_through_pipes", async (test) => {
   test.setBlockType("fluidworks:pipe", { x: 4, y: 2, z: 3 });
   const tank = { x: 5, y: 2, z: 3 };
   cauldron(test, tank, 0);
-  rescan(test);
+  await rescan(test);
 
   test.succeedWhen(() => {
     test.assert(
@@ -154,7 +162,7 @@ registerAsync("qol", "harvester_funnel", async (test) => {
   funnel(test, { x: 3, y: 1, z: 3 }, "east");
   const out = { x: 4, y: 1, z: 3 };
   test.setBlockType("minecraft:chest", out);
-  rescan(test);
+  await rescan(test);
 
   test.succeedWhen(() => {
     test.assert(
@@ -181,7 +189,7 @@ registerAsync("qol", "collector_funnel", async (test) => {
   funnel(test, { x: 3, y: 1, z: 3 }, "east");
   const out = { x: 4, y: 1, z: 3 };
   test.setBlockType("minecraft:chest", out);
-  rescan(test);
+  await rescan(test);
   test.spawnItem(item("minecraft:cobblestone", 5), { x: 2.5, y: 1.5, z: 3.5 });
 
   test.succeedWhen(() => {

@@ -17,9 +17,27 @@ import type { SimulatedPlayer, Test } from "@minecraft/server-gametest";
 export const STRUCTURE = "qol:arena";
 export const SIZE = 8;
 
+/**
+ * Lay the floor, leaving test-relative (0,0,0) alone.
+ *
+ * That cell holds the test's own structure block. Writing it replaces the
+ * block, and every later call through `test` then throws "Could not find
+ * StructureBlockActor associated to this test" - which is what made all
+ * fifteen tests fail on their first line. Measured on BDS 1.26.45.1:
+ * writing 63 floor blocks and skipping (0,0,0) passes; writing (0,0,0) and
+ * then any second block fails on the second write. See
+ * docs/gametest-structure-results.md.
+ *
+ * Nothing is lost by skipping it: the structure block occupies the cell, so
+ * the floor still reads as a full 8x8, and no rig in the suite uses x = 0 or
+ * z = 0. Keep it that way - treat the (0, *, 0) column as reserved.
+ */
 export function floor(test: Test, type = "minecraft:stone"): void {
   for (let x = 0; x < SIZE; x++)
-    for (let z = 0; z < SIZE; z++) test.setBlockType(type, { x, y: 0, z });
+    for (let z = 0; z < SIZE; z++) {
+      if (x === 0 && z === 0) continue;
+      test.setBlockType(type, { x, y: 0, z });
+    }
 }
 
 export function cauldron(

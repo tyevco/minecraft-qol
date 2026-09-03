@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "QOL GameTests (dev only)",
-    "description": "In-game regression tests for the QOL packs. Needs the Beta APIs experiment. Never ships.",
+    "description": "In-game regression tests for the QOL packs. DEV ONLY: needs the Beta APIs experiment and a throwaway world. Never enable on the Realm.",
     "uuid": "d4c8f0e1-6a2b-4f3c-9e1d-7b5a3c2f1e0d",
     "version": [0, 1, 0],
     "min_engine_version": [1, 26, 40]
@@ -24,11 +24,18 @@
     }
   ],
   "dependencies": [
-    { "module_name": "@minecraft/server", "version": "2.9.0" },
-    { "module_name": "@minecraft/server-gametest", "version": "1.0.0-beta" }
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    },
+    {
+      "module_name": "@minecraft/server-gametest",
+      "version": "1.0.0-beta"
+    }
   ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   }
 }

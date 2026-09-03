@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Hatchling Resources",
-    "description": "Models, textures and animations for the hatchling and its egg.",
+    "description": "Models, textures, animations and names for the hatchling and its egg. Enabled automatically with the Hatchling behavior pack.",
     "uuid": "2ac4ec91-9e06-46f5-a653-21fa66020c10",
     "version": [0, 1, 0],
     "min_engine_version": [1, 26, 40]
@@ -17,6 +17,7 @@
   ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   }
 }

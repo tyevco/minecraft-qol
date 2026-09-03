@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Bulwark",
-    "description": "Automated base defense: a placeable turret that acquires and attacks hostile mobs.",
+    "description": "A craftable turret that shoots hostile mobs near your base, fed arrows by a hopper or by hand.",
     "uuid": "ef636387-82d2-4a7b-a1fb-b8f25e034aee",
     "version": [0, 1, 0],
     "min_engine_version": [1, 26, 40]
@@ -23,9 +23,19 @@
       "entry": "scripts/main.js"
     }
   ],
-  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    },
+    {
+      "uuid": "23010022-7a90-4f23-acdf-abf72b76b5e9",
+      "version": [0, 1, 0]
+    }
+  ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   }
 }

@@ -1,8 +1,8 @@
 {
   "format_version": 2,
   "header": {
-    "name": "QOL Times PROBE (throwaway)",
-    "description": "Phase 0 diagnostics. Logs only, never ships.",
+    "name": "QOL Probe (dev only)",
+    "description": "Throwaway diagnostics for measuring the engine before a pack is built on it. DEV ONLY: logs to the content log and never ships. Never enable on the Realm.",
     "uuid": "7bb0e45b-bbc5-47b2-bfd6-2d3fc6091c40",
     "version": [1, 0, 0],
     "min_engine_version": [1, 26, 40]
@@ -18,7 +18,14 @@
     }
   ],
   "dependencies": [
-    { "module_name": "@minecraft/server", "version": "2.9.0" }
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    }
   ],
-  "metadata": { "product_type": "addon" }
+  "metadata": {
+    "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
+    "product_type": "addon"
+  }
 }

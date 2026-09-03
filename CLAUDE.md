@@ -81,7 +81,11 @@ reflows them and buries your change.
   runtime with no build error. `hasResourcePack` if it ships one; `devOnly`
   if it must never be packaged.
 - Fresh UUIDs for every pack and module. Reusing one makes packs mutually
-  exclusive in game.
+  exclusive in game. A behavior pack lists its own resource pack under
+  `dependencies` by uuid, at the resource pack's version, so enabling one
+  brings the other; every manifest carries `metadata.authors`, `metadata.url`
+  and a pack-list description. `packages/shared/tests/manifests.test.ts`
+  checks all of this, uuid uniqueness included.
 - Format versions in use: manifests 2, or 3 when a settings panel is needed
   (SemVer strings throughout and `metadata.authors` set); blocks and items
   `1.26.30`; entities `1.26.40` (validation is strict from there: invalid JSON

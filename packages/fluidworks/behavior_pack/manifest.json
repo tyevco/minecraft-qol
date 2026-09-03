@@ -2,7 +2,7 @@
   "format_version": 3,
   "header": {
     "name": "Fluidworks",
-    "description": "Fluid logistics: cauldrons are tanks, funnels are pipes, dispensers are ports.",
+    "description": "Cauldrons are tanks, funnels move fluids between them and pipes carry them further; funnels also harvest crops and collect drops. Configured from the pack settings.",
     "uuid": "b1a7f5b3-97bd-468c-afd4-66aa916f806a",
     "version": "0.3.0",
     "min_engine_version": "1.26.40"
@@ -23,9 +23,19 @@
       "entry": "scripts/main.js"
     }
   ],
-  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    },
+    {
+      "uuid": "37a96441-7d23-441b-85d0-3b91ef347ecf",
+      "version": "0.1.0"
+    }
+  ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   },
   "settings": [
@@ -33,17 +43,72 @@
       "type": "label",
       "text": "Cauldrons are tanks, funnels are pipes. A funnel feeds whatever is behind it into the cauldron in front of it; products come out of the bottom of the tank into a container below it."
     },
-    { "type": "toggle", "text": "Concrete Mixer (concrete powder + water)", "name": "fluidworks:concrete", "default": true },
-    { "type": "toggle", "text": "Buckets fill and drain tanks", "name": "fluidworks:buckets", "default": true },
-    { "type": "toggle", "text": "Bottling Line (glass bottles and water bottles)", "name": "fluidworks:bottles", "default": true },
-    { "type": "toggle", "text": "Dye Vat (dye the water)", "name": "fluidworks:dye", "default": true },
-    { "type": "toggle", "text": "Wash Station (wash leather and wolf armour)", "name": "fluidworks:wash", "default": true },
-    { "type": "toggle", "text": "Fluid transfer from source blocks and between tanks", "name": "fluidworks:transfer", "default": true },
-    { "type": "toggle", "text": "Rain Collector (a funnel facing down, open to the sky)", "name": "fluidworks:rain", "default": true },
-    { "type": "toggle", "text": "Harvester (a mature crop at the mouth, a container at the spout)", "name": "fluidworks:harvest", "default": true },
-    { "type": "toggle", "text": "Collector (dropped items near an open mouth go into a container at the spout)", "name": "fluidworks:collect", "default": true },
-    { "type": "toggle", "text": "Pipes carry fluid between funnels and tanks", "name": "fluidworks:pipes", "default": true },
-    { "type": "toggle", "text": "Floating level labels over tanks", "name": "fluidworks:labels", "default": true },
+    {
+      "type": "toggle",
+      "text": "Concrete Mixer (concrete powder + water)",
+      "name": "fluidworks:concrete",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Buckets fill and drain tanks",
+      "name": "fluidworks:buckets",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Bottling Line (glass bottles and water bottles)",
+      "name": "fluidworks:bottles",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Dye Vat (dye the water)",
+      "name": "fluidworks:dye",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Wash Station (wash leather and wolf armour)",
+      "name": "fluidworks:wash",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Fluid transfer from source blocks and between tanks",
+      "name": "fluidworks:transfer",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Rain Collector (a funnel facing down, open to the sky)",
+      "name": "fluidworks:rain",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Harvester (a mature crop at the mouth, a container at the spout)",
+      "name": "fluidworks:harvest",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Collector (dropped items near an open mouth go into a container at the spout)",
+      "name": "fluidworks:collect",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Pipes carry fluid between funnels and tanks",
+      "name": "fluidworks:pipes",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Floating level labels over tanks",
+      "name": "fluidworks:labels",
+      "default": true
+    },
     {
       "type": "slider",
       "text": "Seconds between machine cycles",

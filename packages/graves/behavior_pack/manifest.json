@@ -2,7 +2,7 @@
   "format_version": 3,
   "header": {
     "name": "Graves",
-    "description": "Item preservation on death, chosen per player role: keep everything, or collect it from a gravestone.",
+    "description": "Nothing is lost on death. Each player role either keeps their items or collects them from a gravestone where they fell. Configured from the pack settings.",
     "uuid": "663034fc-4a5e-42a7-b663-4863dcc8291c",
     "version": "1.0.0",
     "min_engine_version": "1.26.40"
@@ -23,9 +23,19 @@
       "entry": "scripts/main.js"
     }
   ],
-  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    },
+    {
+      "uuid": "65b20b45-e07c-49d7-bf8a-697ca62ee10b",
+      "version": "1.0.0"
+    }
+  ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   },
   "settings": [
@@ -38,9 +48,18 @@
       "text": "Visitors",
       "name": "graves:visitors",
       "options": [
-        { "name": "off", "text": "Off" },
-        { "name": "grave", "text": "Gravestone" },
-        { "name": "keep", "text": "Keep" }
+        {
+          "name": "off",
+          "text": "Off"
+        },
+        {
+          "name": "grave",
+          "text": "Gravestone"
+        },
+        {
+          "name": "keep",
+          "text": "Keep"
+        }
       ],
       "default": "keep"
     },
@@ -49,9 +68,18 @@
       "text": "Members",
       "name": "graves:members",
       "options": [
-        { "name": "off", "text": "Off" },
-        { "name": "grave", "text": "Gravestone" },
-        { "name": "keep", "text": "Keep" }
+        {
+          "name": "off",
+          "text": "Off"
+        },
+        {
+          "name": "grave",
+          "text": "Gravestone"
+        },
+        {
+          "name": "keep",
+          "text": "Keep"
+        }
       ],
       "default": "grave"
     },
@@ -60,9 +88,18 @@
       "text": "Operators",
       "name": "graves:operators",
       "options": [
-        { "name": "off", "text": "Off" },
-        { "name": "grave", "text": "Gravestone" },
-        { "name": "keep", "text": "Keep" }
+        {
+          "name": "off",
+          "text": "Off"
+        },
+        {
+          "name": "grave",
+          "text": "Gravestone"
+        },
+        {
+          "name": "keep",
+          "text": "Keep"
+        }
       ],
       "default": "off"
     },

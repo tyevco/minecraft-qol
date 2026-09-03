@@ -2,7 +2,7 @@
   "format_version": 3,
   "header": {
     "name": "Guardian",
-    "description": "Per-role damage scaling and safety switches: kids take less damage and never fall to their deaths; adults play vanilla.",
+    "description": "Kids take less damage and never fall to their deaths; adults play vanilla. Damage scaling and safety switches per player role, configured from the pack settings.",
     "uuid": "a20c792b-039c-4ebe-bf63-15498b928d09",
     "version": "1.0.0",
     "min_engine_version": "1.26.40"
@@ -17,9 +17,15 @@
       "entry": "scripts/main.js"
     }
   ],
-  "dependencies": [{ "module_name": "@minecraft/server", "version": "2.9.0" }],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    }
+  ],
   "metadata": {
     "authors": ["tyevco"],
+    "url": "https://github.com/tyevco/minecraft-qol",
     "product_type": "addon"
   },
   "settings": [
@@ -32,11 +38,26 @@
       "text": "Visitors take",
       "name": "guardian:visitors",
       "options": [
-        { "name": "100", "text": "100% (vanilla)" },
-        { "name": "75", "text": "75%" },
-        { "name": "50", "text": "50%" },
-        { "name": "25", "text": "25%" },
-        { "name": "0", "text": "No damage" }
+        {
+          "name": "100",
+          "text": "100% (vanilla)"
+        },
+        {
+          "name": "75",
+          "text": "75%"
+        },
+        {
+          "name": "50",
+          "text": "50%"
+        },
+        {
+          "name": "25",
+          "text": "25%"
+        },
+        {
+          "name": "0",
+          "text": "No damage"
+        }
       ],
       "default": "25"
     },
@@ -45,11 +66,26 @@
       "text": "Members take",
       "name": "guardian:members",
       "options": [
-        { "name": "100", "text": "100% (vanilla)" },
-        { "name": "75", "text": "75%" },
-        { "name": "50", "text": "50%" },
-        { "name": "25", "text": "25%" },
-        { "name": "0", "text": "No damage" }
+        {
+          "name": "100",
+          "text": "100% (vanilla)"
+        },
+        {
+          "name": "75",
+          "text": "75%"
+        },
+        {
+          "name": "50",
+          "text": "50%"
+        },
+        {
+          "name": "25",
+          "text": "25%"
+        },
+        {
+          "name": "0",
+          "text": "No damage"
+        }
       ],
       "default": "50"
     },
@@ -58,11 +94,26 @@
       "text": "Operators take",
       "name": "guardian:operators",
       "options": [
-        { "name": "100", "text": "100% (vanilla)" },
-        { "name": "75", "text": "75%" },
-        { "name": "50", "text": "50%" },
-        { "name": "25", "text": "25%" },
-        { "name": "0", "text": "No damage" }
+        {
+          "name": "100",
+          "text": "100% (vanilla)"
+        },
+        {
+          "name": "75",
+          "text": "75%"
+        },
+        {
+          "name": "50",
+          "text": "50%"
+        },
+        {
+          "name": "25",
+          "text": "25%"
+        },
+        {
+          "name": "0",
+          "text": "No damage"
+        }
       ],
       "default": "100"
     },

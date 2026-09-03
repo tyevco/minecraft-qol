@@ -121,6 +121,11 @@ prototype” list. In suggested order:
 - [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
+- [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
+  six custom entities (decoy dummy, patrol golem, runner, hatchling,
+  messenger, pack mule) with generated models under `concepts/entities/`,
+  each with its own "must prototype" list. Becomes a design doc per entity
+  when one is picked up.
 
 ## Plans
 

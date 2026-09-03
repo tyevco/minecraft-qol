@@ -46,10 +46,12 @@ under `packages/shared`.
    before performing any; consume inputs before producing outputs; drop as
    the last resort rather than lose. Read Graves' `placeGrave` and Fluidworks'
    `execute` for the shape.
-5. **Generated assets are never hand-edited.** Textures, geometry and
-   GameTest structures come from `tools/` via `npm run assets`, and are
-   committed. A changed PNG or `.geo.json` in a diff must correspond to a
-   change under `tools/`.
+5. **Generated assets are never hand-edited.** Textures, geometry,
+   animation sets and GameTest structures come from `tools/` via
+   `npm run assets`, and are committed. A changed PNG, `.geo.json` or
+   `.animation.json` in a diff must correspond to a change under `tools/`.
+   (The two particle-only idle animations in Bulwark and Graves predate the
+   animation generator and are still hand-written.)
 6. **Per-block state lives in a world dynamic property keyed by position**
    (`packages/shared/engine/positionIndex.ts`), registered on
    `playerPlaceBlock` and removed on `playerBreakBlock`, with a schema version.
@@ -61,7 +63,7 @@ under `packages/shared`.
 npm test              vitest over every pure layer; no game needed
 npx tsc --noEmit      typecheck, including tools/
 npm run build         typecheck + esbuild bundle per pack into dist/<pack>/
-npm run assets        regenerate textures, models and GameTest structures
+npm run assets        regenerate textures, models, animations and GameTest structures
 npm run deploy        build, then copy packs into development_behavior_packs
 npm run mcaddon       .mcaddon per shipped pack (dev-only packs excluded)
 ```

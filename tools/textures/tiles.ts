@@ -6,7 +6,15 @@
  * texture is authored once and reused by every cube of that material, and the
  * atlas layout is a table in generate.ts rather than a hand-packed sheet.
  */
-import { Canvas, mix, shade, tile, type Color, type Palette } from "./canvas";
+import {
+  Canvas,
+  mix,
+  prng,
+  shade,
+  tile,
+  type Color,
+  type Palette,
+} from "./canvas";
 
 // ---------------------------------------------------------------------------
 // Palettes
@@ -494,4 +502,437 @@ export function softDot(inner: Color, outer: Color, size = 8): Canvas {
     }
   }
   return c;
+}
+
+// ---------------------------------------------------------------------------
+// Concept entities (docs/design/entities.md). Organic materials: wood, cloth,
+// straw, hide, feathers and scales. Each painter states the window its model
+// samples when the pattern is placed for it.
+// ---------------------------------------------------------------------------
+
+export const OAK: Ramp = {
+  light: 0xb8935a,
+  mid: 0x9a7444,
+  dark: 0x6e502c,
+  deep: 0x4a341a,
+};
+export const BURLAP: Ramp = {
+  light: 0xd2b98f,
+  mid: 0xb0956b,
+  dark: 0x836c4a,
+  deep: 0x57472f,
+};
+export const STRAW: Ramp = {
+  light: 0xf0dc86,
+  mid: 0xcfb256,
+  dark: 0xa08434,
+  deep: 0x6d5a20,
+};
+export const BONE: Ramp = {
+  light: 0xf3ecd8,
+  mid: 0xd9cfb4,
+  dark: 0xa89e84,
+  deep: 0x6f6753,
+};
+export const LEATHER: Ramp = {
+  light: 0xb5643a,
+  mid: 0x8a4a2a,
+  dark: 0x5f321c,
+  deep: 0x3a1e10,
+};
+export const PIGEON: Ramp = {
+  light: 0xc5cad2,
+  mid: 0x8f959e,
+  dark: 0x61676f,
+  deep: 0x3b3f45,
+};
+export const HIDE: Ramp = {
+  light: 0x9a7452,
+  mid: 0x745538,
+  dark: 0x523a25,
+  deep: 0x332314,
+};
+/** Hatchling variants: a palette swap, like the turret tiers. */
+export const EMBER: Ramp = {
+  light: 0xffb26b,
+  mid: 0xe0642a,
+  dark: 0x9c3a14,
+  deep: 0x5c1f0a,
+};
+export const MOSS: Ramp = {
+  light: 0xa8e07a,
+  mid: 0x5fa83c,
+  dark: 0x3a7326,
+  deep: 0x224415,
+};
+export const FROST: Ramp = {
+  light: 0xe6f7ff,
+  mid: 0x9ad4f0,
+  dark: 0x5a9ec7,
+  deep: 0x2f5f86,
+};
+
+const EYE_GOLD = 0xf2c14e;
+const EYE_DARK = 0x1a1a1f;
+const GLINT = 0xffffff;
+
+/** Plank with the grain running top to bottom: posts and legs. */
+export function plankV(r: Ramp, seed = 501): Canvas {
+  const c = tile().fill(0, 0, 16, 16, r.mid);
+  for (let x = 0; x < 16; x += 4) {
+    c.fill(x, 0, 1, 16, r.light);
+    c.fill(x + 3, 0, 1, 16, r.deep);
+  }
+  const rand = prng(seed);
+  for (let i = 0; i < 6; i++) {
+    const x = Math.floor(rand() * 16);
+    const y = Math.floor(rand() * 12);
+    c.fill(x, y, 1, 2 + Math.floor(rand() * 4), r.dark);
+  }
+  return c;
+}
+
+/** The same plank running left to right: crossbars. */
+export function plankU(r: Ramp, seed = 502): Canvas {
+  const src = plankV(r, seed);
+  const c = tile();
+  for (let y = 0; y < 16; y++)
+    for (let x = 0; x < 16; x++) {
+      const p = src.get(y, x);
+      c.set(x, y, (p.r << 16) | (p.g << 8) | p.b);
+    }
+  return c;
+}
+
+/** Coarse woven cloth: a two-pixel weave with a stitched border. */
+export function burlap(r: Ramp, seed = 503): Canvas {
+  const c = tile();
+  for (let y = 0; y < 16; y++)
+    for (let x = 0; x < 16; x++) {
+      const over = ((x >> 1) + (y >> 1)) % 2 === 0;
+      c.set(x, y, over ? r.mid : r.dark);
+      if (over && (x & 1) === 0 && (y & 1) === 0) c.set(x, y, r.light);
+    }
+  return c.speckle(0, 0, 16, 16, [r.deep], 0.04, seed);
+}
+
+/** Bundled straw: vertical strands with a few crossing wisps. */
+export function straw(r: Ramp, seed = 504): Canvas {
+  const c = tile();
+  const rand = prng(seed);
+  for (let x = 0; x < 16; x++) {
+    const roll = rand();
+    const col = roll < 0.25 ? r.light : roll < 0.7 ? r.mid : r.dark;
+    c.fill(x, 0, 1, 16, col);
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = Math.floor(rand() * 16);
+    const x = Math.floor(rand() * 12);
+    c.fill(x, y, 3 + Math.floor(rand() * 3), 1, r.deep);
+  }
+  return c;
+}
+
+/**
+ * The decoy's chest: a painted bullseye on burlap. The body's front samples an
+ * 8x10 window at (4,3), so the rings are centred on (7.5,7.5) and stay inside
+ * a radius of 3.5.
+ */
+export function bullseye(cloth: Ramp): Canvas {
+  const c = burlap(cloth, 505);
+  const red = 0xb5382b;
+  const white = 0xece5d3;
+  for (let y = 0; y < 16; y++)
+    for (let x = 0; x < 16; x++) {
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      if (d <= 1.2) c.set(x, y, red);
+      else if (d <= 2.3) c.set(x, y, white);
+      else if (d <= 3.4) c.set(x, y, red);
+      else if (d <= 3.9) c.set(x, y, cloth.deep);
+    }
+  return c;
+}
+
+/** A sack head with cross-stitched eyes and a stitched mouth: 6x6 window at (5,5). */
+export function sackFace(cloth: Ramp, thread: Color): Canvas {
+  return burlap(cloth, 506).art(
+    5,
+    5,
+    [
+      "......", //
+      "x.x.xx",
+      ".x...x",
+      "x.x.xx",
+      "......",
+      ".xxxx.",
+    ],
+    { ".": "transparent", x: thread },
+  );
+}
+
+/** Rough stone with a patch of moss creeping in from one corner. */
+export function mossStone(r: Ramp, seed = 511): Canvas {
+  const c = roughStone(r, seed);
+  const rand = prng(seed + 1);
+  for (let y = 0; y < 16; y++)
+    for (let x = 0; x < 16; x++) {
+      const d = Math.hypot(x - 14, y - 14) / 16;
+      if (rand() > d * 1.4) c.set(x, y, rand() < 0.5 ? 0x5d8a3a : 0x4a7030);
+    }
+  return c;
+}
+
+/** The golem's face: two lit slits and a crack of a mouth. 6x6 window at (5,5). */
+export function golemFace(r: Ramp, glow: Color): Canvas {
+  return roughStone(r, 512).art(
+    5,
+    5,
+    [
+      "......", //
+      "gg..gg",
+      "......",
+      "......",
+      "..d...",
+      ".d.dd.",
+    ],
+    { ".": "transparent", g: glow, d: r.deep },
+  );
+}
+
+/** A window pane: tinted, one diagonal highlight, bezel at the edge. */
+export function glassPane(tint: Color, bezel: Ramp): Canvas {
+  const c = tile().fill(0, 0, 16, 16, tint);
+  // Two diagonal highlights, one bright and one faint, as on vanilla glass.
+  for (let i = 0; i < 16; i++) {
+    c.set(i, 15 - i, mix(tint, GLINT, 0.45));
+    if (i < 15) c.set(i + 1, 15 - i, mix(tint, GLINT, 0.25));
+    if (i >= 4) c.set(i, 19 - i, mix(tint, GLINT, 0.15));
+  }
+  return c.rect(0, 0, 16, 16, bezel.deep);
+}
+
+/** Two round lens eyes on a plate: the runner's face. 7x5 window at (4,5). */
+export function runnerFace(r: Ramp, iris: Color): Canvas {
+  return rivetedPlate(r, 521).art(
+    4,
+    5,
+    [
+      ".bbb.bb", //
+      "bWibbWi",
+      "biibbii",
+      ".bbb.bb",
+      ".......",
+    ],
+    {
+      ".": "transparent",
+      b: r.deep,
+      i: iris,
+      W: mix(iris, GLINT, 0.7),
+    },
+  );
+}
+
+/** A fan blade: ribs along u with a darker trailing edge at the bottom. */
+export function fin(r: Ramp): Canvas {
+  const c = tile();
+  for (let y = 0; y < 16; y++)
+    c.fill(0, y, 16, 1, y % 3 === 0 ? r.light : y % 3 === 1 ? r.mid : r.dark);
+  return c.fill(0, 14, 16, 2, r.deep).fill(0, 0, 16, 1, r.light);
+}
+
+/** A glowing bulb: a bright 2x2 core in a coloured rim. 4x4 window at (6,6). */
+export function bulb(core: Color, rim: Color): Canvas {
+  const c = tile().fill(0, 0, 16, 16, rim);
+  return c.rect(6, 6, 4, 4, mix(rim, core, 0.35)).fill(7, 7, 2, 2, core);
+}
+
+/** Overlapping scales: rows of four-wide scallops, offset every other row. */
+export function scales(r: Ramp, seed = 531): Canvas {
+  const c = tile().fill(0, 0, 16, 16, r.mid);
+  for (let row = 0; row < 4; row++) {
+    const y = row * 4;
+    const off = row % 2 === 0 ? 0 : 2;
+    for (let x = -4 + off; x < 16; x += 4) {
+      c.fill(x, y, 4, 1, r.dark);
+      c.fill(x + 1, y + 1, 2, 1, r.light);
+      c.fill(x, y + 3, 1, 1, r.dark);
+      c.fill(x + 3, y + 3, 1, 1, r.dark);
+    }
+  }
+  return c.speckle(0, 0, 16, 16, [r.deep], 0.03, seed);
+}
+
+/** Belly plates: wide horizontal bands in a lighter ramp. */
+export function bellyPlates(r: Ramp): Canvas {
+  const lighter: Ramp = {
+    light: mix(r.light, GLINT, 0.4),
+    mid: mix(r.light, GLINT, 0.15),
+    dark: r.light,
+    deep: r.mid,
+  };
+  return bands(lighter, 532);
+}
+
+/** The hatchling's face: two big gold eyes with a glint. 6x5 window at (5,5). */
+export function hatchlingFace(r: Ramp): Canvas {
+  return scales(r, 533).art(
+    5,
+    5,
+    [
+      "......", //
+      "Wg..Wg",
+      "gd..gd",
+      "......",
+      "......",
+    ],
+    { ".": "transparent", g: EYE_GOLD, d: EYE_DARK, W: GLINT },
+  );
+}
+
+/** A snout end with two nostrils: 4x2 window at (6,7). */
+export function snout(r: Ramp): Canvas {
+  return scales(r, 534).art(6, 7, ["d..d", "...."], {
+    ".": "transparent",
+    d: r.deep,
+  });
+}
+
+/** Bone-coloured horn: the ramp's light end with a growth ring every 4 rows. */
+export function horn(r: Ramp): Canvas {
+  const c = tile().fill(0, 0, 16, 16, r.mid);
+  for (let y = 0; y < 16; y += 4) c.fill(0, y, 16, 1, r.light).fill(0, y + 3, 16, 1, r.dark);
+  return c;
+}
+
+/** Wing membrane: a lighter skin with dark vein lines fanning across it. */
+export function membrane(r: Ramp): Canvas {
+  const skin = mix(r.mid, r.light, 0.35);
+  const c = tile().fill(0, 0, 16, 16, skin);
+  for (let i = 0; i < 16; i++) {
+    c.set(i, Math.floor(i / 2), r.dark);
+    c.set(i, 7 + Math.floor(i / 4), r.dark);
+    c.set(i, 13 + Math.floor(i / 8), r.dark);
+  }
+  return c.speckle(0, 0, 16, 16, [r.deep], 0.02, 536);
+}
+
+/** Feathers: soft scallops with a light tip, coarser than scales. */
+export function feathers(r: Ramp, seed = 541): Canvas {
+  const c = tile().fill(0, 0, 16, 16, r.mid);
+  for (let row = 0; row < 4; row++) {
+    const y = row * 4;
+    const off = row % 2 === 0 ? 0 : 3;
+    for (let x = -6 + off; x < 16; x += 6) {
+      c.fill(x + 1, y + 2, 4, 1, r.dark);
+      c.fill(x + 2, y + 3, 2, 1, r.light);
+    }
+  }
+  return c.speckle(0, 0, 16, 16, [r.dark, r.light], 0.04, seed);
+}
+
+/** Tail feathers: the same, with a dark bar across the tip. */
+export function tailFeathers(r: Ramp): Canvas {
+  return feathers(r, 542).fill(0, 12, 16, 2, r.deep).fill(0, 14, 16, 2, r.light);
+}
+
+/** The pigeon's face: two bead eyes on plain down, a pale cheek. 4x4 window at (6,6). */
+export function birdFace(r: Ramp): Canvas {
+  return tile()
+    .fill(0, 0, 16, 16, r.mid)
+    .speckle(0, 0, 16, 16, [r.dark], 0.06, 543)
+    .art(
+    6,
+    6,
+    [
+      "....", //
+      "d..d",
+      "....",
+      "llll",
+    ],
+    { ".": "transparent", d: EYE_DARK, l: r.light },
+  );
+}
+
+/** Solid beak or leg colour, shaded top to bottom. */
+export function beak(base: Color): Canvas {
+  return tile()
+    .fill(0, 0, 16, 8, base)
+    .fill(0, 8, 16, 8, shade(base, 0.75))
+    .fill(0, 0, 16, 1, mix(base, GLINT, 0.3));
+}
+
+/** A leather bag face: stitched border and a buckle. 4x3 window at (6,6). */
+export function satchel(r: Ramp): Canvas {
+  const c = tile()
+    .fill(0, 0, 16, 16, r.mid)
+    .speckle(0, 0, 16, 16, [r.light, r.dark], 0.08, 551)
+    .rect(0, 0, 16, 16, r.deep);
+  return c.art(
+    6,
+    6,
+    [
+      "dddd", //
+      ".BB.",
+      "dddd",
+    ],
+    { ".": "transparent", d: r.deep, B: 0xd9a441 },
+  );
+}
+
+/** A leather strap: the bag's tone with a lighter centre stripe. */
+export function strap(r: Ramp): Canvas {
+  return tile()
+    .fill(0, 0, 16, 16, r.dark)
+    .fill(0, 7, 16, 2, r.mid)
+    .speckle(0, 0, 16, 16, [r.deep], 0.06, 552);
+}
+
+/** Short hide: mid tone with vertical streaks. */
+export function hide(r: Ramp, seed = 561): Canvas {
+  const c = tile().fill(0, 0, 16, 16, r.mid);
+  const rand = prng(seed);
+  for (let i = 0; i < 22; i++) {
+    const x = Math.floor(rand() * 16);
+    const y = Math.floor(rand() * 14);
+    c.fill(x, y, 1, 1 + Math.floor(rand() * 3), rand() < 0.5 ? r.light : r.dark);
+  }
+  return c;
+}
+
+/** The mule's face: a blaze down the middle, an eye each side. 5x5 window at (5,5). */
+export function muleFace(r: Ramp): Canvas {
+  return hide(r, 562).art(
+    5,
+    5,
+    [
+      "..l..", //
+      "..l..",
+      "d.l.d",
+      "..l..",
+      "..l..",
+    ],
+    { ".": "transparent", d: EYE_DARK, l: mix(r.light, GLINT, 0.5) },
+  );
+}
+
+/** A soft muzzle: lighter hide with two nostrils. 4x3 window at (6,6). */
+export function muzzle(r: Ramp): Canvas {
+  const soft: Ramp = {
+    light: mix(r.light, GLINT, 0.4),
+    mid: mix(r.light, GLINT, 0.2),
+    dark: r.light,
+    deep: r.dark,
+  };
+  return hide(soft, 563).art(6, 6, ["....", "d..d", "...."], {
+    ".": "transparent",
+    d: r.deep,
+  });
+}
+
+/** Coarse hair: the ramp's dark end in vertical strands. */
+export function mane(r: Ramp): Canvas {
+  return straw(
+    { light: r.dark, mid: r.deep, dark: shade(r.deep, 0.7), deep: shade(r.deep, 0.5) },
+    564,
+  );
 }

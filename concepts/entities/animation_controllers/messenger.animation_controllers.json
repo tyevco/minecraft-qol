@@ -1,0 +1,47 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.concept_messenger.general": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": [
+            "idle"
+          ],
+          "transitions": [
+            {
+              "fly": "!query.is_on_ground"
+            },
+            {
+              "walk": "query.modified_move_speed > 0.05"
+            }
+          ]
+        },
+        "walk": {
+          "animations": [
+            "walk"
+          ],
+          "transitions": [
+            {
+              "fly": "!query.is_on_ground"
+            },
+            {
+              "idle": "query.modified_move_speed <= 0.05"
+            }
+          ]
+        },
+        "fly": {
+          "animations": [
+            "fly"
+          ],
+          "transitions": [
+            {
+              "idle": "query.is_on_ground"
+            }
+          ],
+          "blend_transition": 0.1
+        }
+      }
+    }
+  }
+}

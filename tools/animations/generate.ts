@@ -278,9 +278,12 @@ emit(CONCEPTS, "runner", {
 // hop with two wing flaps when it is fed.
 // ---------------------------------------------------------------------------
 
-emit(CONCEPTS, "hatchling", {
-  name: "concept_hatchling",
-  bones: bonesOf(`${CONCEPTS}/models/hatchling.geo.json`),
+// Shipped: packages/hatchling. Property names are the pack's.
+const HATCHLING_RP = "packages/hatchling/resource_pack";
+
+emit(HATCHLING_RP, "hatchling", {
+  name: "hatchling",
+  bones: bonesOf(`${HATCHLING_RP}/models/entity/hatchling.geo.json`),
   animations: [
     {
       key: "idle",
@@ -361,7 +364,7 @@ emit(CONCEPTS, "hatchling", {
         idle: {
           animations: ["idle"],
           transitions: [
-            ["flap", "query.property('concept:happy')"],
+            ["flap", "query.property('hatchling:happy')"],
             ["walk", MOVING],
           ],
         },
@@ -558,9 +561,9 @@ emit(CONCEPTS, "mule", {
 // hatch is a squash, a shudder and a stretch as the shell gives.
 // ---------------------------------------------------------------------------
 
-emit(CONCEPTS, "egg", {
-  name: "concept_egg",
-  bones: bonesOf(`${CONCEPTS}/models/egg.geo.json`),
+emit(HATCHLING_RP, "egg", {
+  name: "hatchling_egg",
+  bones: bonesOf(`${HATCHLING_RP}/models/entity/egg.geo.json`),
   animations: [
     {
       key: "idle",
@@ -626,15 +629,15 @@ emit(CONCEPTS, "egg", {
         idle: {
           animations: ["idle"],
           transitions: [
-            ["hatch", "query.property('concept:hatching')"],
-            ["wobble", "query.property('concept:cracks') > 0"],
+            ["hatch", "query.property('hatchling:hatching')"],
+            ["wobble", "query.property('hatchling:cracks') > 0"],
           ],
         },
         wobble: {
           animations: ["wobble"],
           transitions: [
-            ["hatch", "query.property('concept:hatching')"],
-            ["idle", "query.property('concept:cracks') == 0"],
+            ["hatch", "query.property('hatchling:hatching')"],
+            ["idle", "query.property('hatchling:cracks') == 0"],
           ],
         },
         hatch: { animations: ["hatch"], transitions: [["idle", FINISHED]] },

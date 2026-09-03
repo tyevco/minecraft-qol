@@ -1,0 +1,20 @@
+{
+  "format_version": "1.10.0",
+  "render_controllers": {
+    "controller.render.hatchling_egg": {
+      "arrays": {
+        "textures": {
+          "Array.variant": ["Texture.ember", "Texture.moss", "Texture.frost"]
+        }
+      },
+      "geometry": "Geometry.default",
+      "materials": [{ "*": "Material.default" }],
+      "textures": ["Array.variant[math.clamp(q.property('hatchling:variant'), 0, 2)]"],
+      "part_visibility": [
+        { "*": true },
+        { "crack_1": "q.property('hatchling:cracks') >= 1" },
+        { "crack_2": "q.property('hatchling:cracks') >= 2" }
+      ]
+    }
+  }
+}

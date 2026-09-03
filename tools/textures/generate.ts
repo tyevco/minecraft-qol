@@ -217,9 +217,12 @@ function hatchling(r: T.Ramp): Canvas {
     dark: T.flatDark(r),
   });
 }
-write(`${CONCEPTS}/hatchling_ember.png`, hatchling(T.EMBER));
-write(`${CONCEPTS}/hatchling_moss.png`, hatchling(T.MOSS));
-write(`${CONCEPTS}/hatchling_frost.png`, hatchling(T.FROST));
+// The hatchling shipped: packages/hatchling. The egg atlas and item icons are
+// below, next to the egg painters.
+const HATCHLING_RP = "packages/hatchling/resource_pack/textures";
+write(`${HATCHLING_RP}/entity/hatchling_ember.png`, hatchling(T.EMBER));
+write(`${HATCHLING_RP}/entity/hatchling_moss.png`, hatchling(T.MOSS));
+write(`${HATCHLING_RP}/entity/hatchling_frost.png`, hatchling(T.FROST));
 
 write(
   `${CONCEPTS}/messenger.png`,
@@ -276,6 +279,9 @@ function egg(r: T.Ramp): Canvas {
     dark: T.flatDark(T.OAK),
   });
 }
-write(`${CONCEPTS}/egg_ember.png`, egg(T.EMBER));
-write(`${CONCEPTS}/egg_moss.png`, egg(T.MOSS));
-write(`${CONCEPTS}/egg_frost.png`, egg(T.FROST));
+write(`${HATCHLING_RP}/entity/egg_ember.png`, egg(T.EMBER));
+write(`${HATCHLING_RP}/entity/egg_moss.png`, egg(T.MOSS));
+write(`${HATCHLING_RP}/entity/egg_frost.png`, egg(T.FROST));
+write(`${HATCHLING_RP}/items/egg_ember.png`, T.eggIcon(T.EMBER));
+write(`${HATCHLING_RP}/items/egg_moss.png`, T.eggIcon(T.MOSS));
+write(`${HATCHLING_RP}/items/egg_frost.png`, T.eggIcon(T.FROST));

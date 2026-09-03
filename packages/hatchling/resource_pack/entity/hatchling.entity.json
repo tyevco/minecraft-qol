@@ -1,0 +1,24 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "hatchling:hatchling",
+      "materials": { "default": "entity" },
+      "textures": {
+        "ember": "textures/entity/hatchling_ember",
+        "moss": "textures/entity/hatchling_moss",
+        "frost": "textures/entity/hatchling_frost"
+      },
+      "geometry": { "default": "geometry.hatchling" },
+      "animations": {
+        "look_at_target": "animation.common.look_at_target",
+        "idle": "animation.hatchling.idle",
+        "walk": "animation.hatchling.walk",
+        "flap": "animation.hatchling.flap",
+        "general": "controller.animation.hatchling.general"
+      },
+      "scripts": { "animate": ["look_at_target", "general"] },
+      "render_controllers": ["controller.render.hatchling"]
+    }
+  }
+}

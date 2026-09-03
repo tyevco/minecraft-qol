@@ -46,6 +46,15 @@
  *   /scriptevent qolprobe:turret-target   MUTATES: spawn a zombie 8 blocks ahead, then watch
  *   /scriptevent qolprobe:turret-census   monsters / heads / entities within 64 (T4)
  *   /scriptevent qolprobe:turret-cleanup  remove everything the turret probes spawned
+ *   /scriptevent qolprobe:egg <0|1|2>     spawn a hatchling egg of that variant at your feet
+ *                                         with one crack, and log what its properties read
+ *                                         back (Hatchling E1: part_visibility, E2: property
+ *                                         round-trip). Warm it, sneak-pick it up, hatch it.
+ *   /scriptevent qolprobe:pet <0|1|2>     spawn a wild hatchling; then feed it berries and
+ *                                         run again: logs isTamed / tamedToPlayerId, scale,
+ *                                         stage, every 2 s for 20 s (H1: tame_event, H2:
+ *                                         stage swap without a pop)
+ *   /scriptevent qolprobe:hatch-cleanup   remove every egg and hatchling within 16 blocks
  */
 import { world, system, BlockPermutation, LocationWaypoint } from "@minecraft/server";
 
@@ -988,3 +997,62 @@ world.afterEvents.worldLoad.subscribe(() => {
     log("unknown qolprobe:turret-" + cmd);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Hatchling (packages/hatchling). Log-only apart from the spawns, which
+// hatch-cleanup removes. Both entities come from the Hatchling pack, so it
+// must be enabled alongside the probe.
+// ---------------------------------------------------------------------------
+
+const HATCH_EGG = "hatchling:egg";
+const HATCH_PET = "hatchling:hatchling";
+let hatchWatch = 0;
+
+function hatchDescribe(e) {
+  const props = ["hatchling:variant", "hatchling:cracks", "hatchling:hatching", "hatchling:stage", "hatchling:happy"]
+    .map((k) => { try { const v = e.getProperty(k); return v === undefined ? null : `${k.split(":")[1]}=${v}`; } catch { return null; } })
+    .filter(Boolean)
+    .join(" ");
+  const tame = e.getComponent("minecraft:tameable");
+  const scale = e.getComponent("minecraft:scale");
+  const health = e.getComponent("minecraft:health");
+  return `${e.typeId} ${e.id}: ${props}` +
+    (tame ? ` tamed=${tame.isTamed} owner=${tame.tamedToPlayerId ?? "-"}` : "") +
+    (scale ? ` scale=${scale.value}` : "") +
+    (health ? ` hp=${health.currentValue}/${health.effectiveMax}` : "");
+}
+
+system.afterEvents.scriptEventReceive.subscribe((ev) => {
+  const p = ev.sourceEntity;
+  if (!p || p.typeId !== "minecraft:player") return;
+  if (ev.id === "qolprobe:egg" || ev.id === "qolprobe:pet") {
+    const variant = Math.max(0, Math.min(2, parseInt(ev.message, 10) || 0));
+    const type = ev.id === "qolprobe:egg" ? HATCH_EGG : HATCH_PET;
+    const at = { x: Math.floor(p.location.x) + 0.5, y: Math.floor(p.location.y), z: Math.floor(p.location.z) + 0.5 };
+    let e;
+    try {
+      e = p.dimension.spawnEntity(type, at, { spawnEvent: `hatchling:variant_${variant}` });
+    } catch (err) {
+      log(`${ev.id}: spawnEntity threw: ${err}`);
+      return;
+    }
+    if (type === HATCH_EGG) {
+      try { e.triggerEvent("hatchling:crack_1"); } catch (err) { log(`crack_1 threw: ${err}`); }
+    }
+    log(`${ev.id}: spawned ${hatchDescribe(e)}`);
+    if (hatchWatch) system.clearRun(hatchWatch);
+    let n = 0;
+    hatchWatch = system.runInterval(() => {
+      if (!e.isValid) { log(`${ev.id}: entity gone (hatched / picked up / removed)`); system.clearRun(hatchWatch); hatchWatch = 0; return; }
+      log(`${ev.id} t+${n * 2}s ${hatchDescribe(e)}`);
+      if (++n >= 10) { system.clearRun(hatchWatch); hatchWatch = 0; }
+    }, 40);
+  }
+  if (ev.id === "qolprobe:hatch-cleanup") {
+    let n = 0;
+    for (const type of [HATCH_EGG, HATCH_PET])
+      for (const e of p.dimension.getEntities({ type, location: p.location, maxDistance: 16 })) { e.remove(); n++; }
+    log(`hatch-cleanup: removed ${n}`);
+  }
+});
+

@@ -20,5 +20,6 @@ import "./suites/graves";
 import "./suites/guardian";
 import "./suites/hearthstone";
 import "./suites/bulwark";
+import "./suites/hatchling";
 
 console.warn("[QOL GameTests] registered suite qol");

@@ -1,0 +1,5 @@
+entity.hatchling:egg.name=Hatchling Egg
+entity.hatchling:hatchling.name=Hatchling
+item.hatchling:egg_ember=Ember Hatchling Egg
+item.hatchling:egg_moss=Moss Hatchling Egg
+item.hatchling:egg_frost=Frost Hatchling Egg

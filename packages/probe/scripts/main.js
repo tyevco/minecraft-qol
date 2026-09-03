@@ -1031,7 +1031,9 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     const at = { x: Math.floor(p.location.x) + 0.5, y: Math.floor(p.location.y), z: Math.floor(p.location.z) + 0.5 };
     let e;
     try {
-      e = p.dimension.spawnEntity(type, at, { spawnEvent: `hatchling:variant_${variant}` });
+      // Plain spawn, then the variant event: a spawnEvent replaces entity_spawned.
+      e = p.dimension.spawnEntity(type, at);
+      e.triggerEvent(`hatchling:variant_${variant}`);
     } catch (err) {
       log(`${ev.id}: spawnEntity threw: ${err}`);
       return;

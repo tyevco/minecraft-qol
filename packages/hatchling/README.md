@@ -50,6 +50,12 @@ the hatchling of the same variant, then removes the egg. A spawn that fails
 leaves the egg warmable. An egg loaded with `hatching` set (the world closed
 mid-hatch) finishes on load.
 
+One measured rule shapes every spawn here: a `spawnEvent` passed to
+`spawnEntity` **replaces** `minecraft:entity_spawned` rather than running
+alongside it, so a hatchling spawned that way has no stage group and no
+tameable component. The pack spawns plainly and triggers the variant event
+after (measured in the GameTest suite).
+
 **Bonding is vanilla.** `EntityTameableComponent` is read-only in 2.9.0, so
 the hatchling hatches wild with `minecraft:tameable` (berries, probability
 1.0) and the engine bonds it on the first offer. Script reads the owner back

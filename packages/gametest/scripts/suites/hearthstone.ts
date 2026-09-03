@@ -16,9 +16,20 @@ registerAsync("qol", "anchor_sets_spawn", async (test) => {
     "hs_tester",
     GameMode.Survival,
   );
+  // A SimulatedPlayer is spawned WITH a spawn point - its own spawn cell -
+  // unlike a real player who has never slept (docs/hearthstone-spawn-results.md).
+  // Hearthstone treats any spawn point it did not assign as "foreign" and
+  // deliberately never touches it, so without this the test asks the pack to do
+  // the one thing it is designed to refuse. setSpawnPoint() with no argument
+  // clears it (the parameter is optional in 2.9.0).
+  player.setSpawnPoint();
   const before = player.getSpawnPoint();
-  test.print(
-    `spawn point before: ${before ? `${before.x},${before.y},${before.z}` : "unset"}`,
+  // console.warn, not test.print: print goes to chat, and running headless
+  // there is no player to receive it, so the diagnostic vanishes.
+  console.warn(
+    `[GameTest] anchor_sets_spawn: spawn point after clearing = ${
+      before ? `${before.x},${before.y},${before.z}` : "UNSET"
+    }`,
   );
 
   await test.idle(5);

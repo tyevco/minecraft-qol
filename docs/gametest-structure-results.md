@@ -142,9 +142,48 @@ the test read back is the **engine's own** spawn cell for the simulated player,
 which is why the reported offset is exactly the rig's player-to-anchor
 separation and not any candidate `chooseRespawn` could return.
 
+### What makes it visible, and why we do not keep it
+
+Binding the module is exactly what does it. Tested by adding
+`@minecraft/server-gametest` to Hearthstone's and Guardian's manifest
+dependencies, their `external` lists **and** a side-effect `import` in each
+`main.ts` — all three are needed, and the declaration alone does nothing: with
+the dependency declared but never imported the bundle contained no reference to
+the module and the errors were unchanged.
+
+With the module genuinely bound:
+
+- the `cannot read property 'id' of undefined` errors from those two packs
+  **stopped** (the ones that remain are Graves and Lens, which were left unbound);
+- **`guardian_void_catch` passed.** Guardian's void catch was never broken; the
+  player was invisible to it;
+- `anchor_sets_spawn` still failed, which led to the finding below.
+
+**The binding was then removed and must stay removed.** `@minecraft/server-gametest`
+is a Beta API: it flags the pack experimental, and the Realm keeps its
+achievements. This was a measurement, not a change. To reproduce it, add the
+dependency, the `external` entry and the import together, and revert all three.
+
+### A SimulatedPlayer spawns WITH a spawn point
+
+`docs/hearthstone-spawn-results.md` measured that a real player who has never
+slept returns `undefined` from `getSpawnPoint()` — the load-bearing fact for
+Hearthstone's whole design. **A SimulatedPlayer does not behave that way.**
+Measured: immediately after `spawnSimulatedPlayer`, `getSpawnPoint()` returned
+its own spawn cell, before any anchor was placed.
+
+Hearthstone treats a spawn point it did not assign as `"foreign"` and
+deliberately never touches it — that is the branch that makes a real bed always
+win. So the test was asking the pack to do the one thing it is designed to
+refuse, and **Hearthstone was correct throughout**. `setSpawnPoint()` with no
+argument clears it (the parameter is optional in 2.9.0); with the spawn point
+cleared and the module bound, `anchor_sets_spawn` passes.
+
 **Consequence: any test whose subject is one pack reacting to a player cannot be
-written with a simulated player on headless BDS.** It has to be confirmed in
-game, or restructured so the pack is driven by something other than a player.
+written with a simulated player on headless BDS.** `guardian_void_catch` and
+`anchor_sets_spawn` therefore stay red in a normal run — not because either pack
+is broken, but because both have been shown to work only under a binding that
+must not ship. Both are confirmed; neither is pinned.
 
 ### Run tests one at a time
 
@@ -204,12 +243,13 @@ facing state names the **spout's** direction, not the mouth's.
 
 **Still failing:**
 
-- `anchor_sets_spawn` — **harness artefact, understood.** Hearthstone never saw
-  the simulated player at all (see above), so it assigned nothing. Cannot be
-  fixed in the harness; needs confirming in game, or a rig that does not depend
-  on another pack noticing a player.
-- `guardian_void_catch` — same family, and unconfirmed. Guardian's sweep walks
-  `getAllPlayers()`, which is exactly what a simulated player is missing from.
+- `anchor_sets_spawn` — **the pack is correct; proven.** Hearthstone cannot see
+  a simulated player, so it assigns nothing ("spawn point still unset"). Under a
+  temporary gametest binding, with the player's engine-assigned spawn point
+  cleared, it **passes**.
+- `guardian_void_catch` — **the pack is correct; proven.** Under the same
+  temporary binding it **passes**. Guardian's sweep walks `getAllPlayers()`,
+  which is exactly what a simulated player is missing from.
 - `rain_collector` — **not yet measured, and deliberately not fixed.** Two
   mechanisms produce this identical symptom and nothing in any log separates
   them: either `weatherChange` does not fire for a scripted `setWeather`, or it

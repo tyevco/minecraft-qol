@@ -146,10 +146,11 @@ export const MESSENGER = layout(64, {
 export const MULE = layout(64, {
   fur: [0, 0],
   belly: [1, 0],
-  face: [2, 0],
-  muzzle: [3, 0],
-  mane: [0, 1],
-  burlap: [1, 1],
-  strap: [2, 1],
-  dark: [3, 1],
+  cheek: [2, 0],
+  blaze: [3, 0],
+  muzzle: [0, 1],
+  mane: [1, 1],
+  burlap: [2, 1],
+  strap: [3, 1],
+  dark: [0, 2],
 });

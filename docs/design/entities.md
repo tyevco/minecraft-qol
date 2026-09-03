@@ -155,9 +155,11 @@ marked chest to unload it. It walks, it can be hurt, and it despawns if it
 wanders without `minecraft:persistent`. Ties into Fluidworks' Collector as
 the "bring the harvest home" step.
 
-- Model: donkey body, neck and head with muzzle and ears, four legs, a leather
-  harness, a burlap pannier each side on `left_pack` / `right_pack` so an
-  empty side can be hidden by bone visibility.
+- Model: vanilla horse proportions, a long body on solid legs, the neck
+  pitched forward by bone rotation so the head follows it, a boxy skull with
+  a longer muzzle, ears, eyes on the cheeks and a blaze on the forehead; a
+  leather harness, and a burlap pannier with a leather flap each side on
+  `left_pack` / `right_pack` so an empty side can be hidden by bone visibility.
 - **Must prototype:** `minecraft:inventory` plus `leashable` on one entity;
   whether `EntityInventoryComponent.container` is readable while the entity
   is being led; unload into a `BlockInventoryComponent` chest with the

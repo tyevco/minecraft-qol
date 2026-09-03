@@ -905,9 +905,11 @@ write(`${CONCEPT_MODELS}/messenger.geo.json`, {
 });
 
 // ---------------------------------------------------------------------------
-// Pack mule - a donkey with panniers. Body, neck, head with muzzle and ears,
-// four legs, tail; a leather harness; a burlap pannier each side, on its own
-// bone so an empty side can be hidden.
+// Pack mule - a donkey with panniers, in vanilla horse proportions: a long
+// body on four solid legs, a neck that rises forward at an angle (bone
+// rotation, so the head follows), a boxy skull with a longer muzzle, ears on
+// top and eyes on the cheeks. A leather harness; a burlap pannier each side
+// on its own bone so an empty side can be hidden.
 // ---------------------------------------------------------------------------
 
 type ML = keyof typeof A.MULE.tiles;
@@ -915,11 +917,11 @@ type ML = keyof typeof A.MULE.tiles;
 const muleLeg = (name: string, x: number, z: number): Bone<ML> => ({
   name,
   parent: "body",
-  pivot: [x + 1, 8, z + 1],
+  pivot: [x + 1.5, 9, z + 1.5],
   cubes: [
     {
       origin: [x, 0, z],
-      size: [2, 8, 2],
+      size: [3, 9, 3],
       faces: { sides: "fur", up: "fur", down: "dark" },
     },
   ],
@@ -928,8 +930,16 @@ const muleLeg = (name: string, x: number, z: number): Bone<ML> => ({
 const mulePack = (name: string, x: number): Bone<ML> => ({
   name,
   parent: "body",
-  pivot: [x < 0 ? x + 3 : x, 12, 0],
-  cubes: [{ origin: [x, 9, -3], size: [3, 6, 7], faces: { all: "burlap" } }],
+  pivot: [x < 0 ? x + 4 : x, 15, 0],
+  cubes: [
+    { origin: [x, 7, -5], size: [4, 8, 10], faces: { all: "burlap" } },
+    // A leather flap over the top of the bag.
+    {
+      origin: [x - 0.5, 14.5, -5.5],
+      size: [5, 1.5, 11],
+      faces: { all: "strap" },
+    },
+  ],
 });
 
 write(`${CONCEPT_MODELS}/mule.geo.json`, {
@@ -939,58 +949,83 @@ write(`${CONCEPT_MODELS}/mule.geo.json`, {
   bones: [
     {
       name: "body",
-      pivot: [0, 8, 0],
+      pivot: [0, 9, 0],
       cubes: [
         {
-          origin: [-4, 8, -5],
-          size: [8, 8, 12],
+          origin: [-5, 9, -8],
+          size: [10, 9, 16],
           faces: { sides: "fur", up: "fur", down: "belly" },
         },
-        { origin: [-7.5, 15.5, -1], size: [15, 1, 3], faces: { all: "strap" } },
-        { origin: [-4.5, 7.5, -1], size: [9, 9, 3], faces: { all: "strap" } },
+        // Girth: half a pixel proud of the body all round.
+        { origin: [-5.5, 8.5, -1], size: [11, 10, 3], faces: { all: "strap" } },
       ] satisfies Cube<ML>[],
     },
     {
       name: "neck",
       parent: "body",
-      pivot: [0, 12, -5],
+      // Authored upright, then pitched forward so the head follows.
+      pivot: [0, 14, -6],
+      rotation: [35, 0, 0],
       cubes: [
-        { origin: [-2, 12, -9], size: [4, 7, 5], faces: { all: "fur" } },
-        { origin: [-1, 19, -9], size: [2, 1, 5], faces: { all: "mane" } },
+        {
+          origin: [-2, 13, -9],
+          size: [4, 10, 5],
+          faces: { sides: "fur", north: "fur", up: "fur", down: "belly" },
+        },
+        { origin: [-1, 23, -8.5], size: [2, 1, 4], faces: { all: "mane" } },
+        // Mane down the back of the neck.
+        { origin: [-1, 14, -4.5], size: [2, 9, 1], faces: { all: "mane" } },
       ] satisfies Cube<ML>[],
     },
     {
       name: "head",
       parent: "neck",
-      pivot: [0, 17, -9],
+      pivot: [0, 23, -6.5],
+      // Bring the head back up a little from the neck's pitch.
+      rotation: [-15, 0, 0],
       cubes: [
         {
-          origin: [-2.5, 16, -14],
+          origin: [-2.5, 21, -11],
           size: [5, 5, 6],
-          faces: { sides: "fur", north: "face", up: "fur", down: "belly" },
+          faces: {
+            east: "cheek",
+            west: "cheek",
+            north: "blaze",
+            south: "fur",
+            up: "fur",
+            down: "belly",
+          },
         },
         {
-          origin: [-2, 16, -16],
-          size: [4, 3, 2],
-          faces: { all: "muzzle", north: { tile: "muzzle", at: [6, 6] } },
+          origin: [-2, 20, -16],
+          size: [4, 4, 5],
+          faces: {
+            sides: "muzzle",
+            north: { tile: "muzzle", at: [6, 6] },
+            up: "fur",
+            down: "belly",
+          },
         },
-        { origin: [1.5, 21, -12], size: [1, 3, 1], faces: { all: "fur" } },
-        { origin: [-2.5, 21, -12], size: [1, 3, 1], faces: { all: "fur" } },
+        { origin: [1, 26, -8], size: [1, 3, 1], faces: { all: "fur" } },
+        { origin: [-2, 26, -8], size: [1, 3, 1], faces: { all: "fur" } },
+        // Forelock between the ears.
+        { origin: [-1, 26, -10], size: [2, 1, 2], faces: { all: "mane" } },
       ] satisfies Cube<ML>[],
     },
-    muleLeg("front_left_leg", 1, -4),
-    muleLeg("front_right_leg", -3, -4),
-    muleLeg("back_left_leg", 1, 5),
-    muleLeg("back_right_leg", -3, 5),
+    muleLeg("front_left_leg", 2, -7),
+    muleLeg("front_right_leg", -5, -7),
+    muleLeg("back_left_leg", 2, 4),
+    muleLeg("back_right_leg", -5, 4),
     {
       name: "tail",
       parent: "body",
-      pivot: [0, 15, 7],
+      pivot: [0, 17, 8],
+      rotation: [15, 0, 0],
       cubes: [
-        { origin: [-0.5, 10, 7], size: [1, 6, 1], faces: { all: "mane" } },
+        { origin: [-1, 10, 7.5], size: [2, 7, 2], faces: { all: "mane" } },
       ] satisfies Cube<ML>[],
     },
-    mulePack("left_pack", 4),
-    mulePack("right_pack", -7),
+    mulePack("left_pack", 5),
+    mulePack("right_pack", -9),
   ],
 });

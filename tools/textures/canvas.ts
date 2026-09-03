@@ -160,6 +160,37 @@ export class Canvas {
     return this;
   }
 
+  /**
+   * Coherent grain: value noise on a coarse lattice, bilinearly smoothed, then
+   * cut into three tones. Pixels darken or lighten in soft clusters a few
+   * pixels wide, the way vanilla stone and wood do, instead of the salt-and-
+   * pepper that single-pixel speckle produces. `amount` is how far the tones
+   * sit from the base (0..1); `cell` is the lattice spacing in pixels.
+   */
+  grain(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    base: Color,
+    light: Color,
+    dark: Color,
+    amount: number,
+    seed: number,
+    cell = 4,
+  ): this {
+    const n = valueNoise(seed, cell);
+    const lo = mix(base, dark, amount);
+    const hi = mix(base, light, amount);
+    for (let j = y; j < y + h; j++) {
+      for (let i = x; i < x + w; i++) {
+        const v = n(i, j);
+        this.set(i, j, v < 0.36 ? lo : v > 0.66 ? hi : base);
+      }
+    }
+    return this;
+  }
+
   /** Copy another canvas in at (x, y), honouring its alpha. */
   blit(src: Canvas, x: number, y: number): this {
     for (let j = 0; j < src.height; j++) {
@@ -187,6 +218,31 @@ export class Canvas {
   png(): Buffer {
     return encodePng(this.width, this.height, this.data);
   }
+}
+
+/**
+ * Seeded value noise over a 16x16 tile: random values on a lattice `cell`
+ * pixels apart, wrapped so the tile repeats, blended with a smoothstep. Returns
+ * a sampler in 0..1.
+ */
+export function valueNoise(seed: number, cell: number): (x: number, y: number) => number {
+  const rand = prng(seed);
+  const n = Math.max(1, Math.round(16 / cell));
+  const lattice: number[] = [];
+  for (let i = 0; i < n * n; i++) lattice.push(rand());
+  const at = (i: number, j: number) => lattice[((j % n) + n) % n * n + (((i % n) + n) % n)]!;
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  return (x, y) => {
+    const u = x / cell;
+    const v = y / cell;
+    const i = Math.floor(u);
+    const j = Math.floor(v);
+    const fu = smooth(u - i);
+    const fv = smooth(v - j);
+    const a = at(i, j) + (at(i + 1, j) - at(i, j)) * fu;
+    const b = at(i, j + 1) + (at(i + 1, j + 1) - at(i, j + 1)) * fu;
+    return a + (b - a) * fv;
+  };
 }
 
 /** A 16x16 tile, the unit every atlas here is built from. */

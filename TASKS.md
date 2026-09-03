@@ -50,7 +50,6 @@ the queue.
 - [ ] Move Hearthstone's and Graves' registries onto
       `packages/shared/engine/positionIndex.ts`.
 - [ ] Add an ESLint config so `npm run lint` stops failing on every branch.
-- [ ] Pack icons (`pack_icon.png`) through the texture generator.
 - [ ] Grow the GameTest suite as behaviour lands (`docs/backlog.md`).
 
 ## Blocked on the stable API
@@ -61,6 +60,7 @@ the queue.
 
 ## Done
 
+- [x] Pack icons for every pack, through the texture generator
 - [x] Hatchling Phase 1: egg, warming, hatching, bonding, feeding, growth, the panel
 - [x] Entity concept sheet, models, textures, animations; grain textures across every pack (#13, #14, #15, #16)
 - [x] Model viewer on GitHub Pages: https://tyevco.github.io/minecraft-qol/ (#5)

@@ -1051,3 +1051,249 @@ export function eggIcon(r: Ramp): Canvas {
     },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Pack icons. Each is 16x16 art on a solid ground with a one-pixel border, so
+// the pack list reads them as tiles; the generator upscales them to 128. One
+// symbol per pack, the thing the pack is about.
+// ---------------------------------------------------------------------------
+
+function iconGround(bg: Color): Canvas {
+  return tile()
+    .fill(0, 0, 16, 16, bg)
+    .rect(0, 0, 16, 16, shade(bg, 0.55))
+    .fill(1, 1, 14, 1, mix(bg, GLINT, 0.18))
+    .fill(1, 1, 1, 14, mix(bg, GLINT, 0.18));
+}
+
+/** QOL Times: a dispenser dropping into a cauldron. */
+export function iconQolTimes(): Canvas {
+  return iconGround(0x2f3a4a).art(
+    2,
+    1,
+    [
+      "sSSSSSSSSSSs", //
+      "sSSkkkkkkSSs",
+      "sSSkKKKKkSSs",
+      "sSSkkkkkkSSs",
+      "sSSSSSSSSSSs",
+      ".....ww.....",
+      "............",
+      "kkkkkkkkkkkk",
+      "kbbbbbbbbbbk",
+      "kkKKKKKKKKkk",
+      "kkKKKKKKKKkk",
+      "kkkkkkkkkkkk",
+      "kkk......kkk",
+    ],
+    {
+      ".": "transparent",
+      s: STONE.dark,
+      S: STONE.mid,
+      k: 0x232326,
+      K: 0x3a3a40,
+      w: 0x8fd0ff,
+      b: 0x3f8fe0,
+    },
+  );
+}
+
+/** Lens: the Spawn Lens itself. */
+export function iconLens(): Canvas {
+  return iconGround(0x2a1f3d).blit(spawnLensIcon(), 0, 0);
+}
+
+/** Hearthstone: a flame on a stone hearth. */
+export function iconHearthstone(): Canvas {
+  const p = HEARTH;
+  return iconGround(0x2c2b33).art(
+    2,
+    1,
+    [
+      "......e.....", //
+      ".....eEe....",
+      ".....eEEe...",
+      "....eEWWEe..",
+      "....eEWWEe..",
+      "...eEEWWEEe.",
+      "...eeEEEEee.",
+      "....eeeeee..",
+      "ssssssssssss",
+      "sSSSsSSSsSSS",
+      "ssssssssssss",
+      "SSsSSSsSSSsS",
+      "ssssssssssss",
+    ],
+    { ".": "transparent", e: p.ember, E: p.emberBright, W: p.flameTip, s: p.stoneDark, S: p.stoneLight },
+  );
+}
+
+/** Graves: a headstone at night. */
+export function iconGraves(): Canvas {
+  return iconGround(0x1c2340).art(
+    2,
+    2,
+    [
+      "....ssss....", //
+      "...ssssss...",
+      "..sssddsss..",
+      "..sssddsss..",
+      "..sddddddss.",
+      "..sssddsss..",
+      "..sssddsss..",
+      "..ssssssss..",
+      "..ssssssss..",
+      "..ssssssss..",
+      "gggggggggggg",
+      "GgGGgGgGGgGg",
+    ],
+    { ".": "transparent", s: STONE.mid, d: STONE.deep, g: 0x4a7030, G: 0x5d8a3a },
+  );
+}
+
+/** Guardian: a shield with a heart. */
+export function iconGuardian(): Canvas {
+  return iconGround(0x1f3a5c).art(
+    2,
+    1,
+    [
+      "bbbbbbbbbbbb", //
+      "bLLLLLLLLLLb",
+      "bLLrrLLrrLLb",
+      "bLrrrrrrrrLb",
+      "bLrrrrrrrrLb",
+      "bLLrrrrrrLLb",
+      "bLLLrrrrLLLb",
+      ".bLLLrrLLLb.",
+      ".bLLLLLLLLb.",
+      "..bLLLLLLb..",
+      "...bLLLLb...",
+      "....bLLb....",
+      ".....bb.....",
+    ],
+    { ".": "transparent", b: 0x1a2a40, L: 0xcfd8e6, r: 0xd83a3a },
+  );
+}
+
+/** Fluidworks: a copper funnel with a drop at the spout. */
+export function iconFluidworks(): Canvas {
+  return iconGround(0x1f3b3a).art(
+    2,
+    1,
+    [
+      "cccccccccccc", //
+      "cCCCCCCCCCCc",
+      ".cCCCCCCCCc.",
+      "..cCCCCCCc..",
+      "...cCCCCc...",
+      "....cCCc....",
+      "....cCCc....",
+      "....cCCc....",
+      "....cccc....",
+      ".....ww.....",
+      "....wWWw....",
+      "....wWWw....",
+      ".....ww.....",
+    ],
+    { ".": "transparent", c: COPPER.dark, C: COPPER.mid, w: 0x2f7fd6, W: 0xbfe6ff },
+  );
+}
+
+/** Bulwark: the turret head, barrel out to the right. */
+export function iconBulwark(): Canvas {
+  return iconGround(0x3a1f1f).art(
+    1,
+    2,
+    [
+      "..............", //
+      "...iiiiii.....",
+      "..iIIIIIIi....",
+      "..iIrrIIIiddddd",
+      "..iIrrIIIiDDDDD",
+      "..iIIIIIIiddddd",
+      "..iIIIIIIi....",
+      "...iiiiii.....",
+      ".....ii.......",
+      "..ssssssssss..",
+      "..sSSSSSSSSs..",
+      "..ssssssssss..",
+    ].map((r) => r.padEnd(15, ".").slice(0, 14)),
+    { ".": "transparent", i: IRON.dark, I: IRON.mid, r: 0xe0392b, d: NETHERITE.dark, D: NETHERITE.mid, s: DARK_STONE.dark, S: DARK_STONE.mid },
+  );
+}
+
+/** Hatchling: the ember egg, cracked. */
+export function iconHatchling(): Canvas {
+  const c = iconGround(0x2f3f2a).blit(eggIcon(EMBER), 0, 0);
+  return c.art(
+    0,
+    0,
+    [
+      "................", //
+      "................",
+      "................",
+      "................",
+      "........d.......",
+      ".......d........",
+      ".......d........",
+      "........d.......",
+      "........d.......",
+      ".......d........",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+    ],
+    { ".": "transparent", d: EMBER.deep },
+  );
+}
+
+/** GameTests: a flask with a tick. */
+export function iconGametest(): Canvas {
+  return iconGround(0x1f3a2a).art(
+    2,
+    1,
+    [
+      "....gggg....", //
+      ".....GG.....",
+      ".....GG.....",
+      ".....GG.....",
+      "....gGGg....",
+      "...gGGGGg...",
+      "..gGGGGGGg..",
+      ".gGGGGGGwGg.",
+      ".gGGGwGwGGg.",
+      ".gGGGGwGGGg.",
+      ".gGGGGGGGGg.",
+      "..gggggggg..",
+      "............",
+    ],
+    { ".": "transparent", g: 0x2a5a3a, G: 0x6fd08a, w: 0xffffff },
+  );
+}
+
+/** Probe: a magnifying glass. */
+export function iconProbe(): Canvas {
+  return iconGround(0x3d2f1a).art(
+    2,
+    1,
+    [
+      "...gggg.....", //
+      "..gLLLLg....",
+      ".gLWLLLLg...",
+      ".gLLLLLLg...",
+      ".gLLLLLLg...",
+      ".gLLLLLLg...",
+      "..gLLLLg....",
+      "...gggghh...",
+      ".......hhh..",
+      "........hhh.",
+      ".........hhh",
+      "..........hh",
+      "............",
+    ],
+    { ".": "transparent", g: 0x5a4a2a, L: 0xbfe6ff, W: 0xffffff, h: 0x8a5a1c },
+  );
+}

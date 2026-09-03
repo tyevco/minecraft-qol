@@ -189,6 +189,7 @@ What exists today:
 | Bulwark | `geometry.bulwark_turret_base` (block), `geometry.bulwark_turret_head` (entity) | The head has one texture per damage tier, picked by the `bulwark:tier` entity property. |
 | Graves | `geometry.graves_gravestone` (entity) | A headstone at the head of a mound; the entity holds the dead player's items. |
 | Hatchling | `geometry.hatchling`, `geometry.hatchling_egg` (entities), three egg icons | The pet and its egg, one texture per variant picked by `hatchling:variant`; the egg's crack overlays are shown by its render controller. Animation sets and controllers are generated too. |
+| every pack | `pack_icon.png` | One symbol per pack, 16 pixels of art in `tools/textures/tiles.ts` scaled to 128, in each behavior pack and resource pack. |
 | *(none)* | `concepts/entities/` | Five entity concepts from `docs/design/entities.md`: models, atlases, animation sets and controllers, generated so they can be judged in the viewer. Shipped by no pack; see `concepts/README.md`. |
 
 Resource changes never hot-reload: exit to the main menu and re-enter for a

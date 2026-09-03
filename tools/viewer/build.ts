@@ -193,6 +193,24 @@ const MODELS: Model[] = [
     notes: "A cat-sized pet dragon. Variants are a palette swap picked by an entity property; growth is a scale change by component group. Legs, tail segments, wings and head are separate bones.",
   },
   {
+    id: "concept_egg",
+    name: "Hatchling Egg (concept)",
+    pack: "concept · companions",
+    kind: "entity",
+    geometry: "concepts/entities/models/egg.geo.json",
+    textures: {
+      ember: "concepts/entities/textures/egg_ember.png",
+      moss: "concepts/entities/textures/egg_moss.png",
+      frost: "concepts/entities/textures/egg_frost.png",
+    },
+    animations: {
+      file: "concepts/entities/animations/egg.animation.json",
+      controller: "concepts/entities/animation_controllers/egg.animation_controllers.json",
+    },
+    defaultVisible: ["nest", "egg"],
+    notes: "What a hatchling comes from. crack_1 and crack_2 are alpha-tested overlays shown by bone visibility as the egg's crack property advances; toggle them here. The variant picks the shell as it picks the hatchling.",
+  },
+  {
     id: "concept_messenger",
     name: "Messenger (concept)",
     pack: "concept · companions",

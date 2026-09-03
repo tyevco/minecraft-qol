@@ -1,0 +1,46 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.concept_egg.general": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": [
+            "idle"
+          ],
+          "transitions": [
+            {
+              "hatch": "query.property('concept:hatching')"
+            },
+            {
+              "wobble": "query.property('concept:cracks') > 0"
+            }
+          ]
+        },
+        "wobble": {
+          "animations": [
+            "wobble"
+          ],
+          "transitions": [
+            {
+              "hatch": "query.property('concept:hatching')"
+            },
+            {
+              "idle": "query.property('concept:cracks') == 0"
+            }
+          ]
+        },
+        "hatch": {
+          "animations": [
+            "hatch"
+          ],
+          "transitions": [
+            {
+              "idle": "query.all_animations_finished"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

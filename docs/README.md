@@ -122,8 +122,8 @@ prototype” list. In suggested order:
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
-  six custom entities (decoy dummy, patrol golem, runner, hatchling,
-  messenger, pack mule) with generated models under `concepts/entities/`,
+  seven custom entities (decoy dummy, patrol golem, runner, hatchling and
+  its egg, messenger, pack mule) with generated models under `concepts/entities/`,
   each with its own "must prototype" list. Becomes a design doc per entity
   when one is picked up.
 

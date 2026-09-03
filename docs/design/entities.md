@@ -132,6 +132,28 @@ picked by an entity property. Pairs with Guardian Phase 3 pet insurance.
   `playerInteractWithEntity` with an offline owner; whether the variant
   property round-trips through `setProperty`.
 
+**The egg** is its own entity, `concept_egg`, so it can sit anywhere, wobble,
+and be picked back up. The item places it; it hatches after real play
+sessions near its owner rather than on a timer, so leaving the Realm running
+overnight does nothing. Interacting with it warms it (a spark, a moss cutting
+or an ice shard by variant) and advances an int property `concept:cracks`
+(0 to 2). At 2 the next warming sets `concept:hatching`; the hatch animation
+plays, the egg removes itself and spawns the hatchling of the same variant,
+tamed to whoever warmed it last.
+
+- Model: an egg stacked from five cubes on a straw nest, one atlas per
+  variant sharing the hatchling's palettes. `crack_1` and `crack_2` are
+  alpha-tested overlay cubes a quarter pixel proud of the shell, each side
+  reading its own quadrant of the crack tile so the cracks differ around the
+  egg; a render controller shows them by `concept:cracks`. `top` locator for
+  the hatch burst.
+- **Must prototype:** `part_visibility` on a render controller driven by an
+  entity property (the vanilla shape, but not yet used in this repo);
+  whether an `entity_alphatest` overlay a quarter pixel proud z-fights with
+  the shell at distance; that `spawnEntity` from the egg's own `entityRemove`
+  handler is allowed, or whether the hatch has to be a script-scheduled
+  remove-then-spawn.
+
 ### 3.5 Messenger — companions
 
 Interact holding an item, pick a player from a form, and the bird flies off.
@@ -182,6 +204,7 @@ and "in the air" switches, or a single animation to loop it.
 | Hatchling | `idle` breathes, wags, glances; `walk` trots | `flap` a hop with two wing beats when fed (0.6 s) | idle ↔ walk; flap on `query.property('concept:happy')` |
 | Messenger | `idle` pigeon head-jerks (3.2 s keyframes); `walk` bobs; `fly` beats wings, tucks legs | — | idle / walk on move speed; fly on `!query.is_on_ground` |
 | Pack mule | `idle` tail swish, head dips; `walk` four-beat with the panniers swinging against the stride | `graze` lowers the neck (2.4 s) | idle ↔ walk; graze on `query.property('concept:grazing')` |
+| Hatchling egg | `idle` barely breathes; `wobble` rocks in two bursts per 2.4 s once cracked | `hatch` squash, stretch and shudder (1.2 s) | idle ↔ wobble on `concept:cracks`; hatch on `concept:hatching` |
 
 Conventions, stated in the generator: walk cycles are driven by
 `query.modified_distance_moved` scaled by `query.modified_move_speed`, as

@@ -188,7 +188,7 @@ What exists today:
 | Fluidworks | `geometry.fluidworks_funnel`, `geometry.fluidworks_pipe` | Funnel behaviour is Phase 1 of the design; pipes are visual only. See the pack README for what to verify in game. |
 | Bulwark | `geometry.bulwark_turret_base` (block), `geometry.bulwark_turret_head` (entity) | The head has one texture per damage tier, picked by the `bulwark:tier` entity property. |
 | Graves | `geometry.graves_gravestone` (entity) | A headstone at the head of a mound; the entity holds the dead player's items. |
-| *(none)* | `concepts/entities/` | Six entity concepts from `docs/design/entities.md`: models, atlases, animation sets and controllers, generated so they can be judged in the viewer. Shipped by no pack; see `concepts/README.md`. |
+| *(none)* | `concepts/entities/` | Seven entity concepts from `docs/design/entities.md`: models, atlases, animation sets and controllers, generated so they can be judged in the viewer. Shipped by no pack; see `concepts/README.md`. |
 
 Resource changes never hot-reload: exit to the main menu and re-enter for a
 texture or model, restart the game for a manifest. `npm run deploy` prints the

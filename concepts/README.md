@@ -4,10 +4,11 @@ Models and atlases for things that are proposed but not built, so a proposal
 can be judged as a model before any pack exists. Nothing here ships: no pack
 references these files, and `npm run mcaddon` never sees them.
 
-- `entities/` — the six entity concepts in `docs/design/entities.md`: decoy
-  dummy, patrol golem, runner, hatchling (three palette variants), messenger,
-  pack mule. Each has `models/`, `textures/`, an animation set under
-  `animations/` and its state machine under `animation_controllers/`.
+- `entities/` — the entity concepts in `docs/design/entities.md`: decoy
+  dummy, patrol golem, runner, hatchling and its egg (three palette variants
+  each), messenger, pack mule. Each has `models/`, `textures/`, an animation
+  set under `animations/` and its state machine under
+  `animation_controllers/`.
 
 Everything here is generated. Geometry comes from `tools/models/generate.ts`,
 atlases from `tools/textures/generate.ts` with painters in

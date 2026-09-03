@@ -37,6 +37,10 @@ the queue.
 - [ ] **Fluidworks Filter Funnel** — needs a per-block config surface; an item
       frame on the funnel as its filter is the obvious in-world idiom.
 - [ ] **Graves XP** — only if XP loss turns out to be the real frustration.
+- [ ] **Entity concepts** — `docs/design/entities.md` has six with generated
+      models under `concepts/`. First pick: the decoy dummy, which needs one
+      probe (does `is_family: player` on a custom entity draw hostiles?)
+      before it gets a design doc.
 
 ## Housekeeping
 

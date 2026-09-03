@@ -492,3 +492,505 @@ write("packages/graves/resource_pack/models/entity/gravestone.geo.json", {
     },
   ],
 });
+
+// ===========================================================================
+// Concept entities. Proposals from docs/design/entities.md, generated into
+// concepts/ so they can be judged in the viewer before any pack exists. All
+// face -z. Bones are split where an animation would move them (heads, limbs,
+// wings, tails, panniers), so a model can be animated without re-authoring.
+// ===========================================================================
+
+const CONCEPT_MODELS = "concepts/entities/models";
+
+// ---------------------------------------------------------------------------
+// Decoy dummy - a scarecrow in the `player` family. A stake, a burlap sack
+// body with a painted bullseye, straw hands and a sack head. Head and body
+// are separate bones so a hit can rock them.
+// ---------------------------------------------------------------------------
+
+type DC = keyof typeof A.DECOY.tiles;
+
+write(`${CONCEPT_MODELS}/decoy.geo.json`, {
+  identifier: "geometry.concept_decoy",
+  atlas: A.DECOY,
+  visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
+  bones: [
+    {
+      name: "post",
+      cubes: [
+        {
+          origin: [-1, 0, -1],
+          size: [2, 14, 2],
+          faces: { sides: "post", up: "dark", down: "dark" },
+        },
+      ] satisfies Cube<DC>[],
+    },
+    {
+      name: "body",
+      parent: "post",
+      pivot: [0, 12, 0],
+      // Straw puffs out of the chest when it takes a hit.
+      locators: { chest: [0, 17, -2.5] },
+      cubes: [
+        {
+          origin: [-4, 12, -2],
+          size: [8, 10, 4],
+          faces: { all: "burlap", north: { tile: "target", at: [4, 3] } },
+        },
+        { origin: [-8, 18, -1], size: [16, 2, 2], faces: { all: "bar" } },
+        { origin: [-9, 15, -1], size: [2, 4, 2], faces: { all: "straw" } },
+        { origin: [7, 15, -1], size: [2, 4, 2], faces: { all: "straw" } },
+        { origin: [-3, 10, -1.5], size: [6, 2, 3], faces: { all: "straw" } },
+        { origin: [-2, 22, -1], size: [4, 1, 2], faces: { all: "straw" } },
+      ] satisfies Cube<DC>[],
+    },
+    {
+      name: "head",
+      parent: "body",
+      pivot: [0, 23, 0],
+      cubes: [
+        {
+          origin: [-3, 23, -3],
+          size: [6, 6, 6],
+          faces: { all: "burlap", north: "face" },
+        },
+        { origin: [-2, 29, -2], size: [4, 2, 4], faces: { all: "straw" } },
+      ] satisfies Cube<DC>[],
+    },
+  ],
+});
+
+// ---------------------------------------------------------------------------
+// Patrol golem - Bulwark's mobile sibling. Stone limbs, an iron chest plate,
+// iron shoulder caps and boots, lit eye slits. Limbs on their own bones for a
+// walk cycle; the head yaws with look_at_target.
+// ---------------------------------------------------------------------------
+
+type PG = keyof typeof A.PATROL_GOLEM.tiles;
+
+const golemLeg = (name: string, x: number): Bone<PG> => ({
+  name,
+  pivot: [x + 2, 8, 0],
+  cubes: [
+    {
+      origin: [x, 2, -2],
+      size: [4, 6, 4],
+      faces: { sides: "stone", up: "dark", down: "dark" },
+    },
+    { origin: [x - 0.5, 0, -3], size: [5, 2, 5], faces: { all: "band" } },
+  ],
+});
+
+const golemArm = (name: string, x: number): Bone<PG> => ({
+  name,
+  parent: "body",
+  pivot: [x + 1.5, 19, 0],
+  cubes: [
+    { origin: [x - 0.5, 17, -3], size: [4, 3, 6], faces: { all: "band" } },
+    {
+      origin: [x, 7, -2],
+      size: [3, 11, 4],
+      faces: { sides: "stone", up: "dark", down: "dark" },
+    },
+    { origin: [x - 0.5, 4, -2.5], size: [4, 4, 5], faces: { all: "plate" } },
+  ],
+});
+
+write(`${CONCEPT_MODELS}/patrol_golem.geo.json`, {
+  identifier: "geometry.concept_patrol_golem",
+  atlas: A.PATROL_GOLEM,
+  visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
+  bones: [
+    golemLeg("left_leg", 1),
+    golemLeg("right_leg", -5),
+    {
+      name: "body",
+      pivot: [0, 8, 0],
+      cubes: [
+        {
+          origin: [-6, 8, -3],
+          size: [12, 12, 6],
+          faces: { sides: "stone", up: "moss", down: "dark" },
+        },
+        {
+          origin: [-5, 10, -4],
+          size: [10, 8, 1],
+          faces: { all: "plate", north: "chest" },
+        },
+        { origin: [-6.5, 8, -3.5], size: [13, 2, 7], faces: { all: "band" } },
+      ] satisfies Cube<PG>[],
+    },
+    golemArm("left_arm", 6),
+    golemArm("right_arm", -9),
+    {
+      name: "head",
+      parent: "body",
+      pivot: [0, 20, 0],
+      locators: { eyes: [0, 23, -3.5] },
+      cubes: [
+        {
+          origin: [-3, 20, -3],
+          size: [6, 6, 6],
+          faces: { sides: "stone", north: "face", up: "moss", down: "dark" },
+        },
+        // An iron cap sitting above the eyes, not over them.
+        { origin: [-3.5, 25, -3.5], size: [7, 2, 7], faces: { all: "band" } },
+      ] satisfies Cube<PG>[],
+    },
+  ],
+});
+
+// ---------------------------------------------------------------------------
+// Runner - a clockwork fetcher in Fluidworks copper. A hovering drum with a
+// glass front (the carried item shows through it), a lensed head with an
+// antenna bulb, two fan wings and a pair of pincers underneath.
+// ---------------------------------------------------------------------------
+
+type RN = keyof typeof A.RUNNER.tiles;
+
+const runnerWing = (name: string, x: number, roll: number): Bone<RN> => ({
+  name,
+  parent: "body",
+  pivot: [x, 13, 0],
+  rotation: [0, 0, roll],
+  cubes: [
+    {
+      origin: [x < 0 ? x - 7 : x, 12.5, -2],
+      size: [7, 1, 4],
+      faces: { up: "fin", down: "fin", sides: "dark" },
+    },
+  ],
+});
+
+write(`${CONCEPT_MODELS}/runner.geo.json`, {
+  identifier: "geometry.concept_runner",
+  atlas: A.RUNNER,
+  visibleBounds: { width: 2, height: 2, offset: [0, 0.75, 0] },
+  bones: [
+    {
+      name: "body",
+      pivot: [0, 6, 0],
+      // The held item renders at `hand`; the exhaust puffs steam.
+      locators: { hand: [0, 5, -3.5], exhaust: [0, 3.5, 0] },
+      cubes: [
+        {
+          origin: [-3, 6, -3],
+          size: [6, 6, 6],
+          faces: { sides: "drum", north: "glass", up: "deck", down: "dark" },
+        },
+        { origin: [-1, 4, -1], size: [2, 2, 2], faces: { all: "dark" } },
+        { origin: [-4, 3, -2], size: [1, 3, 1], faces: { all: "plate" } },
+        { origin: [3, 3, -2], size: [1, 3, 1], faces: { all: "plate" } },
+      ] satisfies Cube<RN>[],
+    },
+    {
+      name: "head",
+      parent: "body",
+      pivot: [0, 12, 0],
+      cubes: [
+        {
+          origin: [-3.5, 12, -3.5],
+          size: [7, 5, 7],
+          faces: {
+            sides: "plate",
+            north: { tile: "face", at: [4, 5] },
+            up: "deck",
+            down: "dark",
+          },
+        },
+        { origin: [-0.5, 17, -0.5], size: [1, 3, 1], faces: { all: "dark" } },
+        {
+          origin: [-2, 20, -2],
+          size: [4, 4, 4],
+          faces: { all: { tile: "bulb", at: [6, 6] } },
+        },
+      ] satisfies Cube<RN>[],
+    },
+    runnerWing("left_wing", 3, -15),
+    runnerWing("right_wing", -3, 15),
+  ],
+});
+
+// ---------------------------------------------------------------------------
+// Hatchling - a pet dragon the size of a cat. Scaled body with a plated
+// belly, a snouted head with horn nubs, four stubby legs, a two-segment tail
+// and folded wing buds. One texture per variant.
+// ---------------------------------------------------------------------------
+
+type HL = keyof typeof A.HATCHLING.tiles;
+
+const hatchlingLeg = (name: string, x: number, z: number): Bone<HL> => ({
+  name,
+  parent: "body",
+  pivot: [x + 1, 3, z + 1],
+  cubes: [
+    {
+      origin: [x, 0, z],
+      size: [2, 3, 2],
+      faces: { sides: "scales", up: "scales", down: "belly" },
+    },
+  ],
+});
+
+// Wing buds: folded against the flank, tilted out so they read from the side.
+const hatchlingWing = (name: string, x: number): Bone<HL> => ({
+  name,
+  parent: "body",
+  pivot: [x < 0 ? x + 1 : x, 8, -1],
+  rotation: [0, 0, x < 0 ? 35 : -35],
+  cubes: [
+    { origin: [x, 4, -3], size: [1, 5, 5], faces: { all: "membrane" } },
+  ],
+});
+
+write(`${CONCEPT_MODELS}/hatchling.geo.json`, {
+  identifier: "geometry.concept_hatchling",
+  atlas: A.HATCHLING,
+  visibleBounds: { width: 2, height: 1.5, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "body",
+      pivot: [0, 3, 0],
+      cubes: [
+        {
+          origin: [-3, 3, -4],
+          size: [6, 5, 9],
+          faces: { sides: "scales", up: "scales", down: "belly" },
+        },
+        { origin: [-0.5, 8, -3], size: [1, 1, 7], faces: { all: "horn" } },
+      ] satisfies Cube<HL>[],
+    },
+    {
+      name: "head",
+      parent: "body",
+      pivot: [0, 7, -4],
+      // A puff of smoke, frost or spores, per variant.
+      locators: { mouth: [0, 7, -11.5] },
+      cubes: [
+        {
+          origin: [-3, 6, -9],
+          size: [6, 5, 5],
+          faces: { sides: "scales", north: "face", up: "scales", down: "belly" },
+        },
+        {
+          origin: [-2, 6, -11],
+          size: [4, 2, 2],
+          faces: {
+            sides: "scales",
+            north: { tile: "snout", at: [6, 7] },
+            up: "scales",
+            down: "belly",
+          },
+        },
+        { origin: [-3, 11, -7], size: [1, 2, 1], faces: { all: "horn" } },
+        { origin: [2, 11, -7], size: [1, 2, 1], faces: { all: "horn" } },
+      ] satisfies Cube<HL>[],
+    },
+    hatchlingLeg("front_left_leg", 1, -4),
+    hatchlingLeg("front_right_leg", -3, -4),
+    hatchlingLeg("back_left_leg", 1, 2),
+    hatchlingLeg("back_right_leg", -3, 2),
+    {
+      name: "tail",
+      parent: "body",
+      pivot: [0, 5.5, 5],
+      cubes: [
+        { origin: [-1.5, 4, 5], size: [3, 3, 4], faces: { all: "scales" } },
+      ] satisfies Cube<HL>[],
+    },
+    {
+      name: "tail_tip",
+      parent: "tail",
+      pivot: [0, 5.5, 9],
+      cubes: [
+        { origin: [-1, 4.5, 9], size: [2, 2, 4], faces: { all: "scales" } },
+        { origin: [-1.5, 4, 13], size: [3, 3, 1], faces: { all: "membrane" } },
+      ] satisfies Cube<HL>[],
+    },
+    hatchlingWing("left_wing", 3),
+    hatchlingWing("right_wing", -4),
+  ],
+});
+
+// ---------------------------------------------------------------------------
+// Messenger - a pigeon with a satchel. Body, head with beak, folded wings,
+// tail and legs, each on its own bone. The satchel sits on the chest.
+// ---------------------------------------------------------------------------
+
+type MS = keyof typeof A.MESSENGER.tiles;
+
+write(`${CONCEPT_MODELS}/messenger.geo.json`, {
+  identifier: "geometry.concept_messenger",
+  atlas: A.MESSENGER,
+  visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "body",
+      pivot: [0, 3, 0],
+      // Where the carried letter shows.
+      locators: { letter: [0, 4.5, -4.5] },
+      cubes: [
+        {
+          origin: [-2.5, 3, -3],
+          size: [5, 4, 7],
+          faces: { sides: "feathers", north: "breast", up: "feathers", down: "breast" },
+        },
+        {
+          origin: [-2, 3, -4],
+          size: [4, 3, 1],
+          faces: { all: "strap", north: { tile: "satchel", at: [6, 6] } },
+        },
+        { origin: [-2.5, 7, -2.5], size: [5, 0.5, 1], faces: { all: "strap" } },
+      ] satisfies Cube<MS>[],
+    },
+    {
+      name: "head",
+      parent: "body",
+      pivot: [0, 7, -2],
+      cubes: [
+        {
+          origin: [-2, 7, -5],
+          size: [4, 4, 4],
+          faces: {
+            sides: "feathers",
+            north: { tile: "face", at: [6, 6] },
+            up: "feathers",
+            down: "breast",
+          },
+        },
+        { origin: [-0.5, 8, -7], size: [1, 1, 2], faces: { all: "beak" } },
+      ] satisfies Cube<MS>[],
+    },
+    {
+      name: "left_wing",
+      parent: "body",
+      pivot: [2.5, 7, -2],
+      cubes: [
+        { origin: [2.5, 4, -3], size: [1, 3, 7], faces: { all: "feathers" } },
+      ] satisfies Cube<MS>[],
+    },
+    {
+      name: "right_wing",
+      parent: "body",
+      pivot: [-2.5, 7, -2],
+      cubes: [
+        { origin: [-3.5, 4, -3], size: [1, 3, 7], faces: { all: "feathers" } },
+      ] satisfies Cube<MS>[],
+    },
+    {
+      name: "tail",
+      parent: "body",
+      pivot: [0, 5, 4],
+      cubes: [
+        { origin: [-2, 4, 4], size: [4, 2, 3], faces: { all: "tail" } },
+      ] satisfies Cube<MS>[],
+    },
+    {
+      name: "left_leg",
+      parent: "body",
+      pivot: [1, 3, -1],
+      cubes: [
+        { origin: [0.5, 0, -1.5], size: [1, 3, 1], faces: { all: "beak" } },
+      ] satisfies Cube<MS>[],
+    },
+    {
+      name: "right_leg",
+      parent: "body",
+      pivot: [-1, 3, -1],
+      cubes: [
+        { origin: [-1.5, 0, -1.5], size: [1, 3, 1], faces: { all: "beak" } },
+      ] satisfies Cube<MS>[],
+    },
+  ],
+});
+
+// ---------------------------------------------------------------------------
+// Pack mule - a donkey with panniers. Body, neck, head with muzzle and ears,
+// four legs, tail; a leather harness; a burlap pannier each side, on its own
+// bone so an empty side can be hidden.
+// ---------------------------------------------------------------------------
+
+type ML = keyof typeof A.MULE.tiles;
+
+const muleLeg = (name: string, x: number, z: number): Bone<ML> => ({
+  name,
+  parent: "body",
+  pivot: [x + 1, 8, z + 1],
+  cubes: [
+    {
+      origin: [x, 0, z],
+      size: [2, 8, 2],
+      faces: { sides: "fur", up: "fur", down: "dark" },
+    },
+  ],
+});
+
+const mulePack = (name: string, x: number): Bone<ML> => ({
+  name,
+  parent: "body",
+  pivot: [x < 0 ? x + 3 : x, 12, 0],
+  cubes: [{ origin: [x, 9, -3], size: [3, 6, 7], faces: { all: "burlap" } }],
+});
+
+write(`${CONCEPT_MODELS}/mule.geo.json`, {
+  identifier: "geometry.concept_mule",
+  atlas: A.MULE,
+  visibleBounds: { width: 2, height: 2, offset: [0, 0.75, 0] },
+  bones: [
+    {
+      name: "body",
+      pivot: [0, 8, 0],
+      cubes: [
+        {
+          origin: [-4, 8, -5],
+          size: [8, 8, 12],
+          faces: { sides: "fur", up: "fur", down: "belly" },
+        },
+        { origin: [-7.5, 15.5, -1], size: [15, 1, 3], faces: { all: "strap" } },
+        { origin: [-4.5, 7.5, -1], size: [9, 9, 3], faces: { all: "strap" } },
+      ] satisfies Cube<ML>[],
+    },
+    {
+      name: "neck",
+      parent: "body",
+      pivot: [0, 12, -5],
+      cubes: [
+        { origin: [-2, 12, -9], size: [4, 7, 5], faces: { all: "fur" } },
+        { origin: [-1, 19, -9], size: [2, 1, 5], faces: { all: "mane" } },
+      ] satisfies Cube<ML>[],
+    },
+    {
+      name: "head",
+      parent: "neck",
+      pivot: [0, 17, -9],
+      cubes: [
+        {
+          origin: [-2.5, 16, -14],
+          size: [5, 5, 6],
+          faces: { sides: "fur", north: "face", up: "fur", down: "belly" },
+        },
+        {
+          origin: [-2, 16, -16],
+          size: [4, 3, 2],
+          faces: { all: "muzzle", north: { tile: "muzzle", at: [6, 6] } },
+        },
+        { origin: [1.5, 21, -12], size: [1, 3, 1], faces: { all: "fur" } },
+        { origin: [-2.5, 21, -12], size: [1, 3, 1], faces: { all: "fur" } },
+      ] satisfies Cube<ML>[],
+    },
+    muleLeg("front_left_leg", 1, -4),
+    muleLeg("front_right_leg", -3, -4),
+    muleLeg("back_left_leg", 1, 5),
+    muleLeg("back_right_leg", -3, 5),
+    {
+      name: "tail",
+      parent: "body",
+      pivot: [0, 15, 7],
+      cubes: [
+        { origin: [-0.5, 10, 7], size: [1, 6, 1], faces: { all: "mane" } },
+      ] satisfies Cube<ML>[],
+    },
+    mulePack("left_pack", 4),
+    mulePack("right_pack", -7),
+  ],
+});

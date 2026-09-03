@@ -1221,6 +1221,7 @@ function biped(spec: BipedSpec): void {
 }
 
 biped({ file: "stonefolk", identifier: "geometry.concept_stonefolk", head: [8, 7, 8], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 8, 4], beard: true, hat: "cap" });
-biped({ file: "reedfolk", identifier: "geometry.concept_reedfolk", head: [6, 8, 6], body: [6, 14, 4], arm: [3, 14, 3], leg: [3, 14, 3], hat: "reed" });
+// Tall and lean, not a stick: a player-width body on legs a block long.
+biped({ file: "reedfolk", identifier: "geometry.concept_reedfolk", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], hat: "reed" });
 biped({ file: "tinker", identifier: "geometry.concept_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
 biped({ file: "tallfolk", identifier: "geometry.concept_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });

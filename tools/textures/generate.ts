@@ -321,7 +321,7 @@ interface People {
 }
 const PEOPLES: People[] = [
   { key: "stonefolk", skin: 0xc98f6f, hair: 0xb5442b, eye: 0x3a2a1a, beard: true, head: [8, 7], body: [10, 10], arm: [4, 10], leg: [4, 8] },
-  { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [6, 8], body: [6, 14], arm: [3, 14], leg: [3, 14] },
+  { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14] },
   { key: "tinker", skin: 0xd9a877, hair: 0x6a4a2a, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7] },
   { key: "tallfolk", skin: 0xa0714f, hair: 0x3a2a1a, eye: 0x2a2a2e, beard: false, head: [8, 8], body: [8, 13], arm: [4, 13], leg: [4, 13] },
 ];

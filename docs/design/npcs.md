@@ -42,7 +42,7 @@ and one shared walk cycle apply to all. Names are placeholders.
 | People | Shape | Feature on the model | Where they live, what they deal in |
 | --- | --- | --- | --- |
 | **Stonefolk** | short and broad (head 8×7, body 10×10, legs 8) | beard | hillside halls; ore, stone, the Bulwark turrets |
-| **Reedfolk** | tall and thin (head 6×8, body 6×14, legs 14) | conical reed hat | marsh and river, stilt houses; fish, boats, dye and glass |
+| **Reedfolk** | tall and lean (head 7×8, body 8×14, legs 14) | conical reed hat | marsh and river, stilt houses; fish, boats, dye and glass |
 | **Tinker** | small and quick (head 7×6, body 6×8, legs 7) | goggles pushed up on the forehead | workshops with steam; copper, redstone, Fluidworks parts |
 | **Tallfolk** | a head taller than a player (body 8×13, legs 13) | straw hat | open ground; bread, wool, horses |
 

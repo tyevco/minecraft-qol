@@ -215,6 +215,18 @@ export class Canvas {
     return this;
   }
 
+  /** Nearest-neighbour upscale: every pixel becomes a factor x factor block. */
+  scale(factor: number): Canvas {
+    const out = new Canvas(this.width * factor, this.height * factor);
+    for (let j = 0; j < this.height; j++)
+      for (let i = 0; i < this.width; i++) {
+        const c = this.get(i, j);
+        if (c.a === 0) continue;
+        out.fill(i * factor, j * factor, factor, factor, (c.r << 16) | (c.g << 8) | c.b, c.a);
+      }
+    return out;
+  }
+
   png(): Buffer {
     return encodePng(this.width, this.height, this.data);
   }

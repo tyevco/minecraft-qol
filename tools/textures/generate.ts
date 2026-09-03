@@ -285,3 +285,22 @@ write(`${HATCHLING_RP}/entity/egg_frost.png`, egg(T.FROST));
 write(`${HATCHLING_RP}/items/egg_ember.png`, T.eggIcon(T.EMBER));
 write(`${HATCHLING_RP}/items/egg_moss.png`, T.eggIcon(T.MOSS));
 write(`${HATCHLING_RP}/items/egg_frost.png`, T.eggIcon(T.FROST));
+
+// Pack icons: 16 pixels of art scaled to 128, into every behavior pack and
+// resource pack. The probe's manifest sits at the package root, so its icon
+// does too.
+const ICON_SCALE = 8;
+function packIcon(dir: string, icon: Canvas, resourcePack = true): void {
+  write(`${dir}/behavior_pack/pack_icon.png`, icon.scale(ICON_SCALE));
+  if (resourcePack) write(`${dir}/resource_pack/pack_icon.png`, icon.scale(ICON_SCALE));
+}
+packIcon("packages/qol-times", T.iconQolTimes(), false);
+packIcon("packages/lens", T.iconLens());
+packIcon("packages/hearthstone", T.iconHearthstone());
+packIcon("packages/graves", T.iconGraves());
+packIcon("packages/guardian", T.iconGuardian(), false);
+packIcon("packages/fluidworks", T.iconFluidworks());
+packIcon("packages/bulwark", T.iconBulwark());
+packIcon("packages/hatchling", T.iconHatchling());
+packIcon("packages/gametest", T.iconGametest(), false);
+write("packages/probe/pack_icon.png", T.iconProbe().scale(ICON_SCALE));

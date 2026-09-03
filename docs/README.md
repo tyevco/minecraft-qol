@@ -134,6 +134,12 @@ prototype” list. In suggested order:
 - [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
+- [`design/npcs.md`](design/npcs.md) — a concept sheet with models: four
+  peoples (stonefolk, reedfolk, tinker, tallfolk) as one biped rig with
+  different proportions, four job outfits each as texture variants with
+  accessory bones, and the blueprint scheme that makes builders viable on the
+  stable structure API. Sixteen atlases and four rigs under
+  `concepts/entities/`; nothing run in game.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must

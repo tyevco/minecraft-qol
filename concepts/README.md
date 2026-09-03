@@ -5,7 +5,9 @@ can be judged as a model before any pack exists. Nothing here ships: no pack
 references these files, and `npm run mcaddon` never sees them.
 
 - `entities/` — the entity concepts in `docs/design/entities.md`: decoy
-  dummy, patrol golem, runner, messenger, pack mule. Each has `models/`,
+  dummy, patrol golem, runner, messenger, pack mule; and the four peoples in
+  `docs/design/npcs.md` (stonefolk, reedfolk, tinker, tallfolk), each with
+  four job outfits as texture variants. Each has `models/`,
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built.

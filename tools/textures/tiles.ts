@@ -721,17 +721,17 @@ export function glassPane(tint: Color, bezel: Ramp): Canvas {
   return c.rect(0, 0, 16, 16, bezel.deep);
 }
 
-/** Two round lens eyes on a plate: the runner's face. 7x5 window at (4,5). */
+/** Two round lens goggles on a plate: the runner's face. 8x5 window at (4,5). */
 export function runnerFace(r: Ramp, iris: Color): Canvas {
   return rivetedPlate(r, 521).art(
     4,
     5,
     [
-      ".bbb.bb", //
-      "bWibbWi",
-      "biibbii",
-      ".bbb.bb",
-      ".......",
+      "bbbbbbbb", //
+      "bWibbWib",
+      "biibbiib",
+      "bbbbbbbb",
+      "........",
     ],
     {
       ".": "transparent",
@@ -756,32 +756,30 @@ export function bulb(core: Color, rim: Color): Canvas {
   return c.rect(6, 6, 4, 4, mix(rim, core, 0.35)).fill(7, 7, 2, 2, core);
 }
 
-/** Overlapping scales: rows of four-wide scallops, offset every other row. */
+/**
+ * Scaled hide: soft grain with a faint scallop edge every four rows, the
+ * scales four wide and offset row to row. Low contrast on purpose: a face is
+ * five or six pixels tall, so anything busier reads as clutter.
+ */
 export function scales(r: Ramp, seed = 531): Canvas {
-  const c = tile().fill(0, 0, 16, 16, r.mid);
+  const c = tile()
+    .fill(0, 0, 16, 16, r.mid)
+    .grain(0, 0, 16, 16, r.mid, r.light, r.dark, 0.3, seed, 4);
+  const edge = mix(r.mid, r.dark, 0.55);
   for (let row = 0; row < 4; row++) {
-    const y = row * 4;
+    const y = row * 4 + 3;
     const off = row % 2 === 0 ? 0 : 2;
-    for (let x = -4 + off; x < 16; x += 4) {
-      c.fill(x, y, 4, 1, r.dark);
-      c.fill(x + 1, y + 1, 2, 1, r.light);
-      c.fill(x, y + 3, 1, 1, r.dark);
-      c.fill(x + 3, y + 3, 1, 1, r.dark);
-    }
+    for (let x = -4 + off; x < 16; x += 4) c.fill(x + 1, y, 3, 1, edge);
   }
-  void seed;
   return c;
 }
 
-/** Belly plates: wide horizontal bands in a lighter ramp. */
+/** Belly plates: a paler skin with one soft seam every four rows. */
 export function bellyPlates(r: Ramp): Canvas {
-  const lighter: Ramp = {
-    light: mix(r.light, GLINT, 0.4),
-    mid: mix(r.light, GLINT, 0.15),
-    dark: r.light,
-    deep: r.mid,
-  };
-  return bands(lighter, 532);
+  const skin = mix(r.light, GLINT, 0.25);
+  const c = tile().fill(0, 0, 16, 16, skin);
+  for (let y = 3; y < 16; y += 4) c.fill(0, y, 16, 1, mix(skin, r.light, 0.6));
+  return c;
 }
 
 /** The hatchling's face: two big gold eyes with a glint. 6x5 window at (5,5). */

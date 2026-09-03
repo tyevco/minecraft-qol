@@ -689,8 +689,8 @@ write(`${CONCEPT_MODELS}/runner.geo.json`, {
       pivot: [0, 12, 0],
       cubes: [
         {
-          origin: [-3.5, 12, -3.5],
-          size: [7, 5, 7],
+          origin: [-4, 12, -4],
+          size: [8, 5, 8],
           faces: {
             sides: "plate",
             north: { tile: "face", at: [4, 5] },
@@ -757,7 +757,6 @@ write(`${CONCEPT_MODELS}/hatchling.geo.json`, {
           size: [6, 5, 9],
           faces: { sides: "scales", up: "scales", down: "belly" },
         },
-        { origin: [-0.5, 8, -3], size: [1, 1, 7], faces: { all: "horn" } },
       ] satisfies Cube<HL>[],
     },
     {

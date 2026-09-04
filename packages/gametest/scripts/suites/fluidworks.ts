@@ -233,15 +233,27 @@ function spoutOf(test: Test, pos: { x: number; y: number; z: number }): string {
  */
 registerAsync("qol", "funnel_places_into_clicked_tank", async (test) => {
   floor(test);
+  // A water source, not a cauldron, and the reason matters: a cauldron has its
+  // own use action, which swallows the click. Measured - clicking a cauldron's
+  // side with a funnel returns used=true and places nothing anywhere, and
+  // sneaking is refused outright. A water source is a placement target by the
+  // same isPlacementTarget rule and has no use action, so it exercises the one
+  // assumption this test exists for - that `ev.face` is the CLICKED block's
+  // face, so the clicked block lies opposite it from the new funnel - without
+  // the interaction being stolen. Whether a real player can place against a
+  // cauldron is a separate question, and is in the README to confirm in game.
   const tank = { x: 4, y: 1, z: 3 };
-  cauldron(test, tank, 0);
+  test.setBlockType("fluidworks:pipe", tank);
   const player = test.spawnSimulatedPlayer(
     { x: 2, y: 1, z: 3 },
     "fw_placer",
     GameMode.Survival,
   );
   await test.idle(5);
-  player.useItemOnBlock(item("fluidworks:funnel"), tank, Direction.West);
+  player.lookAtBlock(tank);
+  await test.idle(2);
+  const used = player.useItemOnBlock(item("fluidworks:funnel"), tank, Direction.West);
+  test.assert(used, "useItemOnBlock refused the funnel against the source");
   await test.idle(5);
 
   const at = { x: 3, y: 1, z: 3 };
@@ -293,9 +305,25 @@ registerAsync("qol", "pipes_join_when_placed", async (test) => {
     GameMode.Survival,
   );
   await test.idle(5);
-  player.useItemOnBlock(item("fluidworks:pipe"), { x: 3, y: 0, z: 3 }, Direction.Up);
-  await test.idle(3);
-  player.useItemOnBlock(item("fluidworks:pipe"), { x: 4, y: 0, z: 3 }, Direction.Up);
+  // Walk to each spot before clicking it. A SimulatedPlayer's useItemOnBlock is
+  // a real interaction: it is refused when the player is not facing the block,
+  // and the second pipe was refused outright from a fixed standing spot.
+  const place = async (on: { x: number; y: number; z: number }) => {
+    player.teleport({ x: on.x + 0.5, y: on.y + 1, z: on.z + 1.6 });
+    // The teleport needs a tick to settle before aiming from the new spot.
+    await test.idle(2);
+    player.lookAtBlock(on);
+    await test.idle(3);
+    const ok = player.useItemOnBlock(item("fluidworks:pipe"), on, Direction.Up);
+    test.assert(ok, `useItemOnBlock refused a pipe on ${on.x},${on.y},${on.z}`);
+    // A second interaction too soon after the first is refused.
+    await test.idle(20);
+  };
+  // East first: placing west first puts a pipe between the player and the
+  // second target, and the interaction is then refused for want of line of
+  // sight.
+  await place({ x: 4, y: 0, z: 3 });
+  await place({ x: 3, y: 0, z: 3 });
   await test.idle(5);
 
   const arms = (pos: { x: number; y: number; z: number }) => {

@@ -125,11 +125,24 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
 
 ## To confirm in game
 
+0. **Can a funnel be placed against a cauldron at all?** This is the headline
+   placement gesture and it is **not** covered by a test. Measured: a
+   SimulatedPlayer clicking a cauldron's side with a funnel gets
+   `useItemOnBlock` = true and **no block is placed anywhere**, and sneaking is
+   refused outright — the cauldron's own use action takes the click. So
+   `funnel_places_into_clicked_tank` clicks a *pipe* instead, which exercises
+   the same face assumption without an interactive block stealing the
+   interaction. Whether a real player fares better is unknown. Hold a funnel,
+   click the side of a cauldron, and see. If it does not place, the gesture
+   needs rethinking (place against the pipe or the block beside the tank, or
+   put the tank-facing rule somewhere other than placement) — no amount of
+   test-fixing will make the feature reachable.
+
 1. **Funnel orientation.** The state names the spout: pinned by the
    `funnel_makes_concrete` GameTest. Placement now rests on one more
    assumption, that the `face` handed to `beforeOnPlayerPlace` is the clicked
    block's face, so the clicked block lies opposite it from the new funnel.
-   `funnel_places_into_clicked_tank` checks it; if a funnel placed on a
+   `funnel_places_into_clicked_tank` checks it (against a pipe, per above); if a funnel placed on a
    tank's side points away from the tank, swap `clickedFace` and
    `OPPOSITE[clickedFace]` in `placementFacing` (`core/facing.ts`). Also
    assumed: `ev.block` in that event is the cell the funnel is going into, and

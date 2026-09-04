@@ -10,7 +10,7 @@
  */
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { buildVanilla } from "./vanilla";
+import { buildVanilla, type PaletteEntry } from "./vanilla";
 
 const ROOT = resolve(__dirname, "../..");
 const OUT = resolve(ROOT, "dist/viewer");
@@ -398,11 +398,12 @@ copyFileSync(resolve(__dirname, "viewer.js"), resolve(OUT, "viewer.js"));
 writeFileSync(resolve(OUT, ".nojekyll"), "");
 console.log(`dist/viewer: ${MODELS.length} models`);
 
-// Every block name the buildings use, so the vanilla step fetches only those.
-const blockNames = new Set<string>();
+// Every palette entry the buildings use, so the vanilla step fetches only
+// those textures and checks only those states.
+const palette: PaletteEntry[] = [];
 for (const m of MODELS)
   if (m.kind === "structure") {
-    const preview = JSON.parse(readFileSync(resolve(ROOT, m.structure!), "utf8")) as { palette: { name: string }[] };
-    for (const p of preview.palette) blockNames.add(p.name);
+    const preview = JSON.parse(readFileSync(resolve(ROOT, m.structure!), "utf8")) as { palette: PaletteEntry[] };
+    palette.push(...preview.palette);
   }
-void buildVanilla(blockNames, ROOT, OUT);
+void buildVanilla(palette, ROOT, OUT);

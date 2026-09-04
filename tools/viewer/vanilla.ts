@@ -26,7 +26,9 @@ export interface VanillaBlock {
   /** Texture file per face, relative to the viewer root. */
   faces: Record<Face, string>;
   /** How the viewer draws it; a cube unless the name says otherwise. */
-  shape: "cube" | "pane" | "fence" | "wall" | "lantern" | "campfire" | "chest" | "anvil" | "water" | "cutout";
+  shape: "cube" | "pane" | "fence" | "wall" | "lantern" | "campfire" | "chest" | "anvil" | "water" | "cutout" | "stairs" | "slab" | "door" | "bed" | "ladder" | "gate";
+  /** Alternate face textures by state (a door's upper half). */
+  variants?: Record<string, Record<Face, string>>;
   /** A multiply colour for grey textures (water). */
   tint?: number;
   /** A second, tinted cut-out layer over the side faces (the grass overlay). */
@@ -37,6 +39,15 @@ export interface VanillaSet {
   attribution: string;
   blocks: Record<string, VanillaBlock>;
 }
+
+/** A block as a blueprint palette names it: identifier plus states. */
+export interface PaletteEntry {
+  name: string;
+  states: Record<string, string | number | boolean>;
+}
+
+/** Bedrock's door textures are one list indexed by wood. */
+const DOOR_WOODS = ["wooden", "spruce", "birch", "jungle", "acacia", "dark_oak", "iron"];
 
 /** blocks.json and terrain_texture.json carry a BOM and comments. */
 function parseLoose(text: string): unknown {
@@ -103,6 +114,12 @@ function decodeTga(buf: Buffer): { width: number; height: number; rgba: Uint8Arr
 
 function shapeFor(name: string): VanillaBlock["shape"] {
   if (name === "water") return "water";
+  if (/_stairs$/.test(name)) return "stairs";
+  if (/_slab$/.test(name) && !/double_slab$/.test(name)) return "slab";
+  if (/(^|_)door$/.test(name) && !/trapdoor$/.test(name)) return "door";
+  if (name === "bed") return "bed";
+  if (name === "ladder") return "ladder";
+  if (/fence_gate$/.test(name)) return "gate";
   if (/_pane$/.test(name)) return "pane";
   if (/_fence$/.test(name)) return "fence";
   if (/_wall$/.test(name)) return "wall";
@@ -115,32 +132,66 @@ function shapeFor(name: string): VanillaBlock["shape"] {
 }
 
 /**
+ * Check every palette state against Mojang's block metadata: the state must
+ * exist on that block and the value must be one it lists. A wrong state is
+ * a structure the game refuses or a block that loads with defaults, and
+ * neither is visible in the viewer, so this is the check.
+ */
+function validateStates(entries: Iterable<PaletteEntry>, metaJson: Buffer | undefined): void {
+  if (!metaJson) {
+    console.warn("vanilla textures: no block metadata; states not checked");
+    return;
+  }
+  const meta = JSON.parse(metaJson.toString("utf8")) as {
+    block_properties: { name: string; values: { value: string | number | boolean }[] }[];
+    data_items: { name: string; properties?: { name: string }[] }[];
+  };
+  const values = new Map(meta.block_properties.map((p) => [p.name, new Set(p.values.map((v) => v.value))]));
+  const props = new Map(meta.data_items.map((b) => [b.name, new Set((b.properties ?? []).map((p) => p.name))]));
+  const seen = new Set<string>();
+  for (const e of entries) {
+    const key = `${e.name}|${JSON.stringify(e.states)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const allowed = props.get(e.name);
+    if (!allowed) continue; // the identifier check reports unknown blocks
+    for (const [state, value] of Object.entries(e.states)) {
+      if (!allowed.has(state)) console.warn(`vanilla textures: ${e.name} has no state "${state}" (it has: ${[...allowed].join(", ") || "none"})`);
+      else if (!values.get(state)?.has(value)) console.warn(`vanilla textures: ${e.name} state "${state}" cannot be ${JSON.stringify(value)}`);
+    }
+  }
+}
+
+/**
  * Resolve every block name to its six face textures and write the set the
  * viewer reads. Returns undefined, with a warning, when the network is not
  * there.
  */
-export async function buildVanilla(names: Iterable<string>, root: string, out: string): Promise<VanillaSet | undefined> {
+export async function buildVanilla(entries: Iterable<PaletteEntry>, root: string, out: string): Promise<VanillaSet | undefined> {
   const cache = resolve(root, ".cache/bedrock-samples");
   let blocksJson: Buffer | undefined;
   let terrainJson: Buffer | undefined;
+  let metaJson: Buffer | undefined;
   try {
     blocksJson = await cached(cache, "blocks.json");
     terrainJson = await cached(cache, "textures/terrain_texture.json");
+    metaJson = await cached(cache, "../metadata/vanilladata_modules/mojang-blocks.json");
   } catch (e) {
     console.warn(`vanilla textures: ${(e as Error).message}; the viewer will draw coloured cubes`);
     return undefined;
   }
   if (!blocksJson || !terrainJson) return undefined;
+  validateStates(entries, metaJson);
   const blocks = parseLoose(blocksJson.toString("utf8")) as Record<string, { textures?: string | Record<string, string>; carried_textures?: string | Record<string, string> }>;
   const terrain = (parseLoose(terrainJson.toString("utf8")) as { texture_data: Record<string, { textures: string | string[] | { path: string }[] }> }).texture_data;
 
   const texDir = resolve(out, "vanilla");
   mkdirSync(texDir, { recursive: true });
   const written = new Map<string, string>();
-  const textureFile = async (key: string): Promise<string | undefined> => {
+  const textureFile = async (key: string, index = 0): Promise<string | undefined> => {
     const entry = terrain[key];
     if (!entry) return undefined;
-    const first = Array.isArray(entry.textures) ? entry.textures[0] : entry.textures;
+    const first = Array.isArray(entry.textures) ? entry.textures[index] ?? entry.textures[0] : entry.textures;
     const path = typeof first === "string" ? first : first?.path;
     if (!path) return undefined;
     if (written.has(path)) return written.get(path);
@@ -162,7 +213,9 @@ export async function buildVanilla(names: Iterable<string>, root: string, out: s
     attribution: "Block textures are Mojang's, fetched at build time from github.com/Mojang/bedrock-samples; not part of this repository.",
     blocks: {},
   };
-  for (const full of new Set(names)) {
+  const names = new Set<string>();
+  for (const e of entries) names.add(e.name);
+  for (const full of names) {
     const name = full.replace(/^minecraft:/, "");
     const def = blocks[name];
     if (!def) {
@@ -177,11 +230,17 @@ export async function buildVanilla(names: Iterable<string>, root: string, out: s
     // blocks.json lists a barrel's faces for its default facing; the viewer
     // draws them standing up, lid on top.
     if (name === "barrel") byFace = { up: "barrel_top", down: "barrel_bottom", side: "barrel_side" };
+    // A bed's texture is an entity texture; planks under a red wool top is close enough.
+    if (name === "bed") byFace = { all: "planks", up: "wool_colored_red" };
+    const shape = shapeFor(name);
+    // Doors index one texture list by wood; the lower half is "down", the upper "side".
+    const doorIndex = shape === "door" ? Math.max(0, DOOR_WOODS.indexOf(name.replace(/_door$/, ""))) : 0;
+    if (shape === "door") byFace = { all: byFace.down!, upper: byFace.side! };
     const faces = {} as Record<Face, string>;
     let complete = true;
     for (const face of FACES) {
       const key = byFace[face] ?? (face === "up" || face === "down" ? byFace.all : byFace.side ?? byFace.all);
-      const file = key ? await textureFile(key) : undefined;
+      const file = key ? await textureFile(key, doorIndex) : undefined;
       if (!file) {
         complete = false;
         break;
@@ -192,8 +251,12 @@ export async function buildVanilla(names: Iterable<string>, root: string, out: s
       console.warn(`vanilla textures: no texture for a face of "${full}"`);
       continue;
     }
-    const block: VanillaBlock = { faces, shape: shapeFor(name) };
+    const block: VanillaBlock = { faces, shape };
     if (name === "water") block.tint = 0x3f76e4;
+    if (shape === "door") {
+      const upper = await textureFile(byFace.upper!, doorIndex);
+      if (upper) block.variants = { upper: Object.fromEntries(FACES.map((f) => [f, upper])) as Record<Face, string> };
+    }
     // The grass side is dirt under a grey overlay the game tints by biome:
     // draw dirt, then the overlay in plains green.
     if (name === "grass") {

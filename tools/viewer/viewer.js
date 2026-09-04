@@ -573,14 +573,97 @@ function boxFace(face, [x0, y0, z0, x1, y1, z1], uv) {
   return { corners, uvs: uvs.map(([u, v]) => [u / 16, 1 - v / 16]) };
 }
 
+const LEFT = { north: "west", west: "south", south: "east", east: "north" }; // counter-clockwise seen from above
+const RIGHT = { north: "east", east: "south", south: "west", west: "north" };
+const OPPOSITE = { north: "south", south: "north", east: "west", west: "east" };
+const WEIRDO = ["east", "west", "south", "north"];
+const BED_DIRECTION = ["south", "west", "north", "east"];
+const LADDER_FACING = { 2: "north", 3: "south", 4: "west", 5: "east" };
+
+/** The half of a block on a side, in sixteenths: [x0, z0, x1, z1]. */
+function half(side) {
+  switch (side) {
+    case "north": return [0, 0, 16, 8];
+    case "south": return [0, 8, 16, 16];
+    case "west": return [0, 0, 8, 16];
+    case "east": return [8, 0, 16, 16];
+  }
+}
+function intersect(a, b) {
+  return [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.min(a[2], b[2]), Math.min(a[3], b[3])];
+}
+
+/**
+ * The shape of a stair from its neighbours, as the game computes it: a
+ * perpendicular stair in front makes an outer corner, one behind makes an
+ * inner corner. `facing` is the high side. Returns the top-half footprints.
+ */
+function stairTop(facing, upsideDown, neighbour) {
+  const isStair = (n) => n && n.def.shape === "stairs" && !!n.states.upside_down_bit === upsideDown;
+  const facingOf = (n) => WEIRDO[n.states.weirdo_direction ?? 0];
+  const sameStair = (side) => {
+    const n = neighbour(side);
+    return isStair(n) && facingOf(n) === facing;
+  };
+  const front = neighbour(facing);
+  if (isStair(front)) {
+    const f = facingOf(front);
+    if (f !== facing && f !== OPPOSITE[facing] && !sameStair(OPPOSITE[f])) return [intersect(half(facing), half(f))];
+  }
+  const back = neighbour(OPPOSITE[facing]);
+  if (isStair(back)) {
+    const f = facingOf(back);
+    if (f !== facing && f !== OPPOSITE[facing] && !sameStair(f)) return [half(facing), intersect(half(OPPOSITE[facing]), half(f))];
+  }
+  return [half(facing)];
+}
+
 /**
  * The boxes a block draws, by shape, in sixteenths. `connect(face)` says
- * whether the neighbour on that side is something to join to. Each box may
+ * whether the neighbour on that side is something to join to; `states` are
+ * the block's; `neighbour(face)` gives the block on that side. Each box may
  * limit which faces it draws and override textures per face.
  */
-function blockBoxes(shape, connect, hanging) {
+function blockBoxes(shape, connect, hanging, states = {}, neighbour = () => undefined) {
   const box = (b, extra = {}) => ({ box: b, ...extra });
   switch (shape) {
+    case "stairs": {
+      const facing = WEIRDO[states.weirdo_direction ?? 0];
+      const up = !!states.upside_down_bit;
+      const out = [box(up ? [0, 8, 0, 16, 16, 16] : [0, 0, 0, 16, 8, 16])];
+      for (const [x0, z0, x1, z1] of stairTop(facing, up, neighbour)) out.push(box(up ? [x0, 0, z0, x1, 8, z1] : [x0, 8, z0, x1, 16, z1]));
+      return out;
+    }
+    case "slab":
+      return [box(states["minecraft:vertical_half"] === "top" ? [0, 8, 0, 16, 16, 16] : [0, 0, 0, 16, 8, 16])];
+    case "door": {
+      const facing = states["minecraft:cardinal_direction"] ?? "south";
+      const panel = { north: [0, 0, 0, 16, 16, 3], south: [0, 0, 13, 16, 16, 16], west: [0, 0, 0, 3, 16, 16], east: [13, 0, 0, 16, 16, 16] }[facing];
+      return [box(panel)];
+    }
+    case "bed": {
+      // The mattress, with the head end's pillow drawn white by the shader below.
+      const out = [box([0, 3, 0, 16, 9, 16])];
+      const facing = BED_DIRECTION[states.direction ?? 0];
+      const legs = states.head_piece_bit ? half(facing) : half(OPPOSITE[facing]);
+      // Legs at the outer end.
+      const [x0, z0, x1, z1] = legs;
+      const cx = x0 === 0 && x1 === 16;
+      if (cx) out.push(box([0, 0, z0 === 0 ? 0 : 13, 3, 3, z0 === 0 ? 3 : 16]), box([13, 0, z0 === 0 ? 0 : 13, 16, 3, z0 === 0 ? 3 : 16]));
+      else out.push(box([x0 === 0 ? 0 : 13, 0, 0, x0 === 0 ? 3 : 16, 3, 3]), box([x0 === 0 ? 0 : 13, 0, 13, x0 === 0 ? 3 : 16, 3, 16]));
+      return out;
+    }
+    case "ladder": {
+      const facing = LADDER_FACING[states.facing_direction ?? 3] ?? "south";
+      const panel = { south: [0, 0, 0, 16, 16, 1], north: [0, 0, 15, 16, 16, 16], east: [0, 0, 0, 1, 16, 16], west: [15, 0, 0, 16, 16, 16] }[facing];
+      return [box(panel, { faces: [facing] })];
+    }
+    case "gate": {
+      const facing = states["minecraft:cardinal_direction"] ?? "south";
+      if (facing === "north" || facing === "south")
+        return [box([0, 5, 7, 2, 16, 9]), box([14, 5, 7, 16, 16, 9]), box([2, 6, 7, 14, 9, 9]), box([2, 12, 7, 14, 15, 9])];
+      return [box([7, 5, 0, 9, 16, 2]), box([7, 5, 14, 9, 16, 16]), box([7, 6, 2, 9, 9, 14]), box([7, 12, 2, 9, 15, 14])];
+    }
     case "water":
       return [box([0, 0, 0, 16, 14, 16], { faces: ["up"] })];
     case "pane": {
@@ -666,7 +749,7 @@ function buildStructure(preview, maxY) {
   const defs = preview.palette.map((p) => blockDef(p.name, p.color, p.states));
   const at = (x, y, z) => {
     const i = occ.get(`${x},${y},${z}`);
-    return i === undefined ? undefined : { name: preview.palette[i].name, def: defs[i] };
+    return i === undefined ? undefined : { name: preview.palette[i].name, def: defs[i], states: preview.palette[i].states ?? {} };
   };
   const joinable = (b) => b && ["cube", "cutout", "pane", "fence", "wall"].includes(b.def.shape);
 
@@ -681,6 +764,7 @@ function buildStructure(preview, maxY) {
   for (const [key, i] of occ) {
     const [x, y, z] = key.split(",").map(Number);
     const { name, def } = { name: preview.palette[i].name, def: defs[i] };
+    const states = preview.palette[i].states ?? {};
     const shape = def.shape;
     const neighbour = (face) => {
       const d = FACE_NEIGHBOUR[face];
@@ -694,7 +778,8 @@ function buildStructure(preview, maxY) {
     };
     const above = neighbour("up");
     const hanging = shape === "lantern" && above && (above.def.shape === "cube" || above.def.shape === "cutout");
-    const boxes = blockBoxes(shape, connect, hanging);
+    const boxes = blockBoxes(shape, connect, hanging, states, neighbour);
+    const faces = shape === "door" && states.upper_block_bit && def.variants?.upper ? def.variants.upper : def.faces;
     const tint = def.tint ?? 0xffffff;
     const tr = ((tint >> 16) & 255) / 255, tg = ((tint >> 8) & 255) / 255, tb = (tint & 255) / 255;
     const fr = def.flat ? ((def.color >> 16) & 255) / 255 : 1, fg = def.flat ? ((def.color >> 8) & 255) / 255 : 1, fb = def.flat ? (def.color & 255) / 255 : 1;
@@ -710,7 +795,7 @@ function buildStructure(preview, maxY) {
           }
         }
         const texFace = b.tex?.[face] ?? face;
-        const file = def.flat ? "flat" : def.faces[texFace];
+        const file = def.flat ? "flat" : faces[texFace];
         const bk = bucket(shape === "water" ? `water|${file}` : file);
         const { corners, uvs } = boxFace(face, b.box, b.uv?.[face]);
         const shade = SHADE[face];
@@ -772,7 +857,11 @@ async function showStructure(entry) {
   if (vanilla)
     for (const p of preview.palette) {
       const v = vanilla.blocks[p.name];
-      if (v) for (const file of [...Object.values(v.faces), ...Object.values(v.overlay?.faces ?? {})]) await vanillaTexture(file);
+      if (v) {
+        const files = [...Object.values(v.faces), ...Object.values(v.overlay?.faces ?? {})];
+        for (const alt of Object.values(v.variants ?? {})) files.push(...Object.values(alt));
+        for (const file of files) await vanillaTexture(file);
+      }
     }
   let root = buildStructure(preview, preview.size[1]);
   scene.add(root);

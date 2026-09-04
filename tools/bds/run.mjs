@@ -25,8 +25,17 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..");
 
-const SERVER_DIR = process.env.BDS_DIR ?? "C:/bds/server";
-const EXE = join(SERVER_DIR, "bedrock_server.exe");
+/**
+ * Where the server lives.
+ *
+ * On Windows this is a hand-unzipped install, so the historical C:/bds/server
+ * stays the default. Everywhere else (a Linux box, and CI) `setup.mjs` installs
+ * into the repo's own dist/, which needs no configuration and is gitignored.
+ */
+const WINDOWS = process.platform === "win32";
+const SERVER_DIR =
+  process.env.BDS_DIR ?? (WINDOWS ? "C:/bds/server" : join(REPO, "dist", "bds", "server"));
+const EXE = join(SERVER_DIR, WINDOWS ? "bedrock_server.exe" : "bedrock_server");
 
 // ---------------------------------------------------------------------------
 // Arguments
@@ -43,11 +52,24 @@ let sequential = false;
 /** Wall time between sequential tests, for each pack's sweep to settle. */
 let gapMs = 12000;
 let waiting = false;
+/**
+ * How long one test may run before the harness gives up on it.
+ *
+ * A test in flight is silent by design - `rain_collector` waits out the weather
+ * without printing anything - so the idle timer cannot be what ends it. Waiting
+ * on the test's own verdict line and timing it separately is the difference
+ * between "the suite finished" and "the server was stopped mid-suite", which
+ * cost a whole run: everything from `rain_collector` on reported nothing.
+ */
+let testTimeoutMs = 180000;
+let inFlight;
+let testStartedAt = 0;
 
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === "--idle") idleMs = Number(args[++i]);
   else if (a === "--timeout") timeoutMs = Number(args[++i]);
+  else if (a === "--test-timeout") testTimeoutMs = Number(args[++i]);
   else if (a === "--log") logPath = resolve(args[++i]);
   else if (a === "--quiet") quiet = true;
   else if (a === "--seq") sequential = true;
@@ -56,7 +78,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 if (!existsSync(EXE)) {
-  console.error(`No server at ${EXE}. Set BDS_DIR or run tools/bds/setup.mjs.`);
+  console.error(`No server at ${EXE}. Set BDS_DIR, or run: npm run bds:setup`);
   process.exit(2);
 }
 
@@ -109,7 +131,10 @@ function onChunk(buf) {
     // same spot near the console's origin. Run as a set they fan out across
     // hundreds of blocks, and with no player online the far ones sit in
     // unloaded chunks and fail with "Could not setBlock".
-    if (sequential && started && DONE.test(line)) queueMicrotask(sendNext);
+    if (sequential && started && DONE.test(line)) {
+      inFlight = undefined;
+      queueMicrotask(sendNext);
+    }
   }
 }
 
@@ -159,6 +184,8 @@ function sendNext() {
       waiting = false;
       send("kill @e[type=item]");
       send(cmd);
+      inFlight = cmd;
+      testStartedAt = Date.now();
       lastOutput = Date.now();
     }, gapMs).unref();
     lastOutput = Date.now();
@@ -187,9 +214,11 @@ function stop() {
 /**
  * How long to wait for "Server started." before saying why it probably has not.
  *
- * A healthy boot takes a few seconds. The usual cause of a hang is the Windows
- * Firewall prompt: BDS binds 19132/19133 on first run and blocks on the dialog,
- * which is invisible from here and otherwise just looks like a silent stall.
+ * A healthy boot takes a few seconds. On Windows the usual cause of a hang is
+ * the Firewall prompt: BDS binds 19132/19133 on first run and blocks on the
+ * dialog, which is invisible from here and otherwise just looks like a silent
+ * stall. Elsewhere the usual cause is another server still holding the ports -
+ * BDS says "may be in use by another process" and exits.
  */
 const STARTUP_GRACE_MS = 60000;
 let warnedSlowStart = false;
@@ -198,12 +227,15 @@ const startedAt = Date.now();
 const tick = setInterval(() => {
   if (!started && !warnedSlowStart && Date.now() - startedAt > STARTUP_GRACE_MS) {
     warnedSlowStart = true;
-    const hint =
-      `harness: no "Server started." after ${STARTUP_GRACE_MS / 1000}s. ` +
-      `If this is the first run, check for a Windows Firewall prompt for ` +
-      `bedrock_server.exe - it blocks startup until answered. Allow it once, ` +
-      `or pre-authorise with: netsh advfirewall firewall add rule ` +
-      `name="BDS" dir=in action=allow program="${EXE}" enable=yes`;
+    const hint = WINDOWS
+      ? `harness: no "Server started." after ${STARTUP_GRACE_MS / 1000}s. ` +
+        `If this is the first run, check for a Windows Firewall prompt for ` +
+        `bedrock_server.exe - it blocks startup until answered. Allow it once, ` +
+        `or pre-authorise with: netsh advfirewall firewall add rule ` +
+        `name="BDS" dir=in action=allow program="${EXE}" enable=yes`
+      : `harness: no "Server started." after ${STARTUP_GRACE_MS / 1000}s. ` +
+        `Check the log above for "may be in use by another process" - another ` +
+        `bedrock_server is probably still holding 19132/19133.`;
     lines.push(`>>> ${hint}`);
     console.error(hint);
   }
@@ -212,7 +244,16 @@ const tick = setInterval(() => {
     stop();
     return;
   }
-  if (started && !stopping && !waiting && Date.now() - lastOutput > idleMs) stop();
+  if (started && !stopping && !waiting) {
+    if (inFlight) {
+      if (Date.now() - testStartedAt > testTimeoutMs) {
+        const note = `harness: no verdict for "${inFlight}" after ${testTimeoutMs / 1000}s`;
+        lines.push(`>>> ${note}`);
+        console.error(note);
+        stop();
+      }
+    } else if (Date.now() - lastOutput > idleMs) stop();
+  }
 }, 500);
 
 child.on("exit", async (code) => {

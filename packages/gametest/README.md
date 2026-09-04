@@ -18,6 +18,41 @@ one of the "to verify in game" items in a pack README.
 2. `/gametest runset qol` runs everything; `/gametest run qol:<name>` runs one.
    Results appear in chat and the content log (`[QOL GameTests]`).
 
+## Running without the client — and in CI
+
+A dedicated server loads the same packs and puts the content log on stdout, so
+the suite runs with no client, no Realm and nobody watching:
+
+```
+npm run bds:setup                              once: server, packs, world
+npm run bds:test                               the whole suite
+npm run bds:test -- funnel_makes_concrete      one test
+npm run bds:test -- --list                     what would run
+```
+
+`bds:setup` downloads the server, deploys every pack into it, generates a world
+and turns the Beta APIs experiment on in that world's `level.dat` — experiments
+cannot be set from `server.properties`, but they do not need a client-made world
+either. Details and the measurements behind each step are in
+[`../../docs/gametest-structure-results.md`](../../docs/gametest-structure-results.md).
+
+`bds:test` reads the test list out of the suite sources, sends the tests **one at
+a time** (`runset` fans them across hundreds of blocks and the far ones land in
+unloaded chunks with no player online), and judges the run:
+
+- a test that fails is **re-run alone, up to twice**, before it is believed,
+  because sequential tests contaminate each other. `turret_break_returns_arrows`
+  does this most runs: 20 arrows in the sequence, 10 alone;
+- a test in `known-failures.json` may fail — that file carries the reason. One of
+  them **passing** fails the run, since the reason has expired;
+- a test that reports nothing at all fails the run;
+- script errors are printed but do not fail the run on their own: a simulated
+  player makes Graves, Lens, Guardian and Hearthstone throw on every spawn, which
+  is the harness, not those packs.
+
+`.github/workflows/gametest.yml` runs exactly that on every pull request that
+touches a pack, and uploads the content log as an artifact either way.
+
 | Test | Pack | What it settles |
 | --- | --- | --- |
 | `dispenser_fills_cauldron` | QOL Times | The interceptor end to end, including the documented "first dispense registers" cost. |
@@ -36,16 +71,26 @@ one of the "to verify in game" items in a pack README.
 | `turret_drains_feeding_hopper` | Bulwark | A hopper facing into the turret is emptied into its ammo buffer. |
 | `turret_break_returns_arrows` | Bulwark | Breaking the base removes the head and drops the buffered arrows; also whether `destroyBlock` reaches `onBreak`, or the sweep has to catch it. |
 
-## Two tests are expected to fail
+## Two tests measure nothing, in opposite directions
 
-`guardian_void_catch` and `anchor_sets_spawn` **fail in a normal run, and that
-is not a regression.** Read them as "not measured", never as "the pack is
-broken": both packs are proven correct in
+`guardian_void_catch` and `anchor_sets_spawn` **do not measure their packs in a
+normal run, and neither result is a regression.** Read both as "not measured",
+never as "the pack is broken": both packs are proven correct in
 [`../../docs/gametest-structure-results.md`](../../docs/gametest-structure-results.md).
 
 A `SimulatedPlayer` marshals as `undefined` into every pack that does not itself
 bind `@minecraft/server-gametest`, so Guardian's `getAllPlayers()` sweep never
 sees the faller and Hearthstone never sees the anchor's placer.
+
+`anchor_sets_spawn` therefore **fails**, and is listed in `known-failures.json`
+with that reason.
+
+`guardian_void_catch` **passes, vacuously**, which is worse. On a dedicated
+server a `SimulatedPlayer` is an operator, and the test's own first branch skips
+itself for an operator — whom the switches never touch — so it prints
+"nothing to measure" and succeeds. Measured on BDS 1.26.45.1: it passes in
+seconds, while Guardian's sweep is still throwing `cannot read property 'name' of
+undefined` in the same log. A green line here is not evidence.
 
 They are kept because each is a genuine full-path test, and they are worth
 running deliberately when changing those paths. To run one: temporarily add
@@ -57,6 +102,11 @@ module is a Beta API. It flags the pack experimental, and the Realm keeps its
 achievements, so it must never ship.
 
 Under that binding both pass, which is how the packs were cleared.
+
+The binding is not a cure-all, and it is worth trying before assuming it is one:
+`funnel_places_into_clicked_tank` and `pipes_join_when_placed` fail the same way
+with Fluidworks bound as without it, so whatever those two are finding, it is not
+the marshalling hole.
 
 ## How the rigs work
 

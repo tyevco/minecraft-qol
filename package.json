@@ -17,7 +17,10 @@
     "structures": "ts-node -P tools/tsconfig.json tools/structures/generate.ts",
     "animations": "ts-node -P tools/tsconfig.json tools/animations/generate.ts",
     "assets": "npm run textures && npm run models && npm run animations && npm run structures",
-    "viewer": "ts-node -P tools/tsconfig.json tools/viewer/build.ts"
+    "viewer": "ts-node -P tools/tsconfig.json tools/viewer/build.ts",
+    "bds:setup": "node tools/bds/setup.mjs",
+    "bds:test": "node tools/bds/test.mjs",
+    "bds:run": "node tools/bds/run.mjs"
   },
   "dependencies": {
     "@minecraft/server": "2.9.0",

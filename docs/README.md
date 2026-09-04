@@ -68,6 +68,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | A GameTest starts from a clean area (implicit in the all-air arena) | **Only for blocks.** Sequential tests stack one block apart and a structure reload restores blocks but not entities, item drops, or packs' position-keyed records. Both Bulwark "failures" were this. The harness now does `clearall` + a settle gap + `kill @e[type=item]`; a failing test is not evidence about a pack until it has also been run alone. |
 | GameTest needs the interactive client (assumed while debugging by restart) | **No.** A dedicated server runs the same packs and puts the content log on stdout; `tools/bds/run.mjs` drives it. Experiments must arrive with the world, since `server.properties` cannot set them. |
 | `EntityTameableComponent.tame` / `tameToPlayer` to bond a pet from script (entities concept sheet §2) | **Not in 2.9.0.** The tameable component is read-only (`isTamed`, `tamedToPlayerId`, `getTameItems`); `tame()` and `tameToPlayer()` exist only on `EntityTameMountComponent`, for rideables. A pet is bonded the vanilla way: `minecraft:tameable` with `tame_items` and `probability` in the entity JSON, and script reads the owner back. |
+| Block identifiers `minecraft:bricks` and `minecraft:grass_block` (first draft of the settlement blueprints) | **Java names.** Bedrock's are `brick_block` and `grass`; a structure palette naming the Java ones would not load. Every blueprint block is now checked against the vanilla `blocks.json` when the viewer builds (`tools/viewer/vanilla.ts`), which is how these were caught. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -145,7 +146,7 @@ prototype” list. In suggested order:
   materials, roles), palette swaps, and how a builder raises one from a
   blueprint table on the stable structure API. Every blueprint is generated
   under `concepts/structures/` as a `.mcstructure` plus a preview the viewer
-  draws; nothing placed in a world.
+  draws in the game's block textures; nothing placed in a world.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must

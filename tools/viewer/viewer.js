@@ -487,51 +487,293 @@ class Animator {
 // inside can be seen.
 // ---------------------------------------------------------------------------
 
-const FACE_DIRS = [
-  { d: [1, 0, 0], shade: 0.8, corners: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
-  { d: [-1, 0, 0], shade: 0.8, corners: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
-  { d: [0, 1, 0], shade: 1.0, corners: [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]] },
-  { d: [0, -1, 0], shade: 0.5, corners: [[0, 0, 1], [0, 0, 0], [1, 0, 0], [1, 0, 1]] },
-  { d: [0, 0, 1], shade: 0.9, corners: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] },
-  { d: [0, 0, -1], shade: 0.65, corners: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] },
-];
+// ---------------------------------------------------------------------------
+// Structures: coloured or vanilla-textured blocks.
+//
+// The build step fetches the vanilla block textures Mojang publishes in
+// bedrock-samples into vanilla/ and writes vanilla.json, a block name to six
+// face textures (the game's own mapping from blocks.json). Without it every
+// block is a flat-coloured cube. Shading is the game's: top 1.0, north and
+// south 0.8, east and west 0.6, bottom 0.5, no lights.
+// ---------------------------------------------------------------------------
+
+const SHADE = { up: 1, down: 0.5, north: 0.8, south: 0.8, east: 0.6, west: 0.6 };
+const FACE_NEIGHBOUR = { up: [0, 1, 0], down: [0, -1, 0], north: [0, 0, -1], south: [0, 0, 1], east: [1, 0, 0], west: [-1, 0, 0] };
+const FACE_NAMES = Object.keys(SHADE);
+
+let vanilla = null; // false when the build had no network; the set otherwise
+const vanillaTextures = new Map();
+
+async function loadVanilla() {
+  if (vanilla !== null) return vanilla;
+  try {
+    const res = await fetch("vanilla.json");
+    vanilla = res.ok ? await res.json() : false;
+  } catch {
+    vanilla = false;
+  }
+  return vanilla;
+}
+
+async function vanillaTexture(file) {
+  if (vanillaTextures.has(file)) return vanillaTextures.get(file);
+  const t = await loadTexture(file);
+  // Animated textures are vertical strips of frames; show the first.
+  const { width, height } = t.image;
+  if (height > width) {
+    t.repeat.set(1, width / height);
+    t.offset.set(0, 1 - width / height);
+  }
+  vanillaTextures.set(file, t);
+  return t;
+}
+
+/**
+ * The corners and texture coordinates of one face of a box given in
+ * sixteenths, the way block models are. Textures are 16 px per block, so a
+ * partial box takes the matching part of the texture, as fences and panes do
+ * in the game. `uv` overrides that with a pixel rectangle [u0, v0, u1, v1]
+ * measured from the texture's top-left.
+ */
+function boxFace(face, [x0, y0, z0, x1, y1, z1], uv) {
+  const P = (x, y, z) => [x / 16, y / 16, z / 16];
+  let corners, uvs;
+  switch (face) {
+    case "up":
+      corners = [P(x0, y1, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y1, z0)];
+      uvs = [[x0, z0], [x0, z1], [x1, z1], [x1, z0]].map(([u, v]) => [u, v]);
+      break;
+    case "down":
+      corners = [P(x0, y0, z1), P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1)];
+      uvs = [[x0, z1], [x0, z0], [x1, z0], [x1, z1]];
+      break;
+    case "north":
+      corners = [P(x1, y0, z0), P(x1, y1, z0), P(x0, y1, z0), P(x0, y0, z0)];
+      uvs = [[16 - x1, 16 - y0], [16 - x1, 16 - y1], [16 - x0, 16 - y1], [16 - x0, 16 - y0]];
+      break;
+    case "south":
+      corners = [P(x0, y0, z1), P(x0, y1, z1), P(x1, y1, z1), P(x1, y0, z1)];
+      uvs = [[x0, 16 - y0], [x0, 16 - y1], [x1, 16 - y1], [x1, 16 - y0]];
+      break;
+    case "east":
+      corners = [P(x1, y0, z1), P(x1, y1, z1), P(x1, y1, z0), P(x1, y0, z0)];
+      uvs = [[16 - z1, 16 - y0], [16 - z1, 16 - y1], [16 - z0, 16 - y1], [16 - z0, 16 - y0]];
+      break;
+    case "west":
+      corners = [P(x0, y0, z0), P(x0, y1, z0), P(x0, y1, z1), P(x0, y0, z1)];
+      uvs = [[z0, 16 - y0], [z0, 16 - y1], [z1, 16 - y1], [z1, 16 - y0]];
+      break;
+  }
+  if (uv) {
+    // Map the face's own extent onto the given rectangle.
+    const us = uvs.map((c) => c[0]), vs = uvs.map((c) => c[1]);
+    const u0 = Math.min(...us), u1 = Math.max(...us), v0 = Math.min(...vs), v1 = Math.max(...vs);
+    uvs = uvs.map(([u, v]) => [uv[0] + ((u - u0) / (u1 - u0 || 1)) * (uv[2] - uv[0]), uv[1] + ((v - v0) / (v1 - v0 || 1)) * (uv[3] - uv[1])]);
+  }
+  return { corners, uvs: uvs.map(([u, v]) => [u / 16, 1 - v / 16]) };
+}
+
+/**
+ * The boxes a block draws, by shape, in sixteenths. `connect(face)` says
+ * whether the neighbour on that side is something to join to. Each box may
+ * limit which faces it draws and override textures per face.
+ */
+function blockBoxes(shape, connect, hanging) {
+  const box = (b, extra = {}) => ({ box: b, ...extra });
+  switch (shape) {
+    case "water":
+      return [box([0, 0, 0, 16, 14, 16], { faces: ["up"] })];
+    case "pane": {
+      const e = connect("east"), w = connect("west"), n = connect("north"), s = connect("south");
+      const out = [];
+      const edge = { tex: { up: "east", down: "east" } };
+      if (e || w) out.push(box([w ? 0 : 7, 0, 7, e ? 16 : 9, 16, 9], edge));
+      if (n || s) out.push(box([7, 0, n ? 0 : 7, 9, 16, s ? 16 : 9], edge));
+      if (!out.length) out.push(box([7, 0, 7, 9, 16, 9], edge));
+      return out;
+    }
+    case "fence": {
+      const out = [box([6, 0, 6, 10, 16, 10])];
+      if (connect("east")) out.push(box([10, 12, 7, 16, 15, 9]), box([10, 6, 7, 16, 9, 9]));
+      if (connect("west")) out.push(box([0, 12, 7, 6, 15, 9]), box([0, 6, 7, 6, 9, 9]));
+      if (connect("north")) out.push(box([7, 12, 0, 9, 15, 6]), box([7, 6, 0, 9, 9, 6]));
+      if (connect("south")) out.push(box([7, 12, 10, 9, 15, 16]), box([7, 6, 10, 9, 9, 16]));
+      return out;
+    }
+    case "wall": {
+      const out = [box([4, 0, 4, 12, 16, 12])];
+      if (connect("east")) out.push(box([12, 0, 5, 16, 14, 11]));
+      if (connect("west")) out.push(box([0, 0, 5, 4, 14, 11]));
+      if (connect("north")) out.push(box([5, 0, 0, 11, 14, 4]));
+      if (connect("south")) out.push(box([5, 0, 12, 11, 14, 16]));
+      return out;
+    }
+    case "lantern": {
+      // lantern.png: body sides at (0,2)-(6,9), body top at (0,0)-(6,2), cap at (1,9)-(5,11), chain at (11,1)-(14,7).
+      const y = hanging ? 1 : 0;
+      const out = [
+        box([5, y, 5, 11, y + 7, 11], { uv: { north: [0, 2, 6, 9], south: [0, 2, 6, 9], east: [0, 2, 6, 9], west: [0, 2, 6, 9], up: [0, 0, 6, 2], down: [0, 0, 6, 2] } }),
+        box([6, y + 7, 6, 10, y + 9, 10], { uv: { north: [1, 9, 5, 11], south: [1, 9, 5, 11], east: [1, 9, 5, 11], west: [1, 9, 5, 11], up: [1, 9, 5, 11], down: [1, 9, 5, 11] } }),
+      ];
+      if (hanging) out.push(box([7, 10, 7, 9, 16, 9], { uv: { north: [11, 1, 14, 7], south: [11, 1, 14, 7], east: [11, 1, 14, 7], west: [11, 1, 14, 7] }, faces: ["north", "south", "east", "west"] }));
+      return out;
+    }
+    case "campfire": {
+      const log = { tex: { up: "down", down: "down", north: "down", south: "down", east: "down", west: "down" } };
+      return [
+        box([1, 0, 0, 5, 4, 16], log),
+        box([11, 0, 0, 15, 4, 16], log),
+        box([0, 3, 1, 16, 7, 5], log),
+        box([0, 3, 11, 16, 7, 15], log),
+        // The fire: two crossed cut-out quads.
+        box([8, 3, 2, 8, 16, 14], { faces: ["east", "west"], tex: { east: "up", west: "up" } }),
+        box([2, 3, 8, 14, 16, 8], { faces: ["north", "south"], tex: { north: "up", south: "up" } }),
+      ];
+    }
+    case "chest":
+      return [box([1, 0, 1, 15, 14, 15])];
+    case "anvil":
+      return [
+        box([2, 0, 2, 14, 4, 14]),
+        box([4, 4, 4, 12, 5, 12]),
+        box([6, 5, 6, 10, 10, 10]),
+        box([3, 10, 0, 13, 16, 16]),
+      ];
+    default:
+      return [box([0, 0, 0, 16, 16, 16])];
+  }
+}
+
+/** A block name's vanilla entry, or a stand-in cube in the preview colour. */
+function blockDef(name, color, states = {}) {
+  const v = vanilla && vanilla.blocks[name];
+  if (!v) return { shape: name === "minecraft:water" ? "water" : "cube", flat: true, color };
+  // A log on its side shows its end grain on the faces its axis points at.
+  const axis = states.pillar_axis;
+  if (axis === "x" || axis === "z") {
+    const ends = axis === "x" ? ["east", "west"] : ["north", "south"];
+    const faces = {};
+    for (const f of FACE_NAMES) faces[f] = ends.includes(f) ? v.faces.up : v.faces.north;
+    return { ...v, faces };
+  }
+  return v;
+}
 
 function buildStructure(preview, maxY) {
   const occ = new Map();
   for (const [x, y, z, i] of preview.blocks) if (y < maxY) occ.set(`${x},${y},${z}`, i);
-  const pos = [], col = [], idx = [];
   const [sx, , sz] = preview.size;
+  const defs = preview.palette.map((p) => blockDef(p.name, p.color, p.states));
+  const at = (x, y, z) => {
+    const i = occ.get(`${x},${y},${z}`);
+    return i === undefined ? undefined : { name: preview.palette[i].name, def: defs[i] };
+  };
+  const joinable = (b) => b && ["cube", "cutout", "pane", "fence", "wall"].includes(b.def.shape);
+
+  // One bucket per texture (or one flat bucket for coloured cubes).
+  const buckets = new Map();
+  const bucket = (key) => {
+    let b = buckets.get(key);
+    if (!b) buckets.set(key, (b = { pos: [], uv: [], col: [], idx: [] }));
+    return b;
+  };
+
   for (const [key, i] of occ) {
     const [x, y, z] = key.split(",").map(Number);
-    const hex = preview.palette[i].color;
-    const water = preview.palette[i].name === "minecraft:water";
-    const r = ((hex >> 16) & 255) / 255, g = ((hex >> 8) & 255) / 255, b = (hex & 255) / 255;
-    for (const f of FACE_DIRS) {
-      const n = `${x + f.d[0]},${y + f.d[1]},${z + f.d[2]}`;
-      const neighbour = occ.get(n);
-      if (neighbour !== undefined && !(water && preview.palette[neighbour].name !== "minecraft:water")) continue;
-      if (water && f.d[1] !== 1) continue;
-      const base = pos.length / 3;
-      for (const c of f.corners) {
-        pos.push(x + c[0] - sx / 2, y + c[1], z + c[2] - sz / 2);
-        col.push(r * f.shade, g * f.shade, b * f.shade);
+    const { name, def } = { name: preview.palette[i].name, def: defs[i] };
+    const shape = def.shape;
+    const neighbour = (face) => {
+      const d = FACE_NEIGHBOUR[face];
+      return at(x + d[0], y + d[1], z + d[2]);
+    };
+    const connect = (face) => {
+      const n = neighbour(face);
+      if (!n) return false;
+      if (shape === "pane") return n.def.shape === "pane" || n.def.shape === "cube" || n.def.shape === "cutout";
+      return joinable(n) && n.def.shape !== "pane";
+    };
+    const above = neighbour("up");
+    const hanging = shape === "lantern" && above && (above.def.shape === "cube" || above.def.shape === "cutout");
+    const boxes = blockBoxes(shape, connect, hanging);
+    const tint = def.tint ?? 0xffffff;
+    const tr = ((tint >> 16) & 255) / 255, tg = ((tint >> 8) & 255) / 255, tb = (tint & 255) / 255;
+    const fr = def.flat ? ((def.color >> 16) & 255) / 255 : 1, fg = def.flat ? ((def.color >> 8) & 255) / 255 : 1, fb = def.flat ? (def.color & 255) / 255 : 1;
+
+    for (const b of boxes) {
+      for (const face of b.faces ?? FACE_NAMES) {
+        // Cull faces between full cubes; glass against the same glass; water against water.
+        if (shape === "cube" || shape === "cutout" || shape === "water") {
+          const n = neighbour(face);
+          if (n) {
+            if (n.def.shape === "cube" && shape !== "water") continue;
+            if (n.name === name) continue;
+          }
+        }
+        const texFace = b.tex?.[face] ?? face;
+        const file = def.flat ? "flat" : def.faces[texFace];
+        const bk = bucket(shape === "water" ? `water|${file}` : file);
+        const { corners, uvs } = boxFace(face, b.box, b.uv?.[face]);
+        const shade = SHADE[face];
+        const base = bk.pos.length / 3;
+        for (let k = 0; k < 4; k++) {
+          const c = corners[k];
+          bk.pos.push(x + c[0] - sx / 2, y + c[1], z + c[2] - sz / 2);
+          bk.uv.push(uvs[k][0], uvs[k][1]);
+          bk.col.push(fr * tr * shade, fg * tg * shade, fb * tb * shade);
+        }
+        bk.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        // An overlay layer, a hair outside the face so it draws on top.
+        const over = def.overlay?.faces[face];
+        if (over && !def.flat) {
+          const ob = bucket(over);
+          const d = FACE_NEIGHBOUR[face];
+          const ot = def.overlay.tint;
+          const or = ((ot >> 16) & 255) / 255, og = ((ot >> 8) & 255) / 255, ob_ = (ot & 255) / 255;
+          const obase = ob.pos.length / 3;
+          for (let k = 0; k < 4; k++) {
+            const c = corners[k];
+            ob.pos.push(x + c[0] - sx / 2 + d[0] * 0.002, y + c[1] + d[1] * 0.002, z + c[2] - sz / 2 + d[2] * 0.002);
+            ob.uv.push(uvs[k][0], uvs[k][1]);
+            ob.col.push(or * shade, og * shade, ob_ * shade);
+          }
+          ob.idx.push(obase, obase + 1, obase + 2, obase, obase + 2, obase + 3);
+        }
       }
-      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+
   const root = new THREE.Group();
-  root.add(mesh);
+  for (const [key, bk] of buckets) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(bk.pos, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(bk.uv, 2));
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(bk.col, 3));
+    geo.setIndex(bk.idx);
+    const water = key.startsWith("water|");
+    const file = water ? key.slice(6) : key;
+    const material = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    if (file !== "flat") {
+      material.map = vanillaTextures.get(file);
+      material.alphaTest = water ? 0 : 0.5;
+    }
+    if (water) {
+      material.transparent = true;
+      material.opacity = 0.8;
+      material.depthWrite = false;
+    }
+    root.add(new THREE.Mesh(geo, material));
+  }
   return root;
 }
 
 async function showStructure(entry) {
   const preview = await (await fetch(entry.structure)).json();
+  await loadVanilla();
+  if (vanilla)
+    for (const p of preview.palette) {
+      const v = vanilla.blocks[p.name];
+      if (v) for (const file of [...Object.values(v.faces), ...Object.values(v.overlay?.faces ?? {})]) await vanillaTexture(file);
+    }
   let root = buildStructure(preview, preview.size[1]);
   scene.add(root);
   frame(root, "block");
@@ -557,8 +799,14 @@ async function showStructure(entry) {
     .map(([n, c]) => `${c} ${n.replace("minecraft:", "")}`)
     .join(", ");
   const blocks = preview.blocks.length;
+  const missing = vanilla ? preview.palette.filter((p) => !vanilla.blocks[p.name]).map((p) => p.name.replace("minecraft:", "")) : [];
+  const textures = !vanilla
+    ? "coloured cubes: the build had no vanilla textures"
+    : missing.length
+      ? `vanilla textures; no texture for: ${missing.join(", ")}`
+      : "vanilla textures";
   document.getElementById("info").textContent =
-    `${entry.pack} · building\n${preview.size.join("×")}, ${blocks} blocks\n\n${preview.notes}\n\nmaterials: ${materials}`;
+    `${entry.pack} · building\n${preview.size.join("×")}, ${blocks} blocks · ${textures}\n\n${preview.notes}\n\nmaterials: ${materials}`;
 }
 
 /** World-space point for a catalogue particle entry, honouring the x mirror. */

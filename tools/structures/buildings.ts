@@ -83,10 +83,10 @@ building("stonefolk_hall", "Hill Hall", "stonefolk", "The heart of a stonefolk s
 });
 
 building("stonefolk_forge", "Forge", "stonefolk", "Two blast furnaces under a brick chimney, an anvil by the door. The stonefolk worker's job block.", (bp) => {
-  const top = cottage(bp, 1, 1, 7, 7, 3, { ...STONE, wall: "bricks", corner: "stone_bricks", roof: "deepslate_tiles" });
+  const top = cottage(bp, 1, 1, 7, 7, 3, { ...STONE, wall: "brick_block", corner: "stone_bricks", roof: "deepslate_tiles" });
   bp.set(2, 1, 2, "blast_furnace").set(3, 1, 2, "blast_furnace").set(6, 1, 5, "anvil");
   // Chimney through the roof above the furnaces.
-  bp.fill(2, 1, 1, 2, top + 2, 1, "bricks");
+  bp.fill(2, 1, 1, 2, top + 2, 1, "brick_block");
   bp.fill(2, top + 2, 1, 2, 1, 1, "polished_deepslate");
 });
 
@@ -170,7 +170,7 @@ building("reedfolk_tower", "Reed Tower", "reedfolk", "A bamboo frame with a look
 // Tinkers: bricks, copper, glass; chimneys and pipes.
 // ---------------------------------------------------------------------------
 
-const TINKER: Cottage = { floor: "bricks", wall: "bricks", corner: "copper_block", roof: "cut_copper", ridge: "oxidized_copper", window: "glass" };
+const TINKER: Cottage = { floor: "brick_block", wall: "brick_block", corner: "copper_block", roof: "cut_copper", ridge: "oxidized_copper", window: "glass" };
 
 building("tinker_workshop", "Workshop", "tinker", "A brick workshop under a copper roof: smoker, smithing table, crafting table, and a chimney that would carry a Fluidworks pipe. The tinker worker's and builder's job block.", (bp) => {
   const top = cottage(bp, 1, 1, 9, 7, 4, TINKER);
@@ -183,7 +183,7 @@ building("tinker_workshop", "Workshop", "tinker", "A brick workshop under a copp
 });
 
 building("tinker_still", "Copper Still", "tinker", "A copper tower with a glass band and a weathered dome, steam from the top. The tinker trader's stall stands at its foot.", (bp) => {
-  bp.fill(1, 0, 1, 5, 1, 5, "bricks");
+  bp.fill(1, 0, 1, 5, 1, 5, "brick_block");
   bp.walls(1, 1, 1, 5, 9, 5, "copper_block");
   for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 1, z, 1, 9, 1, "cut_copper");
   bp.walls(1, 7, 1, 5, 2, 5, "glass");
@@ -195,7 +195,7 @@ building("tinker_still", "Copper Still", "tinker", "A copper tower with a glass 
 });
 
 building("tinker_stall", "Market Stall", "tinker", "Barrel counters under a striped wool awning on fence posts. The trader's job block for every people; the colours change with the people.", (bp) => {
-  bp.fill(0, 0, 0, 7, 1, 7, "bricks");
+  bp.fill(0, 0, 0, 7, 1, 7, "brick_block");
   for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 1, z, 1, 3, 1, "spruce_fence");
   bp.fill(1, 1, 5, 5, 1, 1, "barrel").set(1, 1, 3, "barrel").set(1, 1, 4, "barrel");
   for (let x = 0; x < 7; x++) bp.fill(x, 4, 0, 1, 1, 7, x % 2 === 0 ? "red_wool" : "white_wool");
@@ -203,12 +203,12 @@ building("tinker_stall", "Market Stall", "tinker", "Barrel counters under a stri
 });
 
 building("tinker_burrow", "Burrow", "tinker", "A half-sunken brick house with turf on top and a round-ish door. The tinker home: small people, low ceilings.", (bp) => {
-  bp.fill(1, 0, 1, 7, 1, 7, "bricks");
-  bp.walls(1, 1, 1, 7, 3, 7, "bricks");
+  bp.fill(1, 0, 1, 7, 1, 7, "brick_block");
+  bp.walls(1, 1, 1, 7, 3, 7, "brick_block");
   bp.fill(4, 1, 7, 1, 2, 1, "air").set(3, 2, 7, "copper_block").set(5, 2, 7, "copper_block").set(4, 3, 7, "copper_block");
   bp.set(2, 2, 7, "glass").set(6, 2, 7, "glass");
-  bp.fill(0, 4, 0, 9, 1, 9, "grass_block");
-  bp.fill(1, 5, 1, 7, 1, 7, "grass_block");
+  bp.fill(0, 4, 0, 9, 1, 9, "grass");
+  bp.fill(1, 5, 1, 7, 1, 7, "grass");
   bed(bp, 2, 1, 2);
   bp.set(6, 1, 2, "chest").set(4, 3, 4, "lantern");
 });

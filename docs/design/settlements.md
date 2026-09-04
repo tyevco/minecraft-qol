@@ -7,9 +7,14 @@ Companion to `design/npcs.md` · Draft v0.1
 > Planned, not built. Every building here exists as a generated blueprint
 > under `concepts/structures/` (a `.mcstructure` the game could place and a
 > preview the viewer draws under `concept · <people> buildings`, with a
-> cutaway slider). Nothing has been placed in a world. The point of this
-> phase is to have the whole set designed before any builder code exists, so
-> the builder is written against a catalogue rather than a guess.
+> cutaway slider). The viewer draws them in the game's own block textures,
+> fetched at build time from Mojang's bedrock-samples and never committed
+> (`tools/viewer/vanilla.ts`), using the game's own block-to-texture
+> mapping; so what the page shows is what the blocks look like, and a block
+> identifier the game does not know fails that build step. Nothing has been
+> placed in a world. The point of this phase is to have the whole set
+> designed before any builder code exists, so the builder is written against
+> a catalogue rather than a guess.
 
 ---
 
@@ -179,6 +184,10 @@ scale of the ask is visible.
 
 ### 3.6 Conventions every blueprint follows
 
+- **Bedrock identifiers.** Every block name is checked against the vanilla
+  `blocks.json` when the viewer builds. That check already caught two Java
+  names: bricks are `brick_block` and a grass block is `grass` on Bedrock.
+  The corrections table in `docs/README.md` carries the row.
 - **Faces south.** The door is on the +z wall, as the block models' fronts
   are, so "stand where the corner should be and face the way you want the
   door" is one rule for everything.

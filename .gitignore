@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Vanilla textures fetched by `npm run viewer`; Mojang's, never committed.
+.cache/
 lib/
 
 # Machine-local: contains an absolute path and an XUID. Use .env.example instead.

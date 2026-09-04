@@ -113,7 +113,9 @@ export class Blueprint {
     while (s - n >= 1) {
       const depth = s - n + 1;
       const top = s - n <= 2;
-      this.fill(ox, y + layer, n, ow, 1, depth, top ? ridge : block);
+      // A log ridge lies along the roof, so it gets its axis; the placer
+      // passes states through and the viewer honours pillar_axis.
+      this.fill(ox, y + layer, n, ow, 1, depth, top ? ridge : block, top && /_log$/.test(ridge) ? { pillar_axis: "x" } : undefined);
       if (top) break;
       n++;
       s--;
@@ -235,7 +237,7 @@ export class Blueprint {
       people: this.people,
       notes: this.notes,
       size: this.size,
-      palette: this.palette.map((p) => ({ name: p.name, color: previewColor(p.name) })),
+      palette: this.palette.map((p) => ({ name: p.name, states: p.states, color: previewColor(p.name) })),
       blocks: this.blocks().map((b) => [b.x, b.y, b.z, this.palette.findIndex((p) => p.name === b.name && JSON.stringify(p.states) === JSON.stringify(b.states))]),
       materials: this.materials(),
     };

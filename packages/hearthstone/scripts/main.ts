@@ -55,7 +55,7 @@ const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 const ANCHOR_BLOCK = "hearthstone:hearthstone";
 /** Player dynamic property recording the spawn point we assigned. */
 const PROP_OWNED = "hs:owned";
-/** Default catch radius. Pack settings will back this later; see docs/backlog.md. */
+/** Default catch radius. Pack settings will back this later; see issue #48. */
 const DEFAULT_RADIUS = 64;
 /** Ticks between sweeps. Player count is small and bounded; anchors are not. */
 const EVALUATE_TICKS = 60;

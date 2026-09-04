@@ -64,7 +64,7 @@ the drop. Plus one thing about the panel: that a dropdown reads back as its
 option name (`"grave"`), which `graves:debug` shows.
 
 The locator-bar marker is unmeasured; `qolprobe:waypoint` covers the engine
-questions and `docs/backlog.md` lists the fallbacks. For this pack: die with
+questions and issue #37 lists the fallbacks. For this pack: die with
 items in `grave` mode and, on respawn, a red circle points at the stone
 (`graves:debug` lists `gv:grave:<id>@x,y,z`); empty the stone and the circle
 goes; die twice without collecting and two circles show. If the marker sits

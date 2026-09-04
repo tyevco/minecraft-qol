@@ -175,17 +175,15 @@ so it is invisible on a server with no players.
 ## Where the work is tracked
 
 The backlog is the repo's GitHub issues, and nothing else: what is next, what
-is blocked, and the evidence for each. Start there; close the issue from the
-PR that finishes it (`Closes #n`), and file a new one rather than leaving a
-TODO in a doc. Two labels are worth filtering on before picking anything up:
-**`probe`** is work that needs a measurement before anything can be built on it,
-and **`in-game`** is work no simulated player can do, so it waits for a person
-at the keyboard. Anything the stable API cannot do is a row in the corrections
-table in `docs/README.md`, not an issue.
-
-`docs/backlog.md` is not a queue. It holds the rationale for deferred work,
-with enough context to pick an item up cold; the matching issue says whether
-it is still wanted.
+is blocked, and the evidence and rationale for each, with enough context to
+pick an item up cold. There is no Markdown copy. Start there; close the issue
+from the PR that finishes it (`Closes #n`), and when you defer something, file
+an issue rather than leaving a TODO in a doc. Two labels are worth filtering on
+before picking anything up: **`probe`** is work that needs a measurement before
+anything can be built on it, and **`in-game`** is work no simulated player can
+do, so it waits for a person at the keyboard. Anything the stable API cannot do
+is a row in the corrections table in `docs/README.md`, not an issue. Code and
+docs point at an issue by number when a deferral matters at that spot.
 
 ## Documentation
 
@@ -194,7 +192,6 @@ it is still wanted.
 - `docs/*-results.md` — measured engine behaviour. Authoritative.
 - `docs/README.md` — the index and the corrections table. Add a row whenever
   a doc claim proves false.
-- `docs/backlog.md` — deferred work, with enough context to pick up cold.
 - Each pack's `README.md` — what is built, how it works, what to confirm.
 
 Update these in the same change as the code. Commit messages explain why,

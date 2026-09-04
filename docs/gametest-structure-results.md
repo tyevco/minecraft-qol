@@ -71,32 +71,127 @@ client. A full suite run takes about a minute.
 node tools/bds/run.mjs --seq "gametest run qol:dispenser_fills_cauldron"
 ```
 
-Setup, once:
+Setup is one command, on Windows or Linux:
 
-1. Download the server build matching the client — the URL comes from
+```
+npm run bds:setup      download the server, deploy the packs, make the world
+npm run bds:test       the whole suite, one test at a time, and judge it
+```
+
+`bds:setup` does, in order, what used to be a hand-made list:
+
+1. Downloads the server build — the URL comes from
    `https://net-secondary.web.minecraft-services.net/api/v1.0/download/links`
-   (`serverBedrockWindows`). **The CDN resets the connection without a browser
-   `User-Agent`**; pass one to `curl`.
-2. Unzip to `C:/bds/server` (override with `BDS_DIR`).
-3. Copy a world that already has the **Beta APIs** experiment saved into
-   `worlds/`, and the packs into `development_behavior_packs/` — BDS reads that
-   folder just as the client does. Experiments cannot be enabled from
-   `server.properties`; they have to come in with the world. A correct boot logs
-   `Experiment(s) active: gtst`.
-4. In `server.properties`: `allow-cheats=true`, `online-mode=false`,
+   (`serverBedrockWindows` / `serverBedrockLinux`). **The CDN resets the
+   connection without a browser `User-Agent`**; one is sent.
+2. Unzips to `dist/bds/server` (`C:/bds/server` remains the Windows default for
+   `run.mjs`; either way `BDS_DIR` overrides it).
+3. Writes `server.properties`: `allow-cheats=true`, `online-mode=false`,
    `allow-list=false`, and `content-log-console-output-enabled=true` — that last
    one is what puts script errors on stdout. Leaving `allow-list=true` with
    `online-mode=false` is fatal, not ignored: the server refuses to start.
-5. **Allow `bedrock_server.exe` through the Windows Firewall.** It binds 19132
-   and 19133 on first run and blocks on the prompt, which is invisible to a
-   script driving it — the run just stalls before `Server started.`. The
-   harness now says so after 60s rather than timing out silently.
+4. Builds and deploys every pack into the server's
+   `development_behavior_packs/` — BDS reads that folder just as the client
+   does. The deployment root comes from the environment, so `.env` and a
+   developer's own game install are untouched:
+   `CUSTOM_DEPLOYMENT_PATH=<server> MINECRAFT_PRODUCT=Custom`.
+5. Boots once to generate the world, then turns the experiment on in its
+   `level.dat` (below), and lists every pack in `world_behavior_packs.json` /
+   `world_resource_packs.json` — a pack missing from those loads as if it did
+   not exist, with no error to say why.
 
-Deploy into it without touching `.env`:
+On Windows, **allow `bedrock_server.exe` through the Firewall**. It binds 19132
+and 19133 on first run and blocks on the prompt, which is invisible to a script
+driving it — the run just stalls before `Server started.`. The harness says so
+after 60s rather than timing out silently.
+
+## Experiments can be turned on without a client-made world
+
+Experiments cannot be set from `server.properties`; they arrive with the world.
+That was taken to mean **copying a world a person had toggled in the client**,
+which is not available on a CI runner. It is not required.
+
+`level.dat` is uncompressed little-endian NBT behind an 8-byte header (storage
+version, then the body length), and a world BDS generates itself already carries
+an `experiments` compound:
 
 ```
-CUSTOM_DEPLOYMENT_PATH="C:/bds/server" MINECRAFT_PRODUCT="Custom" npx just-scripts local-deploy
+experiments: { experiments_ever_used: 0b, saved_with_toggled_experiments: 0b }
 ```
+
+Adding `gametest: 1b` and setting both flags to 1 — `tools/bds/enable-experiments.mjs`,
+which rewrites that one compound and fixes the length header — is enough. The
+next boot logs:
+
+```
+Experiment(s) active: gtst
+```
+
+and `@minecraft/server-gametest` binds. The suite then runs on a world no client
+has ever touched.
+
+## In CI
+
+`.github/workflows/gametest.yml` runs the whole thing on `ubuntu-latest`:
+`npm ci`, `npx tsc --noEmit`, `npm test`, then `npm run bds:setup` and
+`npm run bds:test`, and uploads the content log as an artifact whether it passed
+or failed. That log is the same evidence a person would have pasted out of the
+client.
+
+Measured on the Linux build of BDS 1.26.45.1, glibc 2.39 (Ubuntu 24.04, which is
+what `ubuntu-latest` is): the server runs, loads every pack, and reports the same
+verdicts as the Windows build. The one environment requirement is **IPv6**: BDS
+binds 19132 (v4) and 19133 (v6) and, if the kernel has no `AF_INET6` at all, it
+reports *both* ports as "may be in use by another process" and exits — a
+misleading message for a machine that simply has IPv6 compiled out.
+
+`npm run bds:test` decides what a run means:
+
+- tests come from the suite sources, so adding one to
+  `packages/gametest/scripts/suites/` is all it takes to have it run;
+- a failure is re-run **alone, up to twice**, before it is believed, because
+  sequential tests contaminate each other (below). `turret_break_returns_arrows`
+  does exactly this most runs: 20 arrows in the sequence, 10 alone;
+- `packages/gametest/known-failures.json` lists the tests that fail for a reason
+  that is not a bug, with the reason. One of those **passing** fails the run: the
+  reason has expired and the entry should go;
+- a test that reports nothing at all fails the run;
+- script errors are printed but do not by themselves fail it. A simulated player
+  makes Graves, Lens, Guardian and Hearthstone throw on every spawn — 184 error
+  lines in a clean run — which is the harness, not those packs (below).
+
+## What the first full headless runs found
+
+Twenty-two tests, three consecutive runs on Linux BDS 1.26.45.1, each failure
+re-run alone. **Seventeen pass and are pinned.** The rest:
+
+| Test | Result | What is established |
+| --- | --- | --- |
+| `turret_break_returns_arrows` | fails in sequence, passes alone | The contamination below, exactly as described. The harness's re-run alone is what makes the suite usable in CI. |
+| `hatchling_egg_hatches_into_its_variant` | same, once in three runs | Same class. Nothing else seen from it. |
+| `harvester_funnel` | passes twice, fails once — **alone as well as in a sequence** | The intermittency noted below is not only contamination: `crop tile is minecraft:air; expected it replanted` came back from an isolated run too. This is why a failure is re-run alone twice rather than once. |
+| `guardian_void_catch` | **passes, measuring nothing** | On a dedicated server a `SimulatedPlayer` is an **operator**, so the test's own first branch skips it — the switches never touch operators. It succeeds in seconds while Guardian's sweep is still throwing `cannot read property 'name' of undefined` in the same log. Setting `default-player-permission-level=member` does not change it; the world's stored level wins. |
+| `anchor_sets_spawn` | fails | The marshalling hole, as already measured. In `known-failures.json`. |
+| `rain_collector` | **fails**, alone and in sequence | `tank level 0, want >= 1 in rain`. Not the settings (`rain` defaults to true) and not the weather map's key (`WeatherChangeAfterEvent.dimension` is a `string` in 2.9.0, which is what `weather.ts` stores). Either the funnel reads its column as roofed, or `weatherChange` does not arrive on a server. `fluidworks:debug` cannot answer it from a console: like `rescan` before it, the handler drops an event with no `sourceEntity`. |
+| `funnel_places_into_clicked_tank` | **fails**, alone and in sequence | The funnel is never placed at all — the cell is air, not a funnel facing the wrong way. `funnel_placed_on_floor_stays_level` places a funnel through the same `useItemOnBlock` and passes, so simulated placement works; something about clicking a **cauldron's side** does not place. |
+| `pipes_join_when_placed` | **fails**, alone and in sequence | Both pipes are placed, and neither has any arm state. So the placement lands and the joining does not. |
+
+The last three were run again with `@minecraft/server-gametest` bound into
+Fluidworks (all three places, then reverted) and **failed identically**, which
+rules out the `SimulatedPlayer`-marshalling explanation for them. They are
+tracked in `TASKS.md`; none is in `known-failures.json`, because a test that
+fails for an unexplained reason is exactly the one that should stay red.
+
+## A test in flight is silent, so the idle timer cannot end the run
+
+The harness stops the server when output goes quiet, which is right between
+tests and wrong during one: `rain_collector` waits out the weather and prints
+nothing while it does. With only an 8s idle timer, the server was stopped in the
+middle of it and **the twelve tests after it never ran** — reported as no result,
+not as failures, which is at least honest but wasted a run.
+
+`--seq` now waits for the verdict line of the test it sent, with its own
+`--test-timeout` (180s), and the idle timer only applies between tests.
 
 ## Sequential tests contaminate each other
 

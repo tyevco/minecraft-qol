@@ -1,0 +1,80 @@
+name: GameTest
+
+# Runs the in-game suite on a headless Bedrock Dedicated Server. BDS loads the
+# same packs the client does and puts the content log on stdout, so everything
+# `/gametest runset qol` measures in a world can be measured here - no client,
+# no Realm, no person pasting a log into the next session.
+#
+# The whole setup is `npm run bds:setup` (download the server, deploy the packs,
+# generate a world, turn the Beta APIs experiment on in its level.dat) and the
+# run is `npm run bds:test`. Both work the same way on a desktop; see
+# docs/gametest-structure-results.md.
+
+# The two path lists are duplicated on purpose: GitHub's workflow parser does
+# not support YAML anchors, so a shared list would not resolve.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "tools/bds/**"
+      - "just.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/gametest.yml"
+  pull_request:
+    paths:
+      - "packages/**"
+      - "tools/bds/**"
+      - "just.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/gametest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gametest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gametest:
+    runs-on: ubuntu-latest
+    # A test costs the harness a 12s settling gap plus its own run, and a failure
+    # is re-run alone before it is believed. Twenty-odd tests fit in well under
+    # this; the limit is here so a server that never reports cannot idle for six
+    # hours.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Typecheck and the pure layers first: they are seconds, and a red one
+      # explains a red suite.
+      - run: npx tsc --noEmit
+      - run: npm test
+
+      - name: Install and prepare the server
+        run: npm run bds:setup
+
+      - name: Run the suite
+        run: npm run bds:test
+
+      # The content log is the evidence, pass or fail - the same log a person
+      # would have pasted from the client.
+      - name: Upload the content log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bds-content-log
+          path: |
+            dist/bds/*.log
+            dist/bds/server/ContentLog*
+          if-no-files-found: warn
+          retention-days: 14

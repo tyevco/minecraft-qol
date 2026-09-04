@@ -7,10 +7,27 @@ the queue.
 
 ## Now
 
-- [ ] **In-game verification pass.** Nothing since Hearthstone has been run in
-      game. In a Beta APIs world with every pack enabled: `/gametest runset qol`,
-      then each pack README's "to confirm in game" list. Paste the content log
-      into the next session and fix what fails. Gates everything below.
+- [ ] **Three tests the headless suite fails.** Found by the first full runs on
+      a dedicated server; each fails alone as well as in a sequence, so none is
+      contamination, and the two Fluidworks ones fail the same way with
+      `@minecraft/server-gametest` bound into the pack, so none is the
+      simulated-player marshalling hole either. Evidence in
+      `docs/gametest-structure-results.md`.
+      - `rain_collector` — tank stays empty in rain. Ruled out: the `rain`
+        policy default, and the weather map's key. Left: a roofed reading of the
+        column, or `weatherChange` not arriving on a server. Needs a probe that
+        does not go through `fluidworks:debug`, which drops a console event.
+      - `funnel_places_into_clicked_tank` — the funnel is never placed at all
+        when used on a cauldron's side, though the same call places one on the
+        floor.
+      - `pipes_join_when_placed` — both pipes place; neither gets an arm state.
+      - and `harvester_funnel` is genuinely flaky, not merely contaminated: it
+        has failed an isolated run too. The harness retries alone twice, which
+        hides it; the crop-replant path still deserves a look.
+- [ ] **In-game verification pass.** The suite itself now runs in CI, so this is
+      what is left: each pack README's "to confirm in game" list, and the paths
+      no simulated player can exercise (`guardian_void_catch`,
+      `anchor_sets_spawn`). Paste the content log into the next session.
 
 ## Next
 
@@ -68,6 +85,8 @@ the queue.
 
 ## Done
 
+- [x] GameTest suite on a headless server in CI: `npm run bds:setup` /
+      `npm run bds:test`, and `.github/workflows/gametest.yml`
 - [x] Pack icons for every pack, through the texture generator
 - [x] Hatchling Phase 1: egg, warming, hatching, bonding, feeding, growth, the panel
 - [x] Entity concept sheet, models, textures, animations; grain textures across every pack (#13, #14, #15, #16)

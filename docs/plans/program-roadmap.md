@@ -1,5 +1,12 @@
 # Bedrock addon program — monorepo, then the spawn-proofing Lens
 
+> **Executed; kept as the record of why the repo is shaped this way.** Written
+> before the monorepo existed. Milestones 1, 3, 4 and 5 shipped as
+> `packages/lens`, `hearthstone`, `fluidworks` and `bulwark`; milestone 2 is
+> issue #54. The corrections table below was folded into `docs/README.md`,
+> which is the live copy. Nothing in this document is a queue: open work is
+> in the GitHub issues.
+
 ## Context
 
 Three design docs propose three new products beyond the existing QOL Times pack:

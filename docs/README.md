@@ -167,10 +167,15 @@ prototype” list. In suggested order:
 
 ## Plans
 
+Plans are records of intent at the time, like design docs; they are not
+queues, and neither of these is current work.
+
 - [`plans/program-roadmap.md`](plans/program-roadmap.md) — sequencing across all
-  packs, and the monorepo/shared-library decision.
+  packs, and the monorepo/shared-library decision. Executed: four of its five
+  milestones shipped, the fifth is #54.
 - [`plans/lens-item-tiers-and-solver.md`](plans/lens-item-tiers-and-solver.md) —
-  the Lens custom item, tiers, and the lighting solver.
+  the Lens custom item, tiers, and the lighting solver. Built, apart from the
+  consumable phase (#62).
 
 ## The pattern worth keeping
 

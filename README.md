@@ -16,22 +16,25 @@ Worth knowing: **this does not exist in Java Edition either.** Mojang closed the
 Java requests as Invalid (MC-9910, MC-220164, MC-165196) and Java players use
 mods for it. So this is net-new automation on both editions, not a parity fix.
 The genuine parity gaps are armour-stand placement (MCPE-80145) and equipping
-armour onto villagers and wandering traders (MCPE-41432, MCPE-76479) — planned,
-not yet built.
+armour onto villagers and wandering traders (MCPE-41432, MCPE-76479) — tracked
+as issue #54, not yet built.
 
 ## Status
 
-**Working in game:** dispensers fill and drain cauldrons in both directions; the
-rig registry persists across reloads; `/qol:settings` gives per-feature toggles.
-28 unit tests pass over the pure rules layer.
+Ten packs, listed under **Repo layout** below, all on the stable API. The pure
+layers are under Vitest and the built behaviour is pinned by the GameTest pack,
+which runs headlessly in CI on every push. What each pack still has to confirm
+with a real player is at the end of its README.
 
-**Verified safe:** a dispenser full of cobblestone facing a cauldron mints
-nothing — the container diff refuses because the dispenser lost cobblestone, not
-a bucket.
+**QOL Times, working in game:** dispensers fill and drain cauldrons in both
+directions; the rig registry persists across reloads; the settings panel gives
+per-feature toggles. **Verified safe:** a dispenser full of cobblestone facing
+a cauldron mints nothing — the container diff refuses because the dispenser
+lost cobblestone, not a bucket. Bottles, dye and wash are unit-tested but not
+yet exercised in game (#54).
 
-**Not yet done:** bottles / dye / wash are implemented and unit-tested but not
-yet exercised in game; the two parity features need a handler refactor (the
-interceptor currently assumes a cauldron target); GameTest pack.
+Open work is tracked as GitHub issues and nowhere in the repo. Filter on the
+`probe` and `in-game` labels before picking anything up.
 
 ## Setup
 

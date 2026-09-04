@@ -87,3 +87,4 @@ simply not built.
 Whether breaking a bed clears the spawn point back to `undefined`. If it does,
 the system re-adopts those players automatically — a nice emergent behaviour that
 needs no code, since `decide()` already returns `assign` for an unset spawn.
+On the in-game list as #36.

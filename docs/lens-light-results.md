@@ -121,7 +121,7 @@ with in-game confirmation.
 
 ## Worth verifying in game
 
-Whether mobs really do not spawn on each `DENY` entry. The clean test: a sealed,
+Whether mobs really do not spawn on each `DENY` entry (#42). The clean test: a sealed,
 fully dark room, floored with the material in question, left overnight with a
 control room of stone beside it. Automatable later with the same
 self-building-rig technique as the light matrix.

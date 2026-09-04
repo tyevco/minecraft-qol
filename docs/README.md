@@ -140,6 +140,12 @@ prototype” list. In suggested order:
   accessory bones, and the blueprint scheme that makes builders viable on the
   stable structure API. Sixteen atlases and four rigs under
   `concepts/entities/`; nothing run in game.
+- [`design/settlements.md`](design/settlements.md) — where the peoples
+  live: four settlement shapes, a catalogue of twenty blueprints (sizes,
+  materials, roles), palette swaps, and how a builder raises one from a
+  blueprint table on the stable structure API. Every blueprint is generated
+  under `concepts/structures/` as a `.mcstructure` plus a preview the viewer
+  draws; nothing placed in a world.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must

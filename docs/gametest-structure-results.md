@@ -162,25 +162,34 @@ misleading message for a machine that simply has IPv6 compiled out.
 
 ## What the first full headless runs found
 
-Twenty-two tests, three consecutive runs on Linux BDS 1.26.45.1, each failure
-re-run alone. **Seventeen pass and are pinned.** The rest:
+Twenty-two tests, three consecutive runs on Linux BDS 1.26.45.1 in a slow
+container, plus the first run on a GitHub `ubuntu-latest` runner; each failure
+re-run alone. **Twenty pass on the runner** — seventeen on the slow host, which
+is itself a finding, below. The rest:
 
 | Test | Result | What is established |
 | --- | --- | --- |
 | `turret_break_returns_arrows` | fails in sequence, passes alone | The contamination below, exactly as described. The harness's re-run alone is what makes the suite usable in CI. |
 | `hatchling_egg_hatches_into_its_variant` | same, once in three runs | Same class. Nothing else seen from it. |
-| `harvester_funnel` | passes twice, fails once — **alone as well as in a sequence** | The intermittency noted below is not only contamination: `crop tile is minecraft:air; expected it replanted` came back from an isolated run too. This is why a failure is re-run alone twice rather than once. |
+| `harvester_funnel` | passes on the runner; on the slow host, passes twice and fails once — **alone as well as in a sequence** | The intermittency noted below is not only contamination: `crop tile is minecraft:air; expected it replanted` came back from an isolated run too. This is why a failure is re-run alone twice rather than once. |
 | `guardian_void_catch` | **passes, measuring nothing** | On a dedicated server a `SimulatedPlayer` is an **operator**, so the test's own first branch skips it — the switches never touch operators. It succeeds in seconds while Guardian's sweep is still throwing `cannot read property 'name' of undefined` in the same log. Setting `default-player-permission-level=member` does not change it; the world's stored level wins. |
 | `anchor_sets_spawn` | fails | The marshalling hole, as already measured. In `known-failures.json`. |
-| `rain_collector` | **fails**, alone and in sequence | `tank level 0, want >= 1 in rain`. Not the settings (`rain` defaults to true) and not the weather map's key (`WeatherChangeAfterEvent.dimension` is a `string` in 2.9.0, which is what `weather.ts` stores). Either the funnel reads its column as roofed, or `weatherChange` does not arrive on a server. `fluidworks:debug` cannot answer it from a console: like `rescan` before it, the handler drops an event with no `sourceEntity`. |
-| `funnel_places_into_clicked_tank` | **fails**, alone and in sequence | The funnel is never placed at all — the cell is air, not a funnel facing the wrong way. `funnel_placed_on_floor_stays_level` places a funnel through the same `useItemOnBlock` and passes, so simulated placement works; something about clicking a **cauldron's side** does not place. |
-| `pipes_join_when_placed` | **fails**, alone and in sequence | Both pipes are placed, and neither has any arm state. So the placement lands and the joining does not. |
+| `rain_collector` | **fails everywhere** — alone, in sequence, and on the CI runner | `tank level 0, want >= 1 in rain`. Not the settings (`rain` defaults to true) and not the weather map's key (`WeatherChangeAfterEvent.dimension` is a `string` in 2.9.0, which is what `weather.ts` stores). Either the funnel reads its column as roofed, or `weatherChange` does not arrive on a server. `fluidworks:debug` cannot answer it from a console: like `rescan` before it, the handler drops an event with no `sourceEntity`. The one test that is red on every machine tried. |
+| `funnel_places_into_clicked_tank` | fails on a slow host, **passes on `ubuntu-latest`** | The funnel is never placed at all on the slow host — the cell is air, not a funnel facing the wrong way. Four failures in a row there, including with `@minecraft/server-gametest` bound into Fluidworks, so it is not the marshalling hole. Then it passed first time on the CI runner. |
+| `pipes_join_when_placed` | same: fails on a slow host, **passes on `ubuntu-latest`** | Both pipes place and neither gets an arm state — on the slow host. Passes on the runner. |
 
-The last three were run again with `@minecraft/server-gametest` bound into
-Fluidworks (all three places, then reverted) and **failed identically**, which
-rules out the `SimulatedPlayer`-marshalling explanation for them. They are
-tracked in `TASKS.md`; none is in `known-failures.json`, because a test that
-fails for an unexplained reason is exactly the one that should stay red.
+**The machine changes the answer, and that is the finding.** Same commit, same
+world recipe, same server build: two tests failed four times each in a slow
+container and passed first time on `ubuntu-latest`. Both drive a
+`SimulatedPlayer` through `useItemOnBlock` and then wait **five ticks**, which is
+about 250ms of a server that is keeping up and unbounded on one that is not. A
+host too slow to place a block in five ticks is the leading explanation, not
+confirmed. Treat a failure from either as "run it somewhere faster" before
+treating it as a fact about Fluidworks — and prefer `test.succeedWhen` over a
+fixed `idle` when writing a test that waits on the engine.
+
+None of these is in `known-failures.json`: an unexplained failure is exactly the
+one that should stay red. They are tracked in `TASKS.md`.
 
 ## A test in flight is silent, so the idle timer cannot end the run
 

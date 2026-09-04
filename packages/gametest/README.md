@@ -104,9 +104,12 @@ achievements, so it must never ship.
 Under that binding both pass, which is how the packs were cleared.
 
 The binding is not a cure-all, and it is worth trying before assuming it is one:
-`funnel_places_into_clicked_tank` and `pipes_join_when_placed` fail the same way
-with Fluidworks bound as without it, so whatever those two are finding, it is not
-the marshalling hole.
+`funnel_places_into_clicked_tank` and `pipes_join_when_placed` failed the same
+way with Fluidworks bound as without it. What they were actually finding was the
+**host**: both pass on a CI runner and fail in a slow container, along with
+`harvester_funnel`. All three give a simulated player five ticks to act. Before
+reading a failure from one of them as a fact about a pack, run it somewhere
+faster.
 
 ## How the rigs work
 

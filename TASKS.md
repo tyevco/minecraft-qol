@@ -40,6 +40,12 @@ the queue.
 - [ ] **Hatchling: confirm in game.** Built and unmeasured. Run the pack
       README's "to confirm" list with `qolprobe:egg` / `qolprobe:pet`, then
       the `hatchling_*` GameTests. Phase 2 ideas are in `docs/design/hatchling.md` §7.
+- [ ] **Peoples and settlements** — `docs/design/npcs.md` (four peoples,
+      four jobs, rigs and atlases under `concepts/entities/`) and
+      `docs/design/settlements.md` (twenty blueprints under
+      `concepts/structures/`). Next pick: the two structure probes in
+      `settlements.md` §8, then the blueprint table with the well, larder
+      and wall segment.
 - [ ] **Entity concepts** — `docs/design/entities.md` has five more with
       generated models under `concepts/`. Next pick: the decoy dummy, which
       needs one probe (does `is_family: player` on a custom entity draw

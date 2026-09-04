@@ -11,12 +11,18 @@ references these files, and `npm run mcaddon` never sees them.
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built.
+- `structures/` — the twenty buildings of `docs/design/settlements.md`, each
+  as a `.mcstructure` (what a builder would place) and a `.json` preview
+  (size, palette colours, blocks, materials) the viewer draws as coloured
+  cubes with a cutaway slider.
 
 Everything here is generated. Geometry comes from `tools/models/generate.ts`,
 atlases from `tools/textures/generate.ts` with painters in
 `tools/textures/tiles.ts`, the atlas layouts are in `tools/atlases.ts`, and
 animations and controllers come from `tools/animations/generate.ts`, which
-reads the generated geometry back so every animated bone is one that exists.
+reads the generated geometry back so every animated bone is one that exists,
+and structures come from `tools/structures/buildings.ts` through the
+`Blueprint` builder in `tools/structures/blueprint.ts`.
 `npm run assets` rewrites all of it; a changed file in a diff must correspond
 to a change under `tools/`, as for the shipped packs.
 

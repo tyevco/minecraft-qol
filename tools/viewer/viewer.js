@@ -478,6 +478,89 @@ class Animator {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Structures. A building preview from tools/structures is a sparse list of
+// blocks with a colour per palette entry. It is drawn as one mesh: a quad for
+// every block face that is not against another block, coloured by the block
+// and shaded by which way it faces, so a cottage reads as a cottage without
+// any textures. A cutaway slider hides the layers above a height so the
+// inside can be seen.
+// ---------------------------------------------------------------------------
+
+const FACE_DIRS = [
+  { d: [1, 0, 0], shade: 0.8, corners: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
+  { d: [-1, 0, 0], shade: 0.8, corners: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
+  { d: [0, 1, 0], shade: 1.0, corners: [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]] },
+  { d: [0, -1, 0], shade: 0.5, corners: [[0, 0, 1], [0, 0, 0], [1, 0, 0], [1, 0, 1]] },
+  { d: [0, 0, 1], shade: 0.9, corners: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] },
+  { d: [0, 0, -1], shade: 0.65, corners: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] },
+];
+
+function buildStructure(preview, maxY) {
+  const occ = new Map();
+  for (const [x, y, z, i] of preview.blocks) if (y < maxY) occ.set(`${x},${y},${z}`, i);
+  const pos = [], col = [], idx = [];
+  const [sx, , sz] = preview.size;
+  for (const [key, i] of occ) {
+    const [x, y, z] = key.split(",").map(Number);
+    const hex = preview.palette[i].color;
+    const water = preview.palette[i].name === "minecraft:water";
+    const r = ((hex >> 16) & 255) / 255, g = ((hex >> 8) & 255) / 255, b = (hex & 255) / 255;
+    for (const f of FACE_DIRS) {
+      const n = `${x + f.d[0]},${y + f.d[1]},${z + f.d[2]}`;
+      const neighbour = occ.get(n);
+      if (neighbour !== undefined && !(water && preview.palette[neighbour].name !== "minecraft:water")) continue;
+      if (water && f.d[1] !== 1) continue;
+      const base = pos.length / 3;
+      for (const c of f.corners) {
+        pos.push(x + c[0] - sx / 2, y + c[1], z + c[2] - sz / 2);
+        col.push(r * f.shade, g * f.shade, b * f.shade);
+      }
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  const root = new THREE.Group();
+  root.add(mesh);
+  return root;
+}
+
+async function showStructure(entry) {
+  const preview = await (await fetch(entry.structure)).json();
+  let root = buildStructure(preview, preview.size[1]);
+  scene.add(root);
+  frame(root, "block");
+  current = { entry, root, groups: new Map() };
+
+  const slider = document.getElementById("cutaway");
+  const label = document.getElementById("cutaway-label");
+  slider.min = 1;
+  slider.max = preview.size[1];
+  slider.value = preview.size[1];
+  const relabel = () => (label.textContent = `showing ${slider.value} of ${preview.size[1]} layers`);
+  relabel();
+  slider.oninput = () => {
+    scene.remove(root);
+    root = buildStructure(preview, Number(slider.value));
+    scene.add(root);
+    current.root = root;
+    relabel();
+  };
+
+  const materials = Object.entries(preview.materials)
+    .sort((a, b) => b[1] - a[1])
+    .map(([n, c]) => `${c} ${n.replace("minecraft:", "")}`)
+    .join(", ");
+  const blocks = preview.blocks.length;
+  document.getElementById("info").textContent =
+    `${entry.pack} · building\n${preview.size.join("×")}, ${blocks} blocks\n\n${preview.notes}\n\nmaterials: ${materials}`;
+}
+
 /** World-space point for a catalogue particle entry, honouring the x mirror. */
 function particleOrigin(entry, geo, spec) {
   let at = spec.at;
@@ -557,6 +640,16 @@ async function loadTexture(url) {
 
 async function show(entry) {
   if (current) scene.remove(current.root);
+  for (const e of emitters) scene.remove(e.points);
+  emitters = [];
+  animator = null;
+  const isStructure = entry.kind === "structure";
+  document.getElementById("structure").hidden = document.getElementById("structure-h").hidden = !isStructure;
+  for (const id of ["texture", "bones", "animation", "animation-h"]) document.getElementById(id).hidden = isStructure;
+  for (const h of document.querySelectorAll("aside h2")) if (["Texture", "Bones"].includes(h.textContent)) h.hidden = isStructure;
+  for (const b of document.querySelectorAll("#models button")) b.classList.toggle("active", b.dataset.id === entry.id);
+  location.hash = entry.id;
+  if (isStructure) return showStructure(entry);
   const geoFile = await (await fetch(entry.geometry)).json();
   const geo = geoFile["minecraft:geometry"][0];
   const textures = new Map();
@@ -568,8 +661,6 @@ async function show(entry) {
   frame(root, entry.kind);
 
   // Particles
-  for (const e of emitters) scene.remove(e.points);
-  emitters = [];
   for (const spec of entry.particles ?? []) {
     try {
       const def = await (await fetch(spec.definition)).json();

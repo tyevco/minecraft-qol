@@ -18,9 +18,12 @@ interface Model {
   id: string;
   name: string;
   pack: string;
-  kind: "block" | "entity";
-  geometry: string;
-  textures: Record<string, string>;
+  kind: "block" | "entity" | "structure";
+  /** Geometry and textures for a block or entity model. */
+  geometry?: string;
+  textures?: Record<string, string>;
+  /** A structure preview JSON (tools/structures) for a building. */
+  structure?: string;
   /** Bones shown on load; default all. */
   defaultVisible?: string[];
   notes?: string;
@@ -40,6 +43,29 @@ interface Particle {
   /** For once-emitters that script re-fires: seconds between fires. */
   every?: number;
 }
+
+const BUILDINGS: [id: string, name: string, people: string][] = [
+  ["stonefolk_hall", "Hill Hall", "stonefolk"],
+  ["stonefolk_forge", "Forge", "stonefolk"],
+  ["stonefolk_watchpost", "Watch Post", "stonefolk"],
+  ["stonefolk_store", "Storehouse", "stonefolk"],
+  ["reedfolk_stilt_house", "Stilt House", "reedfolk"],
+  ["reedfolk_dock", "Dock", "reedfolk"],
+  ["reedfolk_rack", "Drying Rack", "reedfolk"],
+  ["reedfolk_tower", "Reed Tower", "reedfolk"],
+  ["tinker_workshop", "Workshop", "tinker"],
+  ["tinker_still", "Copper Still", "tinker"],
+  ["tinker_stall", "Market Stall", "tinker"],
+  ["tinker_burrow", "Burrow", "tinker"],
+  ["tallfolk_farmhouse", "Farmhouse", "tallfolk"],
+  ["tallfolk_barn", "Barn", "tallfolk"],
+  ["tallfolk_well", "Well", "tallfolk"],
+  ["tallfolk_gatehouse", "Gatehouse", "tallfolk"],
+  ["shared_larder", "Larder", "shared"],
+  ["shared_inn", "Inn", "shared"],
+  ["shared_bridge", "Bridge Span", "shared"],
+  ["shared_wall", "Wall Segment", "shared"],
+];
 
 const MODELS: Model[] = [
   {
@@ -312,6 +338,14 @@ const MODELS: Model[] = [
     textures: { default: "concepts/entities/textures/mule.png" },
     notes: "A donkey with panniers and a harness. Each pannier is its own bone so an empty side can be hidden by bone visibility.",
   },
+  // Concept buildings (docs/design/settlements.md), drawn as coloured cubes.
+  ...BUILDINGS.map(([id, name, people]): Model => ({
+    id: `building_${id}`,
+    name: `${name} (concept)`,
+    pack: `concept · ${people} buildings`,
+    kind: "structure",
+    structure: `concepts/structures/${id}.json`,
+  })),
 ];
 
 rmSync(OUT, { recursive: true, force: true });
@@ -322,10 +356,15 @@ const catalog = {
   models: MODELS.map((m) => {
     const dir = resolve(OUT, "assets", m.id);
     mkdirSync(dir, { recursive: true });
-    const geoName = basename(m.geometry);
-    copyFileSync(resolve(ROOT, m.geometry), resolve(dir, geoName));
+    if (m.kind === "structure") {
+      const file = basename(m.structure!);
+      copyFileSync(resolve(ROOT, m.structure!), resolve(dir, file));
+      return { ...m, structure: `assets/${m.id}/${file}` };
+    }
+    const geoName = basename(m.geometry!);
+    copyFileSync(resolve(ROOT, m.geometry!), resolve(dir, geoName));
     const textures: Record<string, string> = {};
-    for (const [name, src] of Object.entries(m.textures)) {
+    for (const [name, src] of Object.entries(m.textures ?? {})) {
       const file = basename(src);
       copyFileSync(resolve(ROOT, src), resolve(dir, file));
       textures[name] = `assets/${m.id}/${file}`;

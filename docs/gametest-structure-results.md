@@ -354,14 +354,14 @@ facing state names the **spout's** direction, not the mouth's.
 - `guardian_void_catch` — **the pack is correct; proven.** Under the same
   temporary binding it **passes**. Guardian's sweep walks `getAllPlayers()`,
   which is exactly what a simulated player is missing from.
-- `rain_collector` — **not yet measured, and deliberately not fixed.** Two
-  mechanisms produce this identical symptom and nothing in any log separates
-  them: either `weatherChange` does not fire for a scripted `setWeather`, or it
-  fires with a `dimension` string that does not match the `Dimension.id` the
-  funnel rows are keyed by. `WeatherChangeAfterEvent.dimension` is `string` and
-  is the *only* `dimension: string` in the whole 2.9.0 surface, so its format is
-  a legacy special case that this repo has never measured. The next step is a
-  `qolprobe:weather` handler in `packages/probe` logging the raw value —
-  probe first, then build, per CLAUDE.md. Changing `weather.ts` now would edit a
-  shipped pack on a coin flip.
+- `rain_collector` — **measured since, and a known failure.** At the time two
+  mechanisms produced this identical symptom: either `weatherChange` does not
+  fire for a scripted `setWeather`, or it fires with a `dimension` string that
+  does not match the `Dimension.id` the funnel rows are keyed by. The probe
+  pack's module-scope subscription (`qolprobe` W1) settled it: the event never
+  fires on a headless server at all, not for `setWeather`, not for the
+  console's `weather rain`, not with a SimulatedPlayer present. So the test is
+  in `known-failures.json`, `weather.ts` was right to leave alone, and whether
+  the collector works in a real session is on the Fluidworks in-game list
+  (#33). The corrections table in `docs/README.md` has the row.
 - `harvester_funnel` — passes alone, intermittent in sequence.

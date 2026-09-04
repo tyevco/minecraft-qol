@@ -18,7 +18,7 @@ pure layer is under test — but this repo's rule is that a design assumption is
 not trusted until it has been observed, and the block-to-entity pairing is the
 riskiest assumption on the roadmap. The probe protocol in
 [`docs/bulwark-turret-probe.md`](../../docs/bulwark-turret-probe.md) is the
-next step: run it, write the results doc, fix whatever it finds, then run the
+next step (#39): run it, write the results doc, fix whatever it finds, then run the
 GameTest suite (`/gametest runset qol`, the `turret_*` tests).
 
 What Phase 2 covers, per the design's phasing: block, paired entity,

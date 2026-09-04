@@ -189,7 +189,7 @@ treating it as a fact about Fluidworks — and prefer `test.succeedWhen` over a
 fixed `idle` when writing a test that waits on the engine.
 
 None of these is in `known-failures.json`: an unexplained failure is exactly the
-one that should stay red. They are tracked in `TASKS.md`.
+one that should stay red. They are tracked in issue #29.
 
 ## A test in flight is silent, so the idle timer cannot end the run
 

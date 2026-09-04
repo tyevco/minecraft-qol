@@ -174,15 +174,18 @@ so it is invisible on a server with no players.
 
 ## Where the work is tracked
 
-`TASKS.md` is the queue: what is next, what is later, what is blocked, what
-merged. Start there; move items as you go.
-
-The same backlog is also filed as GitHub issues, which carry the detail and the
-evidence. Two labels are worth filtering on before picking anything up:
+The backlog is the repo's GitHub issues, and nothing else: what is next, what
+is blocked, and the evidence for each. Start there; close the issue from the
+PR that finishes it (`Closes #n`), and file a new one rather than leaving a
+TODO in a doc. Two labels are worth filtering on before picking anything up:
 **`probe`** is work that needs a measurement before anything can be built on it,
 and **`in-game`** is work no simulated player can do, so it waits for a person
-at the keyboard. Keeping `TASKS.md` and the issues in step is itself an open
-item.
+at the keyboard. Anything the stable API cannot do is a row in the corrections
+table in `docs/README.md`, not an issue.
+
+`docs/backlog.md` is not a queue. It holds the rationale for deferred work,
+with enough context to pick an item up cold; the matching issue says whether
+it is still wanted.
 
 ## Documentation
 

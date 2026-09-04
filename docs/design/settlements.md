@@ -20,11 +20,15 @@ Companion to `design/npcs.md` · Draft v0.1
 
 ## 1. The stance
 
-A settlement is **a place the kids grew, not a place that spawned.** There
-is no world generation and no village-finding: the first building of any
+A settlement is **a place the kids grew.** The first building of any
 settlement is raised by a builder from a blueprint the kids paid for, on
 ground they chose. So every rule below is about what a builder can put up
 one block at a time, and how a handful of small buildings become a place.
+(An earlier draft said "no world generation"; that is revised in
+`design/villages.md`: the peoples also have **found villages** the game
+generates from these same blueprints, and the kids' settlement is peopled
+by inviting villagers from them. This doc stays the catalogue and the
+builder; that one is the villages and the trust.)
 
 - **Small footprints.** The biggest building is 13 wide. A builder places a
   block every few seconds, so a 650-block hall is about half an hour of

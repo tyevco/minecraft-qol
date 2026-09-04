@@ -169,3 +169,24 @@ known dark room, Graves retrieval by interacting with the stone (needs
 `interactWithEntity` on a simulated player), and pipe connection states.
 Guardian has two tests; a third could pin the fire switch by standing a
 simulated player in lava, once the pre/post-armour question is measured.
+
+## Fluidworks: a pump
+
+Deferred while placement and feedback were the problem. Brainstormed
+September 2026 and parked with the legibility work (hopper-style placement,
+chevrons, smoke when stuck, flow drops along pipes) chosen first. Two
+readings of "pump" were on the table, and they lead to different packs:
+
+- **Pipes become conduits.** A pump block pulls from the tank at its intake
+  through a pipe run and pushes to the tank at its output through another.
+  Funnels keep doing recipes. This changes what a pipe *is*: today a run is a
+  reach extender for one funnel and carries nothing.
+- **A funnel with redstone and throughput.** Same block family: a pump is a
+  funnel that only moves fluid, is switched by redstone (`Block.getRedstonePower`
+  is stable), and moves more than one level per cycle from a slider.
+
+Revisit after the verification pass says whether a funnel between two tanks
+is already enough. `Block.getRedstonePower()` is worth wiring to the funnel
+either way (a powered funnel stops, like a hopper); nothing in the planner
+needs to change for that.
+

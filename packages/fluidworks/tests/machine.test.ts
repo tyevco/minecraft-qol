@@ -8,8 +8,11 @@ import {
 import {
   applyWear,
   fillOne,
+  isStuck,
   plan,
+  REASON_TEXT,
   type Endpoint,
+  type IdleReason,
   type Policy,
 } from "../scripts/core/machine";
 
@@ -42,6 +45,7 @@ const roofed: Endpoint = { kind: "open", sky: false };
 const ctx = (wear = 0, raining = false) => ({ wear, raining });
 const run = (input: Endpoint, output: Endpoint, c = ctx(), policy = ALL) =>
   plan(input, output, c, policy, CAULDRON_RULES);
+const idle = (reason: IdleReason) => ({ kind: "idle", reason });
 
 describe("fillOne", () => {
   it("starts an empty tank at one level", () => {
@@ -80,7 +84,7 @@ describe("plan: nothing without a tank at the spout", () => {
       { kind: "source", fluid: "water" } as Endpoint,
       sky as Endpoint,
     ]) {
-      expect(run(input, { kind: "other" })).toEqual({ kind: "idle" });
+      expect(run(input, { kind: "other" })).toEqual(idle("no_tank"));
     }
   });
 });
@@ -128,7 +132,7 @@ describe("plan: processing items from a container", () => {
         ctx(),
         off,
       ),
-    ).toEqual({ kind: "idle" });
+    ).toEqual(idle("disabled"));
   });
 
   it("runs the shared rules unchanged: a water bucket fills the tank", () => {
@@ -146,8 +150,12 @@ describe("plan: processing items from a container", () => {
   it("is idle when nothing in the container applies", () => {
     expect(
       run(chest(item("minecraft:sand"), undefined), tank(water(3))),
-    ).toEqual({ kind: "idle" });
-    expect(run(chest(), tank(water(3)))).toEqual({ kind: "idle" });
+    ).toEqual(idle("nothing_applies"));
+    expect(run(chest(), tank(water(3)))).toEqual(idle("mouth_empty"));
+    // An empty bucket with a half-full tank: the rule refuses, so it waits.
+    expect(run(chest(item("minecraft:bucket")), tank(water(3)))).toEqual(
+      idle("nothing_applies"),
+    );
   });
 });
 
@@ -166,12 +174,12 @@ describe("plan: fluid transfer", () => {
   });
 
   it("refuses to mix or overfill from a source", () => {
-    expect(run({ kind: "source", fluid: "lava" }, tank(water(2)))).toEqual({
-      kind: "idle",
-    });
+    expect(run({ kind: "source", fluid: "lava" }, tank(water(2)))).toEqual(
+      idle("fluid_mismatch"),
+    );
     expect(
       run({ kind: "source", fluid: "water" }, tank(water(MAX_LEVEL))),
-    ).toEqual({ kind: "idle" });
+    ).toEqual(idle("tank_full"));
   });
 
   it("moves one level from tank to tank", () => {
@@ -188,21 +196,21 @@ describe("plan: fluid transfer", () => {
   });
 
   it("does not move from an empty tank, into a full one, or across fluids", () => {
-    expect(run(tank(empty), tank(water(1)))).toEqual({ kind: "idle" });
-    expect(run(tank(water(3)), tank(water(MAX_LEVEL)))).toEqual({
-      kind: "idle",
-    });
-    expect(run(tank(lava(3)), tank(water(1)))).toEqual({ kind: "idle" });
+    expect(run(tank(empty), tank(water(1)))).toEqual(idle("source_empty"));
+    expect(run(tank(water(3)), tank(water(MAX_LEVEL)))).toEqual(
+      idle("tank_full"),
+    );
+    expect(run(tank(lava(3)), tank(water(1)))).toEqual(idle("fluid_mismatch"));
   });
 
   it("is off when the panel says so", () => {
     const off = { ...ALL, transfer: false };
     expect(
       run({ kind: "source", fluid: "water" }, tank(empty), ctx(), off),
-    ).toEqual({ kind: "idle" });
-    expect(run(tank(water(3)), tank(empty), ctx(), off)).toEqual({
-      kind: "idle",
-    });
+    ).toEqual(idle("disabled"));
+    expect(run(tank(water(3)), tank(empty), ctx(), off)).toEqual(
+      idle("disabled"),
+    );
   });
 });
 
@@ -211,35 +219,35 @@ describe("plan: a container at the spout", () => {
     expect(run({ kind: "crop", mature: true }, chest())).toEqual({
       kind: "harvest",
     });
-    expect(run({ kind: "crop", mature: false }, chest())).toEqual({
-      kind: "idle",
-    });
+    expect(run({ kind: "crop", mature: false }, chest())).toEqual(
+      idle("crop_growing"),
+    );
     expect(
       run({ kind: "crop", mature: true }, chest(), ctx(), {
         ...ALL,
         harvest: false,
       }),
-    ).toEqual({ kind: "idle" });
+    ).toEqual(idle("disabled"));
   });
   it("collects around an open mouth, roofed or not", () => {
     expect(run(sky, chest())).toEqual({ kind: "collect" });
     expect(run(roofed, chest())).toEqual({ kind: "collect" });
-    expect(run(sky, chest(), ctx(), { ...ALL, collect: false })).toEqual({
-      kind: "idle",
-    });
+    expect(run(sky, chest(), ctx(), { ...ALL, collect: false })).toEqual(
+      idle("disabled"),
+    );
   });
   it("never moves items or fluid into a container", () => {
-    expect(run(chest(item("minecraft:red_concrete_powder")), chest())).toEqual({
-      kind: "idle",
-    });
-    expect(run({ kind: "source", fluid: "water" }, chest())).toEqual({
-      kind: "idle",
-    });
-    expect(run(tank(water(3)), chest())).toEqual({ kind: "idle" });
+    expect(run(chest(item("minecraft:red_concrete_powder")), chest())).toEqual(
+      idle("no_input"),
+    );
+    expect(run({ kind: "source", fluid: "water" }, chest())).toEqual(
+      idle("no_input"),
+    );
+    expect(run(tank(water(3)), chest())).toEqual(idle("no_input"));
   });
   it("does not rain into a container or collect into a tank", () => {
     expect(run(sky, chest(), ctx(0, true))).toEqual({ kind: "collect" });
-    expect(run(roofed, tank(empty), ctx(0, true))).toEqual({ kind: "idle" });
+    expect(run(roofed, tank(empty), ctx(0, true))).toEqual(idle("roofed"));
   });
 });
 
@@ -250,21 +258,57 @@ describe("plan: rain collector", () => {
       dest: water(1),
       sound: "bucket.empty_water",
     });
-    expect(run(sky, tank(empty), ctx(0, false))).toEqual({
-      kind: "idle",
-    });
+    expect(run(sky, tank(empty), ctx(0, false))).toEqual(
+      idle("not_raining"),
+    );
   });
   it("never rains into lava, and stops at full", () => {
-    expect(run(sky, tank(lava(1)), ctx(0, true))).toEqual({
-      kind: "idle",
-    });
-    expect(run(sky, tank(water(MAX_LEVEL)), ctx(0, true))).toEqual({
-      kind: "idle",
-    });
+    expect(run(sky, tank(lava(1)), ctx(0, true))).toEqual(
+      idle("fluid_mismatch"),
+    );
+    expect(run(sky, tank(water(MAX_LEVEL)), ctx(0, true))).toEqual(
+      idle("tank_full"),
+    );
   });
   it("is off when the panel says so", () => {
     expect(
       run(sky, tank(empty), ctx(0, true), { ...ALL, rain: false }),
-    ).toEqual({ kind: "idle" });
+    ).toEqual(idle("disabled"));
+  });
+});
+
+describe("idle reasons", () => {
+  it("a wrong build is stuck; a right build that is waiting is not", () => {
+    for (const r of ["no_tank", "no_input", "fluid_mismatch", "disabled", "roofed"] as const)
+      expect(isStuck(r), r).toBe(true);
+    for (const r of [
+      "mouth_empty",
+      "nothing_applies",
+      "tank_full",
+      "source_empty",
+      "not_raining",
+      "crop_growing",
+    ] as const)
+      expect(isStuck(r), r).toBe(false);
+  });
+  it("has a sentence for every reason", () => {
+    for (const [r, text] of Object.entries(REASON_TEXT))
+      expect(text.length, r).toBeGreaterThan(10);
+  });
+  it("blames the panel only when a switched-off rule would have worked", () => {
+    const off = { ...ALL, rules: { ...ALL.rules, cauldron_concrete: false } };
+    expect(run(chest(item("minecraft:sand")), tank(water(3)), ctx(), off)).toEqual(
+      idle("nothing_applies"),
+    );
+  });
+  it("still processes what an enabled rule takes when a disabled one would too", () => {
+    const off = { ...ALL, rules: { ...ALL.rules, cauldron_concrete: false } };
+    const p = run(
+      chest(item("minecraft:red_concrete_powder"), item("minecraft:water_bucket")),
+      tank(empty),
+      ctx(),
+      off,
+    );
+    expect(p.kind).toBe("process");
   });
 });

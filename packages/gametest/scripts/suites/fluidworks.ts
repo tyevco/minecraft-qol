@@ -1,4 +1,9 @@
-import { BlockPermutation, WeatherType } from "@minecraft/server";
+import {
+  BlockPermutation,
+  Direction,
+  GameMode,
+  WeatherType,
+} from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
 import {
   cauldron,
@@ -207,3 +212,108 @@ registerAsync("qol", "collector_funnel", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(300);
+
+/** The funnel's spout direction at `pos`, or "none" when the block is not a funnel. */
+function spoutOf(test: Test, pos: { x: number; y: number; z: number }): string {
+  const b = test.getBlock(pos);
+  if (!b.isValid || b.typeId !== "fluidworks:funnel") return `none (${b.typeId})`;
+  return String(b.permutation.getState("minecraft:facing_direction"));
+}
+
+/**
+ * Hopper-style placement: a funnel placed against a tank points its spout
+ * into the tank. The player stands west of an empty cell, the cauldron is
+ * east of that cell, and the funnel item is used on the cauldron's west face.
+ *
+ * This is the in-game check of the one assumption placement rests on: that
+ * the face handed to `beforeOnPlayerPlace` is the clicked block's face, so
+ * the clicked block lies opposite it from the new funnel. If the spout comes
+ * out "west", the sign is the other way and `placementFacing` gets it
+ * inverted, not the model.
+ */
+registerAsync("qol", "funnel_places_into_clicked_tank", async (test) => {
+  floor(test);
+  const tank = { x: 4, y: 1, z: 3 };
+  cauldron(test, tank, 0);
+  const player = test.spawnSimulatedPlayer(
+    { x: 2, y: 1, z: 3 },
+    "fw_placer",
+    GameMode.Survival,
+  );
+  await test.idle(5);
+  player.useItemOnBlock(item("fluidworks:funnel"), tank, Direction.West);
+  await test.idle(5);
+
+  const at = { x: 3, y: 1, z: 3 };
+  test.assert(
+    spoutOf(test, at) === "east",
+    `funnel placed on the tank's west face has spout ${spoutOf(test, at)}, expected east`,
+  );
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(200);
+
+/**
+ * The fallback: placed on the floor, a funnel keeps the horizontal direction
+ * the placement trait chose rather than pointing its spout at the ground.
+ */
+registerAsync("qol", "funnel_placed_on_floor_stays_level", async (test) => {
+  floor(test);
+  const player = test.spawnSimulatedPlayer(
+    { x: 2, y: 1, z: 3 },
+    "fw_placer2",
+    GameMode.Survival,
+  );
+  await test.idle(5);
+  player.useItemOnBlock(item("fluidworks:funnel"), { x: 4, y: 0, z: 3 }, Direction.Up);
+  await test.idle(5);
+
+  const at = { x: 4, y: 1, z: 3 };
+  const spout = spoutOf(test, at);
+  test.assert(
+    spout !== "down" && spout !== "up" && !spout.startsWith("none"),
+    `funnel placed on the floor has spout ${spout}, expected a horizontal direction`,
+  );
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(200);
+
+/**
+ * Two pipes placed side by side by a player join up: each gets the arm state
+ * facing the other and no others. Pins the state half of the pipe-joining
+ * bug; the model half (which bone each state shows) is only visible in game.
+ */
+registerAsync("qol", "pipes_join_when_placed", async (test) => {
+  floor(test);
+  const player = test.spawnSimulatedPlayer(
+    { x: 2, y: 1, z: 5 },
+    "fw_piper",
+    GameMode.Survival,
+  );
+  await test.idle(5);
+  player.useItemOnBlock(item("fluidworks:pipe"), { x: 3, y: 0, z: 3 }, Direction.Up);
+  await test.idle(3);
+  player.useItemOnBlock(item("fluidworks:pipe"), { x: 4, y: 0, z: 3 }, Direction.Up);
+  await test.idle(5);
+
+  const arms = (pos: { x: number; y: number; z: number }) => {
+    const b = test.getBlock(pos);
+    if (!b.isValid || b.typeId !== "fluidworks:pipe") return `none (${b.typeId})`;
+    return ["north", "south", "east", "west", "up", "down"]
+      .filter((f) => b.permutation.getState(`fluidworks:${f}` as never) === true)
+      .join(",");
+  };
+  test.assert(
+    arms({ x: 3, y: 1, z: 3 }) === "east",
+    `west pipe shows arms [${arms({ x: 3, y: 1, z: 3 })}], expected [east]`,
+  );
+  test.assert(
+    arms({ x: 4, y: 1, z: 3 }) === "west",
+    `east pipe shows arms [${arms({ x: 4, y: 1, z: 3 })}], expected [west]`,
+  );
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(200);

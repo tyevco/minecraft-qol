@@ -14,6 +14,7 @@
       }
     },
     "components": {
+      "fluidworks:funnel": {},
       "minecraft:display_name": "Funnel",
       "minecraft:geometry": "geometry.fluidworks_funnel",
       "minecraft:material_instances": {

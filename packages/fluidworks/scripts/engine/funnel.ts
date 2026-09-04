@@ -2,6 +2,7 @@ import {
   BlockComponentTypes,
   EntityComponentTypes,
   ItemStack,
+  MolangVariableMap,
   system,
   world,
   type Block,
@@ -17,8 +18,15 @@ import {
   writeCauldron,
 } from "@qol/shared/engine/cauldron";
 import { safeGetBlock } from "@qol/shared/engine/safeBlock";
-import { inputOf, outputOf, parseFacing } from "../core/facing";
-import { plan, type Endpoint, type Plan } from "../core/machine";
+import { inputOf, outputOf, parseFacing, type Vec3 } from "../core/facing";
+import {
+  isStuck,
+  plan,
+  REASON_TEXT,
+  type Endpoint,
+  type IdleReason,
+  type Plan,
+} from "../core/machine";
 import { FUNNEL } from "../core/pipes";
 import type { Settings } from "../core/policy";
 import { describeBlock, isOpenSky } from "./endpoints";
@@ -31,8 +39,20 @@ type Log = (...parts: unknown[]) => void;
 
 /** An idle funnel is looked at again after this many cycles. */
 const IDLE_CYCLES = 5;
+/** A stuck funnel is looked at again next cycle, so its smoke keeps puffing. */
+const STUCK_CYCLES = 1;
 /** Funnels handled between yields. */
 const BATCH = 4;
+
+/** Why each funnel last did nothing, for the debug readout. Runtime only. */
+const reasons = new Map<string, IdleReason>();
+const keyOf = (r: FunnelRow): string => `${r.dimId}|${r.x},${r.y},${r.z}`;
+
+/** The last idle reason for a funnel, as a sentence, or undefined if it worked. */
+export function idleReason(row: FunnelRow): string | undefined {
+  const r = reasons.get(keyOf(row));
+  return r === undefined ? undefined : REASON_TEXT[r];
+}
 
 /**
  * One pass over every funnel, as a job so a large factory spreads over ticks.
@@ -106,31 +126,93 @@ function step(row: FunnelRow, settings: Settings, now: number, log: Log): void {
     CAULDRON_RULES,
   );
   if (p.kind === "idle") {
-    row.sleepUntil = now + settings.cycleTicks * IDLE_CYCLES;
+    reasons.set(keyOf(row), p.reason);
+    const stuck = isStuck(p.reason);
+    if (stuck) smoke(dim, row, facing);
+    row.sleepUntil =
+      now + settings.cycleTicks * (stuck ? STUCK_CYCLES : IDLE_CYCLES);
     return;
   }
+  reasons.delete(keyOf(row));
   execute(p, row, dim, inBlock!, outBlock!, input, mouth, log);
   drip(dim, row, facing);
+  flow(dim, row, facing, inRes.path, outRes.path, outRes.pos);
 }
 
 const DRIP_PARTICLE = "fluidworks:drip";
+const FLOW_PARTICLE = "fluidworks:flow";
+/** Vanilla: the grey puff a campfire or a furnace makes. */
+const SMOKE_PARTICLE = "minecraft:basic_smoke_particle";
 
-/** Working is visible: a few drops at the spout on every completed operation. */
-function drip(
-  dim: Dimension,
-  row: FunnelRow,
-  facing: NonNullable<ReturnType<typeof parseFacing>>,
-): void {
+type Facing = NonNullable<ReturnType<typeof parseFacing>>;
+
+/** The point just outside the spout, where working and stuck are both shown. */
+function spoutPoint(row: FunnelRow, facing: Facing): Vec3 {
   const spout = outputOf(row, facing);
-  const at = {
+  return {
     x: (row.x + spout.x) / 2 + 0.5,
     y: (row.y + spout.y) / 2 + 0.5,
     z: (row.z + spout.z) / 2 + 0.5,
   };
+}
+
+/** Working is visible: a few drops at the spout on every completed operation. */
+function drip(dim: Dimension, row: FunnelRow, facing: Facing): void {
   try {
-    dim.spawnParticle(DRIP_PARTICLE, at);
+    dim.spawnParticle(DRIP_PARTICLE, spoutPoint(row, facing));
   } catch {
     /* particle spawn is cosmetic; never let it fail the cycle */
+  }
+}
+
+/**
+ * A stuck funnel says so: a puff of smoke at the spout every cycle until the
+ * build is fixed. Only for a wrong build (nothing at the spout, lava into
+ * water, the machine switched off); a funnel that is merely waiting for its
+ * hopper to fill stays quiet.
+ */
+function smoke(dim: Dimension, row: FunnelRow, facing: Facing): void {
+  const at = spoutPoint(row, facing);
+  try {
+    dim.spawnParticle(SMOKE_PARTICLE, { x: at.x, y: at.y + 0.35, z: at.z });
+  } catch {
+    /* cosmetic */
+  }
+}
+
+/**
+ * The flow made visible. After every completed operation a drop sets off from
+ * each stop on the way - the pipes from the mouth's end of the run, the
+ * funnel itself, the pipes to the spout's end - travelling the way the fluid
+ * went, so a run of pipes shows which way it carries and where it leads.
+ * `inPath` and `outPath` are the pipes nearest the funnel first, as the route
+ * found them; `outEnd` is the block the spout finally reached.
+ */
+function flow(
+  dim: Dimension,
+  row: FunnelRow,
+  facing: Facing,
+  inPath: Vec3[],
+  outPath: Vec3[],
+  outEnd: Vec3,
+): void {
+  const stops: Vec3[] = [...[...inPath].reverse(), row, ...outPath];
+  for (let i = 0; i < stops.length; i++) {
+    const here = stops[i]!;
+    const next = stops[i + 1] ?? (outPath.length ? outEnd : outputOf(row, facing));
+    const molang = new MolangVariableMap();
+    molang.setFloat("variable.flow_x", next.x - here.x);
+    molang.setFloat("variable.flow_y", next.y - here.y);
+    molang.setFloat("variable.flow_z", next.z - here.z);
+    try {
+      dim.spawnParticle(
+        FLOW_PARTICLE,
+        { x: here.x + 0.5, y: here.y + 0.5, z: here.z + 0.5 },
+        molang,
+      );
+    } catch {
+      /* cosmetic */
+    }
   }
 }
 

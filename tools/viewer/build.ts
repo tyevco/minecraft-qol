@@ -8,8 +8,9 @@
  * publishes the same folder from .github/workflows/pages.yml on every push
  * to main, so the page always shows what the repo generates.
  */
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { buildVanilla } from "./vanilla";
 
 const ROOT = resolve(__dirname, "../..");
 const OUT = resolve(ROOT, "dist/viewer");
@@ -396,3 +397,12 @@ copyFileSync(resolve(__dirname, "index.html"), resolve(OUT, "index.html"));
 copyFileSync(resolve(__dirname, "viewer.js"), resolve(OUT, "viewer.js"));
 writeFileSync(resolve(OUT, ".nojekyll"), "");
 console.log(`dist/viewer: ${MODELS.length} models`);
+
+// Every block name the buildings use, so the vanilla step fetches only those.
+const blockNames = new Set<string>();
+for (const m of MODELS)
+  if (m.kind === "structure") {
+    const preview = JSON.parse(readFileSync(resolve(ROOT, m.structure!), "utf8")) as { palette: { name: string }[] };
+    for (const p of preview.palette) blockNames.add(p.name);
+  }
+void buildVanilla(blockNames, ROOT, OUT);

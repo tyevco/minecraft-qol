@@ -13,8 +13,9 @@ references these files, and `npm run mcaddon` never sees them.
   moved to `packages/hatchling` when they were built.
 - `structures/` — the twenty buildings of `docs/design/settlements.md`, each
   as a `.mcstructure` (what a builder would place) and a `.json` preview
-  (size, palette colours, blocks, materials) the viewer draws as coloured
-  cubes with a cutaway slider.
+  (size, palette, blocks, materials) the viewer draws as blocks in the
+  game's textures, with a cutaway slider. The textures are fetched when the
+  viewer builds and are not in the repository.
 
 Everything here is generated. Geometry comes from `tools/models/generate.ts`,
 atlases from `tools/textures/generate.ts` with painters in

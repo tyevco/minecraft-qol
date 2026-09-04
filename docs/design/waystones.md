@@ -415,8 +415,8 @@ qol:pid      minted stable id, shared with Graves (§8.3)
 ```
 
 A hundred ids in a visited set is around a kilobyte; the world index is well
-inside the per-property cap at realm scale. Chunk keying stays where the
-backlog has it: needed when a pack has thousands of rows, not dozens.
+inside the per-property cap at realm scale. Chunk keying stays where issue #56
+has it: needed when a pack has thousands of rows, not dozens.
 
 ### 8.2 Index invalidation
 

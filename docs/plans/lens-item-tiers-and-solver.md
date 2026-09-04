@@ -20,7 +20,7 @@ feedback.
 That last technical decision carries a large bonus: the flood fill that makes
 torch suggestions respect walls is the *same* computation that yields exact block
 light. It retires the grey `uncertain` markers, currently the Lens's biggest
-weakness (`docs/lens-light-results.md`, top item in `docs/backlog.md`).
+weakness (`docs/lens-light-results.md`, issue #49).
 
 ---
 

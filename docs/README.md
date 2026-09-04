@@ -23,7 +23,6 @@ Three kinds of document live here, and they carry very different authority.
 - [`gametest-structure-results.md`](gametest-structure-results.md) — test-relative
   `(0,0,0)` is the test's own structure block; writing it kills the test. Also
   how to run the suite headlessly on a dedicated server.
-- [`backlog.md`](backlog.md) — deferred work with enough context to pick up cold.
 
 **Awaiting measurement:**
 

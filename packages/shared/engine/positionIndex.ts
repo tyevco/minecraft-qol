@@ -11,8 +11,8 @@ import { world } from "@minecraft/server";
  *
  * Rows are plain objects; the caller supplies pack/unpack so the on-disk form
  * stays compact (one property holds every row). Chunk keying and a tick budget
- * - the two things docs/backlog.md asks for - are still to come; today a pack
- * with a few hundred blocks is well inside the per-property cap.
+ * - the two things issue #56 asks for - are still to come; today a pack with a
+ * few hundred blocks is well inside the per-property cap.
  */
 export interface Position {
   dimId: string;

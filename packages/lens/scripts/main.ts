@@ -49,7 +49,7 @@ const TAG = "[Lens]";
 // console.warn always reaches the content log; console.log only at Verbose/Info.
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 
-/** Defaults. Pack settings will back these in a follow-up; see docs/backlog.md. */
+/** Defaults. Pack settings will back these in a follow-up; see issue #51. */
 const BASE: ScanSettings = {
   radius: 12,
   height: 4,

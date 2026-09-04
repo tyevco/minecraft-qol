@@ -8,6 +8,7 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { BUILDINGS } from "./buildings";
 import { uniformStructure } from "./mcstructure";
 
 const ROOT = resolve(__dirname, "../..");
@@ -24,3 +25,15 @@ for (const [name, size] of Object.entries(STRUCTURES)) {
     `packages/gametest/behavior_pack/structures/qol/${name}.mcstructure  ${size.join("x")} air`,
   );
 }
+
+// Concept buildings (docs/design/settlements.md): the .mcstructure a builder
+// would place, and a preview the viewer draws. Nothing ships these.
+const CONCEPTS = resolve(ROOT, "concepts/structures");
+mkdirSync(CONCEPTS, { recursive: true });
+for (const bp of BUILDINGS) {
+  writeFileSync(resolve(CONCEPTS, `${bp.key}.mcstructure`), bp.toMcstructure());
+  writeFileSync(resolve(CONCEPTS, `${bp.key}.json`), JSON.stringify(bp.toPreview()) + "\n");
+  const blocks = bp.blocks().filter((b) => b.name !== "minecraft:water").length;
+  console.log(`concepts/structures/${bp.key}  ${bp.size.join("x")}  ${blocks} blocks`);
+}
+

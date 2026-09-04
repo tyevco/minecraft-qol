@@ -8,8 +8,9 @@
  * publishes the same folder from .github/workflows/pages.yml on every push
  * to main, so the page always shows what the repo generates.
  */
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { buildVanilla, type PaletteEntry } from "./vanilla";
 
 const ROOT = resolve(__dirname, "../..");
 const OUT = resolve(ROOT, "dist/viewer");
@@ -18,9 +19,12 @@ interface Model {
   id: string;
   name: string;
   pack: string;
-  kind: "block" | "entity";
-  geometry: string;
-  textures: Record<string, string>;
+  kind: "block" | "entity" | "structure";
+  /** Geometry and textures for a block or entity model. */
+  geometry?: string;
+  textures?: Record<string, string>;
+  /** A structure preview JSON (tools/structures) for a building. */
+  structure?: string;
   /** Bones shown on load; default all. */
   defaultVisible?: string[];
   notes?: string;
@@ -40,6 +44,29 @@ interface Particle {
   /** For once-emitters that script re-fires: seconds between fires. */
   every?: number;
 }
+
+const BUILDINGS: [id: string, name: string, people: string][] = [
+  ["stonefolk_hall", "Hill Hall", "stonefolk"],
+  ["stonefolk_forge", "Forge", "stonefolk"],
+  ["stonefolk_watchpost", "Watch Post", "stonefolk"],
+  ["stonefolk_store", "Storehouse", "stonefolk"],
+  ["reedfolk_stilt_house", "Stilt House", "reedfolk"],
+  ["reedfolk_dock", "Dock", "reedfolk"],
+  ["reedfolk_rack", "Drying Rack", "reedfolk"],
+  ["reedfolk_tower", "Reed Tower", "reedfolk"],
+  ["tinker_workshop", "Workshop", "tinker"],
+  ["tinker_still", "Copper Still", "tinker"],
+  ["tinker_stall", "Market Stall", "tinker"],
+  ["tinker_burrow", "Burrow", "tinker"],
+  ["tallfolk_farmhouse", "Farmhouse", "tallfolk"],
+  ["tallfolk_barn", "Barn", "tallfolk"],
+  ["tallfolk_well", "Well", "tallfolk"],
+  ["tallfolk_gatehouse", "Gatehouse", "tallfolk"],
+  ["shared_larder", "Larder", "shared"],
+  ["shared_inn", "Inn", "shared"],
+  ["shared_bridge", "Bridge Span", "shared"],
+  ["shared_wall", "Wall Segment", "shared"],
+];
 
 const MODELS: Model[] = [
   {
@@ -211,6 +238,82 @@ const MODELS: Model[] = [
     notes: "Placed from its item, warmed by hand. crack_1 and crack_2 are shown by the render controller as hatchling:cracks advances; toggle them here. It wobbles once cracked and plays hatch on hatchling:hatching.",
   },
   {
+    id: "concept_stonefolk",
+    name: "Stonefolk (concept)",
+    pack: "concept · peoples",
+    kind: "entity",
+    geometry: "concepts/entities/models/stonefolk.geo.json",
+    textures: {
+      guard: "concepts/entities/textures/stonefolk_guard.png",
+      worker: "concepts/entities/textures/stonefolk_worker.png",
+      trader: "concepts/entities/textures/stonefolk_trader.png",
+      builder: "concepts/entities/textures/stonefolk_builder.png",
+    },
+    animations: {
+      file: "concepts/entities/animations/stonefolk.animation.json",
+      controller: "concepts/entities/animation_controllers/stonefolk.animation_controllers.json",
+    },
+    defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"],
+    notes: "Short and broad, bearded; hillside halls, ore and stone. Jobs are texture variants; the helmet, hat, pack and tool bones go with a job (guard: helmet; worker: hat; trader: pack; builder: tool and pack). Toggle them here.",
+  },
+  {
+    id: "concept_reedfolk",
+    name: "Reedfolk (concept)",
+    pack: "concept · peoples",
+    kind: "entity",
+    geometry: "concepts/entities/models/reedfolk.geo.json",
+    textures: {
+      guard: "concepts/entities/textures/reedfolk_guard.png",
+      worker: "concepts/entities/textures/reedfolk_worker.png",
+      trader: "concepts/entities/textures/reedfolk_trader.png",
+      builder: "concepts/entities/textures/reedfolk_builder.png",
+    },
+    animations: {
+      file: "concepts/entities/animations/reedfolk.animation.json",
+      controller: "concepts/entities/animation_controllers/reedfolk.animation_controllers.json",
+    },
+    defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"],
+    notes: "Tall and thin, marsh and river; fishers and glass-makers. Jobs are texture variants; the helmet, hat, pack and tool bones go with a job (guard: helmet; worker: hat; trader: pack; builder: tool and pack). Toggle them here.",
+  },
+  {
+    id: "concept_tinker",
+    name: "Tinker (concept)",
+    pack: "concept · peoples",
+    kind: "entity",
+    geometry: "concepts/entities/models/tinker.geo.json",
+    textures: {
+      guard: "concepts/entities/textures/tinker_guard.png",
+      worker: "concepts/entities/textures/tinker_worker.png",
+      trader: "concepts/entities/textures/tinker_trader.png",
+      builder: "concepts/entities/textures/tinker_builder.png",
+    },
+    animations: {
+      file: "concepts/entities/animations/tinker.animation.json",
+      controller: "concepts/entities/animation_controllers/tinker.animation_controllers.json",
+    },
+    defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"],
+    notes: "Small and quick, goggles up; copper, redstone, Fluidworks. Jobs are texture variants; the helmet, hat, pack and tool bones go with a job (guard: helmet; worker: hat; trader: pack; builder: tool and pack). Toggle them here.",
+  },
+  {
+    id: "concept_tallfolk",
+    name: "Tallfolk (concept)",
+    pack: "concept · peoples",
+    kind: "entity",
+    geometry: "concepts/entities/models/tallfolk.geo.json",
+    textures: {
+      guard: "concepts/entities/textures/tallfolk_guard.png",
+      worker: "concepts/entities/textures/tallfolk_worker.png",
+      trader: "concepts/entities/textures/tallfolk_trader.png",
+      builder: "concepts/entities/textures/tallfolk_builder.png",
+    },
+    animations: {
+      file: "concepts/entities/animations/tallfolk.animation.json",
+      controller: "concepts/entities/animation_controllers/tallfolk.animation_controllers.json",
+    },
+    defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"],
+    notes: "A head taller than a player; farmers and shepherds. Jobs are texture variants; the helmet, hat, pack and tool bones go with a job (guard: helmet; worker: hat; trader: pack; builder: tool and pack). Toggle them here.",
+  },
+  {
     id: "concept_messenger",
     name: "Messenger (concept)",
     pack: "concept · companions",
@@ -236,6 +339,14 @@ const MODELS: Model[] = [
     textures: { default: "concepts/entities/textures/mule.png" },
     notes: "A donkey with panniers and a harness. Each pannier is its own bone so an empty side can be hidden by bone visibility.",
   },
+  // Concept buildings (docs/design/settlements.md), drawn as coloured cubes.
+  ...BUILDINGS.map(([id, name, people]): Model => ({
+    id: `building_${id}`,
+    name: `${name} (concept)`,
+    pack: `concept · ${people} buildings`,
+    kind: "structure",
+    structure: `concepts/structures/${id}.json`,
+  })),
 ];
 
 rmSync(OUT, { recursive: true, force: true });
@@ -246,10 +357,15 @@ const catalog = {
   models: MODELS.map((m) => {
     const dir = resolve(OUT, "assets", m.id);
     mkdirSync(dir, { recursive: true });
-    const geoName = basename(m.geometry);
-    copyFileSync(resolve(ROOT, m.geometry), resolve(dir, geoName));
+    if (m.kind === "structure") {
+      const file = basename(m.structure!);
+      copyFileSync(resolve(ROOT, m.structure!), resolve(dir, file));
+      return { ...m, structure: `assets/${m.id}/${file}` };
+    }
+    const geoName = basename(m.geometry!);
+    copyFileSync(resolve(ROOT, m.geometry!), resolve(dir, geoName));
     const textures: Record<string, string> = {};
-    for (const [name, src] of Object.entries(m.textures)) {
+    for (const [name, src] of Object.entries(m.textures ?? {})) {
       const file = basename(src);
       copyFileSync(resolve(ROOT, src), resolve(dir, file));
       textures[name] = `assets/${m.id}/${file}`;
@@ -281,3 +397,13 @@ copyFileSync(resolve(__dirname, "index.html"), resolve(OUT, "index.html"));
 copyFileSync(resolve(__dirname, "viewer.js"), resolve(OUT, "viewer.js"));
 writeFileSync(resolve(OUT, ".nojekyll"), "");
 console.log(`dist/viewer: ${MODELS.length} models`);
+
+// Every palette entry the buildings use, so the vanilla step fetches only
+// those textures and checks only those states.
+const palette: PaletteEntry[] = [];
+for (const m of MODELS)
+  if (m.kind === "structure") {
+    const preview = JSON.parse(readFileSync(resolve(ROOT, m.structure!), "utf8")) as { palette: PaletteEntry[] };
+    palette.push(...preview.palette);
+  }
+void buildVanilla(palette, ROOT, OUT);

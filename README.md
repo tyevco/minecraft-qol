@@ -202,7 +202,12 @@ tiers, hatchling variants), bone toggles (pipe arms, mule panniers), and
 animations, played by a small Molang-subset interpreter (arithmetic, `math.*`,
 `query.*` reads, keyframes, and animation-controller state machines driven by
 "moving" and "in the air" switches). Concepts are listed under a
-`concept · <pack>` label. Serve the folder with any static server
+`concept · <pack>` label. Structure blueprints (`concepts/structures/`) are
+drawn as blocks with a cutaway slider, in the game's own textures: the build
+fetches the ones the blueprints use from Mojang's public bedrock-samples
+into `.cache/` and `dist/viewer/vanilla/` (never committed), mapped through
+the game's `blocks.json`, so an unknown block identifier is reported there.
+Offline, it warns and draws coloured cubes. Serve the folder with any static server
 (`npx http-server dist/viewer`). GitHub Pages publishes the same page from
 `main` via `.github/workflows/pages.yml`, so the live page always shows what
 the repo generates.

@@ -68,6 +68,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | A GameTest starts from a clean area (implicit in the all-air arena) | **Only for blocks.** Sequential tests stack one block apart and a structure reload restores blocks but not entities, item drops, or packs' position-keyed records. Both Bulwark "failures" were this. The harness now does `clearall` + a settle gap + `kill @e[type=item]`; a failing test is not evidence about a pack until it has also been run alone. |
 | GameTest needs the interactive client (assumed while debugging by restart) | **No.** A dedicated server runs the same packs and puts the content log on stdout; `tools/bds/run.mjs` drives it. Experiments must arrive with the world, since `server.properties` cannot set them. |
 | `EntityTameableComponent.tame` / `tameToPlayer` to bond a pet from script (entities concept sheet §2) | **Not in 2.9.0.** The tameable component is read-only (`isTamed`, `tamedToPlayerId`, `getTameItems`); `tame()` and `tameToPlayer()` exist only on `EntityTameMountComponent`, for rideables. A pet is bonded the vanilla way: `minecraft:tameable` with `tame_items` and `probability` in the entity JSON, and script reads the owner back. |
+| Block identifiers `minecraft:bricks`, `grass_block`, `cobblestone_stairs`, `oak_door`, `oak_fence_gate` (first drafts of the settlement blueprints) | **Java names.** Bedrock's are `brick_block`, `grass`, `stone_stairs`, `wooden_door` and `fence_gate`; a structure palette naming the Java ones would not load. Every blueprint block is checked against the vanilla `blocks.json`, and every state against Mojang's block metadata, when the viewer builds (`tools/viewer/vanilla.ts`); that is how these were caught. Doors take `minecraft:cardinal_direction`, not `direction`. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -134,6 +135,18 @@ prototype” list. In suggested order:
 - [`design/harvest.md`](design/harvest.md) — interact a mature crop to harvest
   and replant.
 - [`design/tidy.md`](design/tidy.md) — chest sort, deposit-all, item magnet.
+- [`design/npcs.md`](design/npcs.md) — a concept sheet with models: four
+  peoples (stonefolk, reedfolk, tinker, tallfolk) as one biped rig with
+  different proportions, four job outfits each as texture variants with
+  accessory bones, and the blueprint scheme that makes builders viable on the
+  stable structure API. Sixteen atlases and four rigs under
+  `concepts/entities/`; nothing run in game.
+- [`design/settlements.md`](design/settlements.md) — where the peoples
+  live: four settlement shapes, a catalogue of twenty blueprints (sizes,
+  materials, roles), palette swaps, and how a builder raises one from a
+  blueprint table on the stable structure API. Every blueprint is generated
+  under `concepts/structures/` as a `.mcstructure` plus a preview the viewer
+  draws in the game's block textures; nothing placed in a world.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must

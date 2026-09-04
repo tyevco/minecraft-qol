@@ -5,16 +5,25 @@ can be judged as a model before any pack exists. Nothing here ships: no pack
 references these files, and `npm run mcaddon` never sees them.
 
 - `entities/` — the entity concepts in `docs/design/entities.md`: decoy
-  dummy, patrol golem, runner, messenger, pack mule. Each has `models/`,
+  dummy, patrol golem, runner, messenger, pack mule; and the four peoples in
+  `docs/design/npcs.md` (stonefolk, reedfolk, tinker, tallfolk), each with
+  four job outfits as texture variants. Each has `models/`,
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built.
+- `structures/` — the twenty buildings of `docs/design/settlements.md`, each
+  as a `.mcstructure` (what a builder would place) and a `.json` preview
+  (size, palette, blocks, materials) the viewer draws as blocks in the
+  game's textures, with a cutaway slider. The textures are fetched when the
+  viewer builds and are not in the repository.
 
 Everything here is generated. Geometry comes from `tools/models/generate.ts`,
 atlases from `tools/textures/generate.ts` with painters in
 `tools/textures/tiles.ts`, the atlas layouts are in `tools/atlases.ts`, and
 animations and controllers come from `tools/animations/generate.ts`, which
-reads the generated geometry back so every animated bone is one that exists.
+reads the generated geometry back so every animated bone is one that exists,
+and structures come from `tools/structures/buildings.ts` through the
+`Blueprint` builder in `tools/structures/blueprint.ts`.
 `npm run assets` rewrites all of it; a changed file in a diff must correspond
 to a change under `tools/`, as for the shipped packs.
 

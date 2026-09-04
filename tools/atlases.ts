@@ -163,3 +163,23 @@ export const EGG = layout(64, {
   straw: [3, 0],
   dark: [0, 1],
 });
+
+/** One layout for every people: a biped's faces plus its job accessories. */
+export const BIPED = layout(64, {
+  skin: [0, 0],
+  face: [1, 0],
+  hair: [2, 0],
+  hairTop: [3, 0],
+  shirt: [0, 1],
+  shirtBack: [1, 1],
+  shirtSide: [2, 1],
+  sleeve: [3, 1],
+  hand: [0, 2],
+  trousers: [1, 2],
+  helmet: [2, 2],
+  hat: [3, 2],
+  pack: [0, 3],
+  tool: [1, 3],
+  toolWood: [2, 3],
+  dark: [3, 3],
+});

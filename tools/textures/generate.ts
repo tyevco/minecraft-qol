@@ -305,3 +305,64 @@ packIcon("packages/bulwark", T.iconBulwark());
 packIcon("packages/hatchling", T.iconHatchling());
 packIcon("packages/gametest", T.iconGametest(), false);
 write("packages/probe/pack_icon.png", T.iconProbe().scale(ICON_SCALE));
+
+// Peoples: one atlas per people and job (docs/design/npcs.md). The window
+// sizes passed to the face painters are the model's: they must match the
+// biped specs in tools/models/generate.ts, and the models' comments say so.
+interface People {
+  key: string;
+  skin: number;
+  hair: number;
+  eye: number;
+  beard: boolean;
+  head: [number, number];
+  body: [number, number];
+  arm: [number, number];
+  leg: [number, number];
+}
+const PEOPLES: People[] = [
+  { key: "stonefolk", skin: 0xc98f6f, hair: 0xb5442b, eye: 0x3a2a1a, beard: true, head: [8, 7], body: [10, 10], arm: [4, 10], leg: [4, 8] },
+  { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14] },
+  { key: "tinker", skin: 0xd9a877, hair: 0x6a4a2a, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7] },
+  { key: "tallfolk", skin: 0xa0714f, hair: 0x3a2a1a, eye: 0x2a2a2e, beard: false, head: [8, 8], body: [8, 13], arm: [4, 13], leg: [4, 13] },
+];
+interface Job {
+  key: string;
+  cloth: T.Ramp;
+  trim: number;
+  trousers: number;
+  boot: number;
+  front: T.Look["front"];
+}
+const JOBS: Job[] = [
+  { key: "guard", cloth: { light: 0xd0d4dc, mid: 0x8f96a3, dark: 0x5c6270, deep: 0x3a3e48 }, trim: 0xb5382b, trousers: 0x3a3e48, boot: 0x2a2a2e, front: "plate" },
+  { key: "worker", cloth: { light: 0xa7b06a, mid: 0x7a8348, dark: 0x555c30, deep: 0x363b1e }, trim: 0xd9c27a, trousers: 0x6b5a3e, boot: 0x4a3a28, front: "apron" },
+  { key: "trader", cloth: { light: 0x9d7ed0, mid: 0x6a4fa0, dark: 0x47336f, deep: 0x2d2047 }, trim: 0xd9a441, trousers: 0x2d2047, boot: 0x3a2a1a, front: "coat" },
+  { key: "builder", cloth: { light: 0x7fb2e0, mid: 0x4a7fb5, dark: 0x30557c, deep: 0x1f3650 }, trim: 0xe8c14a, trousers: 0x4a3a28, boot: 0x2a2a2e, front: "apron" },
+];
+for (const people of PEOPLES) {
+  for (const job of JOBS) {
+    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
+    write(
+      `${CONCEPTS}/${people.key}_${job.key}.png`,
+      atlas(A.BIPED, {
+        skin: T.skinTile(people.skin),
+        face: T.faceTile(look, people.head[0], people.head[1], people.beard),
+        hair: T.hairTile(people.hair),
+        hairTop: T.hairTile(people.hair),
+        shirt: T.shirtTile(look, people.body[0], people.body[1]),
+        shirtBack: T.clothTile(job.cloth, 611),
+        shirtSide: T.clothTile(job.cloth, 612),
+        sleeve: T.sleeveTile(look, people.arm[0], people.arm[1]),
+        hand: T.skinTile(people.skin),
+        trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
+        helmet: T.helmetTile(),
+        hat: T.straw(T.STRAW, 613),
+        pack: T.packTile(),
+        tool: T.toolTile(),
+        toolWood: T.plankV(T.OAK, 614),
+        dark: T.flatDark(T.DARK_STONE),
+      }),
+    );
+  }
+}

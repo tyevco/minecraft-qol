@@ -8,9 +8,10 @@
  * them. Footprints are small on purpose: a builder places one block every few
  * seconds, and a house of a few hundred blocks is twenty real minutes.
  *
- * Every building faces +z (south): the door is on the south wall. Beds are a
- * stand-in (red wool on white wool) until the blueprint placer handles block
- * states; the design doc says so.
+ * Every building faces +z (south): the door is on the south wall. Roofs are
+ * stairs with the block behind them, doors, beds, ladders and gates are the
+ * real blocks with their states, and a lantern under a block hangs; the
+ * states are written to the .mcstructure and drawn by the viewer.
  */
 import { Blueprint } from "./blueprint";
 
@@ -19,6 +20,8 @@ interface Cottage {
   wall: string;
   corner: string;
   roof: string;
+  /** Wood of the door: oak, spruce, mangrove, dark_oak, or copper. */
+  door: string;
   ridge?: string;
   window?: string;
 }
@@ -39,7 +42,7 @@ function cottage(bp: Blueprint, x: number, z: number, w: number, d: number, wall
   ] as const)
     bp.fill(cx, 1, cz, 1, wallH, 1, m.corner);
   const doorX = x + Math.floor(w / 2);
-  bp.fill(doorX, 1, z + d - 1, 1, 2, 1, "air");
+  bp.door(doorX, 1, z + d - 1, m.door, "south");
   const glass = m.window ?? "glass_pane";
   const wy = Math.min(2, wallH);
   if (w >= 5) {
@@ -49,13 +52,20 @@ function cottage(bp: Blueprint, x: number, z: number, w: number, d: number, wall
   if (d >= 5) {
     bp.set(x, wy, z + Math.floor(d / 2), glass).set(x + w - 1, wy, z + Math.floor(d / 2), glass);
   }
-  const roofTop = bp.gableRoof(x, 1 + wallH, z, w, d, m.roof, m.ridge ?? m.roof);
+  const roofTop = bp.gableRoof(x, 1 + wallH, z, w, d, m.roof, m.ridge);
   bp.set(x + Math.floor(w / 2), wallH, z + Math.floor(d / 2), "lantern");
   return 1 + wallH + roofTop;
 }
 
+/** A bed with its head against the north, foot at z + 1. */
 function bed(bp: Blueprint, x: number, y: number, z: number): void {
-  bp.set(x, y, z, "white_wool").set(x, y, z + 1, "red_wool");
+  bp.bed(x, y, z + 1, "north");
+}
+
+/** A table: a fence post with a slab on it, and a chair (stairs) facing it from the south. */
+function table(bp: Blueprint, x: number, y: number, z: number, wood: string): void {
+  bp.set(x, y, z, `${wood}_fence`).slab(x, y + 1, z, `${wood}_planks`);
+  bp.stairs(x, y, z + 1, `${wood}_planks`, "south");
 }
 
 export const BUILDINGS: Blueprint[] = [];
@@ -71,13 +81,18 @@ function building(key: string, title: string, people: string, notes: string, aut
 // Stonefolk: stone brick, polished deepslate corners, deepslate tile roofs.
 // ---------------------------------------------------------------------------
 
-const STONE: Cottage = { floor: "stone_bricks", wall: "stone_bricks", corner: "polished_deepslate", roof: "deepslate_tiles", ridge: "polished_deepslate", window: "glass_pane" };
+const STONE: Cottage = { floor: "stone_bricks", wall: "stone_bricks", corner: "polished_deepslate", roof: "deepslate_tiles", door: "spruce", ridge: "polished_deepslate", window: "glass_pane" };
 
 building("stonefolk_hall", "Hill Hall", "stonefolk", "The heart of a stonefolk settlement: a long hall with a hearth ring in the middle and stores along the back wall. The guard post and forge stand beside it.", (bp) => {
   cottage(bp, 1, 1, 11, 9, 4, STONE);
   // Hearth: a ring of stone bricks round a campfire, under the lantern.
   bp.fill(5, 1, 4, 3, 1, 3, "polished_deepslate").set(6, 1, 5, "campfire");
   bp.set(2, 1, 2, "chest").set(10, 1, 2, "chest").set(3, 1, 2, "barrel").set(9, 1, 2, "barrel");
+  // Benches round the hearth, facing the fire; a table at each end.
+  for (const x of [5, 6, 7]) bp.stairs(x, 1, 3, "spruce_planks", "south").stairs(x, 1, 7, "spruce_planks", "north");
+  bp.stairs(4, 1, 5, "spruce_planks", "east").stairs(8, 1, 5, "spruce_planks", "west");
+  table(bp, 3, 1, 5, "spruce");
+  table(bp, 9, 1, 5, "spruce");
   // A second lantern each end.
   bp.set(3, 4, 5, "lantern").set(9, 4, 5, "lantern");
 });
@@ -94,20 +109,21 @@ building("stonefolk_watchpost", "Watch Post", "stonefolk", "A cobblestone tower 
   bp.fill(1, 0, 1, 5, 1, 5, "stone_bricks");
   bp.walls(1, 1, 1, 5, 8, 5, "cobblestone");
   for (const [cx, cz] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(cx, 1, cz, 1, 8, 1, "polished_deepslate");
-  bp.fill(3, 1, 5, 1, 2, 1, "air");
+  bp.door(3, 1, 5, "spruce", "south");
   bp.set(3, 3, 1, "glass_pane").set(1, 5, 3, "glass_pane").set(5, 5, 3, "glass_pane");
   // Platform overhanging by one, with a wall parapet and a lantern.
   bp.fill(0, 9, 0, 7, 1, 7, "stone_bricks");
   bp.walls(0, 10, 0, 7, 1, 7, "cobblestone_wall");
   bp.set(3, 10, 3, "lantern");
-  // Ladder shaft stand-in: a column of scaffolding.
-  bp.fill(2, 1, 2, 1, 8, 1, "scaffolding");
+  // A ladder up the inside of the north wall to the platform.
+  bp.ladder(3, 1, 2, 8, "south");
+  bp.set(3, 9, 2, "air");
 });
 
 building("stonefolk_store", "Storehouse", "stonefolk", "Barrels and chests under a low spruce roof. The larder of a stonefolk settlement.", (bp) => {
   bp.fill(1, 0, 1, 7, 1, 7, "stone_bricks");
   bp.walls(1, 1, 1, 7, 3, 7, "stone_bricks");
-  bp.fill(4, 1, 7, 1, 2, 1, "air");
+  bp.door(4, 1, 7, "spruce", "south");
   bp.hipRoof(1, 4, 1, 7, 7, "spruce_planks");
   for (const x of [2, 3, 5, 6]) bp.set(x, 1, 2, "barrel").set(x, 2, 2, "barrel");
   bp.set(2, 1, 5, "chest").set(6, 1, 5, "chest");
@@ -118,7 +134,7 @@ building("stonefolk_store", "Storehouse", "stonefolk", "Barrels and chests under
 // Reedfolk: mangrove planks and logs, bamboo, over water on stilts.
 // ---------------------------------------------------------------------------
 
-const REED: Cottage = { floor: "mangrove_planks", wall: "mangrove_planks", corner: "mangrove_log", roof: "bamboo_mosaic", ridge: "mangrove_log" };
+const REED: Cottage = { floor: "mangrove_planks", wall: "mangrove_planks", corner: "mangrove_log", roof: "bamboo_mosaic", door: "mangrove", ridge: "mangrove_log" };
 
 building("reedfolk_stilt_house", "Stilt House", "reedfolk", "A one-room house on mangrove stilts three blocks over the water, with a deck out front. The reedfolk home.", (bp) => {
   bp.fill(0, 0, 0, 9, 1, 11, "water");
@@ -127,13 +143,13 @@ building("reedfolk_stilt_house", "Stilt House", "reedfolk", "A one-room house on
   bp.fill(1, 4, 1, 7, 1, 7, "mangrove_planks");
   bp.walls(1, 5, 1, 7, 3, 7, "mangrove_planks");
   for (const [cx, cz] of [[1, 1], [7, 1], [1, 7], [7, 7]] as const) bp.fill(cx, 5, cz, 1, 3, 1, "mangrove_log");
-  bp.fill(4, 5, 7, 1, 2, 1, "air");
+  bp.door(4, 5, 7, "mangrove", "south");
   bp.set(2, 6, 7, "glass_pane").set(6, 6, 7, "glass_pane").set(1, 6, 4, "glass_pane").set(7, 6, 4, "glass_pane");
   bp.gableRoof(1, 8, 1, 7, 7, "bamboo_mosaic", "mangrove_log");
   bp.set(4, 7, 4, "lantern");
   // Deck and steps down to the water.
   bp.fill(1, 4, 8, 7, 1, 2, "mangrove_planks");
-  bp.fill(3, 3, 10, 3, 1, 1, "mangrove_planks");
+  for (const x of [3, 4, 5]) bp.stairs(x, 3, 10, "mangrove_planks", "north");
   bp.set(1, 5, 9, "mangrove_fence").set(7, 5, 9, "mangrove_fence").set(1, 6, 9, "lantern");
   bed(bp, 2, 5, 2);
   bp.set(6, 5, 2, "chest");
@@ -170,7 +186,7 @@ building("reedfolk_tower", "Reed Tower", "reedfolk", "A bamboo frame with a look
 // Tinkers: bricks, copper, glass; chimneys and pipes.
 // ---------------------------------------------------------------------------
 
-const TINKER: Cottage = { floor: "brick_block", wall: "brick_block", corner: "copper_block", roof: "cut_copper", ridge: "oxidized_copper", window: "glass" };
+const TINKER: Cottage = { floor: "brick_block", wall: "brick_block", corner: "copper_block", roof: "cut_copper", door: "copper", ridge: "oxidized_copper", window: "glass" };
 
 building("tinker_workshop", "Workshop", "tinker", "A brick workshop under a copper roof: smoker, smithing table, crafting table, and a chimney that would carry a Fluidworks pipe. The tinker worker's and builder's job block.", (bp) => {
   const top = cottage(bp, 1, 1, 9, 7, 4, TINKER);
@@ -179,7 +195,7 @@ building("tinker_workshop", "Workshop", "tinker", "A brick workshop under a copp
   bp.fill(2, 1, 1, 1, top + 2, 1, "copper_block");
   bp.set(2, top + 2, 1, "oxidized_copper");
   // A wide window band on the front.
-  bp.fill(3, 2, 7, 5, 1, 1, "glass").set(5, 2, 7, "air").set(5, 1, 7, "air");
+  bp.fill(3, 2, 7, 2, 1, 1, "glass").fill(6, 2, 7, 2, 1, 1, "glass");
 });
 
 building("tinker_still", "Copper Still", "tinker", "A copper tower with a glass band and a weathered dome, steam from the top. The tinker trader's stall stands at its foot.", (bp) => {
@@ -188,9 +204,8 @@ building("tinker_still", "Copper Still", "tinker", "A copper tower with a glass 
   for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 1, z, 1, 9, 1, "cut_copper");
   bp.walls(1, 7, 1, 5, 2, 5, "glass");
   for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 7, z, 1, 2, 1, "cut_copper");
-  bp.fill(3, 1, 5, 1, 2, 1, "air");
+  bp.door(3, 1, 5, "copper", "south");
   bp.hipRoof(1, 10, 1, 5, 5, "weathered_copper");
-  bp.set(3, 13, 3, "oxidized_copper");
   bp.set(3, 5, 3, "lantern");
 });
 
@@ -205,7 +220,7 @@ building("tinker_stall", "Market Stall", "tinker", "Barrel counters under a stri
 building("tinker_burrow", "Burrow", "tinker", "A half-sunken brick house with turf on top and a round-ish door. The tinker home: small people, low ceilings.", (bp) => {
   bp.fill(1, 0, 1, 7, 1, 7, "brick_block");
   bp.walls(1, 1, 1, 7, 3, 7, "brick_block");
-  bp.fill(4, 1, 7, 1, 2, 1, "air").set(3, 2, 7, "copper_block").set(5, 2, 7, "copper_block").set(4, 3, 7, "copper_block");
+  bp.door(4, 1, 7, "copper", "south").set(3, 2, 7, "copper_block").set(5, 2, 7, "copper_block").set(4, 3, 7, "copper_block");
   bp.set(2, 2, 7, "glass").set(6, 2, 7, "glass");
   bp.fill(0, 4, 0, 9, 1, 9, "grass");
   bp.fill(1, 5, 1, 7, 1, 7, "grass");
@@ -217,7 +232,7 @@ building("tinker_burrow", "Burrow", "tinker", "A half-sunken brick house with tu
 // Tallfolk: oak on cobblestone, dark oak roofs, hay and fences.
 // ---------------------------------------------------------------------------
 
-const TALL: Cottage = { floor: "cobblestone", wall: "oak_planks", corner: "oak_log", roof: "dark_oak_planks", ridge: "dark_oak_log", window: "glass_pane" };
+const TALL: Cottage = { floor: "cobblestone", wall: "oak_planks", corner: "oak_log", roof: "dark_oak_planks", door: "oak", ridge: "dark_oak_log", window: "glass_pane" };
 
 building("tallfolk_farmhouse", "Farmhouse", "tallfolk", "Oak on a cobblestone course, a dark oak roof, a bed, a table and a chest. The tallfolk home, and the shape the inn scales up from.", (bp) => {
   cottage(bp, 1, 1, 9, 9, 5, TALL);
@@ -225,12 +240,15 @@ building("tallfolk_farmhouse", "Farmhouse", "tallfolk", "Oak on a cobblestone co
   bp.fill(2, 1, 2, 7, 1, 7, "oak_planks");
   bed(bp, 2, 1, 2);
   bp.set(8, 1, 2, "chest").set(7, 1, 2, "crafting_table").set(8, 1, 8, "barrel");
+  table(bp, 5, 1, 5, "oak");
 });
 
 building("tallfolk_barn", "Barn", "tallfolk", "Spruce walls, a wide door, hay bales inside. Sheep and horses live here; the tallfolk worker's job block.", (bp) => {
-  cottage(bp, 1, 1, 9, 11, 5, { ...TALL, wall: "spruce_planks", corner: "spruce_log", floor: "coarse_dirt" });
+  cottage(bp, 1, 1, 9, 11, 5, { ...TALL, wall: "spruce_planks", corner: "spruce_log", floor: "coarse_dirt", door: "spruce" });
   bp.fill(4, 1, 11, 3, 3, 1, "air");
+  for (const x of [4, 5, 6]) bp.gate(x, 1, 11, "spruce", "south");
   bp.fill(2, 1, 2, 2, 2, 2, "hay_block").fill(7, 1, 2, 2, 1, 2, "hay_block");
+  bp.log(2, 2, 2, "hay_block", "x").log(3, 2, 3, "hay_block", "z");
   bp.fill(2, 1, 6, 1, 1, 4, "oak_fence").fill(8, 1, 6, 1, 1, 4, "oak_fence");
 });
 
@@ -239,9 +257,7 @@ building("tallfolk_well", "Well", "tallfolk", "A cobblestone ring round water, a
   bp.walls(1, 1, 1, 3, 1, 3, "cobblestone");
   bp.set(2, 0, 2, "water");
   bp.fill(1, 2, 1, 1, 2, 1, "oak_fence").fill(3, 2, 3, 1, 2, 1, "oak_fence").fill(1, 2, 3, 1, 2, 1, "oak_fence").fill(3, 2, 1, 1, 2, 1, "oak_fence");
-  // A small roof: a 3x3 slab and a single cap, no overhang, so it stays a well and not a tower.
-  bp.fill(1, 4, 1, 3, 1, 3, "dark_oak_planks");
-  bp.set(2, 5, 2, "dark_oak_log");
+  bp.hipRoof(1, 4, 1, 3, 3, "dark_oak_planks");
   bp.set(2, 3, 2, "lantern");
 });
 
@@ -249,7 +265,8 @@ building("tallfolk_gatehouse", "Gatehouse", "tallfolk", "A log palisade with a g
   bp.fill(0, 0, 0, 9, 1, 5, "cobblestone");
   bp.fill(0, 1, 1, 9, 4, 1, "oak_log");
   bp.fill(3, 1, 1, 3, 3, 1, "air");
-  bp.fill(3, 4, 1, 3, 1, 1, "oak_planks");
+  for (const x of [3, 4, 5]) bp.gate(x, 1, 1, "oak", "south");
+  for (const x of [3, 4, 5]) bp.log(x, 4, 1, "oak_log", "x");
   bp.fill(2, 1, 0, 1, 5, 1, "oak_log").fill(6, 1, 0, 1, 5, 1, "oak_log");
   bp.fill(0, 3, 2, 9, 1, 2, "oak_planks");
   bp.fill(0, 4, 3, 9, 1, 1, "oak_fence");
@@ -265,22 +282,24 @@ building("shared_larder", "Larder", "shared", "A stone-floored hut of chests. Wh
   bp.fill(1, 0, 1, 5, 1, 5, "stone_bricks");
   bp.walls(1, 1, 1, 5, 3, 5, "spruce_planks");
   for (const [cx, cz] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(cx, 1, cz, 1, 3, 1, "spruce_log");
-  bp.fill(3, 1, 5, 1, 2, 1, "air");
+  bp.door(3, 1, 5, "spruce", "south");
   bp.hipRoof(1, 4, 1, 5, 5, "spruce_planks");
   for (const [x, z] of [[2, 2], [3, 2], [4, 2], [2, 4], [4, 4]] as const) bp.set(x, 1, z, "chest");
   bp.set(3, 3, 3, "lantern");
 });
 
 building("shared_inn", "Inn", "shared", "Two floors, four beds, a table by the door. The innkeeper sets a respawn point here; a Hearthstone in a settlement becomes a place.", (bp) => {
-  cottage(bp, 1, 1, 9, 9, 6, { ...TALL, wall: "spruce_planks", corner: "spruce_log", roof: "dark_oak_planks" });
+  cottage(bp, 1, 1, 9, 9, 6, { ...TALL, wall: "spruce_planks", corner: "spruce_log", roof: "dark_oak_planks", door: "spruce" });
   bp.fill(2, 4, 2, 7, 1, 7, "oak_planks");
   bp.fill(8, 4, 2, 1, 1, 2, "air");
-  bp.fill(8, 1, 2, 1, 3, 1, "scaffolding");
+  bp.ladder(8, 1, 2, 4, "south");
   bed(bp, 2, 5, 2);
   bed(bp, 4, 5, 2);
   bed(bp, 6, 5, 2);
   bed(bp, 2, 5, 7);
   bp.set(2, 1, 8, "crafting_table").set(3, 1, 2, "chest").set(4, 1, 2, "barrel");
+  table(bp, 3, 1, 5, "spruce");
+  table(bp, 6, 1, 5, "spruce");
   bp.set(5, 3, 5, "lantern").set(5, 4, 5, "air");
   bp.set(4, 2, 9, "glass_pane").set(6, 2, 9, "glass_pane");
 });
@@ -303,4 +322,6 @@ building("shared_wall", "Wall Segment", "shared", "Cobblestone, four high and on
   bp.fill(0, 3, 1, 7, 1, 2, "stone_bricks");
   bp.fill(0, 4, 2, 7, 1, 1, "oak_fence");
   bp.set(3, 5, 1, "lantern");
+  // Steps up onto the walkway at the east end.
+  bp.set(6, 4, 2, "air").stairs(6, 3, 1, "cobblestone", "west").stairs(6, 3, 2, "cobblestone", "west");
 });

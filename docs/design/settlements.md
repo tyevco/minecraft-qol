@@ -184,10 +184,22 @@ scale of the ask is visible.
 
 ### 3.6 Conventions every blueprint follows
 
-- **Bedrock identifiers.** Every block name is checked against the vanilla
-  `blocks.json` when the viewer builds. That check already caught two Java
-  names: bricks are `brick_block` and a grass block is `grass` on Bedrock.
-  The corrections table in `docs/README.md` carries the row.
+- **Bedrock identifiers and states.** Every block name is checked against
+  the vanilla `blocks.json` when the viewer builds, and every state name and
+  value against Mojang's block metadata (`mojang-blocks.json`). That check
+  caught the Java names on the first run: bricks are `brick_block`, a grass
+  block is `grass`, cobblestone stairs are `stone_stairs`, an oak door is
+  `wooden_door` and an oak gate is `fence_gate`. The material table in
+  `tools/structures/blueprint.ts` is the one place that knows them, and the
+  corrections table in `docs/README.md` carries the row.
+- **Shaped blocks are real.** Roofs are stairs with the roof block behind
+  them (a gable ends in two facing rows of stairs or a ridge log; a hip is a
+  ring of stairs each course, whose corners the game turns into outer
+  corners). Doors, beds, ladders, fence gates, slabs and lying logs carry
+  their states; a lantern under a block is `hanging`; a wall stores its
+  joins, since a structure placed block by block gets no neighbour update.
+  Furniture is the usual idiom: a fence post under a slab is a table, a
+  stair is a chair or a bench.
 - **Faces south.** The door is on the +z wall, as the block models' fronts
   are, so "stand where the corner should be and face the way you want the
   door" is one rule for everything.
@@ -276,22 +288,34 @@ stairs correctly once the placer passes states through.
   order into the chest. This is the "fail towards the player" path: nothing
   is destroyed, and a wrongly placed building costs time, not materials.
 
-## 6. Stand-ins to replace once the placer handles block states
+## 6. Block states the placer must pass through
 
-The generator writes plain block names. These are stand-ins and the doc says
-so, so nobody mistakes them for the final look:
+Every shaped block above is authored with its states, and the `.mcstructure`
+carries them; the viewer draws them so they can be judged. What is *not*
+verified is the meaning of each value in the running game, since none of
+this has been placed in a world. The table is what the generator assumes;
+each row is one thing to confirm in game, and each is a one-line fix in
+`blueprint.ts` if wrong.
 
-| Stand-in | Final | Why not now |
+| Block | State | Assumed meaning |
 | --- | --- | --- |
-| stepped full-block roofs | stairs, slabs at the eaves | stair `weirdo_direction` and `upside_down_bit` are states; the placer must pass states first |
-| white wool + red wool | beds | a bed is two blocks with a `direction` state and a head/foot pair |
-| a door-sized air gap | doors | doors are two blocks with `door_hinge_bit`, `open_bit`, `upper_block_bit` |
-| a scaffolding column | ladders | ladders need `facing_direction` |
-| cobblestone_wall battlements | the same | already fine; listed so the wall block's connect states are known to be engine-set |
+| stairs | `weirdo_direction` 0–3 | the side the full-height half is on: east, west, south, north |
+| stairs | `upside_down_bit` | hung from the block above |
+| slabs | `minecraft:vertical_half` | `bottom` or `top` |
+| doors | `minecraft:cardinal_direction` | the way the closed door faces, outward from the building; `upper_block_bit` marks the top half |
+| bed | `direction` 0–3 | the way the head points: south, west, north, east; `head_piece_bit` marks the head |
+| ladder | `facing_direction` 2–5 | the way the ladder faces, away from its wall: north, south, west, east |
+| fence gates | `minecraft:cardinal_direction` | the way the gate opens; the gate spans the perpendicular axis |
+| logs, hay | `pillar_axis` | `x`, `y` or `z` |
+| lantern | `hanging` | true under a block |
+| walls | `wall_connection_type_*`, `wall_post_bit` | `short` on each joined side; a post when not a straight run or under a block |
 
-`Blueprint.set` already takes states and writes them to the palette, so the
-generator can author these the moment the placer reads them; the change is
-in `buildings.ts`, not in the format.
+Stair *shape* (straight, inner or outer corner) is not a state on Bedrock:
+the game computes it from the neighbours, and the viewer computes it the
+same way (a perpendicular stair in front makes an outer corner, one behind
+an inner corner), so the hip roofs should look in game as they do on the
+page. Bed colour is block-entity data, not a state, so a placed bed is the
+default red; that is fine.
 
 ## 7. What the stable API gives
 
@@ -316,7 +340,8 @@ in `buildings.ts`, not in the format.
    `/structure load` and compare with the preview.
 3. **Rotation of states** when placing block by block: which state names
    need rotating (`direction`, `facing_direction`, `weirdo_direction`,
-   `pillar_axis`) and how the values map.
+   `minecraft:cardinal_direction`, `pillar_axis`, the wall joins) and how
+   the values map; and that the §6 meanings hold at all.
 4. **Walking to a placement spot**: a `home` that moves per block, or a
    `teleport` step per placement, and how it reads (§4 of `npcs.md`).
 5. **Water under stilts**: whether `setPermutation` over water leaves the
@@ -329,6 +354,7 @@ in `buildings.ts`, not in the format.
 2. Blueprint table, blueprint items, the placer's pure checks (§5.2) under
    test, and a builder that places from the chest. Three blueprints to
    start: well, larder, wall segment. They are small and have no stand-ins.
-3. Stairs, doors and beds in the generator once states pass through.
+3. Confirm the state meanings in §6 with the well, larder and wall segment
+   placed by `/structure load`; fix any that read wrong.
 4. The rest of the catalogue, one people at a time, in the order the kids
    want to live in them.

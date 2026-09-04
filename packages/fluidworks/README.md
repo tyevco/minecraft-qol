@@ -125,6 +125,19 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
 
 ## To confirm in game
 
+00. **Does the rain collector actually collect rain?** Untested, and untestable
+    on a headless server: `weatherChange` **never fires there** — measured with
+    a module-scope subscription that logs every event, against a scripted
+    `setWeather`, the console's `weather rain`, and with a simulated player
+    present. Since `Dimension.getWeather` is beta-only, the pack has no other
+    way to know it is raining, so `ctx.raining` stays false and the tank stays
+    empty. `rain_collector` is therefore a known failure rather than a bug.
+    In a real session real weather cycles should fire the event — so: put a
+    down-facing funnel over a cauldron under open sky, `/weather rain`, and
+    watch. If the tank fills, the feature is fine and only the harness cannot
+    see it. If it does not, `engine/weather.ts` is where to look, and
+    `/scriptevent fluidworks:debug` prints what the pack thinks the weather is.
+
 0. **Can a funnel be placed against a cauldron at all?** This is the headline
    placement gesture and it is **not** covered by a test. Measured: a
    SimulatedPlayer clicking a cauldron's side with a funnel gets

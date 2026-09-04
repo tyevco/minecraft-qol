@@ -61,6 +61,39 @@ import { world, system, BlockPermutation, LocationWaypoint } from "@minecraft/se
 const P = "[QOLPROBE]";
 const log = (...a) => console.warn(P, ...a);
 
+/**
+ * W1 does weatherChange fire for a SCRIPTED setWeather, and what is its
+ * `dimension` string?
+ *
+ * Fluidworks cannot read the weather - Dimension.getWeather is beta-only - so
+ * it tracks weatherChange and keys the result by `ev.dimension`, which is the
+ * ONLY `dimension: string` in the whole 2.9.0 surface; every other event hands
+ * over a Dimension object. `rain_collector` fails with the tank empty, and two
+ * mechanisms produce that same symptom:
+ *
+ *   the event never fires for a scripted setWeather, or
+ *   it fires with a string that does not match the Dimension.id the funnel
+ *   rows are keyed by, so the lookup misses.
+ *
+ * Nothing in any log separates them, because weather.ts logs nothing. This
+ * subscription is at module scope on purpose: it needs no player, so it reports
+ * on a headless server where every /scriptevent handler is unreachable.
+ */
+world.afterEvents.weatherChange.subscribe((ev) => {
+  let ownId = "?";
+  try {
+    ownId = world.getDimension("overworld").id;
+  } catch {
+    /* leave it */
+  }
+  log(
+    `W1 weatherChange dimension=${JSON.stringify(ev.dimension)} ` +
+      `prev=${ev.previousWeather} new=${ev.newWeather} ` +
+      `overworld.id=${JSON.stringify(ownId)} ` +
+      `match=${ev.dimension === ownId}`,
+  );
+});
+
 /** facing_direction -> unit vector. Logged raw as well, so the mapping is verified, not trusted. */
 const FACING = [
   { x: 0, y: -1, z: 0 }, // 0 down

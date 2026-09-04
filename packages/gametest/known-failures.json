@@ -10,5 +10,6 @@
     "that fails because the pack does not do what it says belongs in TASKS.md,",
     "failing, until it is fixed."
   ],
-  "anchor_sets_spawn": "A SimulatedPlayer marshals as undefined into any pack that does not itself bind @minecraft/server-gametest, so Hearthstone never sees the anchor's placer - and a SimulatedPlayer spawns with a spawn point already set, which Hearthstone correctly treats as foreign and refuses to touch. Measured; Hearthstone is right and the test cannot be written this way."
+  "anchor_sets_spawn": "A SimulatedPlayer marshals as undefined into any pack that does not itself bind @minecraft/server-gametest, so Hearthstone never sees the anchor's placer - and a SimulatedPlayer spawns with a spawn point already set, which Hearthstone correctly treats as foreign and refuses to touch. Measured; Hearthstone is right and the test cannot be written this way.",
+  "rain_collector": "weatherChange never fires on a headless server. Measured with a module-scope subscription in the probe pack (qolprobe W1), which logs every event and needs no player: nothing is reported for a scripted setWeather, for the console's own `weather rain`, or with a SimulatedPlayer present. Fluidworks can only learn the weather from that event - Dimension.getWeather is beta-only - so ctx.raining is never true here and the tank is never filled. This says nothing about whether the rain collector works in a real session, where real weather cycles do fire it; that is in the Fluidworks README to confirm in game."
 }

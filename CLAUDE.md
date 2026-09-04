@@ -67,6 +67,24 @@ npm run build         typecheck + esbuild bundle per pack into dist/<pack>/
 npm run assets        regenerate textures, models, animations and GameTest structures
 npm run deploy        build, then copy packs into development_behavior_packs
 npm run mcaddon       .mcaddon per shipped pack (dev-only packs excluded)
+
+npm run bds:setup     download a dedicated server, deploy the packs, make the world
+npm run bds:test      the whole GameTest suite headlessly, one test at a time, judged
+npm run bds:run       drive a server by hand: node tools/bds/run.mjs "<console command>"
+```
+
+One test at a time:
+
+```
+npx vitest run packages/lens/tests/tier.test.ts        one unit test file
+npx vitest run -t "prefers a higher tier"              one unit test by name
+node tools/bds/run.mjs --seq "gametest run qol:<name>" one GameTest, in game
+```
+
+Deploy elsewhere without touching `.env` — this is how the server gets its packs:
+
+```
+CUSTOM_DEPLOYMENT_PATH=<dir> MINECRAFT_PRODUCT=Custom npx just-scripts local-deploy
 ```
 
 `npm run lint` fails on every branch: the repo has no ESLint config. Not yours
@@ -115,15 +133,56 @@ assumption so far:
 4. Anything you could not verify goes in the pack README under "To confirm
    in game", with the one-line fix for each outcome.
 
+**Step 1 rarely needs a person any more.** `npm run bds:test` runs the whole
+suite against a dedicated server and prints the content log — the same log a
+player would have pasted from the client, in about a minute rather than a
+restart per hypothesis. `.github/workflows/gametest.yml` runs it on every push.
+Reach for it before asking the user to load the game.
+
+Reading a headless run:
+
+- **A failing test is not evidence until it has also been run alone.**
+  Sequential tests are placed in the same x/z column one block higher each
+  time, and a structure reload restores blocks but not entities, item drops, or
+  a pack's own position-keyed records. Two "Bulwark bugs" were this. The runner
+  re-runs a failure alone before believing it; do the same by hand.
+- `packages/gametest/known-failures.json` lists tests that fail for a reason
+  that is not a bug, with the reason. A listed test that **passes** fails the
+  run — the reason has expired and the entry should go. A test that fails
+  because a pack does not do what it says belongs in an issue, failing, not in
+  that file.
+- Script errors are printed but do not fail a run. A simulated player makes
+  Graves, Lens, Guardian and Hearthstone throw on every sweep, hundreds of
+  lines a run, and that is the harness rather than those packs.
+
+**A SimulatedPlayer is not a player**, and this has cost several days of wrong
+diagnosis. It marshals as `undefined` into any pack that does not itself bind
+`@minecraft/server-gametest`; a command it runs arrives with no `sourceEntity`;
+it spawns with a spawn point already set; it cannot place a block against one
+with a use action (a cauldron swallows the click and reports success); and two
+placements too close together are refused. Engine-side behaviour — vanilla
+components, block placement on plain blocks — works fine. The corrections table
+in `docs/README.md` has each of these with what was measured.
+
 In game: `/reload` re-runs scripts but not `startup` (so not command
 registration) and never resources; a new pack folder or manifest change needs
-a full restart. `console.warn` reaches the content log; `console.log` does
-not by default.
+a full restart, and a new pack must also be listed in the world's pack files
+(`tools/bds/enable-pack.cjs` does that for the test server) or it loads as
+though it did not exist, with no error to say why. `console.warn` reaches the
+content log; `console.log` does not by default, and `test.print` goes to chat,
+so it is invisible on a server with no players.
 
 ## Where the work is tracked
 
 `TASKS.md` is the queue: what is next, what is later, what is blocked, what
 merged. Start there; move items as you go.
+
+The same backlog is also filed as GitHub issues, which carry the detail and the
+evidence. Two labels are worth filtering on before picking anything up:
+**`probe`** is work that needs a measurement before anything can be built on it,
+and **`in-game`** is work no simulated player can do, so it waits for a person
+at the keyboard. Keeping `TASKS.md` and the issues in step is itself an open
+item.
 
 ## Documentation
 

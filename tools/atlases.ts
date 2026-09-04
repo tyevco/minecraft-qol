@@ -48,6 +48,7 @@ export const FUNNEL = layout(64, {
   dark: [2, 1],
   pipeU: [3, 1],
   pipeV: [0, 2],
+  grille: [1, 2],
 });
 
 export const PIPE = layout(32, {

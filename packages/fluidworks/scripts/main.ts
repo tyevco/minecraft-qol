@@ -30,14 +30,33 @@ import {
   sameSettings,
 } from "./core/policy";
 import { FUNNEL } from "./core/pipes";
-import { cycle } from "./engine/funnel";
+import { cycle, idleReason } from "./engine/funnel";
 import { funnels } from "./engine/index";
 import * as labels from "./engine/labels";
 import { isConnectable, refreshAround } from "./engine/pipes";
+import { FUNNEL_COMPONENT, funnelComponent } from "./engine/placement";
 import * as weather from "./engine/weather";
 
 const TAG = "[Fluidworks]";
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
+
+let componentRegistered = false;
+
+// Must run at module scope: startup fires before worldLoad, and not on /reload.
+// The component only steers placement, so a funnel still works without it;
+// the log line is how "it ignores what I clicked" gets traced to its cause.
+system.beforeEvents.startup.subscribe((event) => {
+  try {
+    event.blockComponentRegistry.registerCustomComponent(
+      FUNNEL_COMPONENT,
+      funnelComponent(log),
+    );
+    componentRegistered = true;
+    log(`registered block component ${FUNNEL_COMPONENT}`);
+  } catch (e) {
+    log(`FAILED to register ${FUNNEL_COMPONENT}: ${e}`);
+  }
+});
 
 /** Ticks between settings-panel polls. The change event is beta-only. */
 const SETTINGS_TICKS = 100;
@@ -180,14 +199,14 @@ world.afterEvents.worldLoad.subscribe(() => {
       `§7funnels: §f${funnels.count()}§7 indexed, §f${near.length}§7 within 16 blocks`,
     );
     for (const r of near) {
-      const asleep = r.sleepUntil > system.currentTick ? " §8(idle)" : "";
-      player.sendMessage(
-        `§7- §f${r.x} ${r.y} ${r.z}§7 wear ${r.wear}${asleep}`,
-      );
+      const why = idleReason(r);
+      const state = why ? ` §8idle: ${why}` : " §aworking";
+      player.sendMessage(`§7- §f${r.x} ${r.y} ${r.z}§7 wear ${r.wear}${state}`);
     }
   });
 
   log(
-    `ready at tick ${system.currentTick}, ${funnels.count()} funnel(s) indexed`,
+    `ready at tick ${system.currentTick}, ${funnels.count()} funnel(s) indexed; ` +
+      `placement component ${componentRegistered ? "registered" : "NOT registered - re-enter the world"}`,
   );
 });

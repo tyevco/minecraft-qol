@@ -67,7 +67,7 @@ const MODELS: Model[] = [
     kind: "block",
     geometry: "packages/fluidworks/resource_pack/models/blocks/funnel.geo.json",
     textures: { default: "packages/fluidworks/resource_pack/textures/blocks/funnel.png" },
-    notes: "Spout on +z (south, the facing_direction default); mouth on -z. Drips at the spout on every completed operation.",
+    notes: "Spout on +z (south, the facing_direction default); mouth on -z, behind the grille. Chevrons on the taper step point at the spout. Drips at the spout on every completed operation; flow drops (not previewed here) travel mouth to spout.",
     particles: [
       {
         effect: "fluidworks:drip",

@@ -1,11 +1,10 @@
 /**
  * Funnel orientation. Pure - no @minecraft imports.
  *
- * The block's `minecraft:facing_direction` state is taken to be the direction
- * the SPOUT points: the model is authored with the spout on +z, the state's
- * default "south", and the permutations rotate from there. Input is the face
- * opposite the spout. If the first in-game placement shows the spout pointing
- * the other way, flip `y_rotation_offset` in the block JSON - not this table.
+ * The block's `minecraft:facing_direction` state is the direction the SPOUT
+ * points: the model is authored with the spout on +z, the state's default
+ * "south", and the permutations rotate from there. Input is the face opposite
+ * the spout. Pinned in game by the `funnel_makes_concrete` GameTest.
  */
 export type Facing = "down" | "up" | "north" | "south" | "west" | "east";
 
@@ -48,6 +47,11 @@ export function parseFacing(raw: unknown): Facing | undefined {
     : undefined;
 }
 
+/** The engine's `Direction` enum spells its values "Down", "Up", "North"... */
+export function parseDirection(raw: unknown): Facing | undefined {
+  return typeof raw === "string" ? parseFacing(raw.toLowerCase()) : undefined;
+}
+
 export function add(p: Vec3, v: Vec3): Vec3 {
   return { x: p.x + v.x, y: p.y + v.y, z: p.z + v.z };
 }
@@ -60,4 +64,26 @@ export function outputOf(pos: Vec3, facing: Facing): Vec3 {
 /** Where the mouth draws from. */
 export function inputOf(pos: Vec3, facing: Facing): Vec3 {
   return add(pos, FACING_VECTOR[OPPOSITE[facing]]);
+}
+
+/**
+ * Where the spout points when a funnel is placed. Hopper-style: into the
+ * block that was clicked, when that block is something a funnel can use
+ * (a tank, a pipe, a container, a source). Sneaking flips it, so the MOUTH
+ * goes into the clicked block instead - place sneaking against a water source
+ * to draw from it. Clicking anything else keeps `fallback`, the direction the
+ * placement trait chose from where the player was looking.
+ *
+ * `clickedFace` is the face of the clicked block that the funnel was placed
+ * against, so the clicked block lies opposite it from the new funnel: placed
+ * on a cauldron's west face, the cauldron is to the funnel's east.
+ */
+export function placementFacing(
+  clickedFace: Facing | undefined,
+  clickedIsTarget: boolean,
+  sneaking: boolean,
+  fallback: Facing,
+): Facing {
+  if (!clickedFace || !clickedIsTarget) return fallback;
+  return sneaking ? clickedFace : OPPOSITE[clickedFace];
 }

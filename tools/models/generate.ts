@@ -149,6 +149,56 @@ const pipeV = { tile: "pipeV", at: [0, 0] } as const satisfies {
   at: readonly [number, number];
 };
 
+/**
+ * A copper chevron on one face of the taper step, pointing at the spout: two
+ * bars that meet at a tip on +z and splay back at 45 degrees. Geometry rather
+ * than a painted arrow, so which way it points cannot depend on how a face's
+ * UV runs (or on the x mirror, which only swaps the two bars). `axis` is the
+ * one the bars swing about, i.e. the normal of the face they lie on.
+ */
+function chevron(
+  face: "east" | "west" | "up" | "down",
+): readonly Cube<FN>[] {
+  // Bars run along z from the tip at z = 3.5 back to z = -0.5, one unit
+  // proud of the face, and each is rotated about the tip.
+  const tip = 3.5;
+  const back = -0.5;
+  const len = tip - back;
+  let origin: readonly [number, number, number];
+  let pivot: readonly [number, number, number];
+  let spin: (deg: number) => readonly [number, number, number];
+  switch (face) {
+    case "east":
+      origin = [4, 7.5, back];
+      pivot = [4.5, 8, tip];
+      spin = (d) => [d, 0, 0];
+      break;
+    case "west":
+      origin = [-5, 7.5, back];
+      pivot = [-4.5, 8, tip];
+      spin = (d) => [d, 0, 0];
+      break;
+    case "up":
+      origin = [-0.5, 12, back];
+      pivot = [0, 12.5, tip];
+      spin = (d) => [0, d, 0];
+      break;
+    case "down":
+      origin = [-0.5, 3, back];
+      pivot = [0, 3.5, tip];
+      spin = (d) => [0, d, 0];
+      break;
+  }
+  const bar = (deg: number): Cube<FN> => ({
+    origin,
+    size: [1, 1, len],
+    pivot,
+    rotation: spin(deg),
+    faces: { all: "copper" },
+  });
+  return [bar(45), bar(-45)];
+}
+
 write("packages/fluidworks/resource_pack/models/blocks/funnel.geo.json", {
   identifier: "geometry.fluidworks_funnel",
   atlas: A.FUNNEL,
@@ -162,12 +212,13 @@ write("packages/fluidworks/resource_pack/models/blocks/funnel.geo.json", {
         { origin: [-7, 1, -8], size: [14, 1, 3], faces: { all: "copper" } },
         { origin: [-7, 2, -8], size: [1, 12, 3], faces: { all: "copper" } },
         { origin: [6, 2, -8], size: [1, 12, 3], faces: { all: "copper" } },
-        // Throat: the dark plate seen through the mouth.
+        // Throat: the grille seen through the mouth. Bars over a dark
+        // interior say "intake" the way a bare plate did not.
         {
           origin: [-6, 2, -5],
           size: [12, 12, 1],
           faces: {
-            north: "interior",
+            north: "grille",
             sides: "plate",
             up: "lid",
             down: "plate",
@@ -190,12 +241,16 @@ write("packages/fluidworks/resource_pack/models/blocks/funnel.geo.json", {
             down: "copper",
           },
         },
-        // Taper step and spout.
+        // Taper step, with a chevron on each free face pointing at the spout.
         {
           origin: [-4, 4, 0],
           size: [8, 8, 4],
           faces: { sides: "plate", up: "lid", down: "plate" },
         },
+        ...chevron("east"),
+        ...chevron("west"),
+        ...chevron("up"),
+        ...chevron("down"),
         // The spout is a short pipe: cylinder shading along its axis, an opening at the end.
         {
           origin: [-3, 5, 4],

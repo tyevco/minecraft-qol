@@ -316,6 +316,20 @@ export function interior(r: Ramp, seed = 12): Canvas {
   return c;
 }
 
+/**
+ * The mouth of an intake: the dark interior behind three bright bars. Reads as
+ * "things go in here" from across a room, which the bare interior did not.
+ */
+export function grille(r: Ramp, bars: Ramp, seed = 13): Canvas {
+  const c = interior(r, seed);
+  for (const x of [2, 7, 12]) {
+    c.fill(x, 1, 2, 14, bars.mid);
+    c.fill(x, 1, 1, 14, bars.light);
+    c.fill(x, 14, 2, 1, bars.dark);
+  }
+  return c;
+}
+
 /** A square face with a round opening in the middle: spout ends and flanges. */
 export function opening(r: Ramp, holeRadius = 2, seed = 6): Canvas {
   const c = rivetedPlate(r, seed);

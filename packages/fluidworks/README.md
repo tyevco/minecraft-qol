@@ -31,6 +31,36 @@ input is gone, so nothing is ever duplicated.
 wear to the funnel; when wear reaches the panel's “concrete blocks per water
 level”, one level goes. Default 16.
 
+## Placing a funnel
+
+Hopper-style: **the spout points into the block you clicked**, when that
+block is something a funnel can use - a cauldron, a pipe, a container, a
+water or lava source. Place a funnel on the side of a tank and the tank is
+its output. **Sneak while placing to flip it**: the mouth goes into the
+clicked block instead, which is how you draw from a water source or a full
+tank. Clicking anything else (the floor, a wall) keeps the old rule: the
+spout points the way you are looking.
+
+This is a block custom component (`fluidworks:funnel`, registered at
+startup), so it is a `beforeOnPlayerPlace` swap of the permutation the
+placement trait chose. Without the component the trait's rule still applies.
+
+## Reading a funnel
+
+- **Chevrons** on the body point at the spout; the mouth is the end with the
+  **grille**. Fluid goes in at the grille and out at the chevrons' tip.
+- **Drips** at the spout after every completed operation.
+- **Flow**: a drop sets off from the funnel, and from every pipe on the way,
+  travelling the way the fluid went - so a run of pipes shows which way it
+  carries and where it ends.
+- **Smoke** at the spout, every cycle, means the build is wrong: nothing
+  usable at the spout or the mouth, the mouth's fluid does not match the
+  tank's, an open mouth under a roof, or the machine this needs is off in
+  the panel. A funnel that is merely waiting (empty hopper, full tank, no
+  rain, crop still growing) stays quiet.
+- `/scriptevent fluidworks:debug` lists the funnels near you with the
+  reason each one is idle, in words.
+
 The rules are the same ones QOL Times uses from a dispenser, moved to
 `packages/shared/core/fluids/` and generalised as the earlier version of this
 README asked: `Residue` became an `Output` (what the item becomes, delivered
@@ -41,7 +71,7 @@ wherever the caller wants), `addDye` became a structured `CauldronEffect`, and
 
 | Rig | What happens |
 | --- | --- |
-| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: the nearest cauldron (or water/lava source) next to any pipe in the run stands in for the adjacent block. Up to 64 pipes. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. The arm bones are named for the world face they reach, not the geometry axis: Bedrock renders block geometry with x mirrored, so the east arm is authored on -x (`docs/block-geometry-results.md`). |
+| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: the nearest cauldron (or water/lava source) next to any pipe in the run stands in for the adjacent block. Up to 64 pipes. Pipes carry nothing themselves; they extend a funnel's reach, and the flow drops show which way. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. The arm bones are named for the world face they reach, not the geometry axis: Bedrock renders block geometry with x mirrored, so the east arm is authored on -x (`docs/block-geometry-results.md`). |
 | a mature **crop** at the mouth, a container at the spout | the **Harvester**: the crop is harvested with the engine's own loot table, one seed is withheld to replant it, the rest goes into the container. Wheat, carrots, potatoes, beetroot, nether wart, cocoa. Crops need farmland, so the rig lies sideways: farmland and crop, funnel, chest. |
 | an **open** mouth, a container at the spout | the **Collector**: dropped items within two and a half blocks of the mouth go into the container. An item entity is removed only once the container took all of it. |
 | any tank a funnel uses | a floating **label** over it with the fluid and level, visible to everyone, refreshed each cycle. |
@@ -64,13 +94,13 @@ Station, fluid transfer, Rain Collector, Harvester, Collector, pipes, labels),
 a slider for seconds between cycles (default 2), and a slider for concrete
 blocks per water level (default 16).
 No commands; `/scriptevent fluidworks:debug` prints the panel, the weather the
-pack believes, and the funnels near you with their wear.
+pack believes, and the funnels near you with their wear and why each is idle.
 
 ## Layout
 
 ```
 scripts/core/       pure: facing, the cycle planner, pipe walk and connections, the panel   <- vitest
-scripts/engine/     funnel index, endpoints, the cycle executor, pipe resolution, labels, weather
+scripts/engine/     funnel index, endpoints, the cycle executor, pipe resolution, placement, labels, weather
 behavior_pack/      manifest (format 3, with the panel), funnel + pipe blocks, recipes
 resource_pack/      models and textures (generated, see root README)
 ```
@@ -95,10 +125,16 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
 
 ## To confirm in game
 
-1. **Funnel orientation.** The spout is authored on +z and the permutations
-   copy Learn's arrow-block sign convention. If the spout points the wrong
-   way relative to the player, add `"y_rotation_offset": 180` to the trait.
-   `core/facing.ts` assumes the state is the spout's direction.
+1. **Funnel orientation.** The state names the spout: pinned by the
+   `funnel_makes_concrete` GameTest. Placement now rests on one more
+   assumption, that the `face` handed to `beforeOnPlayerPlace` is the clicked
+   block's face, so the clicked block lies opposite it from the new funnel.
+   `funnel_places_into_clicked_tank` checks it; if a funnel placed on a
+   tank's side points away from the tank, swap `clickedFace` and
+   `OPPOSITE[clickedFace]` in `placementFacing` (`core/facing.ts`). Also
+   assumed: `ev.block` in that event is the cell the funnel is going into, and
+   `ev.player.isSneaking` is readable there (a SimulatedPlayer arrives as no
+   player at all, so sneaking is only testable by hand).
 2. **The panel loads** (format-version-3 manifest) — `fluidworks:debug`
    prints what was read.
 3. **A hopper behind a funnel, a cauldron of water in front, a chest under
@@ -120,3 +156,13 @@ looked at, and one in an unloaded chunk is skipped, never evicted.
    up. If it also reaches away, z is mirrored as well: swap the `north` and
    `south` arms in `tools/models/generate.ts` the same way, and expect the
    funnel's spout to be pointing against its state too.
+10. **Flow drops move.** `flow.json` takes its direction from three Molang
+    floats (`variable.flow_x/y/z`) set through `MolangVariableMap.setFloat`.
+    If the drops hang still or scatter, the variables are not reaching the
+    emitter: the fallback is one particle per axis direction, chosen in
+    script, with the direction baked into each.
+11. **Smoke** uses vanilla `minecraft:basic_smoke_particle`. If a stuck
+    funnel shows nothing, try `minecraft:campfire_smoke_particle`.
+12. **Chevrons** are two bars rotated ±45° about a pivot at their tip. If
+    they render as a flat cross or a single bar, per-cube `pivot` is being
+    ignored: give each bar its own bone with the pivot on the bone instead.

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { inputOf, outputOf, parseFacing } from "../scripts/core/facing";
+import {
+  inputOf,
+  outputOf,
+  parseDirection,
+  parseFacing,
+  placementFacing,
+} from "../scripts/core/facing";
 import { connections } from "../scripts/core/pipes";
 import {
   DEFAULT_SETTINGS,
@@ -20,6 +26,29 @@ describe("facing", () => {
     expect(parseFacing("east")).toBe("east");
     expect(parseFacing("sideways")).toBeUndefined();
     expect(parseFacing(3)).toBeUndefined();
+  });
+  it("reads the engine's capitalised Direction values", () => {
+    expect(parseDirection("Down")).toBe("down");
+    expect(parseDirection("North")).toBe("north");
+    expect(parseDirection("Sideways")).toBeUndefined();
+    expect(parseDirection(undefined)).toBeUndefined();
+  });
+});
+
+describe("placement", () => {
+  it("points the spout into a tank that was clicked", () => {
+    // Placed on the cauldron's west face: the cauldron is east of the funnel.
+    expect(placementFacing("west", true, false, "south")).toBe("east");
+    expect(placementFacing("up", true, false, "south")).toBe("down");
+  });
+  it("sneaking puts the mouth into the clicked block instead", () => {
+    expect(placementFacing("west", true, true, "south")).toBe("west");
+    expect(placementFacing("up", true, true, "south")).toBe("up");
+  });
+  it("keeps the trait's direction for the floor or a wall", () => {
+    expect(placementFacing("up", false, false, "north")).toBe("north");
+    expect(placementFacing("up", false, true, "north")).toBe("north");
+    expect(placementFacing(undefined, true, false, "west")).toBe("west");
   });
 });
 

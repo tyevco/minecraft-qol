@@ -86,6 +86,7 @@ write(
     dark: T.flatDark(T.DARK_STONE),
     pipeU: T.pipeAlongU(T.COPPER),
     pipeV: T.pipeAlongV(T.COPPER),
+    grille: T.grille(T.DARK_STONE, T.COPPER),
   }),
 );
 write(

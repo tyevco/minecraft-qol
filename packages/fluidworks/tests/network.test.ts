@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { key, walk, type NetworkView } from "../scripts/core/network";
+import { key, route, walk, type NetworkView } from "../scripts/core/network";
 
 /** A tiny world: a set of pipe keys and a set of terminal keys. */
 function view(pipes: string[], terminals: string[]): NetworkView {
@@ -48,5 +48,44 @@ describe("walk", () => {
     expect(
       walk({ x: 1, y: 0, z: 0 }, funnel, view([], ["2,0,0"])),
     ).toBeUndefined();
+  });
+});
+
+describe("route", () => {
+  const funnel = { x: 0, y: 0, z: 0 };
+
+  it("lists the pipes from the funnel to the tank, in order", () => {
+    const v = view(["1,0,0", "2,0,0", "3,0,0"], ["4,0,0"]);
+    expect(route({ x: 1, y: 0, z: 0 }, funnel, v)).toEqual({
+      terminal: { x: 4, y: 0, z: 0 },
+      path: [
+        { x: 1, y: 0, z: 0 },
+        { x: 2, y: 0, z: 0 },
+        { x: 3, y: 0, z: 0 },
+      ],
+    });
+  });
+
+  it("stops the path at the pipe beside a tank found part-way", () => {
+    const v = view(["1,0,0", "2,0,0", "3,0,0"], ["2,1,0"]);
+    expect(route({ x: 1, y: 0, z: 0 }, funnel, v)?.path).toEqual([
+      { x: 1, y: 0, z: 0 },
+      { x: 2, y: 0, z: 0 },
+    ]);
+  });
+
+  it("follows the branch that reached the tank, not the dead end", () => {
+    const v = view(["1,0,0", "2,0,0", "1,0,1", "1,0,2", "1,0,3"], ["1,0,4"]);
+    expect(route({ x: 1, y: 0, z: 0 }, funnel, v)?.path).toEqual([
+      { x: 1, y: 0, z: 0 },
+      { x: 1, y: 0, z: 1 },
+      { x: 1, y: 0, z: 2 },
+      { x: 1, y: 0, z: 3 },
+    ]);
+  });
+
+  it("is undefined when the run reaches nothing", () => {
+    const v = view(["1,0,0", "2,0,0"], []);
+    expect(route({ x: 1, y: 0, z: 0 }, funnel, v)).toBeUndefined();
   });
 });

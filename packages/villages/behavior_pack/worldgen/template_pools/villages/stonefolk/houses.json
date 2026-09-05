@@ -28,6 +28,22 @@
           "projection": "rigid"
         },
         "weight": 1
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_terrace",
+          "projection": "rigid"
+        },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_empty_lot",
+          "projection": "rigid"
+        },
+        "weight": 2
       }
     ],
     "fallback": "villages:stonefolk/house_ends"

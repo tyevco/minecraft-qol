@@ -36,6 +36,22 @@
           "projection": "rigid"
         },
         "weight": 1
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tinker/tinker_yard",
+          "projection": "rigid"
+        },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tinker/tinker_empty_lot",
+          "projection": "rigid"
+        },
+        "weight": 2
       }
     ],
     "fallback": "villages:tinker/house_ends"

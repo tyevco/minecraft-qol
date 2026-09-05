@@ -26,7 +26,7 @@ export interface VanillaBlock {
   /** Texture file per face, relative to the viewer root. */
   faces: Record<Face, string>;
   /** How the viewer draws it; a cube unless the name says otherwise. */
-  shape: "cube" | "pane" | "fence" | "wall" | "lantern" | "campfire" | "chest" | "anvil" | "water" | "cutout" | "stairs" | "slab" | "door" | "bed" | "ladder" | "gate" | "cross";
+  shape: "cube" | "pane" | "fence" | "wall" | "lantern" | "campfire" | "chest" | "anvil" | "water" | "cutout" | "stairs" | "slab" | "door" | "bed" | "ladder" | "gate" | "cross" | "flat";
   /** Alternate face textures by state (a door's upper half). */
   variants?: Record<string, Record<Face, string>>;
   /** A multiply colour for grey textures (water). */
@@ -120,7 +120,8 @@ function shapeFor(name: string): VanillaBlock["shape"] {
   if (name === "bed") return "bed";
   if (name === "ladder") return "ladder";
   if (/fence_gate$/.test(name)) return "gate";
-  if (/^(wheat|carrots|potatoes|beetroot|reeds|tall_grass|short_grass|fern)$/.test(name)) return "cross";
+  if (/^(wheat|carrots|potatoes|beetroot|reeds|tall_grass|short_grass|fern|poppy|dandelion|cornflower|oxeye_daisy|azure_bluet|sweet_berry_bush|azalea|flowering_azalea)$/.test(name)) return "cross";
+  if (name === "waterlily" || /carpet$/.test(name)) return "flat";
   if (/_pane$/.test(name)) return "pane";
   if (/_fence$/.test(name)) return "fence";
   if (/_wall$/.test(name)) return "wall";
@@ -255,6 +256,8 @@ export async function buildVanilla(entries: Iterable<PaletteEntry>, root: string
     }
     const block: VanillaBlock = { faces, shape };
     if (name === "water") block.tint = 0x3f76e4;
+    // Grey textures the game tints by biome: leaves and grass tufts, in plains green.
+    if (/leaves$/.test(name) || /^(short_grass|tall_grass|fern|waterlily|reeds)$/.test(name)) block.tint = name === "waterlily" ? 0x208030 : 0x59ae30;
     if (shape === "door") {
       const upper = await textureFile(byFace.upper!, doorIndex);
       if (upper) block.variants = { upper: Object.fromEntries(FACES.map((f) => [f, upper])) as Record<Face, string> };

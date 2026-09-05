@@ -96,15 +96,28 @@ vanilla village density, one structure set per people with its own salt.
 
 ### 3.1 The pieces (built)
 
-`tools/structures/villages.ts` makes them from the buildings, per people:
+`tools/structures/villages.ts` makes them from the buildings, per people.
+The generator, like the game, takes the first piece that fits a socket, so
+a village is exactly as dense as its pieces; room to breathe is designed
+in, not left over.
 
-- **The square**: paving sized to the core building plus a margin (15 or
-  more), the core at the north facing south, lamps at the south corners,
-  and a street socket in the middle of the east, west and south edges.
-- **Streets**: straight (5 wide, 7 long, a house socket on each side at
-  the middle), long (11, two sockets a side), corner (with a lamp on the
-  outside), T-junction and crossroads, a street socket at each open end.
-  Weighted 5 : 3 : 2 : 2 : 1, expanded to depth 6.
+- **The square**: paving sized to the core building plus a margin (17 or
+  more), the core at the north facing south, a tree in each north corner,
+  lamps at the south corners, and a street socket in the middle of the
+  east, west and south edges.
+- **Streets** are seven wide: a three-wide path between two-wide grass
+  verges, so a house stands two blocks back from the path with a paved
+  stub to its door. Straight (7 long, a house socket each side), long (11,
+  two a side), corner (with a lamp), T-junction, crossroads, and a **lane**
+  (13 long, trees on the verges, no house sockets) that puts distance
+  between clusters. Weighted 5 : 3 : 2 : 2 : 1 : 2, expanded to depth 6.
+- **Greens and empty lots** sit in the house pool beside the houses, so
+  not every socket grows a roof: a tallfolk meadow (an oak, flowers, grass)
+  and orchard (four small trees, berry bushes), a stonefolk terrace (moss,
+  boulders, a spruce, ferns), a tinker yard (composter, hay, pumpkins, an
+  acacia), a reedfolk reed bed (open water, mud banks, reeds, lily pads),
+  and for everyone a plain empty lot. About a third of house sockets by
+  weight.
 - **Terminators**: a lamp post (post and lantern on the joint block) or,
   one time in four, the people's watch (watch post, reed tower, gatehouse)
   facing back up the street; and a doorstep (one block of turf) where no
@@ -114,17 +127,11 @@ vanilla village density, one structure set per people with its own salt.
   final block is a post rather than paving; the stilt house's floor is a
   block above the walkway. Their jigsaw structure uses no terrain
   adaptation, so the posts stand in the water as they are.
-- **The tallfolk square has the well** in its south half.
-- **Houses**: every building in the people's list gets one jigsaw on its
-  doorstep, the block outside its door, facing out; the tallfolk also get
-  a **field** (fenced farmland with wheat and a water channel, a gate on
-  the street).
+- **The tallfolk square has the well** in its south half. Every building
+  carries a **job post** (§4).
 
-Every marker sits in the ground layer and its final block is the paving,
-so a resolved joint is seamless and an open one is a paving stub. The
-marker names are shared across peoples (`villages:street`,
-`villages:house`); the pools are per people (`villages:<people>/streets`,
-`/houses`, `/street_ends`, `/house_ends`, `/square`).
+Trees are logs with leaves that never decay (`persistent_bit`), clipped to
+the piece they stand in.
 
 ### 3.2 Seeing a village before the game does (built)
 

@@ -51,14 +51,18 @@ const PEOPLES: [id: string, name: string][] = [
   ["tinker", "Tinker"],
   ["tallfolk", "Tallfolk"],
 ];
+const GREENS: Record<string, string[]> = { stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"] };
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
+  ...(GREENS[p] ?? []).map((g): [string, string, string] => [`${p}_${g}`, `${name} ${g[0]!.toUpperCase()}${g.slice(1).replace("_", " ")}`, p]),
   [`${p}_square`, `${name} Square`, p],
   [`${p}_street_straight`, `${name} Street`, p],
   [`${p}_street_long`, `${name} Long Street`, p],
+  [`${p}_lane`, `${name} Lane`, p],
   [`${p}_street_corner`, `${name} Corner`, p],
   [`${p}_street_t`, `${name} T-junction`, p],
   [`${p}_street_cross`, `${name} Crossroads`, p],
   [`${p}_lamp`, `${name} Lamp Post`, p],
+  [`${p}_empty_lot`, `${name} Empty Lot`, p],
 ] as [string, string, string][]);
 
 const BUILDINGS: [id: string, name: string, people: string][] = [

@@ -1,6 +1,6 @@
 # Peoples — Concept Sheet
 
-**Settlers who are not villagers: five peoples, jobs that cost something, and builders that work from blueprints**
+**Settlers who are not villagers: nine peoples, jobs that cost something, and builders that work from blueprints**
 
 Target: `@minecraft/server` 2.9.0 / `@minecraft/server-ui` 2.1.0 · Entity format version 1.26.40 · Draft v0.1
 
@@ -35,7 +35,7 @@ for free; nothing fights a war.
 
 ## 2. The peoples
 
-One biped builder in `tools/models/generate.ts` produces all five from a set
+One biped builder in `tools/models/generate.ts` produces all four from a set
 of proportions; the bones are vanilla's (`head`, `body`, `left_arm`,
 `right_arm`, `left_leg`, `right_leg`), so `animation.common.look_at_target`
 and one shared walk cycle apply to all. Names are placeholders.
@@ -46,7 +46,11 @@ and one shared walk cycle apply to all. Names are placeholders.
 | **Reedfolk** | tall and lean (head 7×8, body 8×14, legs 14) | conical reed hat | marsh and river, stilt houses; fish, boats, dye and glass |
 | **Tinker** | small and quick (head 7×6, body 6×8, legs 7) | goggles pushed up on the forehead | workshops with steam; copper, redstone, Fluidworks parts |
 | **Tallfolk** | a head taller than a player (body 8×13, legs 13) | straw hat | open ground; bread, wool, horses |
-| **Drover** | player-sized and rangy (head 8×8, body 8×12, legs 12) | a braid down the back, a red neckerchief; the worker's hat is a wide brim | the desert; cattle, leather, hay, the long trail. A cowhand people: the western look without any one film's character |
+| **Hobbits** | small and round (body 8×9, legs 6), barefoot | curly hair, no hat | flowery hills; gardens, pantries, an inn |
+| **Wood elves** | tall and lean (body 7×13, legs 13) | pointed ears, a green hood | the canopy; platforms on dark oak trunks |
+| **High elves** | tall (body 8×14, legs 14) | pointed ears, a gold circlet | cherry groves and meadows; quartz halls |
+| **Drow** | tall and lean (body 7×13, legs 13) | pointed ears, white hair, a dark hood | the dark forest; deepslate, webs, amethyst |
+| **Drover** | player-sized and rangy (head 8×8, body 8×12, legs 12) | a braid down the back, a red neckerchief; a wide-brimmed red hat on every job but the guard | the desert; cattle, sheep, leather, hay, the long trail. A cowhand people: the western look without any one film's character |
 
 Skin, hair and eye colour are per people; each people's face is painted for
 its own head window, so a short broad head and a tall narrow one both get

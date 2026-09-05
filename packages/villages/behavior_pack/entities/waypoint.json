@@ -1,0 +1,59 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "villages:waypoint",
+      "is_spawnable": false,
+      "is_summonable": true
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "villages_waypoint"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 0.1,
+        "height": 0.1
+      },
+      "minecraft:health": {
+        "value": 1,
+        "max": 1
+      },
+      "minecraft:physics": {
+        "has_gravity": false,
+        "has_collision": false
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:damage_sensor": {
+        "triggers": {
+          "deals_damage": "no"
+        }
+      },
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:timer": {
+        "time": 90,
+        "looping": false,
+        "time_down_event": {
+          "event": "villages:expire"
+        }
+      }
+    },
+    "component_groups": {
+      "villages:expired": {
+        "minecraft:instant_despawn": {}
+      }
+    },
+    "events": {
+      "villages:expire": {
+        "add": {
+          "component_groups": [
+            "villages:expired"
+          ]
+        }
+      }
+    }
+  }
+}

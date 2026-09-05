@@ -10,7 +10,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import * as A from "../atlases";
-import { Canvas } from "./canvas";
+import { Canvas, mix } from "./canvas";
 import * as T from "./tiles";
 
 const ROOT = resolve(__dirname, "../..");
@@ -319,16 +319,31 @@ interface People {
   body: [number, number];
   arm: [number, number];
   leg: [number, number];
-  /** The hat's cloth (and the neckerchief's, where the rig has one); straw unless said. */
-  hat?: T.Ramp;
+  /** What the hat bone wears: straw for the first four, a cloth hood or a gold circlet for the elves, red felt for the drovers (and their neckerchief). */
+  hat?: "straw" | "hood" | "circlet" | "felt";
+  /** Cloth and trim per job, where a people dresses its own way. */
+  cloth?: Partial<Record<string, { cloth: T.Ramp; trim: number }>>;
 }
 const FELT: T.Ramp = { light: 0xd9564a, mid: 0xb0342b, dark: 0x7d221d, deep: 0x4f1512 };
+const ramp = (mid: number): T.Ramp => ({ light: mix(mid, 0xffffff, 0.35), mid, dark: mix(mid, 0x000000, 0.3), deep: mix(mid, 0x000000, 0.55) });
+const dress = (guard: number, worker: number, trader: number, builder: number, trim: number): People["cloth"] => ({
+  guard: { cloth: ramp(guard), trim },
+  worker: { cloth: ramp(worker), trim },
+  trader: { cloth: ramp(trader), trim },
+  builder: { cloth: ramp(builder), trim },
+});
 const PEOPLES: People[] = [
   { key: "stonefolk", skin: 0xc98f6f, hair: 0xb5442b, eye: 0x3a2a1a, beard: true, head: [8, 7], body: [10, 10], arm: [4, 10], leg: [4, 8] },
   { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14] },
   { key: "tinker", skin: 0xd9a877, hair: 0x6a4a2a, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7] },
   { key: "tallfolk", skin: 0xa0714f, hair: 0x3a2a1a, eye: 0x2a2a2e, beard: false, head: [8, 8], body: [8, 13], arm: [4, 13], leg: [4, 13] },
-  { key: "drover", skin: 0xb97d58, hair: 0xb8562c, eye: 0x3f6b3a, beard: false, head: [8, 8], body: [8, 12], arm: [4, 12], leg: [4, 12], hat: FELT },
+  // The second four (docs/design/villages.md §3.3). Each dresses its own way.
+  { key: "hobbit", skin: 0xe6b894, hair: 0x6b4426, eye: 0x3a6a3a, beard: false, head: [8, 7], body: [8, 9], arm: [3, 9], leg: [3, 6], cloth: dress(0x7a5a3a, 0x4f7a3a, 0xd9a83a, 0x9c4a3a, 0xb8862b) },
+  { key: "wood_elf", skin: 0xd8b894, hair: 0x8a4f26, eye: 0x2f7a3a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x2f5a2a, 0x5a7a3a, 0xa0622a, 0x5a4a2a, 0x8fbf4a) },
+  { key: "high_elf", skin: 0xf2dcc8, hair: 0xf0e2a8, eye: 0x3a6ab8, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14], hat: "circlet", cloth: dress(0x8fa8c8, 0xe8e6dc, 0x6aa0d8, 0xd8c890, 0xe8c14a) },
+  { key: "drow", skin: 0x4a3f6a, hair: 0xf0f0f8, eye: 0xff5a8a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x1e1a2e, 0x4a2f6a, 0x7a2a6a, 0x3a3a4e, 0xc0c0d0) },
+  // The drovers (design §3 and settlements.md §2.6): sun-browned, auburn, the wide red hat.
+  { key: "drover", skin: 0xb97d58, hair: 0xb8562c, eye: 0x3f6b3a, beard: false, head: [8, 8], body: [8, 12], arm: [4, 12], leg: [4, 12], hat: "felt" },
 ];
 interface Job {
   key: string;
@@ -344,12 +359,18 @@ const JOBS: Job[] = [
   { key: "trader", cloth: { light: 0x9d7ed0, mid: 0x6a4fa0, dark: 0x47336f, deep: 0x2d2047 }, trim: 0xd9a441, trousers: 0x2d2047, boot: 0x3a2a1a, front: "coat" },
   { key: "builder", cloth: { light: 0x7fb2e0, mid: 0x4a7fb5, dark: 0x30557c, deep: 0x1f3650 }, trim: 0xe8c14a, trousers: 0x4a3a28, boot: 0x2a2a2e, front: "apron" },
 ];
-// Shipped: the peoples live in packages/villages now.
+// Shipped: the four peoples live in packages/villages now.
 const VILLAGES_RP = "packages/villages/resource_pack/textures";
 write(`${VILLAGES_RP}/blocks/post.png`, atlas(A.POST, { post: T.plankV(T.OAK, 701), plaque: T.flatDark(T.DARK_STONE) }));
+// The vein: a fixture the mine piece carries and a miner works (docs/design/villages.md §5.1).
+for (const [ore, ramp] of [["stone", undefined], ["coal", T.COAL], ["iron", T.IRON], ["copper", T.COPPER]] as const)
+  write(`${VILLAGES_RP}/blocks/vein_${ore}.png`, T.oreVein(T.STONE, ramp, 710));
 for (const people of PEOPLES) {
   for (const job of JOBS) {
-    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
+    const own = people.cloth?.[job.key];
+    const cloth = own?.cloth ?? job.cloth, trim = own?.trim ?? job.trim;
+    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth, trim, trousers: own ? cloth.deep : job.trousers, boot: job.boot, front: job.front };
+    const hat = people.hat === "hood" ? T.clothTile(cloth, 615) : people.hat === "circlet" ? T.circletTile() : people.hat === "felt" ? T.clothTile(FELT, 613) : T.straw(T.STRAW, 613);
     write(
       `${VILLAGES_RP}/entity/${people.key}_${job.key}.png`,
       atlas(A.BIPED, {
@@ -358,13 +379,13 @@ for (const people of PEOPLES) {
         hair: T.hairTile(people.hair),
         hairTop: T.hairTile(people.hair),
         shirt: T.shirtTile(look, people.body[0], people.body[1]),
-        shirtBack: T.clothTile(job.cloth, 611),
-        shirtSide: T.clothTile(job.cloth, 612),
+        shirtBack: T.clothTile(cloth, 611),
+        shirtSide: T.clothTile(cloth, 612),
         sleeve: T.sleeveTile(look, people.arm[0], people.arm[1]),
         hand: T.skinTile(people.skin),
         trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
         helmet: T.helmetTile(),
-        hat: people.hat ? T.clothTile(people.hat, 613) : T.straw(T.STRAW, 613),
+        hat,
         pack: T.packTile(),
         tool: T.toolTile(),
         toolWood: T.plankV(T.OAK, 614),

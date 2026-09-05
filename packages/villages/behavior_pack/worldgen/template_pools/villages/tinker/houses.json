@@ -48,6 +48,14 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
+          "location": "villages/tinker/tinker_mine",
+          "projection": "rigid"
+        },
+        "weight": 1
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
           "location": "villages/tinker/tinker_empty_lot",
           "projection": "rigid"
         },

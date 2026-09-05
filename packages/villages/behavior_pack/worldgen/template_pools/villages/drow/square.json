@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:drow/square"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/drow/drow_square",
+          "projection": "rigid"
+        },
+        "weight": 1
+      }
+    ]
+  }
+}

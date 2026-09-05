@@ -111,6 +111,70 @@ four placed the same way:
 | reedfolk (stilted, no terrain adaptation) | 86 × 15 × 88 |
 | tallfolk (first pass) | 48 × 12 × 44 |
 
+## Villages generate on their own (design §2, §3)
+
+Measured on BDS 1.26.45.1 in a **fresh `DEFAULT`-terrain world with no
+experiments** (`dist/bds/probe`, world `qolgen`, only the probe pack and
+Villages listed), the current pack deployed:
+
+- `locate structure` finds every people's village from spawn, which means
+  the four structure sets are registered and the biome filters pass
+  somewhere:
+
+  | Village | Nearest, from spawn |
+  | --- | --- |
+  | `villages:reedfolk_village` | 216, 104 (239 blocks) |
+  | `villages:tallfolk_village` | 295, 135 (324 blocks) |
+  | `villages:tinker_village` | −2471, 1385 (2832 blocks) |
+  | `villages:stonefolk_village` | −1978, −2518 (3202 blocks) |
+  | vanilla `minecraft:village`, for scale | 152, 808 (822 blocks) |
+
+- One ticking area (224–383 × 64–223, 100 chunks) round the two nearest
+  and a `qolprobe:jigsaw-scan` a minute later: **57 markers** in the
+  region, among them nine `villages:post` blocks - four at 227/257 ×
+  94/114 on the reedfolk village's stilts over water (`water 1823` in
+  their survey), five across the tallfolk village at 275–338 × 122–136
+  with its doors and lanterns - and `villages:debug` reports **9 posts, 9
+  persons present**. The reedfolk workers surveyed themselves into
+  fishers as their chunks loaded; the tallfolk posts in range were guards,
+  traders and builders. Nothing was placed by hand.
+
+So the "villages are generated, not script-placed" stance holds for the
+villages themselves, not only the probe's well, and the biome filters put
+the reedfolk in the wet and the tallfolk on the plains. The stonefolk and
+tinker villages are far from this spawn (mountains and savanna are), and
+were not loaded; they place by hand as before, and `locate` finds them.
+
+## The second four peoples (design §3.3)
+
+Same fresh-world setup (`qolgen2`, plain terrain, no experiments, only the
+probe pack and Villages), the pack with eight peoples deployed:
+
+- `locate structure` finds all four new villages from spawn, each in its
+  own biome and none of them near this plains spawn: hobbits at 1690,
+  3514; wood elves at 839, 1303; high elves at −1589, −843; drow at 1846,
+  −362.
+- Placed by hand from the API into two ticking areas, every one returned
+  a box: hobbit 90 × 10 × 130, wood elf 100 × 15 × 77 (walkways six
+  blocks up: the topmost block over the middle of that area read
+  `dark_oak_planks` at y = 72), high elf 55 × 13 × 124, drow 88 × 13 ×
+  115. The scans found their posts, doors and lanterns, and
+  `villages:debug` reported **47 posts, 41 persons present** across the
+  four placed villages and the two that had generated on their own (the
+  six missing were in chunks outside the ticking areas: the hobbit box
+  runs twenty blocks past the loaded edge).
+- The trades read the new villages as they should: the drow miner found
+  **2 enclosed veins** in its mine piece; the wood elf and high elf
+  workers surveyed themselves lumberjacks among their own trees (2505 and
+  1075 leaves in range); every one then waited for a wage, since a found
+  village's chest starts empty.
+- What that log also showed: a waiting worker repeated its reason every
+  minute, four workers filling the content log between them. A reason is
+  now logged when it changes, not each time it holds.
+- The eighth people index works end to end: `villages_post_spawns_person`
+  now places a drow post (people 7) and passes, with the rest of the
+  villages suite.
+
 ## A peopled village (design §4, `packages/villages`)
 
 With the villages pack listed in the plain world, two tallfolk villages
@@ -195,6 +259,46 @@ budget because a post's first cycle is due at once:
   eight wheat in the chest, at most one ripe tile is left, and the field
   is replanted from the drops.
 
+- **`villages_miner_works_vein`**: a coal `villages:vein` in the floor,
+  four bread, a stonefolk worker post. The survey reports `veins 1`, and
+  after the cycle six coal are in the chest, the vein is still there and
+  the chest holds three bread.
+- **`villages_fisher_catches_fish`**: eight water blocks let into the
+  stone floor and one bread. The survey reports `water 8`; four fish and
+  no bread after the cycle. Run first without the bread, the fisher
+  finished with **3 fish of 4, three runs out of three**: raw cod and
+  salmon carry `minecraft:is_food`, so the wage took one of the catch.
+  That is the design (every worker eats a food item a cycle), so the test
+  supplies bread and pins that it is the bread that goes.
+
+- **`villages_vein_in_the_open_is_ignored`**: the same vein under the
+  open sky: the survey names it ("out in the open; a miner works a vein in
+  a cave or a mine, under a roof"), no coal after 400 ticks, no bread
+  taken.
+
+### The walk (design §7 item 6)
+
+The stable API has no "go here" for an entity, so the walk is vanilla
+pathing pointed at a beacon: a `villages:waypoint` entity spawned at the
+spot. Three ways of making a person go to it, measured in one arena on BDS
+1.26.45 (a person at one corner, the waypoint eight blocks off, the
+person's distance to it logged every 20 ticks for 300):
+
+| Way | What happened |
+| --- | --- |
+| `nearest_attackable_target` (family filter, `must_see` false) + `move_towards_target` | Never left random strolling. Closest approach 1.0 at tick 200, by chance, then away again. Also true with the waypoint's `inanimate` family removed and `within_radius` 64. |
+| `hurt_by_target` + `move_towards_target`, the target set by `person.applyDamage(1, { damagingEntity: waypoint })` (returns true) | Walked to it in 100 ticks (1.4 blocks), then wandered off (10.9 at tick 200). |
+| `follow_mob` (`stop_distance` 1, `search_range` 32) | Walked to it in 100 ticks and **stayed**: 0.3 blocks from tick 100 to 300. |
+| `follow_mob` with `"filters": { is_family other villages_waypoint }`, a decoy person two blocks from the walker | Loaded without a content-log error, walked past the decoy (closest 1.5) to the waypoint (0.3) and stayed. |
+
+So the walking group is `follow_mob` with the family filter. The
+behaviour follows the nearest match, which is why only one walk runs at a
+time within 64 blocks. With the walk in, all seven villages GameTests pass,
+the lumberjack's and the miner's among them, whose work spots are outside
+arrival radius of the post (the farmer's and the fisher's are not, so they
+passed with a broken walk too - a spot within two blocks counts as
+arrived).
+
 What was measured on the way:
 
 - **`ItemComponentTypes.Food` is not how to recognise food.** On 1.26.45
@@ -211,6 +315,15 @@ What was measured on the way:
   surveying, so the farmer's test found no wheat. `onPlace` now retires the
   old record and its person. The same happens in a world when a structure
   load or `/fill` replaces a post.
+- **`system.currentTick` counts from the server's boot, not the world's
+  start** (the pack's own "ready at tick 8131" on a world days old). A
+  stamp saved in one session is ahead of the clock in the next, and a
+  "wait a day" written as `now >= stamp + DAY` would then wait for the
+  clock to catch up - a day and a half after a restart at tick 0. Every
+  wait in the pack (respawn, survey, cycle, the vein's window) now treats
+  a stamp ahead of the clock as elapsed. `world.getAbsoluteTime()` was
+  not used instead because a world with the daylight cycle locked (a Realm
+  might) would freeze it; unmeasured, and worth a probe.
 - `Dimension.getBlocks(volume, { includeTypes }, true)` finds custom and
   vanilla types alike across a 33×17×33 survey volume in one call, and a
   log removed with `Block.setType("minecraft:air")` drops nothing, so a

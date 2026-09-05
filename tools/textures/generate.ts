@@ -369,3 +369,61 @@ for (const people of PEOPLES) {
     );
   }
 }
+
+// Furfolk (docs/design/furfolk.md): animal peoples on the same job outfits,
+// under concepts/entities/ until one is picked up. Window sizes are the
+// furred specs' in tools/models/generate.ts, as for the four.
+interface Furfolk {
+  key: string;
+  fur: T.Fur;
+  head: [number, number];
+  body: [number, number];
+  arm: [number, number];
+  leg: [number, number];
+  muzzle: [number, number];
+  ear: [number, number];
+}
+const FURFOLK: Furfolk[] = [
+  { key: "foxfolk", fur: { coat: 0xd9702c, pale: 0xf3e9d9, inner: 0xe8a3a3, eye: 0x1a1410, paw: 0x3a2824, markings: ["cheeks", "earTips"] }, head: [8, 8], body: [6, 8], arm: [3, 8], leg: [3, 6], muzzle: [4, 3], ear: [3, 6] },
+  { key: "catfolk", fur: { coat: 0x8f8f97, pale: 0xebe3d7, inner: 0xd9a3a8, eye: 0x1a1410, markings: ["stripes", "mask"] }, head: [8, 7], body: [6, 8], arm: [3, 8], leg: [3, 6], muzzle: [3, 2], ear: [3, 5] },
+  { key: "wolffolk", fur: { coat: 0x6e727a, pale: 0xd9dbdf, inner: 0xc4a0a8, eye: 0x1a1410, markings: ["mask", "brow"] }, head: [8, 8], body: [8, 10], arm: [4, 10], leg: [4, 8], muzzle: [4, 3], ear: [3, 5] },
+  { key: "rabbitfolk", fur: { coat: 0x8a5a3a, pale: 0xf5ede1, inner: 0xf0b9c1, eye: 0x1a1410, markings: ["blaze"] }, head: [8, 8], body: [6, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [3, 7] },
+  { key: "bearfolk", fur: { coat: 0x6b4a2e, pale: 0xb38b62, inner: 0x8a6a4a, eye: 0x1a1410, markings: [] }, head: [9, 8], body: [10, 10], arm: [4, 10], leg: [4, 7], muzzle: [4, 3], ear: [3, 3] },
+  { key: "fennecfolk", fur: { coat: 0xe3c79a, pale: 0xf8f1e2, inner: 0xe8b0a8, eye: 0x1a1410, tip: 0x3a2a24, markings: ["cheeks"] }, head: [8, 7], body: [5, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [4, 7] },
+  { key: "mousefolk", fur: { coat: 0x9a9097, pale: 0xecdfd6, inner: 0xe8b0b4, eye: 0x1a1410, markings: ["mask"] }, head: [7, 6], body: [5, 6], arm: [2, 6], leg: [3, 4], muzzle: [3, 2], ear: [4, 4] },
+  { key: "squirrelfolk", fur: { coat: 0xb0603a, pale: 0xf0e4d2, inner: 0xd9a0a0, eye: 0x1a1410, tip: 0xb0603a, markings: ["cheeks", "earTips"] }, head: [8, 7], body: [5, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [3, 5] },
+  { key: "otterfolk", fur: { coat: 0x5a3e2b, pale: 0xcfb89a, inner: 0x8a6a58, eye: 0x1a1410, markings: ["mask"] }, head: [8, 7], body: [6, 9], arm: [3, 9], leg: [3, 6], muzzle: [4, 2], ear: [2, 2] },
+  { key: "deerfolk", fur: { coat: 0xa8763f, pale: 0xf1e6d2, inner: 0xe0b8b0, eye: 0x1a1410, markings: ["mask", "spots"] }, head: [8, 8], body: [6, 12], arm: [3, 12], leg: [3, 11], muzzle: [4, 3], ear: [3, 4] },
+];
+for (const people of FURFOLK) {
+  const paw = people.fur.paw ?? people.fur.coat;
+  for (const job of JOBS) {
+    const look: T.Look = { skin: paw, hair: people.fur.coat, eye: people.fur.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
+    write(
+      `concepts/entities/textures/${people.key}_${job.key}.png`,
+      atlas(A.FURRED, {
+        skin: T.furTile(people.fur.coat),
+        face: T.furFaceTile(people.fur, people.head[0], people.head[1]),
+        hair: T.furTile(people.fur.coat),
+        hairTop: T.furTopTile(people.fur),
+        shirt: T.shirtTile(look, people.body[0], people.body[1]),
+        shirtBack: T.clothTile(job.cloth, 611),
+        shirtSide: T.clothTile(job.cloth, 612),
+        sleeve: T.sleeveTile(look, people.arm[0], people.arm[1]),
+        hand: T.furTile(paw, 627),
+        trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
+        helmet: T.helmetTile(),
+        hat: T.straw(T.STRAW, 613),
+        pack: T.packTile(),
+        tool: T.toolTile(),
+        toolWood: T.plankV(T.OAK, 614),
+        dark: T.flatDark(T.DARK_STONE),
+        muzzle: T.muzzleTile(people.fur, people.muzzle[0], people.muzzle[1]),
+        ear: T.earTile(people.fur, people.ear[0], people.ear[1]),
+        tail: T.tailTile(people.fur),
+        tailTip: T.furTile(people.fur.tip ?? people.fur.pale, 628),
+        antler: T.antlerTile(),
+      }),
+    );
+  }
+}

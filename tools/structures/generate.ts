@@ -88,16 +88,19 @@ mkdirSync(PROBE, { recursive: true });
 // expander for the viewer.
 const VILLAGES = resolve(ROOT, "concepts/villages");
 mkdirSync(VILLAGES, { recursive: true });
+// A concept people's pieces (docs/design/furfolk.md) go to the probe pack,
+// which never ships, as the four's did before the villages pack existed.
 for (const people of PEOPLES) {
   const set = villageSet(people);
-  const dir = resolve(ROOT, "packages/villages/behavior_pack/structures/villages", people.key);
+  const pack = people.concept ? "packages/probe" : "packages/villages/behavior_pack";
+  const dir = resolve(ROOT, pack, "structures/villages", people.key);
   mkdirSync(dir, { recursive: true });
   for (const piece of set.pieces.values()) {
     writeFileSync(resolve(dir, `${piece.key}.mcstructure`), piece.toMcstructure());
     if (piece.key.startsWith(`${people.key}_`)) writeFileSync(resolve(CONCEPTS, `${piece.key}.json`), JSON.stringify(piece.toPreview()) + "\n");
   }
   for (const [file, json] of Object.entries(villageWorldgen(set))) {
-    const path = resolve(ROOT, "packages/villages/behavior_pack", file);
+    const path = resolve(ROOT, pack, file);
     mkdirSync(resolve(path, ".."), { recursive: true });
     writeFileSync(path, JSON.stringify(json, null, 2) + "\n");
   }

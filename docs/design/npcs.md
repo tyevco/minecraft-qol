@@ -38,6 +38,8 @@ One biped builder in `tools/models/generate.ts` produces all four from a set
 of proportions; the bones are vanilla's (`head`, `body`, `left_arm`,
 `right_arm`, `left_leg`, `right_leg`), so `animation.common.look_at_target`
 and one shared walk cycle apply to all. Names are placeholders.
+Animal peoples on the same rig (foxes, cats, wolves, rabbits, bears) are
+concepted in `design/furfolk.md`.
 
 | People | Shape | Feature on the model | Where they live, what they deal in |
 | --- | --- | --- | --- |

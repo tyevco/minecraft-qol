@@ -9,12 +9,21 @@ references these files, and `npm run mcaddon` never sees them.
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built; the four peoples of
-  `docs/design/npcs.md` likewise moved to `packages/villages`.
+  `docs/design/npcs.md` likewise moved to `packages/villages`. The ten
+  furfolk of `docs/design/furfolk.md` (fox, cat, wolf, rabbit, bear, fennec,
+  mouse, squirrel, otter, deer) are here too: one geometry each on the biped
+  rig with a muzzle, ears and a tail (antlers for the deer), the four job
+  atlases each (`<people>_<job>.png`, on the `FURRED` layout), and an
+  animation set each.
 - `villages/` — one village per people, grown from the pieces and pools in
-  `tools/structures/villages.ts` by the offline jigsaw expander
+  `tools/structures/villages.ts` (the four) and `tools/structures/furfolk.ts`
+  (the ten furfolk) by the offline jigsaw expander
   (`tools/structures/jigsaw.ts`) from seed 1, as a preview the viewer draws
   under `concept · villages`. The pieces (squares, streets, lamp posts) sit
-  in `structures/` beside the buildings.
+  in `structures/` beside the buildings. A furfolk village's `.mcstructure`
+  pieces and worldgen go to the probe pack, with its job posts written as
+  lodestones until the villages pack knows the people
+  (`docs/design/furfolk.md` §3).
 - `structures/` — the buildings of `docs/design/settlements.md`, each
   as a `.mcstructure` (what a builder would place) and a `.json` preview
   (size, palette, blocks, materials) the viewer draws as blocks in the

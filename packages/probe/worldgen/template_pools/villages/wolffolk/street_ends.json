@@ -1,0 +1,26 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:wolffolk/street_ends"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/wolffolk/wolffolk_lamp",
+          "projection": "rigid"
+        },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/wolffolk/wolffolk_watchtower",
+          "projection": "rigid"
+        },
+        "weight": 1
+      }
+    ]
+  }
+}

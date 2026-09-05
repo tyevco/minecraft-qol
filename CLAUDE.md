@@ -18,6 +18,7 @@ Packs: `qol-times` (dispensers use cauldrons), `lens` (spawn-proofing overlay),
 `guardian` (per-role damage scaling and safety switches),
 `fluidworks` (funnels and tanks), `bulwark` (turret: block, head, hopper ammo),
 `hatchling` (a pet dragon: egg, warming, hatching, feeding, growth),
+`villages` (four peoples with generated villages, peopled by job posts),
 `probe` (throwaway diagnostics), `gametest` (in-game tests). Shared code is
 under `packages/shared`.
 

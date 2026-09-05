@@ -1,0 +1,17 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:processor_list": {
+    "description": { "identifier": "qolprobe:post_proc" },
+    "processors": [
+      {
+        "processor_type": "minecraft:rule",
+        "rules": [
+          {
+            "input_predicate": { "predicate_type": "minecraft:block_match", "block": "minecraft:lodestone" },
+            "output_state": { "name": "villages:post", "states": { "villages:people": 3, "villages:job": 1 } }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "villages:person",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "stonefolk_guard": "textures/entity/stonefolk_guard",
+        "stonefolk_worker": "textures/entity/stonefolk_worker",
+        "stonefolk_trader": "textures/entity/stonefolk_trader",
+        "stonefolk_builder": "textures/entity/stonefolk_builder",
+        "reedfolk_guard": "textures/entity/reedfolk_guard",
+        "reedfolk_worker": "textures/entity/reedfolk_worker",
+        "reedfolk_trader": "textures/entity/reedfolk_trader",
+        "reedfolk_builder": "textures/entity/reedfolk_builder",
+        "tinker_guard": "textures/entity/tinker_guard",
+        "tinker_worker": "textures/entity/tinker_worker",
+        "tinker_trader": "textures/entity/tinker_trader",
+        "tinker_builder": "textures/entity/tinker_builder",
+        "tallfolk_guard": "textures/entity/tallfolk_guard",
+        "tallfolk_worker": "textures/entity/tallfolk_worker",
+        "tallfolk_trader": "textures/entity/tallfolk_trader",
+        "tallfolk_builder": "textures/entity/tallfolk_builder"
+      },
+      "geometry": {
+        "stonefolk": "geometry.villages_stonefolk",
+        "reedfolk": "geometry.villages_reedfolk",
+        "tinker": "geometry.villages_tinker",
+        "tallfolk": "geometry.villages_tallfolk"
+      },
+      "animations": {
+        "look_at_target": "animation.common.look_at_target",
+        "idle": "animation.villages_person.idle",
+        "walk": "animation.villages_person.walk",
+        "work": "animation.villages_person.work",
+        "general": "controller.animation.villages_person.general"
+      },
+      "scripts": {
+        "animate": [
+          "look_at_target",
+          "general"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.villages_person"
+      ]
+    }
+  }
+}

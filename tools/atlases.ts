@@ -165,6 +165,12 @@ export const EGG = layout(64, {
 });
 
 /** One layout for every people: a biped's faces plus its job accessories. */
+/** The villages job post: a wooden post with a dark plaque. */
+export const POST = layout(32, {
+  post: [0, 0],
+  plaque: [1, 0],
+});
+
 export const BIPED = layout(64, {
   skin: [0, 0],
   face: [1, 0],

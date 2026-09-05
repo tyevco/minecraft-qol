@@ -340,11 +340,14 @@ const JOBS: Job[] = [
   { key: "trader", cloth: { light: 0x9d7ed0, mid: 0x6a4fa0, dark: 0x47336f, deep: 0x2d2047 }, trim: 0xd9a441, trousers: 0x2d2047, boot: 0x3a2a1a, front: "coat" },
   { key: "builder", cloth: { light: 0x7fb2e0, mid: 0x4a7fb5, dark: 0x30557c, deep: 0x1f3650 }, trim: 0xe8c14a, trousers: 0x4a3a28, boot: 0x2a2a2e, front: "apron" },
 ];
+// Shipped: the four peoples live in packages/villages now.
+const VILLAGES_RP = "packages/villages/resource_pack/textures";
+write(`${VILLAGES_RP}/blocks/post.png`, atlas(A.POST, { post: T.plankV(T.OAK, 701), plaque: T.flatDark(T.DARK_STONE) }));
 for (const people of PEOPLES) {
   for (const job of JOBS) {
     const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
     write(
-      `${CONCEPTS}/${people.key}_${job.key}.png`,
+      `${VILLAGES_RP}/entity/${people.key}_${job.key}.png`,
       atlas(A.BIPED, {
         skin: T.skinTile(people.skin),
         face: T.faceTile(look, people.head[0], people.head[1], people.beard),

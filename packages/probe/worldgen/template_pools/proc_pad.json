@@ -1,0 +1,9 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": { "identifier": "qolprobe:proc_pad" },
+    "elements": [
+      { "element": { "element_type": "minecraft:single_pool_element", "location": "qolprobe/proc_pad", "processors": "qolprobe:post_proc", "projection": "rigid" }, "weight": 1 }
+    ]
+  }
+}

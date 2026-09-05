@@ -146,10 +146,13 @@ files (`docs/villages-jigsaw-results.md`). The pieces and pools live in
 the probe pack for now, under the `villages` namespace; they move to a
 `villages` pack when the peopling script exists to go with them.
 
-## 4. The people in a found village
+## 4. The people in a found village (built: `packages/villages`)
 
 A village must be peopled without villager-style spawning. The pattern is
-the one Bulwark already uses: **the job block is the anchor**.
+the one Bulwark already uses: **the job block is the anchor**. Built as
+`villages:post` and `villages:person`; the two GameTests pin that a post
+spawns exactly one person with its people and job and that breaking the
+post removes the person.
 
 - Each building carries its job block: a guard post, a forge bench, a dock
   bollard, a barn stall, a workshop bench, a stall counter, an inn desk, and
@@ -253,6 +256,6 @@ found, in buildings they raised. That is the whole loop.
    reedfolk over water (`ocean_floor` projection, stilted streets), a
    watch at the street ends, fields for the tallfolk on more sockets,
    processor lists for weathering.
-4. A `villages` pack of its own once the peopling script exists: job
-   blocks and the tick that peoples a village; then the elder, errands and
-   standing; then invite.
+4. ~~A `villages` pack of its own: job posts and the tick that peoples a
+   village.~~ Built (`packages/villages`); then the elder, errands and
+   standing (§5); then invite (§6).

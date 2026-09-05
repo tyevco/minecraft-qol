@@ -652,10 +652,10 @@ emit(HATCHLING_RP, "egg", {
 // bone rides on it) gated on a property the job would set.
 // ---------------------------------------------------------------------------
 
-function bipedSet(file: string, name: string): void {
-  emit(CONCEPTS, file, {
+function bipedSet(dir: string, file: string, name: string, geometry: string, working: string): void {
+  emit(dir, file, {
     name,
-    bones: bonesOf(`${CONCEPTS}/models/${file}.geo.json`),
+    bones: bonesOf(geometry),
     animations: [
       {
         key: "idle",
@@ -708,18 +708,17 @@ function bipedSet(file: string, name: string): void {
           idle: {
             animations: ["idle"],
             transitions: [
-              ["work", "query.property('concept:working')"],
+              ["work", `query.property('${working}')`],
               ["walk", MOVING],
             ],
           },
           walk: { animations: ["walk"], transitions: [["idle", STOPPED]], blendTransition: 0.2 },
-          work: { animations: ["idle", "work"], transitions: [["idle", "!query.property('concept:working')"]] },
+          work: { animations: ["idle", "work"], transitions: [["idle", `!query.property('${working}')`]] },
         },
       },
     ],
   });
 }
-bipedSet("stonefolk", "concept_stonefolk");
-bipedSet("reedfolk", "concept_reedfolk");
-bipedSet("tinker", "concept_tinker");
-bipedSet("tallfolk", "concept_tallfolk");
+// Shipped: packages/villages. The four peoples share one rig's bone names, so
+// one set animates all of them; the stonefolk geometry stands in for the bones.
+bipedSet("packages/villages/resource_pack", "person", "villages_person", "packages/villages/resource_pack/models/entity/stonefolk.geo.json", "villages:working");

@@ -1,0 +1,35 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Villages",
+    "description": "Four peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains. Every person is anchored to a job post in their village.",
+    "uuid": "c3c3f8ed-ae70-4d6f-9f17-6d845624cac4",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Villages: peoples, job posts, structures and worldgen",
+      "type": "data",
+      "uuid": "ec7fe108-4ebb-4863-a752-1415042d24b3",
+      "version": [0, 1, 0]
+    },
+    {
+      "description": "Villages scripts",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "a86a813f-1d58-49c3-b388-212fb81c59e7",
+      "version": [0, 1, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "2.9.0" },
+    { "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef", "version": [0, 1, 0] }
+  ],
+  "metadata": {
+    "authors": ["Sweetpotato Games"],
+    "url": "https://sweetpotato.games",
+    "product_type": "addon"
+  }
+}

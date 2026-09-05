@@ -220,6 +220,7 @@ export async function buildVanilla(entries: Iterable<PaletteEntry>, root: string
     const name = full.replace(/^minecraft:/, "");
     const def = blocks[name];
     if (!def) {
+      if (!full.startsWith("minecraft:")) continue; // a pack's own block; drawn in its preview colour
       console.warn(`vanilla textures: "${full}" is not a block in blocks.json; check the identifier`);
       continue;
     }

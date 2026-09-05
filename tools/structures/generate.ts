@@ -75,31 +75,46 @@ mkdirSync(PROBE, { recursive: true });
   socket.hipRoof(1, 5, 1, 3, 3, "dark_oak_planks");
   socket.set(2, 4, 2, "lantern");
   socket.jigsaw(0, 1, 2, { facing: "west", name: "qolprobe:in", target: "qolprobe:out", pool: "minecraft:empty", final: "diamond_block" });
+  // A job post in the child piece: does a custom block survive being joined
+  // (rotated and attached) rather than placed as the start piece?
+  socket.set(4, 1, 4, "villages:post", { "villages:people": 3, "villages:job": 1 });
   for (const bp of [pad, socket]) writeFileSync(resolve(PROBE, `${bp.key}.mcstructure`), bp.toMcstructure());
   console.log("packages/probe/structures/qolprobe/{pad,well_socket}.mcstructure");
 }
 
 // Villages (docs/design/villages.md): the pieces and pools for each people go
-// into the probe pack for now, under a `villages` namespace, so a village can
-// be placed on the plain-world server and looked at; the squares and streets
-// get previews beside the buildings, and one whole village per people is
-// grown by the offline expander for the viewer.
+// into the villages pack; the squares and streets get previews beside the
+// buildings, and one whole village per people is grown by the offline
+// expander for the viewer.
 const VILLAGES = resolve(ROOT, "concepts/villages");
 mkdirSync(VILLAGES, { recursive: true });
 for (const people of PEOPLES) {
   const set = villageSet(people);
-  const dir = resolve(ROOT, "packages/probe/structures/villages", people.key);
+  const dir = resolve(ROOT, "packages/villages/behavior_pack/structures/villages", people.key);
   mkdirSync(dir, { recursive: true });
   for (const piece of set.pieces.values()) {
     writeFileSync(resolve(dir, `${piece.key}.mcstructure`), piece.toMcstructure());
     if (piece.key.startsWith(`${people.key}_`)) writeFileSync(resolve(CONCEPTS, `${piece.key}.json`), JSON.stringify(piece.toPreview()) + "\n");
   }
   for (const [file, json] of Object.entries(villageWorldgen(set))) {
-    const path = resolve(ROOT, "packages/probe", file);
+    const path = resolve(ROOT, "packages/villages/behavior_pack", file);
     mkdirSync(resolve(path, ".."), { recursive: true });
     writeFileSync(path, JSON.stringify(json, null, 2) + "\n");
   }
   const { expansion, blueprint } = villagePreview(set, 1);
   writeFileSync(resolve(VILLAGES, `${people.key}.json`), JSON.stringify(blueprint.toPreview()) + "\n");
   console.log(`concepts/villages/${people.key}  ${blueprint.size.join("x")}  ${expansion.placements.length} pieces, ${expansion.open.length} open`);
+}
+
+// The processor probe (docs/villages-jigsaw-results.md): a pad with a
+// lodestone that a processor list turns into a job post, a post written
+// directly, and a jigsaw whose final block is a post. All three survived.
+{
+  const pad = new Blueprint("proc_pad", "Probe Processor Pad", [5, 2, 5], "probe", "");
+  pad.fill(0, 0, 0, 5, 1, 5, "stone_bricks").set(0, 0, 0, "emerald_block");
+  pad.set(1, 1, 1, "lodestone");
+  pad.set(3, 1, 1, "villages:post", { "villages:people": 3, "villages:job": 1 });
+  pad.jigsaw(2, 1, 3, { facing: "south", name: "qolprobe:x", target: "qolprobe:y", pool: "minecraft:empty", final: "villages:post" });
+  writeFileSync(resolve(PROBE, "proc_pad.mcstructure"), pad.toMcstructure());
+  console.log("packages/probe/structures/qolprobe/proc_pad.mcstructure");
 }

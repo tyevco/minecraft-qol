@@ -9,6 +9,7 @@
  * Usage:
  *   node tools/bds/run.mjs "gametest run qol:dispenser_fills_cauldron"
  *   node tools/bds/run.mjs --idle 400 "gametest runset qol"
+ *   node tools/bds/run.mjs --wait 30000 "structure save ..."   (let chunks load first)
  *
  * Every positional argument is a console command, sent in order once the server
  * reports itself started. The server is stopped when the commands have gone
@@ -48,6 +49,8 @@ let timeoutMs = 240000;
 let logPath = join(REPO, "dist", "bds", "last-run.log");
 let quiet = false;
 
+/** Wall time after "Server started." before the first command: ticking areas load their chunks lazily. */
+let waitMs = 0;
 let sequential = false;
 /** Wall time between sequential tests, for each pack's sweep to settle. */
 let gapMs = 12000;
@@ -73,6 +76,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--log") logPath = resolve(args[++i]);
   else if (a === "--quiet") quiet = true;
   else if (a === "--seq") sequential = true;
+  else if (a === "--wait") waitMs = Number(args[++i]);
   else if (a === "--gap") gapMs = Number(args[++i]);
   else commands.push(a);
 }
@@ -147,7 +151,13 @@ function onChunk(buf) {
     if (!quiet) console.log(line);
     if (!started && STARTED.test(line)) {
       started = true;
-      queueMicrotask(sendCommands);
+      if (waitMs > 0) {
+        waiting = true;
+        setTimeout(() => {
+          waiting = false;
+          sendCommands();
+        }, waitMs).unref();
+      } else queueMicrotask(sendCommands);
     }
     // In sequential mode one test is in flight at a time, so each lands at the
     // same spot near the console's origin. Run as a set they fan out across

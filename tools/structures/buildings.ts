@@ -62,6 +62,16 @@ function bed(bp: Blueprint, x: number, y: number, z: number): void {
   bp.bed(x, y, z + 1, "north");
 }
 
+/**
+ * The job post that anchors a building's person (docs/design/villages.md §4):
+ * `villages:post` with the job in its state. The people is stamped by
+ * villages.ts when the building joins a people's pools; here it is 0.
+ */
+const JOB_INDEX = { guard: 0, worker: 1, trader: 2, builder: 3 } as const;
+function post(bp: Blueprint, x: number, y: number, z: number, job: keyof typeof JOB_INDEX): void {
+  bp.set(x, y, z, "villages:post", { "villages:people": 0, "villages:job": JOB_INDEX[job] });
+}
+
 /** A table: a fence post with a slab on it, and a chair (stairs) facing it from the south. */
 function table(bp: Blueprint, x: number, y: number, z: number, wood: string): void {
   bp.set(x, y, z, `${wood}_fence`).slab(x, y + 1, z, `${wood}_planks`);
@@ -93,6 +103,7 @@ building("stonefolk_hall", "Hill Hall", "stonefolk", "The heart of a stonefolk s
   bp.stairs(4, 1, 5, "spruce_planks", "east").stairs(8, 1, 5, "spruce_planks", "west");
   table(bp, 3, 1, 5, "spruce");
   table(bp, 9, 1, 5, "spruce");
+  post(bp, 6, 1, 8, "trader");
   // A second lantern each end.
   bp.set(3, 4, 5, "lantern").set(9, 4, 5, "lantern");
 });
@@ -100,6 +111,7 @@ building("stonefolk_hall", "Hill Hall", "stonefolk", "The heart of a stonefolk s
 building("stonefolk_forge", "Forge", "stonefolk", "Two blast furnaces under a brick chimney, an anvil by the door. The stonefolk worker's job block.", (bp) => {
   const top = cottage(bp, 1, 1, 7, 7, 3, { ...STONE, wall: "brick_block", corner: "stone_bricks", roof: "deepslate_tiles" });
   bp.set(2, 1, 2, "blast_furnace").set(3, 1, 2, "blast_furnace").set(6, 1, 5, "anvil");
+  post(bp, 4, 1, 4, "worker");
   // Chimney through the roof above the furnaces.
   bp.fill(2, 1, 1, 2, top + 2, 1, "brick_block");
   bp.fill(2, top + 2, 1, 2, 1, 1, "polished_deepslate");
@@ -117,6 +129,7 @@ building("stonefolk_watchpost", "Watch Post", "stonefolk", "A cobblestone tower 
   bp.set(3, 10, 3, "lantern");
   // A ladder up the inside of the north wall to the platform.
   bp.ladder(3, 1, 2, 8, "south");
+  post(bp, 3, 1, 3, "guard");
   bp.set(3, 9, 2, "air");
 });
 
@@ -128,6 +141,7 @@ building("stonefolk_store", "Storehouse", "stonefolk", "Barrels and chests under
   for (const x of [2, 3, 5, 6]) bp.set(x, 1, 2, "barrel").set(x, 2, 2, "barrel");
   bp.set(2, 1, 5, "chest").set(6, 1, 5, "chest");
   bp.set(4, 3, 4, "lantern");
+  post(bp, 4, 1, 4, "builder");
 });
 
 // ---------------------------------------------------------------------------
@@ -153,6 +167,7 @@ building("reedfolk_stilt_house", "Stilt House", "reedfolk", "A one-room house on
   bp.set(1, 5, 9, "mangrove_fence").set(7, 5, 9, "mangrove_fence").set(1, 6, 9, "lantern");
   bed(bp, 2, 5, 2);
   bp.set(6, 5, 2, "chest");
+  post(bp, 4, 5, 4, "trader");
 });
 
 building("reedfolk_dock", "Dock", "reedfolk", "A pier on log posts with lanterns, boats tied alongside. The reedfolk worker fishes from here.", (bp) => {
@@ -162,6 +177,7 @@ building("reedfolk_dock", "Dock", "reedfolk", "A pier on log posts with lanterns
   bp.set(1, 3, 1, "lantern").set(3, 3, 9, "lantern");
   bp.set(1, 3, 5, "mangrove_fence").set(3, 3, 5, "mangrove_fence");
   bp.set(2, 2, 10, "barrel");
+  post(bp, 2, 3, 5, "worker");
 });
 
 building("reedfolk_rack", "Drying Rack", "reedfolk", "Fish drying on rails between two posts. Decoration that says what the settlement eats.", (bp) => {
@@ -180,6 +196,7 @@ building("reedfolk_tower", "Reed Tower", "reedfolk", "A bamboo frame with a look
   bp.walls(0, 11, 0, 7, 1, 7, "mangrove_fence");
   bp.set(3, 11, 3, "lantern");
   bp.hipRoof(2, 12, 2, 3, 3, "bamboo_mosaic");
+  post(bp, 3, 1, 4, "guard");
 });
 
 // ---------------------------------------------------------------------------
@@ -192,6 +209,7 @@ building("tinker_workshop", "Workshop", "tinker", "A brick workshop under a copp
   const top = cottage(bp, 1, 1, 9, 7, 4, TINKER);
   bp.set(2, 1, 2, "smoker").set(3, 1, 2, "smithing_table").set(4, 1, 2, "crafting_table").set(8, 1, 2, "chest");
   bp.set(2, 1, 6, "barrel").set(8, 1, 6, "barrel");
+  post(bp, 5, 1, 4, "worker");
   bp.fill(2, 1, 1, 1, top + 2, 1, "copper_block");
   bp.set(2, top + 2, 1, "oxidized_copper");
   // A wide window band on the front.
@@ -207,6 +225,7 @@ building("tinker_still", "Copper Still", "tinker", "A copper tower with a glass 
   bp.door(3, 1, 5, "copper", "south");
   bp.hipRoof(1, 10, 1, 5, 5, "weathered_copper");
   bp.set(3, 5, 3, "lantern");
+  post(bp, 3, 1, 3, "guard");
 });
 
 building("tinker_stall", "Market Stall", "tinker", "Barrel counters under a striped wool awning on fence posts. The trader's job block for every people; the colours change with the people.", (bp) => {
@@ -215,6 +234,7 @@ building("tinker_stall", "Market Stall", "tinker", "Barrel counters under a stri
   bp.fill(1, 1, 5, 5, 1, 1, "barrel").set(1, 1, 3, "barrel").set(1, 1, 4, "barrel");
   for (let x = 0; x < 7; x++) bp.fill(x, 4, 0, 1, 1, 7, x % 2 === 0 ? "red_wool" : "white_wool");
   bp.set(3, 2, 2, "chest").set(3, 3, 3, "lantern");
+  post(bp, 3, 1, 3, "trader");
 });
 
 building("tinker_burrow", "Burrow", "tinker", "A half-sunken brick house with turf on top and a round-ish door. The tinker home: small people, low ceilings.", (bp) => {
@@ -226,6 +246,7 @@ building("tinker_burrow", "Burrow", "tinker", "A half-sunken brick house with tu
   bp.fill(1, 5, 1, 7, 1, 7, "grass");
   bed(bp, 2, 1, 2);
   bp.set(6, 1, 2, "chest").set(4, 3, 4, "lantern");
+  post(bp, 4, 1, 5, "builder");
 });
 
 // ---------------------------------------------------------------------------
@@ -236,11 +257,15 @@ const TALL: Cottage = { floor: "cobblestone", wall: "oak_planks", corner: "oak_l
 
 building("tallfolk_farmhouse", "Farmhouse", "tallfolk", "Oak on a cobblestone course, a dark oak roof, a bed, a table and a chest. The tallfolk home, and the shape the inn scales up from.", (bp) => {
   cottage(bp, 1, 1, 9, 9, 5, TALL);
+  // A cobblestone course round the floor; the door goes back in afterwards,
+  // since the course runs through the south wall where its lower half is.
   bp.fill(1, 1, 1, 9, 1, 9, "cobblestone");
   bp.fill(2, 1, 2, 7, 1, 7, "oak_planks");
+  bp.door(5, 1, 9, "oak", "south");
   bed(bp, 2, 1, 2);
   bp.set(8, 1, 2, "chest").set(7, 1, 2, "crafting_table").set(8, 1, 8, "barrel");
   table(bp, 5, 1, 5, "oak");
+  post(bp, 3, 1, 7, "trader");
 });
 
 building("tallfolk_barn", "Barn", "tallfolk", "Spruce walls, a wide door, hay bales inside. Sheep and horses live here; the tallfolk worker's job block.", (bp) => {
@@ -249,6 +274,7 @@ building("tallfolk_barn", "Barn", "tallfolk", "Spruce walls, a wide door, hay ba
   for (const x of [4, 5, 6]) bp.gate(x, 1, 11, "spruce", "south");
   bp.fill(2, 1, 2, 2, 2, 2, "hay_block").fill(7, 1, 2, 2, 1, 2, "hay_block");
   bp.log(2, 2, 2, "hay_block", "x").log(3, 2, 3, "hay_block", "z");
+  post(bp, 5, 1, 6, "worker");
   bp.fill(2, 1, 6, 1, 1, 4, "oak_fence").fill(8, 1, 6, 1, 1, 4, "oak_fence");
 });
 
@@ -281,6 +307,7 @@ building("tallfolk_gatehouse", "Gatehouse", "tallfolk", "A log palisade with a g
   bp.fill(0, 4, 3, 9, 1, 1, "oak_fence");
   bp.set(2, 5, 0, "lantern").set(6, 5, 0, "lantern");
   bp.fill(0, 1, 2, 1, 2, 2, "oak_log").fill(8, 1, 2, 1, 2, 2, "oak_log");
+  post(bp, 4, 1, 3, "guard");
 });
 
 // ---------------------------------------------------------------------------
@@ -295,6 +322,7 @@ building("shared_larder", "Larder", "shared", "A stone-floored hut of chests. Wh
   bp.hipRoof(1, 4, 1, 5, 5, "spruce_planks");
   for (const [x, z] of [[2, 2], [3, 2], [4, 2], [2, 4], [4, 4]] as const) bp.set(x, 1, z, "chest");
   bp.set(3, 3, 3, "lantern");
+  post(bp, 3, 1, 4, "builder");
 });
 
 building("shared_inn", "Inn", "shared", "Two floors, four beds, a table by the door. The innkeeper sets a respawn point here; a Hearthstone in a settlement becomes a place.", (bp) => {
@@ -309,6 +337,7 @@ building("shared_inn", "Inn", "shared", "Two floors, four beds, a table by the d
   bp.set(2, 1, 8, "crafting_table").set(3, 1, 2, "chest").set(4, 1, 2, "barrel");
   table(bp, 3, 1, 5, "spruce");
   table(bp, 6, 1, 5, "spruce");
+  post(bp, 5, 1, 8, "builder");
   bp.set(5, 3, 5, "lantern").set(5, 4, 5, "air");
   bp.set(4, 2, 9, "glass_pane").set(6, 2, 9, "glass_pane");
 });

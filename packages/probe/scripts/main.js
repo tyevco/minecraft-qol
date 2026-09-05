@@ -39,9 +39,20 @@
  *                                    run again to remove it. Reports maxCount and what
  *                                    the bar lists, so /reload and dimension behaviour
  *                                    are measured (Waypoints W1-W4)
- *   /scriptevent qolprobe:jigsaw-place [identifier] [x y z]
+ *   /scriptevent qolprobe:jigsaw-place [identifier] [x y z [delayTicks]]
  *                                    placeJigsawStructure (qolprobe:well by default) at the
- *                                    given block; logs the box or the error (J1)
+ *                                    given block, after delayTicks; logs the box or the
+ *                                    error (J1)
+ *   /scriptevent qolprobe:structure-place <id> x y z [delayTicks]
+ *                                    structureManager.get(id): log its size and the block
+ *                                    types it holds (does a custom block survive loading?),
+ *                                    then place it at x,y,z (J3)
+ *   /scriptevent qolprobe:post-test x y z [delayTicks]
+ *                                    setPermutation a villages:post there; 300 ticks later,
+ *                                    log the block and whether a person stands by it (J4)
+ *   /scriptevent qolprobe:entities <type> x y z r [delayTicks]
+ *                                    every entity of that type near the point, with id,
+ *                                    properties and villages: tags (J5)
  *   /scriptevent qolprobe:jigsaw-scan [x z radius delayTicks]
  *                                    list every emerald block (the probe well's marker)
  *                                    in the loaded chunks around x,z; a wells count is
@@ -1123,13 +1134,73 @@ world.afterEvents.worldLoad.subscribe(() => {
       // "<identifier> x y z"; a bare "x y z" places qolprobe:well.
       const parts = (ev.message || "").split(/\s+/).filter(Boolean);
       const id = parts.length && isNaN(Number(parts[0])) ? parts.shift() : "qolprobe:well";
-      const [x = 0, y = 0, z = 0] = parts.map(Number);
-      try {
-        const box = world.structureManager.placeJigsawStructure(id, overworld, { x, y, z });
-        log(`J1 placeJigsawStructure(${id}) OK: box min=${JSON.stringify(box.min)} max=${JSON.stringify(box.max)}`);
-      } catch (e) {
-        log(`J1 placeJigsawStructure(${id}) THREW: ${e} ${e && e.name ? "(" + e.name + ")" : ""}`);
-      }
+      const [x = 0, y = 0, z = 0, delay = 0] = parts.map(Number);
+      system.runTimeout(() => {
+        try {
+          const box = world.structureManager.placeJigsawStructure(id, overworld, { x, y, z });
+          log(`J1 placeJigsawStructure(${id}) at tick ${system.currentTick} OK: box min=${JSON.stringify(box.min)} max=${JSON.stringify(box.max)}`);
+        } catch (e) {
+          log(`J1 placeJigsawStructure(${id}) THREW: ${e} ${e && e.name ? "(" + e.name + ")" : ""}`);
+        }
+      }, delay);
+      return;
+    }
+    if (ev.id === "qolprobe:structure-place") {
+      const parts = (ev.message || "").split(/\s+/).filter(Boolean);
+      const id = parts.shift();
+      const [x = 0, y = 64, z = 0, delay = 400] = parts.map(Number);
+      system.runTimeout(() => {
+        let s;
+        try { s = world.structureManager.get(id); } catch (e) { log(`J3 get(${id}) THREW: ${e}`); return; }
+        if (!s) { log(`J3 get(${id}): undefined (not found)`); return; }
+        const counts = {};
+        let blanks = 0;
+        for (let i = 0; i < s.size.x; i++) for (let j = 0; j < s.size.y; j++) for (let k = 0; k < s.size.z; k++) {
+          let perm;
+          try { perm = s.getBlockPermutation({ x: i, y: j, z: k }); } catch (e) { blanks++; continue; }
+          if (!perm) { blanks++; continue; }
+          counts[perm.type.id] = (counts[perm.type.id] || 0) + 1;
+        }
+        const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t.replace("minecraft:", "")}=${n}`).join(" ");
+        log(`J3 get(${id}): size ${s.size.x}x${s.size.y}x${s.size.z}, empty=${blanks}, blocks: ${top}`);
+        try {
+          world.structureManager.place(s, overworld, { x, y, z });
+          log(`J3 placed ${id} at ${x},${y},${z}`);
+        } catch (e) { log(`J3 place THREW: ${e}`); }
+      }, delay);
+      return;
+    }
+    if (ev.id === "qolprobe:post-test") {
+      const [x = 0, y = 64, z = 0, delay = 400] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+      system.runTimeout(() => {
+        try {
+          const b = overworld.getBlock({ x, y, z });
+          b.setPermutation(BlockPermutation.resolve("villages:post", { "villages:people": 3, "villages:job": 1 }));
+          log(`J4 set a post at ${x},${y},${z}: now ${b.typeId} ${JSON.stringify(b.permutation.getAllStates())}`);
+        } catch (e) { log(`J4 setPermutation THREW: ${e}`); return; }
+        system.runTimeout(() => {
+          const near = overworld.getEntities({ type: "villages:person", location: { x, y, z }, maxDistance: 4 });
+          log(`J4 300 ticks later: ${near.length} person(s) by the post` + near.map((e) => ` people=${e.getProperty("villages:people")} job=${e.getProperty("villages:job")}`).join(""));
+        }, 300);
+      }, delay);
+      return;
+    }
+    if (ev.id === "qolprobe:entities") {
+      // "<type> x y z r [delayTicks]": every entity of the type near a point, with its id and properties.
+      const parts = (ev.message || "").split(/\s+/).filter(Boolean);
+      const type = parts.shift();
+      const [x = 0, y = 64, z = 0, r = 64, delay = 200] = parts.map(Number);
+      system.runTimeout(() => {
+        try {
+          const found = overworld.getEntities({ type, location: { x, y, z }, maxDistance: r });
+          const rows = found.map((e) => {
+            const tags = e.getTags().filter((t) => t.startsWith("villages:")).join(",");
+            const props = ["villages:people", "villages:job"].map((k) => { try { return `${k.split(":")[1]}=${e.getProperty(k)}`; } catch { return ""; } }).join(" ");
+            return `${e.id}@${Math.round(e.location.x)},${Math.round(e.location.y)},${Math.round(e.location.z)} ${props} ${tags}`;
+          });
+          log(`J5 ${found.length} ${type} within ${r} of ${x},${y},${z}` + (rows.length ? "\n" + rows.slice(0, 30).join("\n") : ""));
+        } catch (e) { log(`J5 THREW: ${e}`); }
+      }, delay);
       return;
     }
     if (ev.id !== "qolprobe:jigsaw-scan") return;
@@ -1139,7 +1210,7 @@ world.afterEvents.worldLoad.subscribe(() => {
     const [cx = 0, cz = 0, r = 128, delay = 200] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
     // Emerald marks a well; lapis a pad; gold and diamond are what a resolved
     // jigsaw leaves behind on each side; a jigsaw block is one that did not.
-    const MARKERS = ["minecraft:emerald_block", "minecraft:lapis_block", "minecraft:gold_block", "minecraft:diamond_block", "minecraft:jigsaw"];
+    const MARKERS = ["minecraft:emerald_block", "minecraft:lapis_block", "minecraft:gold_block", "minecraft:diamond_block", "minecraft:jigsaw", "villages:post", "minecraft:wooden_door", "minecraft:spruce_door", "minecraft:lantern"];
     const found = [];
     let tiles = 0, unloaded = 0;
     function* scan() {

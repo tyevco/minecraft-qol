@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { Blueprint } from "./blueprint";
 import { BUILDINGS } from "./buildings";
 import { uniformStructure } from "./mcstructure";
+import { PEOPLES, villagePreview, villageSet, villageWorldgen } from "./villages";
 
 const ROOT = resolve(__dirname, "../..");
 const OUT = resolve(ROOT, "packages/gametest/behavior_pack/structures/qol");
@@ -76,4 +77,29 @@ mkdirSync(PROBE, { recursive: true });
   socket.jigsaw(0, 1, 2, { facing: "west", name: "qolprobe:in", target: "qolprobe:out", pool: "minecraft:empty", final: "diamond_block" });
   for (const bp of [pad, socket]) writeFileSync(resolve(PROBE, `${bp.key}.mcstructure`), bp.toMcstructure());
   console.log("packages/probe/structures/qolprobe/{pad,well_socket}.mcstructure");
+}
+
+// Villages (docs/design/villages.md): the pieces and pools for each people go
+// into the probe pack for now, under a `villages` namespace, so a village can
+// be placed on the plain-world server and looked at; the squares and streets
+// get previews beside the buildings, and one whole village per people is
+// grown by the offline expander for the viewer.
+const VILLAGES = resolve(ROOT, "concepts/villages");
+mkdirSync(VILLAGES, { recursive: true });
+for (const people of PEOPLES) {
+  const set = villageSet(people);
+  const dir = resolve(ROOT, "packages/probe/structures/villages", people.key);
+  mkdirSync(dir, { recursive: true });
+  for (const piece of set.pieces.values()) {
+    writeFileSync(resolve(dir, `${piece.key}.mcstructure`), piece.toMcstructure());
+    if (piece.key.startsWith(`${people.key}_`)) writeFileSync(resolve(CONCEPTS, `${piece.key}.json`), JSON.stringify(piece.toPreview()) + "\n");
+  }
+  for (const [file, json] of Object.entries(villageWorldgen(set))) {
+    const path = resolve(ROOT, "packages/probe", file);
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify(json, null, 2) + "\n");
+  }
+  const { expansion, blueprint } = villagePreview(set, 1);
+  writeFileSync(resolve(VILLAGES, `${people.key}.json`), JSON.stringify(blueprint.toPreview()) + "\n");
+  console.log(`concepts/villages/${people.key}  ${blueprint.size.join("x")}  ${expansion.placements.length} pieces, ${expansion.open.length} open`);
 }

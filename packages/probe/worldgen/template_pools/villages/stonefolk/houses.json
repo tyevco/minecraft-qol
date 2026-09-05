@@ -1,0 +1,43 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:stonefolk/houses"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_forge",
+          "projection": "rigid"
+        },
+        "weight": 2
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_store",
+          "projection": "rigid"
+        },
+        "weight": 2
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_watchpost",
+          "projection": "rigid"
+        },
+        "weight": 1
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/shared_larder",
+          "projection": "rigid"
+        },
+        "weight": 1
+      }
+    ],
+    "fallback": "villages:stonefolk/house_ends"
+  }
+}

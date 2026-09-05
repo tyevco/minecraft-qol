@@ -11,7 +11,12 @@ references these files, and `npm run mcaddon` never sees them.
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built.
-- `structures/` — the twenty buildings of `docs/design/settlements.md`, each
+- `villages/` — one village per people, grown from the pieces and pools in
+  `tools/structures/villages.ts` by the offline jigsaw expander
+  (`tools/structures/jigsaw.ts`) from seed 1, as a preview the viewer draws
+  under `concept · villages`. The pieces (squares, streets, lamp posts) sit
+  in `structures/` beside the buildings.
+- `structures/` — the buildings of `docs/design/settlements.md`, each
   as a `.mcstructure` (what a builder would place) and a `.json` preview
   (size, palette, blocks, materials) the viewer draws as blocks in the
   game's textures, with a cutaway slider. The textures are fetched when the

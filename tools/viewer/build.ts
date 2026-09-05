@@ -45,6 +45,20 @@ interface Particle {
   every?: number;
 }
 
+const PEOPLES: [id: string, name: string][] = [
+  ["stonefolk", "Stonefolk"],
+  ["reedfolk", "Reedfolk"],
+  ["tinker", "Tinker"],
+  ["tallfolk", "Tallfolk"],
+];
+const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
+  [`${p}_square`, `${name} Square`, p],
+  [`${p}_street_straight`, `${name} Street`, p],
+  [`${p}_street_corner`, `${name} Corner`, p],
+  [`${p}_street_t`, `${name} T-junction`, p],
+  [`${p}_lamp`, `${name} Lamp Post`, p],
+] as [string, string, string][]);
+
 const BUILDINGS: [id: string, name: string, people: string][] = [
   ["stonefolk_hall", "Hill Hall", "stonefolk"],
   ["stonefolk_forge", "Forge", "stonefolk"],
@@ -59,6 +73,7 @@ const BUILDINGS: [id: string, name: string, people: string][] = [
   ["tinker_stall", "Market Stall", "tinker"],
   ["tinker_burrow", "Burrow", "tinker"],
   ["tallfolk_farmhouse", "Farmhouse", "tallfolk"],
+  ["tallfolk_field", "Field", "tallfolk"],
   ["tallfolk_barn", "Barn", "tallfolk"],
   ["tallfolk_well", "Well", "tallfolk"],
   ["tallfolk_gatehouse", "Gatehouse", "tallfolk"],
@@ -339,13 +354,28 @@ const MODELS: Model[] = [
     textures: { default: "concepts/entities/textures/mule.png" },
     notes: "A donkey with panniers and a harness. Each pannier is its own bone so an empty side can be hidden by bone visibility.",
   },
-  // Concept buildings (docs/design/settlements.md), drawn as coloured cubes.
+  // Concept buildings (docs/design/settlements.md), drawn in vanilla textures.
   ...BUILDINGS.map(([id, name, people]): Model => ({
     id: `building_${id}`,
     name: `${name} (concept)`,
     pack: `concept · ${people} buildings`,
     kind: "structure",
     structure: `concepts/structures/${id}.json`,
+  })),
+  // Village pieces and whole villages (docs/design/villages.md).
+  ...VILLAGE_PIECES.map(([id, name, people]): Model => ({
+    id: `piece_${id}`,
+    name: `${name} (concept)`,
+    pack: `concept · ${people} village pieces`,
+    kind: "structure",
+    structure: `concepts/structures/${id}.json`,
+  })),
+  ...PEOPLES.map(([id, name]): Model => ({
+    id: `village_${id}`,
+    name: `${name} village (seed 1)`,
+    pack: "concept · villages",
+    kind: "structure",
+    structure: `concepts/villages/${id}.json`,
   })),
 ];
 

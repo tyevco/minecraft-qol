@@ -67,6 +67,39 @@ const DIRECTION: Record<Facing, number> = { south: 0, west: 1, north: 2, east: 3
 const FACING_DIRECTION: Record<Facing, number> = { north: 2, south: 3, west: 4, east: 5 };
 const STEP: Record<Facing, [number, number]> = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 
+const CLOCKWISE: Record<Facing, Facing> = { north: "east", east: "south", south: "west", west: "north" };
+export const OPPOSITE: Record<Facing, Facing> = { north: "south", south: "north", east: "west", west: "east" };
+export const FACINGS: Facing[] = ["north", "east", "south", "west"];
+
+export function turnFacing(f: Facing, turns: number): Facing {
+  let out = f;
+  for (let i = 0; i < ((turns % 4) + 4) % 4; i++) out = CLOCKWISE[out];
+  return out;
+}
+
+const WEIRDO_FACING: Facing[] = ["east", "west", "south", "north"];
+const DIRECTION_FACING: Facing[] = ["south", "west", "north", "east"];
+const FACING_DIRECTION_FACING: Record<number, Facing> = { 2: "north", 3: "south", 4: "west", 5: "east" };
+
+/**
+ * A block's states after the block is turned clockwise (seen from above) by
+ * quarter turns: every directional state the blueprints use. Anything not
+ * listed is left alone.
+ */
+export function turnStates(states: States, turns: number): States {
+  const t = ((turns % 4) + 4) % 4;
+  if (t === 0) return states;
+  const out: States = { ...states };
+  if (typeof states.weirdo_direction === "number") out.weirdo_direction = WEIRDO_FACING.indexOf(turnFacing(WEIRDO_FACING[states.weirdo_direction]!, t));
+  if (typeof states.direction === "number" && states.direction >= 0 && states.direction <= 3) out.direction = DIRECTION_FACING.indexOf(turnFacing(DIRECTION_FACING[states.direction]!, t));
+  if (typeof states.facing_direction === "number" && FACING_DIRECTION_FACING[states.facing_direction]) out.facing_direction = FACING_DIRECTION[turnFacing(FACING_DIRECTION_FACING[states.facing_direction]!, t)];
+  if (typeof states["minecraft:cardinal_direction"] === "string") out["minecraft:cardinal_direction"] = turnFacing(states["minecraft:cardinal_direction"] as Facing, t);
+  if (states.pillar_axis === "x" || states.pillar_axis === "z") out.pillar_axis = t % 2 === 0 ? states.pillar_axis : states.pillar_axis === "x" ? "z" : "x";
+  if ("wall_connection_type_north" in states)
+    for (const f of FACINGS) out[`wall_connection_type_${turnFacing(f, t)}`] = states[`wall_connection_type_${f}`]!;
+  return out;
+}
+
 /**
  * A jigsaw marker: the block the game's jigsaw generator joins pieces at.
  * `name` is what another piece's `target` looks for; `pool` is where this
@@ -143,7 +176,9 @@ export class Blueprint {
   set(x: number, y: number, z: number, block: string, states: States = {}): this {
     if (x < 0 || y < 0 || z < 0 || x >= this.sx || y >= this.sy || z >= this.sz)
       throw new Error(`${this.key}: (${x},${y},${z}) is outside ${this.size.join("x")}`);
-    this.cells[this.index(x, y, z)] = block === "air" ? -1 : this.paletteIndex(block, states);
+    const i = this.index(x, y, z);
+    this.cells[i] = block === "air" ? -1 : this.paletteIndex(block, states);
+    if (block !== "jigsaw") this.jigsaws.delete(i);
     return this;
   }
 
@@ -361,6 +396,57 @@ export class Blueprint {
       out.jigsaws.set(out.index(b[0] - min[0]!, b[1] - min[1]!, b[2] - min[2]!), j);
     }
     return out;
+  }
+
+  /**
+   * This blueprint turned clockwise (seen from above) by quarter turns, states
+   * and markers included: what the game does to a piece when it joins it to
+   * a socket, done here so the offline expander previews what the game will
+   * place. (0, 0, 0) stays a corner of the box.
+   */
+  rotated(turns: number): Blueprint {
+    const t = ((turns % 4) + 4) % 4;
+    if (t === 0) return this;
+    const [sx, sy, sz] = this.size;
+    const size: [number, number, number] = t % 2 === 0 ? [sx, sy, sz] : [sz, sy, sx];
+    const out = new Blueprint(this.key, this.title, size, this.people, this.notes);
+    const map = (x: number, z: number): [number, number] => {
+      // One clockwise quarter turn: east goes to south. Applied t times.
+      let cx = x, cz = z, w = sx, d = sz;
+      for (let i = 0; i < t; i++) {
+        [cx, cz] = [d - 1 - cz, cx];
+        [w, d] = [d, w];
+      }
+      return [cx, cz];
+    };
+    for (const b of this.blocks()) {
+      const [x, z] = map(b.x, b.z);
+      out.set(x, b.y, z, b.name, turnStates(b.states, t));
+    }
+    for (const [i, j] of this.jigsaws) {
+      const [x, y, z] = this.cellAt(i);
+      const [nx, nz] = map(x, z);
+      out.jigsaws.set(out.index(nx, y, nz), { ...j, facing: turnFacing(j.facing, t) });
+    }
+    return out;
+  }
+
+  /** Copy every block and marker of another blueprint in at an offset. Air is not copied. */
+  paste(other: Blueprint, ox: number, oy: number, oz: number): this {
+    for (const b of other.blocks()) this.set(b.x + ox, b.y + oy, b.z + oz, b.name, b.states);
+    for (const [i, j] of other.jigsaws) {
+      const [x, y, z] = other.cellAt(i);
+      this.jigsaws.set(this.index(x + ox, y + oy, z + oz), j);
+    }
+    return this;
+  }
+
+  /** The markers with their positions. */
+  markers(): { x: number; y: number; z: number; jigsaw: Jigsaw }[] {
+    return [...this.jigsaws].map(([i, jigsaw]) => {
+      const [x, y, z] = this.cellAt(i);
+      return { x, y, z, jigsaw };
+    });
   }
 
   /** Every block, for the preview and for counting materials. */

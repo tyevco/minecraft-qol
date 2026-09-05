@@ -715,6 +715,12 @@ function blockBoxes(shape, connect, hanging, states = {}, neighbour = () => unde
     }
     case "chest":
       return [box([1, 0, 1, 15, 14, 15])];
+    case "cross":
+      // Crops: two crossed cut-out quads, drawn with the top texture.
+      return [
+        box([8, 0, 2, 8, 16, 14], { faces: ["east", "west"], tex: { east: "up", west: "up" } }),
+        box([2, 0, 8, 14, 16, 8], { faces: ["north", "south"], tex: { north: "up", south: "up" } }),
+      ];
     case "anvil":
       return [
         box([2, 0, 2, 14, 4, 14]),

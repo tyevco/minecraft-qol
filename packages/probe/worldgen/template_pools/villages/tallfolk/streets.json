@@ -1,0 +1,35 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:tallfolk/streets"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_street_straight",
+          "projection": "rigid"
+        },
+        "weight": 5
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_street_corner",
+          "projection": "rigid"
+        },
+        "weight": 2
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_street_t",
+          "projection": "rigid"
+        },
+        "weight": 2
+      }
+    ],
+    "fallback": "villages:tallfolk/street_ends"
+  }
+}

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  FARMER, LUMBERJACK, NONE, MAX_TREE_LOGS, ROOM_NEEDED, RESURVEY_NONE_TICKS, RESURVEY_TICKS,
-  canWork, chooseTrade, cycleDue, fellOrder, fellPlan, findTrees, harvestPlan, key, minutesToTicks,
-  nearestTree, pickSeed, pickWage, standingSpot, surveyDue, type LogBlock, type Slot,
+  FARMER, FISHER, LUMBERJACK, MINER, NONE, MAX_TREE_LOGS, ROOM_NEEDED, RESURVEY_NONE_TICKS, RESURVEY_TICKS,
+  VEIN_CYCLES_PER_DAY, VEIN_WINDOW, FISH_PER_CYCLE, COD, SALMON, TREASURES,
+  canWork, catchPlan, chooseTrade, cycleDue, fellOrder, fellPlan, findTrees, fishingSpot, harvestPlan, key, mineYield, minutesToTicks,
+  nearestTree, pickSeed, pickWage, standingSpot, surveyDue, veinAllowance, type LogBlock, type Slot, type Survey, type Vec,
 } from "../scripts/core/trades";
 import { DEFAULT_POLICY, parsePolicy } from "../scripts/core/settings";
-import { SCHEMA, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
+import { FRESH, SCHEMA, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
+import { decide } from "../scripts/core/peopling";
+
+const survey = (s: Partial<Survey>): Survey => ({ farmland: 0, logs: 0, leaves: 0, veins: 0, water: 0, ...s });
 
 const column = (x: number, z: number, y0: number, h: number, type = "minecraft:oak_log"): LogBlock[] =>
   Array.from({ length: h }, (_, i) => ({ pos: { x, y: y0 + i, z }, typeId: type }));
@@ -13,12 +17,20 @@ const crown = (x: number, top: number, z: number): Set<string> => new Set([key({
 
 describe("chooseTrade", () => {
   it("a field makes a farmer, trees a lumberjack, neither nothing", () => {
-    expect(chooseTrade({ farmland: 20, logs: 10, leaves: 30 })).toBe(FARMER);
-    expect(chooseTrade({ farmland: 0, logs: 5, leaves: 12 })).toBe(LUMBERJACK);
-    expect(chooseTrade({ farmland: 2, logs: 5, leaves: 12 })).toBe(LUMBERJACK);
-    expect(chooseTrade({ farmland: 2, logs: 0, leaves: 0 })).toBe(FARMER);
-    expect(chooseTrade({ farmland: 0, logs: 40, leaves: 0 })).toBe(NONE); // a log cabin is not a forest
-    expect(chooseTrade({ farmland: 0, logs: 0, leaves: 0 })).toBe(NONE);
+    expect(chooseTrade(survey({ farmland: 20, logs: 10, leaves: 30 }))).toBe(FARMER);
+    expect(chooseTrade(survey({ logs: 5, leaves: 12 }))).toBe(LUMBERJACK);
+    expect(chooseTrade(survey({ farmland: 2, logs: 5, leaves: 12 }))).toBe(LUMBERJACK);
+    expect(chooseTrade(survey({ farmland: 2 }))).toBe(FARMER);
+    expect(chooseTrade(survey({ logs: 40 }))).toBe(NONE); // a log cabin is not a forest
+    expect(chooseTrade(survey({}))).toBe(NONE);
+  });
+  it("a vein beats everything; open water beats trees, a pond does not; a puddle is nothing", () => {
+    expect(chooseTrade(survey({ veins: 1, farmland: 30, logs: 10, leaves: 30, water: 50 }))).toBe(MINER);
+    expect(chooseTrade(survey({ water: 40, logs: 10, leaves: 30 }))).toBe(FISHER); // a dock among mangroves
+    expect(chooseTrade(survey({ water: 6, logs: 10, leaves: 30 }))).toBe(LUMBERJACK);
+    expect(chooseTrade(survey({ water: 6 }))).toBe(FISHER);
+    expect(chooseTrade(survey({ water: 3 }))).toBe(NONE);
+    expect(chooseTrade(survey({ water: 4, farmland: 9 }))).toBe(FARMER); // the tallfolk field's channel
   });
   it("resurveys sooner when it found nothing", () => {
     expect(surveyDue({ trade: NONE, surveyedAt: 0 }, 5)).toBe(true);
@@ -127,6 +139,78 @@ describe("the chest, the wage, the cycle", () => {
     expect(cycleDue({ cycleAt: 100 }, 100 + interval - 1, interval)).toBe(false);
     expect(cycleDue({ cycleAt: 100 }, 100 + interval, interval)).toBe(true);
   });
+  it("a stamp from before a restart (ahead of the clock) does not stall anything", () => {
+    expect(cycleDue({ cycleAt: 500000 }, 100, 12000)).toBe(true);
+    expect(surveyDue({ trade: FARMER, surveyedAt: 500000 }, 100)).toBe(true);
+    const rec: PostRecord = { dimId: "d", x: 0, y: 0, z: 0, people: 0, job: 1, ...FRESH, spawnedAt: 500000 };
+    expect(decide(rec, false, 100)).toEqual({ kind: "spawn" });
+  });
+  it("only the trades that do not fill the larder are paid", () => {
+    const slots = [seeds];
+    expect(canWork(MINER, { emptySlots: 5, slots }, true)).toEqual({ kind: "wait", reason: "no wage" });
+    expect(canWork(FISHER, { emptySlots: 5, slots }, true)).toEqual({ kind: "work" });
+  });
+});
+
+describe("the vein", () => {
+  it("yields a day's cycles, then nothing until the window rolls over", () => {
+    let rec = { veinAt: 0, veinCycles: 0 };
+    for (let i = 1; i <= VEIN_CYCLES_PER_DAY; i++) {
+      const a = veinAllowance(rec, 1000 + i);
+      expect(a.allowed).toBe(true);
+      expect(a.veinAt).toBe(1001);
+      expect(a.veinCycles).toBe(i);
+      rec = { veinAt: a.veinAt, veinCycles: a.veinCycles };
+    }
+    expect(veinAllowance(rec, 2000).allowed).toBe(false);
+    expect(veinAllowance(rec, 2000)).toMatchObject(rec);
+    const next = veinAllowance(rec, 1001 + VEIN_WINDOW);
+    expect(next).toEqual({ allowed: true, veinAt: 1001 + VEIN_WINDOW, veinCycles: 1 });
+    expect(veinAllowance(rec, 10).allowed).toBe(true); // the clock restarted
+  });
+  it("yields by ore, stone for an unknown state", () => {
+    expect(mineYield("coal")).toEqual({ typeId: "minecraft:coal", amount: 6 });
+    expect(mineYield("iron").typeId).toBe("minecraft:raw_iron");
+    expect(mineYield(undefined)).toEqual({ typeId: "minecraft:cobblestone", amount: 8 });
+  });
+});
+
+describe("the water", () => {
+  // A 3x3 pond at y=64 with stone banks, a plank deck three above its middle.
+  const world = new Map<string, string>();
+  const put = (x: number, y: number, z: number, t: string) => world.set(key({ x, y, z }), t);
+  for (let x = -1; x <= 3; x++) for (let z = -1; z <= 3; z++) put(x, 64, z, "minecraft:stone");
+  const waters: Vec[] = [];
+  for (let x = 0; x <= 2; x++) for (let z = 0; z <= 2; z++) { put(x, 64, z, "minecraft:water"); waters.push({ x, y: 64, z }); }
+  put(1, 67, 1, "minecraft:mangrove_planks");
+  const typeAt = (v: Vec) => world.get(key(v)) ?? "minecraft:air";
+
+  it("stands on the bank nearest the post, on the water's side", () => {
+    const spot = fishingSpot(waters, typeAt, { x: 6, y: 65, z: 1 })!;
+    expect(spot.stand).toEqual({ x: 3, y: 65, z: 1 });
+    expect(spot.water).toEqual({ x: 2, y: 64, z: 1 });
+  });
+  it("stands on a deck over the water when that is nearer", () => {
+    const spot = fishingSpot(waters, typeAt, { x: 1, y: 68, z: 1 })!;
+    expect(spot.stand).toEqual({ x: 1, y: 68, z: 1 });
+  });
+  it("does not stand on a lily pad, on water, or where there is no water surface", () => {
+    put(3, 64, 1, "minecraft:waterlily");
+    const spot = fishingSpot(waters, typeAt, { x: 6, y: 65, z: 1 })!;
+    expect(spot.stand).not.toEqual({ x: 3, y: 65, z: 1 });
+    put(3, 64, 1, "minecraft:stone");
+    const covered = waters.map((w) => ({ ...w, y: 60 })); // deep water, stone above
+    for (const w of covered) put(w.x, 61, w.z, "minecraft:stone");
+    expect(fishingSpot(covered, typeAt, { x: 6, y: 65, z: 1 })).toBeUndefined();
+    expect(fishingSpot([], typeAt, { x: 0, y: 0, z: 0 })).toBeUndefined();
+  });
+  it("catches a cycle's worth of cod and salmon, with a treasure one time in eight", () => {
+    const seq = (values: number[]) => { let i = 0; return () => values[i++ % values.length]!; };
+    expect(catchPlan(seq([0.1, 0.1, 0.1, 0.1, 0.9]))).toEqual([{ typeId: COD, amount: FISH_PER_CYCLE }]);
+    expect(catchPlan(seq([0.9]))).toEqual([{ typeId: SALMON, amount: FISH_PER_CYCLE }]);
+    const treasure = catchPlan(seq([0.5, 0.5, 0.9, 0.9, 0.05, 0.99]));
+    expect(treasure).toEqual([{ typeId: COD, amount: 2 }, { typeId: SALMON, amount: 2 }, { typeId: TREASURES.at(-1), amount: 1 }]);
+  });
 });
 
 describe("settings", () => {
@@ -138,13 +222,14 @@ describe("settings", () => {
   });
 });
 
-describe("record schema 2", () => {
-  const rec: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: "-42", spawnedAt: 10, trade: 1, surveyedAt: 11, cycleAt: 12 };
-  it("round-trips, and reads a schema-1 row with the trade fields defaulted", () => {
-    expect(SCHEMA).toBe(2);
+describe("record schema", () => {
+  const rec: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: "-42", spawnedAt: 10, trade: 1, surveyedAt: 11, cycleAt: 12, veinAt: 13, veinCycles: 2 };
+  it("round-trips, and reads older rows with the newer fields defaulted", () => {
+    expect(SCHEMA).toBe(3);
     expect(unpackRecord(packRecord(rec))).toEqual(rec);
     const old = ["minecraft:overworld", 1, 64, 2, 0, 1, "", 10];
-    expect(unpackRecord(old)).toEqual({ dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: undefined, spawnedAt: 10, trade: 0, surveyedAt: 0, cycleAt: 0 });
+    expect(unpackRecord(old)).toEqual({ dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: undefined, ...FRESH, spawnedAt: 10 });
+    expect(unpackRecord([...old, 2, 5, 6])).toMatchObject({ trade: 2, surveyedAt: 5, cycleAt: 6, veinAt: 0, veinCycles: 0 });
     expect(unpackRecord([...old, 9, 0, 0])).toBeUndefined();
   });
 });

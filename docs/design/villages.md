@@ -215,7 +215,7 @@ Standing is **per player**. A sibling who annoys the reedfolk does not cost
 the other their friendship; that is a rule for a family Realm, not a
 simulation choice.
 
-## 5.1 Provisioning: what the workers bring in (lumberjack and farmer built)
+## 5.1 Provisioning: what the workers bring in (built)
 
 The larder and the storehouse are chests, and a worker is only worth
 feeding if something arrives in them. Rather than four more jobs, **a worker
@@ -256,15 +256,21 @@ goes into its own storehouse, which is what the trader sells.
 
 **Built** (`packages/villages/scripts/core/trades.ts`, `engine/trades.ts`;
 measured in `docs/villages-jigsaw-results.md`): the survey and its
-thresholds, the lumberjack and the farmer as above, the cycle slider and a
-wages toggle on the settings panel, the field's post and chest, the grove
-piece. Two things differ from the table: the walk is a teleport to the
-work and back (§7 item 6, the short-teleport candidate; the walking
-version is still open), and the produce goes into the chest as it is made
-rather than when the person walks back, so an interrupted cycle leaves
-nothing carried. The chest that pays and receives is the nearest chest,
-barrel or trapped chest within twelve of the post; a larder is one of
-those. The miner and the fisher are next.
+thresholds, all four trades as above, the cycle slider and a wages toggle
+on the settings panel, the field's post and chest, the grove and mine
+pieces, the dock's worker fishing into its barrel. Where the built thing
+differs from the table: the walk is a teleport to the work and back (§7
+item 6, the short-teleport candidate; the walking version is still open);
+the produce goes into the chest as it is made rather than when the person
+walks back, so an interrupted cycle leaves nothing carried; the vein's
+daily yield is four cycles per day-long window of ticks counted on the
+miner's post, not on the vein, so a vein needs no state of its own and a
+world with the daylight cycle locked still rolls over; the survey ranks
+signals rather than reading the table top down (vein, field, open water,
+trees, pond, a farmland block), so a reedfolk dock among mangroves fishes
+and a tallfolk field's channel farms. The chest that pays and receives is
+the nearest chest, barrel or trapped chest within twelve of the post; a
+larder is one of those, the dock's barrel another.
 
 ## 6.1 Visitors: a village comes to you
 
@@ -369,10 +375,10 @@ found, in buildings they raised. That is the whole loop.
    processor lists for weathering.
 4. ~~A `villages` pack of its own: job posts and the tick that peoples a
    village.~~ Built (`packages/villages`).
-5. **Provisioning** (§5.1): ~~the trade a worker takes from its
+5. ~~**Provisioning** (§5.1): the trade a worker takes from its
    surroundings, the lumberjack and the farmer first (a grove piece, the
-   field), the larder wage~~ built; the miner's vein and the mine piece,
-   and the fisher, next.
+   field), the miner's vein and the mine piece after, the fisher; the
+   larder wage.~~ Built.
 6. **Visitors** (§6.1) with the first errand table, since they give the
    kids' own settlement people before any village is found; then the
    elder, standing tiers and invite in the villages (§5, §6).

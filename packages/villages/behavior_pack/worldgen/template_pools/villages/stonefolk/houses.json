@@ -48,6 +48,14 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_mine",
+          "projection": "rigid"
+        },
+        "weight": 1
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
           "location": "villages/stonefolk/stonefolk_empty_lot",
           "projection": "rigid"
         },

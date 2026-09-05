@@ -343,6 +343,9 @@ const JOBS: Job[] = [
 // Shipped: the four peoples live in packages/villages now.
 const VILLAGES_RP = "packages/villages/resource_pack/textures";
 write(`${VILLAGES_RP}/blocks/post.png`, atlas(A.POST, { post: T.plankV(T.OAK, 701), plaque: T.flatDark(T.DARK_STONE) }));
+// The vein: a fixture the mine piece carries and a miner works (docs/design/villages.md §5.1).
+for (const [ore, ramp] of [["stone", undefined], ["coal", T.COAL], ["iron", T.IRON], ["copper", T.COPPER]] as const)
+  write(`${VILLAGES_RP}/blocks/vein_${ore}.png`, T.oreVein(T.STONE, ramp, 710));
 for (const people of PEOPLES) {
   for (const job of JOBS) {
     const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };

@@ -108,3 +108,36 @@ registerAsync("qol", "villages_farmer_harvests_wheat", async (test) => {
     test.assert(tiles >= 6, `expected the field replanted (9 tiles, seeds from the drops), found ${tiles} wheat blocks`);
   });
 }).maxTicks(600).structureName("qol:arena");
+
+registerAsync("qol", "villages_miner_works_vein", async (test) => {
+  placePost(test, 0, 1);
+  // A coal vein in the floor's corner, bread for the wage. The vein is a fixture: it must survive the cycle.
+  const VEIN: Vector3 = { x: 2, y: 1, z: 2 };
+  test.setBlockPermutation(BlockPermutation.resolve("villages:vein", { "villages:ore": "coal" }), VEIN);
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:bread", 4));
+  test.succeedWhen(() => {
+    const coal = count(test, CHEST, "minecraft:coal");
+    test.assert(coal >= 6, `expected a cycle's 6 coal in the chest, found ${coal}`);
+    test.assertBlockPresent("villages:vein", VEIN, true);
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 3, `expected one bread taken as the wage (3 left), found ${bread}`);
+  });
+}).maxTicks(600).structureName("qol:arena");
+
+registerAsync("qol", "villages_fisher_catches_fish", async (test) => {
+  placePost(test, 1, 1);
+  // A pond of eight water blocks let into the floor, with stone banks, and
+  // one bread: raw fish is food too, and without the bread the fisher eats
+  // one of its own catch as the wage (measured: 3 fish left of 4).
+  for (let x = 1; x <= 2; x++) for (let z = 1; z <= 4; z++) test.setBlockType("minecraft:water", { x, y: 0, z });
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:bread", 1));
+  test.succeedWhen(() => {
+    const fish = count(test, CHEST, "minecraft:cod") + count(test, CHEST, "minecraft:salmon");
+    test.assert(fish >= 4, `expected a cycle's 4 fish in the chest, found ${fish}`);
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 0, `expected the bread eaten as the wage, found ${bread}`);
+    for (let x = 1; x <= 2; x++) for (let z = 1; z <= 4; z++) test.assertBlockPresent("minecraft:water", { x, y: 0, z }, true);
+  });
+}).maxTicks(600).structureName("qol:arena");

@@ -562,7 +562,7 @@ export class Blueprint {
 export function previewColor(name: string): number {
   const n = name.replace("minecraft:", "");
   if (n.includes(":")) {
-    for (const [re, c] of [[/villages:post/, 0x8b5a2b] as const]) if (re.test(n)) return c;
+    for (const [re, c] of [[/villages:post/, 0x8b5a2b] as const, [/villages:vein/, 0x5a5a60] as const]) if (re.test(n)) return c;
     return 0xaa88cc;
   }
   const rules: [RegExp, number][] = [

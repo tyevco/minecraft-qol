@@ -95,6 +95,40 @@ function tree(bp: Blueprint, x: number, y: number, z: number, log: string, leave
 const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
 
 /**
+ * A mine: the piece brings its own hillside, a cobblestone mound over the
+ * north half of the lot with a timbered adit into it, rails on the floor,
+ * a lantern, and two veins at the end - coal and the people's ore. The
+ * miner's post and a chest stand on the grass outside the mouth (§5.1).
+ * Veins are `villages:vein` blocks, fixtures the miner works but never
+ * digs; a player can mine one and carry it home.
+ */
+function mine(support: string, ore: "iron" | "copper"): (bp: Blueprint, rand: () => number, y: number) => void {
+  return (bp, rand, y) => {
+    bp.fill(0, y, 0, 9, 3, 5, "cobblestone");
+    bp.fill(1, y + 3, 0, 7, 1, 4, "cobblestone");
+    for (let i = 0; i < 14; i++) {
+      const x = Math.floor(rand() * 9), j = Math.floor(rand() * 4), z = Math.floor(rand() * 5);
+      if (bp.at(x, y + j, z) === "minecraft:cobblestone") bp.set(x, y + j, z, rand() < 0.5 ? "mossy_cobblestone" : "stone");
+    }
+    for (const x of [2, 3, 4, 5, 6]) bp.set(x, y + 4, x % 2 ? 1 : 2, "moss_carpet");
+    // The adit: two wide, two tall, into the mound from its south face.
+    bp.fill(3, y, 1, 2, 2, 4, "air");
+    bp.fill(3, y - 1, 1, 2, 1, 4, "stone");
+    for (const z of [2, 4]) {
+      bp.fill(2, y, z, 1, 2, 1, support).fill(5, y, z, 1, 2, 1, support);
+      for (const x of [2, 3, 4, 5]) bp.log(x, y + 2, z, support, "x");
+    }
+    for (let z = 1; z <= 4; z++) bp.set(4, y, z, "rail", { rail_direction: 0 });
+    bp.set(3, y + 1, 1, "lantern");
+    bp.set(3, y, 0, "villages:vein", { "villages:ore": "coal" });
+    bp.set(4, y + 1, 0, "villages:vein", { "villages:ore": ore });
+    bp.set(6, y, 6, "chest");
+    bp.set(4, y, 6, "villages:post", { "villages:people": 0, "villages:job": 1 });
+    scatter(bp, rand, 0, y, 5, 9, 4, 5);
+  };
+}
+
+/**
  * A grove: three grown trees, a lumberjack's post and a chest for the logs
  * (docs/design/villages.md §5.1). The post's person is spawned south of the
  * post, so the post stands with open grass in front of it.
@@ -134,6 +168,7 @@ export const PEOPLES: People[] = [
         for (let i = 0; i < 6; i++) { const x = 1 + Math.floor(rand() * 7), z = 1 + Math.floor(rand() * 7); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "fern"); }
       }],
       ["grove", 2, grove("spruce_log", "spruce_leaves")],
+      ["mine", 1, mine("spruce_log", "iron")],
     ],
     emptyLots: 2, tree: { log: "spruce_log", leaves: "spruce_leaves" },
     watch: "stonefolk_watchpost", biomes: ["mountains", "extreme_hills", "meadow"], salt: 20260911,
@@ -166,6 +201,7 @@ export const PEOPLES: People[] = [
         tree(bp, 3, y, 6, "acacia_log", "acacia_leaves", 4);
         scatter(bp, rand, 1, y, 1, 7, 7, 5);
       }],
+      ["mine", 1, mine("acacia_log", "copper")],
     ],
     emptyLots: 2, tree: { log: "acacia_log", leaves: "acacia_leaves" },
     biomes: ["savanna", "plateau", "mesa"], salt: 20260913,

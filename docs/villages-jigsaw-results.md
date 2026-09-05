@@ -175,6 +175,18 @@ budget because a post's first cycle is due at once:
   eight wheat in the chest, at most one ripe tile is left, and the field
   is replanted from the drops.
 
+- **`villages_miner_works_vein`**: a coal `villages:vein` in the floor,
+  four bread, a stonefolk worker post. The survey reports `veins 1`, and
+  after the cycle six coal are in the chest, the vein is still there and
+  the chest holds three bread.
+- **`villages_fisher_catches_fish`**: eight water blocks let into the
+  stone floor and one bread. The survey reports `water 8`; four fish and
+  no bread after the cycle. Run first without the bread, the fisher
+  finished with **3 fish of 4, three runs out of three**: raw cod and
+  salmon carry `minecraft:is_food`, so the wage took one of the catch.
+  That is the design (every worker eats a food item a cycle), so the test
+  supplies bread and pins that it is the bread that goes.
+
 What was measured on the way:
 
 - **`ItemComponentTypes.Food` is not how to recognise food.** On 1.26.45
@@ -191,6 +203,15 @@ What was measured on the way:
   surveying, so the farmer's test found no wheat. `onPlace` now retires the
   old record and its person. The same happens in a world when a structure
   load or `/fill` replaces a post.
+- **`system.currentTick` counts from the server's boot, not the world's
+  start** (the pack's own "ready at tick 8131" on a world days old). A
+  stamp saved in one session is ahead of the clock in the next, and a
+  "wait a day" written as `now >= stamp + DAY` would then wait for the
+  clock to catch up - a day and a half after a restart at tick 0. Every
+  wait in the pack (respawn, survey, cycle, the vein's window) now treats
+  a stamp ahead of the clock as elapsed. `world.getAbsoluteTime()` was
+  not used instead because a world with the daylight cycle locked (a Realm
+  might) would freeze it; unmeasured, and worth a probe.
 - `Dimension.getBlocks(volume, { includeTypes }, true)` finds custom and
   vanilla types alike across a 33×17×33 survey volume in one call, and a
   log removed with `Block.setType("minecraft:air")` drops nothing, so a

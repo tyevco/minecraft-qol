@@ -1,8 +1,9 @@
 /**
  * A worker's trade, carried out: the survey of the blocks round the post,
  * and the work cycles - a lumberjack felling the nearest tree into the
- * nearest chest, a farmer harvesting and replanting. Every decision is in
- * core/trades.ts; this file reads blocks and makes the changes.
+ * nearest chest, a farmer harvesting and replanting, a miner at a vein, a
+ * fisher at the water's edge. Every decision is in core/trades.ts; this
+ * file reads blocks and makes the changes.
  *
  * Fail towards the player keeping their things (CLAUDE.md rule 4): the chest
  * is checked for room before anything is cut; a log is removed from the
@@ -64,12 +65,18 @@ function blocksOf(dim: Dimension, volume: BlockVolume, types: readonly string[])
 
 function survey(dim: Dimension, record: PostRecord): core.Survey {
   const wide = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_ABOVE);
+  const level = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
   return {
-    farmland: blocksOf(dim, volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW), [core.FARMLAND]).length,
+    farmland: blocksOf(dim, level, [core.FARMLAND]).length,
     logs: blocksOf(dim, wide, core.LOG_TYPES).length,
     leaves: blocksOf(dim, wide, core.LEAF_TYPES).length,
+    veins: blocksOf(dim, level, [core.VEIN]).length,
+    water: blocksOf(dim, level, core.WATER_TYPES).length,
   };
 }
+
+const describeSurvey = (s: core.Survey): string =>
+  `farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, veins ${s.veins}, water ${s.water}`;
 
 interface Chest {
   block: Block;
@@ -133,7 +140,7 @@ function payWage(chest: Chest, trade: number): void {
   if (!policy().wages || !chest.container.isValid) return;
   const i = core.pickWage(viewOf(chest.container).slots);
   if (i === undefined) {
-    if (trade === core.LUMBERJACK) log("lumberjack worked unpaid: the chest emptied during the cycle");
+    if (core.paid(trade)) log(`${core.tradeName(trade)} worked unpaid: the chest emptied during the cycle`);
     return;
   }
   takeOne(chest.container, i);
@@ -244,6 +251,58 @@ function farm(dim: Dimension, record: PostRecord, person: Entity, chest: Chest, 
   pace(core.TICKS_PER_CROP, steps, () => finish(true));
 }
 
+/**
+ * The miner: swings at the nearest vein for a while, then the vein's yield
+ * appears in the chest. The vein is a fixture and is never changed; what
+ * limits it is the allowance counted on the post (core.veinAllowance),
+ * checked before the walk so a spent vein means an idle miner, not a
+ * fruitless trip.
+ */
+function mine(dim: Dimension, record: PostRecord, person: Entity, chest: Chest, finish: (worked: boolean) => void): void {
+  const level = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const veins = blocksOf(dim, level, [core.VEIN]).map((b) => ({ pos: { x: b.x, y: b.y, z: b.z }, ore: b.permutation.getState(core.ORE_STATE as never) }));
+  const vein = core.nearestOf(veins, record);
+  if (!vein) return finish(false);
+  const allowance = core.veinAllowance(record, system.currentTick);
+  if (!allowance.allowed) return finish(false);
+  storage.update(record, (row) => {
+    row.veinAt = allowance.veinAt;
+    row.veinCycles = allowance.veinCycles;
+  });
+  const produce = core.mineYield(vein.ore);
+
+  moveTo(person, core.standingSpot(vein.pos, record), true);
+  const steps = Array.from({ length: core.WORK_SWINGS }, () => () => person.isValid);
+  pace(core.TICKS_PER_SWING, steps, () => {
+    if (!person.isValid) return finish(false);
+    deliver(chest, new ItemStack(produce.typeId, produce.amount), dim, vein.pos);
+    finish(true);
+  });
+}
+
+/** The fisher: stands at the water's edge (or on a deck over it) for a while, then the catch appears in the chest. */
+function fish(dim: Dimension, record: PostRecord, person: Entity, chest: Chest, finish: (worked: boolean) => void): void {
+  const level = volumeAround(record, core.FARM_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const waters = blocksOf(dim, level, core.WATER_TYPES).map((b) => ({ x: b.x, y: b.y, z: b.z }));
+  const typeAt = (v: core.Vec): string | undefined => {
+    try {
+      return dim.getBlock(v)?.typeId;
+    } catch {
+      return undefined;
+    }
+  };
+  const spot = core.fishingSpot(waters, typeAt, record);
+  if (!spot) return finish(false);
+
+  moveTo(person, { x: spot.stand.x + 0.5, y: spot.stand.y, z: spot.stand.z + 0.5 }, true);
+  const steps = Array.from({ length: core.WORK_SWINGS }, () => () => person.isValid);
+  pace(core.TICKS_PER_SWING, steps, () => {
+    if (!person.isValid) return finish(false);
+    for (const c of core.catchPlan(Math.random)) deliver(chest, new ItemStack(c.typeId, c.amount), dim, spot.stand);
+    finish(true);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // The post's call
 // ---------------------------------------------------------------------------
@@ -262,7 +321,7 @@ export function tick(block: Block, record: PostRecord, person: Entity, now: numb
   if (core.surveyDue(record, now)) {
     const s = survey(dim, record);
     const trade = core.chooseTrade(s);
-    if (trade !== record.trade) log(`the worker at ${record.x},${record.y},${record.z} is now a ${core.tradeName(trade)} (farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves})`);
+    if (trade !== record.trade) log(`the worker at ${record.x},${record.y},${record.z} is now a ${core.tradeName(trade)} (${describeSurvey(s)})`);
     storage.update(record, (row) => {
       row.trade = trade;
       row.surveyedAt = now;
@@ -293,8 +352,13 @@ export function tick(block: Block, record: PostRecord, person: Entity, now: numb
     storage.update(record, (row) => void (row.cycleAt = system.currentTick));
   };
   try {
-    if (record.trade === core.LUMBERJACK) fell(dim, record, person, chest, finish);
-    else farm(dim, record, person, chest, finish);
+    switch (record.trade) {
+      case core.LUMBERJACK: fell(dim, record, person, chest, finish); break;
+      case core.FARMER: farm(dim, record, person, chest, finish); break;
+      case core.MINER: mine(dim, record, person, chest, finish); break;
+      case core.FISHER: fish(dim, record, person, chest, finish); break;
+      default: finish(false);
+    }
   } catch (e) {
     log(`cycle at ${record.x},${record.y},${record.z} failed to start: ${e}`);
     finish(false);

@@ -1,0 +1,25 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "villages:vein",
+      "menu_category": { "category": "nature", "group": "minecraft:itemGroup.name.ore" },
+      "states": {
+        "villages:ore": ["stone", "coal", "iron", "copper"]
+      }
+    },
+    "components": {
+      "minecraft:display_name": "Vein",
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": { "*": { "texture": "villages_vein_stone" } },
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 4 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 6 },
+      "minecraft:map_color": "#6E6E6E"
+    },
+    "permutations": [
+      { "condition": "q.block_state('villages:ore') == 'coal'", "components": { "minecraft:material_instances": { "*": { "texture": "villages_vein_coal" } } } },
+      { "condition": "q.block_state('villages:ore') == 'iron'", "components": { "minecraft:material_instances": { "*": { "texture": "villages_vein_iron" } } } },
+      { "condition": "q.block_state('villages:ore') == 'copper'", "components": { "minecraft:material_instances": { "*": { "texture": "villages_vein_copper" } } } }
+    ]
+  }
+}

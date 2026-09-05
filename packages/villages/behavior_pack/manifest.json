@@ -1,35 +1,68 @@
 {
-  "format_version": 2,
+  "format_version": 3,
   "header": {
     "name": "Villages",
     "description": "Four peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains. Every person is anchored to a job post in their village.",
     "uuid": "c3c3f8ed-ae70-4d6f-9f17-6d845624cac4",
-    "version": [0, 1, 0],
-    "min_engine_version": [1, 26, 40]
+    "version": "0.1.0",
+    "min_engine_version": "1.26.40"
   },
   "modules": [
     {
       "description": "Villages: peoples, job posts, structures and worldgen",
       "type": "data",
       "uuid": "ec7fe108-4ebb-4863-a752-1415042d24b3",
-      "version": [0, 1, 0]
+      "version": "0.1.0"
     },
     {
       "description": "Villages scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "a86a813f-1d58-49c3-b388-212fb81c59e7",
-      "version": [0, 1, 0],
+      "version": "0.1.0",
       "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
-    { "module_name": "@minecraft/server", "version": "2.9.0" },
-    { "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef", "version": [0, 1, 0] }
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.9.0"
+    },
+    {
+      "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
+      "version": "0.1.0"
+    }
   ],
   "metadata": {
-    "authors": ["Sweetpotato Games"],
+    "authors": [
+      "Sweetpotato Games"
+    ],
     "url": "https://sweetpotato.games",
     "product_type": "addon"
-  }
+  },
+  "settings": [
+    {
+      "type": "label",
+      "text": "A worker takes a trade from the blocks round its post: among trees it is a lumberjack, beside farmland a farmer. Each cycle it walks to its work, does it, and puts what it made in the nearest chest. A lumberjack plants a sapling on every stump."
+    },
+    {
+      "type": "slider",
+      "text": "Minutes between a worker's cycles",
+      "name": "villages:cycle_minutes",
+      "min": 1,
+      "max": 60,
+      "step": 1,
+      "default": 10
+    },
+    {
+      "type": "label",
+      "text": "Wages: a cycle costs the worker one food item from its chest. An unpaid lumberjack waits; a farmer works regardless, since it is what fills the chest."
+    },
+    {
+      "type": "toggle",
+      "text": "Workers are paid from their chest",
+      "name": "villages:wages",
+      "default": true
+    }
+  ]
 }

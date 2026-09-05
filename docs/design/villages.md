@@ -215,7 +215,7 @@ Standing is **per player**. A sibling who annoys the reedfolk does not cost
 the other their friendship; that is a rule for a family Realm, not a
 simulation choice.
 
-## 5.1 Provisioning: what the workers bring in
+## 5.1 Provisioning: what the workers bring in (lumberjack and farmer built)
 
 The larder and the storehouse are chests, and a worker is only worth
 feeding if something arrives in them. Rather than four more jobs, **a worker
@@ -253,6 +253,18 @@ trees and a lumberjack's post) for the stonefolk and tallfolk, and a
 **mine** (a short shaft into a hillside face with a vein at the end and a
 miner's post) for the stonefolk and the tinkers. What a village produces
 goes into its own storehouse, which is what the trader sells.
+
+**Built** (`packages/villages/scripts/core/trades.ts`, `engine/trades.ts`;
+measured in `docs/villages-jigsaw-results.md`): the survey and its
+thresholds, the lumberjack and the farmer as above, the cycle slider and a
+wages toggle on the settings panel, the field's post and chest, the grove
+piece. Two things differ from the table: the walk is a teleport to the
+work and back (§7 item 6, the short-teleport candidate; the walking
+version is still open), and the produce goes into the chest as it is made
+rather than when the person walks back, so an interrupted cycle leaves
+nothing carried. The chest that pays and receives is the nearest chest,
+barrel or trapped chest within twelve of the post; a larder is one of
+those. The miner and the fisher are next.
 
 ## 6.1 Visitors: a village comes to you
 
@@ -334,11 +346,16 @@ found, in buildings they raised. That is the whole loop.
 6. **A person walking to a spot and back** (§5.1): moving `minecraft:home`
    by re-triggering it is not in the stable typings; the candidates are a
    `minecraft:behavior.move_to_block` component group added by event, or a
-   short `teleport` for the last stretch. Which one reads as walking.
-7. **Felling from script**: `Block.setType("minecraft:air")` on a log
-   drops nothing (so no item entities to chase) and `Container.addItem` on
-   a chest read through `BlockInventoryComponent` returns the remainder
-   when full. Bulwark reads a hopper this way; writing one is unmeasured.
+   short `teleport` for the last stretch. **Built with the teleport**;
+   whether it reads as walking is in the pack README to confirm in game,
+   and the `move_to_block` group is the alternative if it does not.
+7. ~~**Felling from script**~~ **Measured, yes**: `Block.setType("minecraft:air")`
+   on a log drops nothing, and `Container.addItem` on a chest read through
+   `BlockInventoryComponent` takes the log; the remainder-when-full path
+   is written (dropped beside the chest) but not yet exercised in game.
+8. **Recognising food for the wage**: not `ItemComponentTypes.Food`, which
+   only data-driven foods carry; the `minecraft:is_food` item tag
+   (`docs/README.md` corrections).
 
 ## 8. Where this goes next
 
@@ -352,9 +369,10 @@ found, in buildings they raised. That is the whole loop.
    processor lists for weathering.
 4. ~~A `villages` pack of its own: job posts and the tick that peoples a
    village.~~ Built (`packages/villages`).
-5. **Provisioning** (§5.1): the trade a worker takes from its
+5. **Provisioning** (§5.1): ~~the trade a worker takes from its
    surroundings, the lumberjack and the farmer first (a grove piece, the
-   field), the miner's vein and the mine piece after; the larder wage.
+   field), the larder wage~~ built; the miner's vein and the mine piece,
+   and the fisher, next.
 6. **Visitors** (§6.1) with the first errand table, since they give the
    kids' own settlement people before any village is found; then the
    elder, standing tiers and invite in the villages (§5, §6).

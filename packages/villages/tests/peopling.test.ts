@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DAY, decide, spawnSpot } from "../scripts/core/peopling";
 import { packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
 
-const post: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 3, job: 1, spawnedAt: 0 };
+const post: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 3, job: 1, spawnedAt: 0, trade: 0, surveyedAt: 0, cycleAt: 0 };
 
 describe("decide", () => {
   it("keeps a living person", () => {

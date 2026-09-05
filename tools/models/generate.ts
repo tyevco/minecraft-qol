@@ -1290,6 +1290,15 @@ biped({ file: "tallfolk", identifier: "geometry.villages_tallfolk", head: [8, 8,
 
 type PB = keyof typeof A.POST.tiles;
 
+// The waypoint a person walks to (engine/walk.ts): an entity with nothing to
+// draw. One bone, no cubes, so the client has a geometry to bind.
+write("packages/villages/resource_pack/models/entity/waypoint.geo.json", {
+  identifier: "geometry.villages_waypoint",
+  atlas: A.POST,
+  visibleBounds: { width: 0.1, height: 0.1, offset: [0, 0, 0] },
+  bones: [{ name: "root", pivot: [0, 0, 0], cubes: [] }],
+});
+
 write("packages/villages/resource_pack/models/blocks/post.geo.json", {
   identifier: "geometry.villages_post",
   atlas: A.POST,

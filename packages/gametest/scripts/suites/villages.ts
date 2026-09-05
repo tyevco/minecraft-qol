@@ -109,13 +109,20 @@ registerAsync("qol", "villages_farmer_harvests_wheat", async (test) => {
   });
 }).maxTicks(600).structureName("qol:arena");
 
-registerAsync("qol", "villages_miner_works_vein", async (test) => {
-  placePost(test, 0, 1);
-  // A coal vein in the floor's corner, bread for the wage. The vein is a fixture: it must survive the cycle.
-  const VEIN: Vector3 = { x: 2, y: 1, z: 2 };
+const VEIN: Vector3 = { x: 2, y: 1, z: 2 };
+
+/** A coal vein in the floor's corner; with `roof`, a stone slab of ceiling over it and the block the miner stands on, three up. */
+function placeVein(test: Test, roof: boolean): void {
   test.setBlockPermutation(BlockPermutation.resolve("villages:vein", { "villages:ore": "coal" }), VEIN);
+  if (roof) for (let x = 1; x <= 4; x++) for (let z = 1; z <= 4; z++) test.setBlockType("minecraft:stone", { x, y: 4, z });
   test.setBlockType("minecraft:chest", CHEST);
   put(test, CHEST, new ItemStack("minecraft:bread", 4));
+}
+
+registerAsync("qol", "villages_miner_works_vein", async (test) => {
+  placePost(test, 0, 1);
+  // The vein is a fixture: it must survive the cycle. It is roofed, as a mine is.
+  placeVein(test, true);
   test.succeedWhen(() => {
     const coal = count(test, CHEST, "minecraft:coal");
     test.assert(coal >= 6, `expected a cycle's 6 coal in the chest, found ${coal}`);
@@ -124,6 +131,18 @@ registerAsync("qol", "villages_miner_works_vein", async (test) => {
     test.assert(bread === 3, `expected one bread taken as the wage (3 left), found ${bread}`);
   });
 }).maxTicks(600).structureName("qol:arena");
+
+registerAsync("qol", "villages_vein_in_the_open_is_ignored", async (test) => {
+  placePost(test, 0, 1);
+  // The same vein under the open sky: no miner, so nothing is mined and the bread is not eaten.
+  placeVein(test, false);
+  await test.idle(400);
+  const coal = count(test, CHEST, "minecraft:coal");
+  test.assert(coal === 0, `expected no coal from a vein out in the open, found ${coal}`);
+  const bread = count(test, CHEST, "minecraft:bread");
+  test.assert(bread === 4, `expected no wage taken, found ${bread} bread`);
+  test.succeed();
+}).maxTicks(500).structureName("qol:arena");
 
 registerAsync("qol", "villages_fisher_catches_fish", async (test) => {
   placePost(test, 1, 1);

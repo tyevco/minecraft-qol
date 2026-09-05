@@ -29,9 +29,9 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   signal first: a **vein** makes a **miner**; eight or more farmland a
   **farmer**; sixteen or more water a **fisher**; four logs with leaves on
   them a **lumberjack**; four water a fisher; a single farmland a farmer;
-  anything else no trade, and the worker just lives there. Every cycle (ten minutes by default; the
-  first at once) the worker is teleported to its work, swings
-  (`villages:working`) for the duration, and is put back at its post:
+  anything else no trade, and the worker just lives there. Every cycle (ten
+  minutes by default; the first at once) the worker **walks** to its work,
+  swings (`villages:working`) for the duration, and walks home:
   - the lumberjack fells the nearest tree top down, one log every half
     second, each log into the nearest chest, barrel or trapped chest within
     twelve of the post as it comes off; then plants the tree's sapling on
@@ -47,11 +47,15 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   - the miner swings at the nearest **vein** (`villages:vein`, a block with
     a `villages:ore` state of stone, coal, iron or copper) for about three
     seconds, and the vein's yield appears in the chest: eight cobblestone,
-    six coal, three raw iron or four raw copper. The vein is a fixture and
-    is never changed; a vein yields four cycles per day-long window,
-    counted on the post, then the miner idles until the window rolls over.
-    The window is a span of ticks, so a world with the daylight cycle
-    locked still rolls over. A player can mine a vein and place it at home.
+    six coal, three raw iron or four raw copper. A vein counts only **in a
+    cave or a mine**: something solid must be over it and over the block
+    the miner stands on, within 48 blocks up (leaves, grass, water and the
+    like are not a roof). A vein out in the open is named in the log and
+    ignored. The vein is a fixture and is never changed; a vein yields four
+    cycles per day-long window, counted on the post, then the miner idles
+    until the window rolls over. The window is a span of ticks, so a world
+    with the daylight cycle locked still rolls over. A player can mine a
+    vein and place it at home, under a roof.
   - the fisher stands at the water's edge (a bank at the water's level, or
     a deck up to three blocks over it, the reedfolk way) nearest the post
     and, after the same swing, four fish appear in the chest: cod about two
@@ -66,6 +70,19 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
     what fill the chest, and a fisher with nothing else to eat eats one of
     its own catch (raw fish is food). The toggle on the settings panel
     turns wages off.
+- **The walk** (`scripts/engine/walk.ts`): the stable API has no "go here",
+  so a `villages:waypoint` entity (nothing to draw, no gravity, gone on its
+  own after ninety seconds) is spawned at the spot and the person is put in
+  its `villages:walking` group: `minecraft:behavior.follow_mob` filtered to
+  the waypoint's family, which vanilla pathing then walks to (measured
+  against two other ways; see below). Script polls the distance, takes the
+  group off on arrival, and gives up after thirty seconds, in which case the
+  cycle ends where the person stands and the walk home is tried; only a
+  walk home that fails falls back to a teleport, so nobody is left out in
+  the dark for good. The route is the real one - through the dark, past
+  whatever is on it - which is why a player secures the way between a
+  worker's post and its work. One walk at a time within 64 blocks of
+  another, since the behaviour follows the nearest waypoint.
 - **Settings panel** (manifest format 3): minutes between a worker's cycles
   (1–60, default 10) and whether workers are paid.
 - **Pieces that carry the trades**: the tallfolk field has the farmer's
@@ -104,10 +121,22 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   become eight wheat in the chest with at most one ripe tile left and the
   field replanted.
 - `villages_miner_works_vein` and `villages_fisher_catches_fish` pass
-  headlessly: a coal vein yields six coal, stays in place and costs one
-  bread; a pond of eight water blocks yields four fish and the bread. Run
-  without the bread, the fisher ate one of its own catch: 3 fish of 4,
+  headlessly: a roofed coal vein yields six coal, stays in place and costs
+  one bread; a pond of eight water blocks yields four fish and the bread.
+  Run without the bread, the fisher ate one of its own catch: 3 fish of 4,
   three runs out of three, which is the wage working as designed.
+  `villages_vein_in_the_open_is_ignored` pins that the same vein under the
+  sky yields nothing and costs nothing.
+- **Walking, measured three ways** in one arena (a person at one corner, a
+  waypoint eight blocks off, 300 ticks): `nearest_attackable_target` +
+  `move_towards_target` never left random strolling (closest approach 1.0,
+  by chance, at tick 200); a target set by `applyDamage` from the waypoint
+  with `hurt_by_target` + `move_towards_target` walked there in 100 ticks
+  and wandered off again; `follow_mob` walked there in 100 ticks and
+  **stayed** (0.3 blocks), and with a family `filters` clause walked past
+  a decoy person two blocks away to the waypoint. All seven villages
+  GameTests pass with the walk in, the lumberjack and the miner among them,
+  whose work spots are outside arrival radius of the post.
 - `ItemStack.getComponent(ItemComponentTypes.Food)` is **undefined for
   bread and cooked beef** on BDS 1.26.45 (only data-driven foods such as an
   apple carry the component); every food carries the `minecraft:is_food`
@@ -135,9 +164,12 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   turns wages off; the farmer in a tallfolk field runs from the start. If
   a stonefolk grove should work unattended, either seed the grove chest
   from the structure or exempt world-generated posts from wages.
-- **The teleport reads as walking.** The person appears beside the tree
-  or row and swings for the duration; if that jars, design §7 item 6's
-  alternative is a `behavior.move_to_block` group added by event.
+- **The walk in a real village.** Doors (`can_open_doors`), fence gates,
+  the mine's adit and the reedfolk decks: if a worker stalls, the log says
+  where it got to when its walk timed out. A route a monster sits on ends
+  the cycle at the timeout; that is the point, but if it happens every
+  cycle the exclusion (one walk within 64 blocks) or the timeout may need
+  tuning.
 - **A regrown tree is felled again** on a later cycle: the sapling's growth
   is vanilla and needs light and time; a grove that is planted and never
   regrows means the stump's ground is not dirt or grass (the sapling then

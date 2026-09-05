@@ -1,0 +1,12 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "villages:waypoint",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/blocks/post" },
+      "geometry": { "default": "geometry.villages_waypoint" },
+      "render_controllers": ["controller.render.default"]
+    }
+  }
+}

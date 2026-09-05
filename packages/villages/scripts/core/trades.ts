@@ -82,11 +82,33 @@ export const MINE_YIELD: Readonly<Record<(typeof ORES)[number], { typeId: string
 /** A vein's daily yield, in cycles; after that the miner idles until the window rolls over. */
 export const VEIN_CYCLES_PER_DAY = 4;
 export const VEIN_WINDOW = 24000;
+/**
+ * A vein must be in a cave or a mine, not out in the open: something solid
+ * over it and over the miner's standing spot, within this many blocks up.
+ */
+export const ROOF_SPAN = 48;
+/** What does not count as a roof: sky, and what the sky shows through. */
+export const OPEN_TYPES: readonly string[] = [
+  "minecraft:air", "minecraft:water", "minecraft:flowing_water", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern",
+  "minecraft:snow_layer", "minecraft:vine", "minecraft:glow_lichen", "minecraft:torch",
+];
 /** Swings at the vein or the water before the cycle's produce appears. */
 export const WORK_SWINGS = 8;
 export const TICKS_PER_SWING = 8;
 
 export const WATER_TYPES: readonly string[] = ["minecraft:water", "minecraft:flowing_water"];
+
+/**
+ * The walk. A person walks to its work and back (engine/walk.ts) rather
+ * than appearing there, so a route through the dark is the player's to
+ * secure. `WALK_TIMEOUT` is how long a walk may take before the cycle is
+ * given up; `ARRIVE_RADIUS` how close counts as there.
+ */
+export const WALK_TIMEOUT = 600;
+export const WALK_POLL = 5;
+export const ARRIVE_RADIUS = 2;
+/** After a walk that could not be started or completed, wait this long before the next try. */
+export const WALK_RETRY_TICKS = 200;
 /** A cycle's catch, and what it can be. */
 export const FISH_PER_CYCLE = 4;
 export const COD = "minecraft:cod", SALMON = "minecraft:salmon";
@@ -344,6 +366,28 @@ export function veinAllowance(record: { veinAt: number; veinCycles: number }, no
   const cycles = fresh ? 0 : record.veinCycles;
   if (cycles >= VEIN_CYCLES_PER_DAY) return { allowed: false, veinAt: record.veinAt, veinCycles: record.veinCycles };
   return { allowed: true, veinAt: fresh ? now : record.veinAt, veinCycles: cycles + 1 };
+}
+
+/** Whether there is a roof over `v`: any block that is not sky-through within ROOF_SPAN above it. */
+export function roofed(v: Vec, typeAt: (v: Vec) => string | undefined, span = ROOF_SPAN): boolean {
+  for (let y = v.y + 1; y <= v.y + span; y++) {
+    const t = typeAt({ x: v.x, y, z: v.z });
+    if (t === undefined) return false; // the world's top, or unloaded: no roof seen
+    if (t !== "minecraft:air" && !LEAF_TYPES.includes(t) && !OPEN_TYPES.includes(t)) return true;
+  }
+  return false;
+}
+
+/** A vein counts only in a cave or a mine: roofed, with the miner's standing spot roofed too. */
+export function veinEnclosed(vein: Vec, from: Vec, typeAt: (v: Vec) => string | undefined): boolean {
+  const stand = standingSpot(vein, from);
+  return roofed(vein, typeAt) && roofed({ x: Math.floor(stand.x), y: stand.y, z: Math.floor(stand.z) }, typeAt);
+}
+
+/** Has the walker arrived: within ARRIVE_RADIUS horizontally and a couple of blocks vertically of the spot? */
+export function arrived(at: Vec, spot: Vec, radius = ARRIVE_RADIUS): boolean {
+  const dx = at.x - spot.x, dz = at.z - spot.z;
+  return dx * dx + dz * dz <= radius * radius && Math.abs(at.y - spot.y) <= 2;
 }
 
 export function nearestOf<T extends { pos: Vec }>(items: readonly T[], from: Vec): T | undefined {

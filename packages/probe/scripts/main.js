@@ -39,6 +39,13 @@
  *                                    run again to remove it. Reports maxCount and what
  *                                    the bar lists, so /reload and dimension behaviour
  *                                    are measured (Waypoints W1-W4)
+ *   /scriptevent qolprobe:jigsaw-place [x y z]
+ *                                    placeJigsawStructure("qolprobe:well") at the given
+ *                                    block (default 0 0 0); logs the box or the error (J1)
+ *   /scriptevent qolprobe:jigsaw-scan [x z radius]
+ *                                    list every emerald block (the probe well's marker)
+ *                                    in the loaded chunks around x,z; a wells count is
+ *                                    how many the world generator placed (J2)
  *   /scriptevent qolprobe:turret-persist  spawn an UNLINKED turret head here (Bulwark T1)
  *   /scriptevent qolprobe:turret-check    look every remembered head up by id
  *   /scriptevent qolprobe:turret-watch    sample the nearest head's rotation and
@@ -56,7 +63,7 @@
  *                                         stage swap without a pop)
  *   /scriptevent qolprobe:hatch-cleanup   remove every egg and hatchling within 16 blocks
  */
-import { world, system, BlockPermutation, LocationWaypoint } from "@minecraft/server";
+import { world, system, BlockPermutation, BlockVolume, LocationWaypoint } from "@minecraft/server";
 
 const P = "[QOLPROBE]";
 const log = (...a) => console.warn(P, ...a);
@@ -1091,3 +1098,51 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// J: jigsaw structures without an experiment (docs/design/villages.md §7.1, #38)
+//
+// The probe pack ships one jigsaw structure, qolprobe:well: a template pool
+// with the well, a structure set spreading it every 4 chunks. J1 places it
+// through the stable API. J2 counts the emerald blocks the generator left in
+// new chunks (one per well, at the pad's north-west corner), so a console
+// `tickingarea` plus this scan measures natural generation with no player.
+//
+//   /scriptevent qolprobe:jigsaw-place 0 0 0
+//   /scriptevent qolprobe:jigsaw-scan 0 0 128
+// ---------------------------------------------------------------------------
+world.afterEvents.worldLoad.subscribe(() => {
+  const overworld = world.getDimension("overworld");
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id === "qolprobe:jigsaw-place") {
+      const [x = 0, y = 0, z = 0] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+      try {
+        const box = world.structureManager.placeJigsawStructure("qolprobe:well", overworld, { x, y, z });
+        log(`J1 placeJigsawStructure OK: box min=${JSON.stringify(box.min)} max=${JSON.stringify(box.max)}`);
+      } catch (e) {
+        log(`J1 placeJigsawStructure THREW: ${e} ${e && e.name ? "(" + e.name + ")" : ""}`);
+      }
+      return;
+    }
+    if (ev.id !== "qolprobe:jigsaw-scan") return;
+    const [cx = 0, cz = 0, r = 128] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+    const found = [];
+    let tiles = 0, unloaded = 0;
+    function* scan() {
+      for (let x0 = cx - r; x0 < cx + r; x0 += 32)
+        for (let z0 = cz - r; z0 < cz + r; z0 += 32) {
+          tiles++;
+          try {
+            const vol = new BlockVolume({ x: x0, y: 40, z: z0 }, { x: x0 + 31, y: 140, z: z0 + 31 });
+            const hits = overworld.getBlocks(vol, { includeTypes: ["minecraft:emerald_block"] }, true);
+            for (const loc of hits.getBlockLocationIterator()) found.push(`${loc.x},${loc.y},${loc.z}`);
+          } catch (e) {
+            unloaded++;
+          }
+          yield;
+        }
+      log(`J2 scan ${cx},${cz} r=${r}: ${tiles} tiles, ${unloaded} threw (unloaded), wells=${found.length}` + (found.length ? " at " + found.slice(0, 40).join(" ") : ""));
+    }
+    system.runJob(scan());
+  });
+});

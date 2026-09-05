@@ -1,0 +1,14 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:structure_set": {
+    "description": { "identifier": "qolprobe:wells" },
+    "placement": {
+      "type": "minecraft:random_spread",
+      "spacing": 4,
+      "separation": 1,
+      "salt": 20260905,
+      "spread_type": "linear"
+    },
+    "structures": [{ "structure": "qolprobe:well", "weight": 1 }]
+  }
+}

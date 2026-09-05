@@ -1,0 +1,16 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": { "identifier": "qolprobe:well" },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "qolprobe:well",
+          "projection": "rigid"
+        },
+        "weight": 1
+      }
+    ]
+  }
+}

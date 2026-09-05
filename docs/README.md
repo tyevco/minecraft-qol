@@ -23,6 +23,10 @@ Three kinds of document live here, and they carry very different authority.
 - [`gametest-structure-results.md`](gametest-structure-results.md) — test-relative
   `(0,0,0)` is the test's own structure block; writing it kills the test. Also
   how to run the suite headlessly on a dedicated server.
+- [`waypoints-results.md`](waypoints-results.md) — a pack-added
+  `LocationWaypoint` renders on a real player's locator bar on stable, seen
+  via Hearthstone's hearth marker; the `/reload`, cross-dimension and game-rule
+  questions are still open.
 - [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
   pack's jigsaw structure loads, places and generates in a world with **no
   experiments** (25 wells in 400 fresh chunks, one per cell). The files live
@@ -135,9 +139,11 @@ and non-Overworld anchors work — verified by dying in the Nether.
 **[`design/waypoints.md`](design/waypoints.md)** — **built** (Phase 1 plus the
 bed marker from Phase 2): `packages/shared/engine/waypoints.ts`, used by
 Hearthstone for the bed and hearth markers and by Graves for the gravestone.
-Nothing in it has been measured yet; its §4 "must prototype" list maps onto
-`qolprobe:waypoint` in the probe pack, and each pack README says what to look
-for. One deliberate divergence: the hearth marker stays while Hearthstone still
+The hearth marker has been seen on a real player's bar
+(`waypoints-results.md`), which settles that pack-added waypoints render on
+stable; the rest of its §4 "must prototype" list is still open, maps onto
+`qolprobe:waypoint` in the probe pack, and is tracked in issue #37. Each pack
+README says what to look for. One deliberate divergence: the hearth marker stays while Hearthstone still
 owns the player's spawn point, rather than clearing when they leave the anchor's
 radius, because that is still where they will wake up.
 

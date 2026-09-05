@@ -59,13 +59,17 @@ the seam that changes when that lands.
 The manifest moved to format 3 for the panel, so this needs a full restart, not
 a `/reload`, and the panel should list both toggles.
 
-The markers themselves are built on stable API but nothing about the locator
-bar has been measured. Run `/scriptevent qolprobe:waypoint` with the probe pack
-for the engine questions; for this pack, with the anchor test rig or a real
-anchor:
+The markers are built on stable API, and the hearth marker has been seen on a
+real player's bar, so the module renders. The rest of the locator bar's
+behaviour is still unmeasured (issue #37). Run `/scriptevent qolprobe:waypoint`
+with the probe pack for the engine questions; for this pack, with the anchor
+test rig or a real anchor:
 
-- Stand near an anchor with no spawn point: an orange star appears at the
-  anchor within three seconds. `hs:debug` lists `hs:hearth@x,y,z`.
+- ~~Stand near an anchor with no spawn point: an orange star appears at the
+  anchor within three seconds.~~ **Confirmed in game** (see
+  [`docs/waypoints-results.md`](../../docs/waypoints-results.md)): the star
+  showed at the anchor on a real player's bar. Not yet checked alongside it:
+  that `hs:debug` lists `hs:hearth@x,y,z`.
 - Sleep in a bed: the star becomes a pale blue square at the bed by the next
   sweep. If both show at once, the ownership verdict is wrong, not the bar.
 - `/reload`: the marker should neither vanish for good nor duplicate. A

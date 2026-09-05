@@ -87,6 +87,7 @@ const BUILDINGS: [id: string, name: string, people: string][] = [
   ["drover_trading_post", "Trading Post", "drover"],
   ["drover_cabin", "Adobe Cabin", "drover"],
   ["drover_corral", "Corral", "drover"],
+  ["drover_ranch", "Ranch", "drover"],
   ["drover_water_tower", "Water Tower", "drover"],
   ["shared_larder", "Larder", "shared"],
   ["shared_inn", "Inn", "shared"],

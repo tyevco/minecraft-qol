@@ -27,8 +27,9 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   within sixteen of it on the first tick its person is present, and again
   once a day (every 2½ minutes while it has found nothing): eight or more
   farmland makes a **farmer**; four logs with leaves on them a
-  **lumberjack**; a single farmland a farmer; anything else no trade, and
-  the worker just lives there. Every cycle (ten minutes by default; the
+  **lumberjack**; a single farmland a farmer; and before any of those, two or
+  more grown sheep within sixteen make a **rancher**; anything else no
+  trade, and the worker just lives there. Every cycle (ten minutes by default; the
   first at once) the worker is teleported to its work, swings
   (`villages:working`) for the duration, and is put back at its post:
   - the lumberjack fells the nearest tree top down, one log every half
@@ -43,19 +44,29 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
     replants each tile from its own drops (`packages/shared/core/crops.ts`,
     the Fluidworks harvester's rule); a roll with no seed takes one from the
     chest, and only if there is none does the tile stay bare.
+  - the rancher shears up to eight grown, woolly sheep within twelve,
+    nearest first, one every second: the sheep's own `minecraft:on_sheared`
+    event marks it shorn (so it regrows its wool by eating grass, as after a
+    player's shears), and one to three wool of its colour go in the chest.
+    Lambs and shorn sheep are left alone.
   - nothing is ever lost: a cycle needs two empty slots before it starts, a
     log leaves the world in the same step that puts it in the chest, and
     anything the chest cannot take is dropped beside it.
   - **wages**: a cycle ends with one food item (anything tagged
     `minecraft:is_food`) taken from the chest. A lumberjack with no food to
     take waits; a farmer works unpaid, since it is what fills the chest. The
-    toggle on the settings panel turns wages off.
+    toggle on the settings panel turns wages off. A rancher is paid like a
+  lumberjack.
 - **Settings panel** (manifest format 3): minutes between a worker's cycles
   (1–60, default 10) and whether workers are paid.
 - **Pieces that carry the trades**: the tallfolk field has the farmer's
   post and a chest at the end of its channel, the drover corral has a
   fodder strip of wheat with a channel through it and a chest by its post
-  (sixteen farmland, so its worker is a farmer), and stonefolk and tallfolk
+  (sixteen farmland, so its worker is a farmer), the drover **ranch** is a
+  fenced pasture on grass with a pond, a lean-to and a rancher's post (a
+  structure carries no entities, so the sheep are the kids' to bring; until
+  then its worker has no trade and looks again every 2½ minutes), and
+  stonefolk and tallfolk
   villages grow a **grove** (three trees, a lumberjack's post, a chest)
   among their greens. Tree leaves in every piece are no longer persistent,
   so a felled crown decays.
@@ -94,6 +105,12 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   the chest, a sapling on the stump and one bread fewer; nine ripe wheat
   become eight wheat in the chest with at most one ripe tile left and the
   field replanted.
+- `villages_rancher_shears_sheep` passes headlessly: two grown red sheep
+  beside a drover worker's post make it a rancher on its first survey
+  (`sheep 2` in the log), and the first cycle leaves both carrying
+  `minecraft:is_sheared`, two to six red wool in the chest and one bread
+  fewer. So `triggerEvent("minecraft:on_sheared")` on a vanilla sheep does
+  what shears do, from script, on BDS 1.26.45.
 - **A drover village places and is peopled** on the headless server:
   `place structure villages:drover_village 60 64 60` inside a ticking area
   put ten drover posts in the world (traders, guards, builders; that draw
@@ -128,6 +145,11 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   states and let them be dry troughs. Whether the cacti, the troughs and
   the bell survive placement has not been checked block by block; the
   posts have (see Measured).
+- **A shorn sheep regrows in the ranch.** Vanilla regrowth is the sheep
+  eating a grass block, which needs light and a grass block to eat; the
+  ranch is grass with a pond, so it should. If a pen's sheep stay shorn,
+  the pen's floor has been eaten to dirt and the fix is more grass, or a
+  hay bale the rancher feeds from (not built).
 - **Terrain adaptation** (`beard_thin`) under buildings on a slope, and the
   stilted reedfolk village standing in water rather than cut into a bank.
 - Guards versus monsters at night, and that a fight does not spill onto a

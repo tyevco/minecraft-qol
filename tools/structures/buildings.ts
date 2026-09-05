@@ -390,6 +390,24 @@ building("drover_corral", "Corral", "drover", "A fenced yard on sand: a fodder s
   for (const [x, z] of [[3, 5], [7, 4], [4, 8]] as const) bp.set(x, 1, z, "deadbush");
 });
 
+building("drover_ranch", "Ranch", "drover", "A fenced pasture on grass with a pond in the middle, a lean-to, and hay by the gate. The rancher's post: bring sheep and the worker shears them, and the grass regrows their wool.", (bp) => {
+  bp.fill(0, 0, 0, 13, 1, 11, "grass");
+  bp.walls(0, 1, 0, 13, 1, 11, "spruce_fence");
+  bp.gate(6, 1, 10, "spruce", "south");
+  // The pond, and the grass the flock grazes.
+  bp.fill(5, 0, 4, 3, 1, 2, "water");
+  for (const [x, z] of [[2, 3], [10, 2], [3, 8], [9, 7], [11, 5]] as const) bp.set(x, 1, z, "short_grass");
+  // A lean-to in the north-east corner: log posts, a slab roof, a trough under it.
+  for (const [x, z] of [[9, 1], [12, 1], [9, 4], [12, 4]] as const) bp.fill(x, 1, z, 1, 2, 1, "stripped_spruce_log");
+  flatRoof(bp, 9, 3, 1, 4, 4, "spruce");
+  bp.set(11, 1, 2, "cauldron", TROUGH);
+  bp.set(10, 2, 2, "lantern");
+  // Hay by the gate, the rancher's post and the wool chest inside it.
+  bp.fill(1, 1, 8, 2, 1, 2, "hay_block").set(1, 2, 8, "hay_block");
+  bp.set(8, 1, 8, "chest");
+  post(bp, 6, 1, 7, "worker");
+});
+
 building("drover_water_tower", "Water Tower", "drover", "A plank tank on four tall legs, a railed platform under it and a ladder up the centre post. The drover watch: a guard at its foot sees the whole street.", (bp) => {
   bp.fill(1, 0, 1, 5, 1, 5, "smooth_sandstone");
   for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 1, z, 1, 6, 1, "stripped_spruce_log");

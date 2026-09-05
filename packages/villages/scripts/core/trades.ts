@@ -6,7 +6,8 @@
  * docs/design/villages.md §5.1: a worker takes a trade from where its post
  * stands. A lumberjack fells the nearest tree top-down into the nearest
  * chest and plants a sapling on the stump; a farmer harvests mature crops
- * and replants them. One cycle per interval (the settings panel), a
+ * and replants them; a rancher shears the sheep in its pen, which regrow
+ * their wool on grass. One cycle per interval (the settings panel), a
  * stack-slot's worth a cycle, the chest checked for room first, and the
  * chest pays the worker one food item a cycle.
  */
@@ -14,7 +15,9 @@ import { cropOf, isMature } from "@qol/shared/core/crops";
 import { TRADES } from "./record";
 
 export type Trade = (typeof TRADES)[number];
-export const NONE = 0, LUMBERJACK = 1, FARMER = 2;
+export const NONE = 0, LUMBERJACK = 1, FARMER = 2, RANCHER = 3;
+/** Trades the chest pays; the farmer works unpaid, since it is the one filling the larder. */
+export const PAID_TRADES: readonly number[] = [LUMBERJACK, RANCHER];
 
 /** How far round the post, horizontally, the survey and the lumberjack look. */
 export const SURVEY_RANGE = 16;
@@ -28,11 +31,16 @@ export const FARM_RANGE = 12;
 export const ROOM_NEEDED = 2;
 /** Mature crops a farmer takes in one cycle: a stack-slot's worth, not a field. */
 export const HARVEST_PER_CYCLE = 8;
+/** Sheep a rancher shears in one cycle, and how many grown sheep make a pen. */
+export const SHEAR_PER_CYCLE = 8;
+export const FLOCK_MIN = 2;
+export const RANCH_RANGE = 12;
 /** A component of logs bigger than this is a building, not a tree. */
 export const MAX_TREE_LOGS = 32;
 /** Pacing, in ticks. The work is visible: one log, one row, at a time. */
 export const TICKS_PER_LOG = 10;
 export const TICKS_PER_CROP = 8;
+export const TICKS_PER_SHEEP = 20;
 /** How long a worker with nothing to do (no tree, no ripe crop) waits before looking again. */
 export const IDLE_TICKS = 1200;
 /** A survey is repeated this often; sooner when it found nothing, so a field planted after the post is noticed. */
@@ -84,14 +92,18 @@ export interface Survey {
   farmland: number;
   logs: number;
   leaves: number;
+  /** Grown sheep within the survey range. */
+  sheep: number;
 }
 
 /**
- * Which trade the surroundings offer. A field wins over a few trees, trees
- * win over a stray farmland block; a post beside neither has no trade and
+ * Which trade the surroundings offer. A pen of sheep wins outright, since
+ * sheep are put there on purpose; a field wins over a few trees, trees win
+ * over a stray farmland block; a post beside none of them has no trade and
  * the worker just lives there.
  */
 export function chooseTrade(s: Survey): number {
+  if (s.sheep >= FLOCK_MIN) return RANCHER;
   if (s.farmland >= 8) return FARMER;
   if (s.logs >= 4 && s.leaves >= 4) return LUMBERJACK;
   if (s.farmland >= 1) return FARMER;
@@ -231,6 +243,41 @@ export function harvestPlan(tiles: readonly CropTile[], from: Vec, limit = HARVE
 }
 
 // ---------------------------------------------------------------------------
+// Sheep
+// ---------------------------------------------------------------------------
+
+export interface Sheep {
+  id: string;
+  pos: Vec;
+  /** The `minecraft:color` value, 0 to 15 in the dye order. */
+  color: number;
+  sheared: boolean;
+  baby: boolean;
+}
+
+/** The wool a colour value shears to: the dye order the game uses for `minecraft:color`. */
+export const WOOL: readonly string[] = [
+  "white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+  "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black",
+].map((c) => `minecraft:${c}_wool`);
+
+export function woolOf(color: number): string {
+  return WOOL[Number.isInteger(color) && color >= 0 && color < WOOL.length ? color : 0]!;
+}
+
+/** Shearing a sheep gives one to three wool, as the game's own shears do. */
+export function shearYield(rand: () => number): number {
+  return 1 + Math.floor(rand() * 3);
+}
+
+/** The grown, unshorn sheep nearest the post, up to a cycle's worth. Lambs and shorn sheep are left alone. */
+export function shearPlan(flock: readonly Sheep[], from: Vec, limit = SHEAR_PER_CYCLE): Sheep[] {
+  const ready = flock.filter((s) => !s.sheared && !s.baby);
+  ready.sort((a, b) => dist2(a.pos, from) - dist2(b.pos, from) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return ready.slice(0, limit);
+}
+
+// ---------------------------------------------------------------------------
 // The chest, the wage, the cycle
 // ---------------------------------------------------------------------------
 
@@ -269,13 +316,13 @@ export function cycleDue(record: { cycleAt: number }, now: number, intervalTicks
 /**
  * May a cycle start? The chest must exist and have room (nothing is ever
  * lost: a full chest means the worker waits), and if wages are on, a
- * lumberjack must be fed - the farmer works unpaid, since it is the one
- * filling the larder.
+ * lumberjack or a rancher must be fed - the farmer works unpaid, since it
+ * is the one filling the larder.
  */
 export function canWork(trade: number, chest: ChestView | undefined, wages: boolean): CycleVerdict {
   if (!chest) return { kind: "wait", reason: "no chest" };
   if (chest.emptySlots < ROOM_NEEDED) return { kind: "wait", reason: "chest full" };
-  if (wages && trade === LUMBERJACK && pickWage(chest.slots) === undefined) return { kind: "wait", reason: "no wage" };
+  if (wages && PAID_TRADES.includes(trade) && pickWage(chest.slots) === undefined) return { kind: "wait", reason: "no wage" };
   return { kind: "work" };
 }
 

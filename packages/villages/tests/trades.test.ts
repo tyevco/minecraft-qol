@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  FARMER, LUMBERJACK, NONE, MAX_TREE_LOGS, ROOM_NEEDED, RESURVEY_NONE_TICKS, RESURVEY_TICKS,
+  FARMER, LUMBERJACK, NONE, RANCHER, MAX_TREE_LOGS, ROOM_NEEDED, RESURVEY_NONE_TICKS, RESURVEY_TICKS, SHEAR_PER_CYCLE,
   canWork, chooseTrade, cycleDue, fellOrder, fellPlan, findTrees, harvestPlan, key, minutesToTicks,
-  nearestTree, pickSeed, pickWage, standingSpot, surveyDue, type LogBlock, type Slot,
+  nearestTree, pickSeed, pickWage, shearPlan, shearYield, standingSpot, surveyDue, woolOf, type LogBlock, type Sheep, type Slot,
 } from "../scripts/core/trades";
 import { DEFAULT_POLICY, parsePolicy } from "../scripts/core/settings";
 import { SCHEMA, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
@@ -13,12 +13,18 @@ const crown = (x: number, top: number, z: number): Set<string> => new Set([key({
 
 describe("chooseTrade", () => {
   it("a field makes a farmer, trees a lumberjack, neither nothing", () => {
-    expect(chooseTrade({ farmland: 20, logs: 10, leaves: 30 })).toBe(FARMER);
-    expect(chooseTrade({ farmland: 0, logs: 5, leaves: 12 })).toBe(LUMBERJACK);
-    expect(chooseTrade({ farmland: 2, logs: 5, leaves: 12 })).toBe(LUMBERJACK);
-    expect(chooseTrade({ farmland: 2, logs: 0, leaves: 0 })).toBe(FARMER);
-    expect(chooseTrade({ farmland: 0, logs: 40, leaves: 0 })).toBe(NONE); // a log cabin is not a forest
-    expect(chooseTrade({ farmland: 0, logs: 0, leaves: 0 })).toBe(NONE);
+    expect(chooseTrade({ farmland: 20, logs: 10, leaves: 30, sheep: 0 })).toBe(FARMER);
+    expect(chooseTrade({ farmland: 0, logs: 5, leaves: 12, sheep: 0 })).toBe(LUMBERJACK);
+    expect(chooseTrade({ farmland: 2, logs: 5, leaves: 12, sheep: 0 })).toBe(LUMBERJACK);
+    expect(chooseTrade({ farmland: 2, logs: 0, leaves: 0, sheep: 0 })).toBe(FARMER);
+    expect(chooseTrade({ farmland: 0, logs: 40, leaves: 0, sheep: 0 })).toBe(NONE); // a log cabin is not a forest
+    expect(chooseTrade({ farmland: 0, logs: 0, leaves: 0, sheep: 0 })).toBe(NONE);
+  });
+  it("a pen of sheep makes a rancher, over a field or trees; one stray sheep does not", () => {
+    expect(chooseTrade({ farmland: 20, logs: 10, leaves: 30, sheep: 2 })).toBe(RANCHER);
+    expect(chooseTrade({ farmland: 0, logs: 0, leaves: 0, sheep: 5 })).toBe(RANCHER);
+    expect(chooseTrade({ farmland: 20, logs: 0, leaves: 0, sheep: 1 })).toBe(FARMER);
+    expect(chooseTrade({ farmland: 0, logs: 0, leaves: 0, sheep: 1 })).toBe(NONE);
   });
   it("resurveys sooner when it found nothing", () => {
     expect(surveyDue({ trade: NONE, surveyedAt: 0 }, 5)).toBe(true);
@@ -102,6 +108,27 @@ describe("harvestPlan", () => {
   });
 });
 
+describe("shearPlan", () => {
+  const sheep = (id: string, x: number, extra: Partial<Sheep> = {}): Sheep => ({ id, pos: { x, y: 1, z: 0 }, color: 0, sheared: false, baby: false, ...extra });
+  const post = { x: 0, y: 1, z: 0 };
+  it("shears the grown, woolly sheep nearest the post, a cycle's worth, and leaves lambs and shorn sheep alone", () => {
+    const flock = [sheep("far", 9), sheep("near", 2), sheep("shorn", 1, { sheared: true }), sheep("lamb", 1, { baby: true }), sheep("mid", 5)];
+    expect(shearPlan(flock, post).map((s) => s.id)).toEqual(["near", "mid", "far"]);
+    const many = Array.from({ length: SHEAR_PER_CYCLE + 3 }, (_, i) => sheep(`s${i}`, i + 1));
+    expect(shearPlan(many, post)).toHaveLength(SHEAR_PER_CYCLE);
+    expect(shearPlan([sheep("b", 3), sheep("a", 3)], post).map((s) => s.id)).toEqual(["a", "b"]);
+  });
+  it("wool follows the sheep's colour in the dye order, white for anything odd; one to three a shearing", () => {
+    expect(woolOf(0)).toBe("minecraft:white_wool");
+    expect(woolOf(14)).toBe("minecraft:red_wool");
+    expect(woolOf(15)).toBe("minecraft:black_wool");
+    expect(woolOf(16)).toBe("minecraft:white_wool");
+    expect(woolOf(-1)).toBe("minecraft:white_wool");
+    expect(shearYield(() => 0)).toBe(1);
+    expect(shearYield(() => 0.99)).toBe(3);
+  });
+});
+
 describe("the chest, the wage, the cycle", () => {
   const bread: Slot = { typeId: "minecraft:bread", amount: 3, food: true };
   const seeds: Slot = { typeId: "minecraft:wheat_seeds", amount: 2, food: false };
@@ -112,7 +139,9 @@ describe("the chest, the wage, the cycle", () => {
     expect(pickSeed(slots, "minecraft:wheat_seeds")).toBe(1);
     expect(pickSeed(slots, "minecraft:carrot")).toBeUndefined();
   });
-  it("needs a chest with room; a lumberjack needs a wage unless wages are off; a farmer works unpaid", () => {
+  it("needs a chest with room; a lumberjack or rancher needs a wage unless wages are off; a farmer works unpaid", () => {
+    expect(canWork(RANCHER, { emptySlots: 5, slots: [seeds] }, true)).toEqual({ kind: "wait", reason: "no wage" });
+    expect(canWork(RANCHER, { emptySlots: 5, slots }, true)).toEqual({ kind: "work" });
     expect(canWork(LUMBERJACK, undefined, true)).toEqual({ kind: "wait", reason: "no chest" });
     expect(canWork(LUMBERJACK, { emptySlots: ROOM_NEEDED - 1, slots }, true)).toEqual({ kind: "wait", reason: "chest full" });
     expect(canWork(LUMBERJACK, { emptySlots: 5, slots: [seeds] }, true)).toEqual({ kind: "wait", reason: "no wage" });

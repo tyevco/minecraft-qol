@@ -24,6 +24,14 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
+          "location": "villages/drover/drover_ranch",
+          "projection": "rigid"
+        },
+        "weight": 2
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
           "location": "villages/drover/tinker_stall",
           "projection": "rigid"
         },

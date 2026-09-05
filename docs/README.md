@@ -158,7 +158,7 @@ prototype” list. In suggested order:
   accessory bones, and the blueprint scheme that makes builders viable on the
   stable structure API. The atlases and rigs ship in `packages/villages`.
 - [`design/settlements.md`](design/settlements.md) — where the peoples
-  live: five settlement shapes, a catalogue of twenty-four blueprints (sizes,
+  live: five settlement shapes, a catalogue of twenty-five blueprints (sizes,
   materials, roles), palette swaps, and how a builder raises one from a
   blueprint table on the stable structure API. Every blueprint is generated
   under `concepts/structures/` as a `.mcstructure` plus a preview the viewer

@@ -231,6 +231,7 @@ sixteen of the post the first time it ticks and again once a day:
 | **miner** | a **vein**, a block the mine piece carries (`villages:vein`, a state for stone, coal, iron or copper) | cobblestone, coal, raw iron or raw copper | none: a vein is a fixture, not terrain. Nothing the kids built or the landscape is ever dug. A vein has a daily yield; the miner idles once it is spent until the next day |
 | **farmer** | farmland | the larder: wheat, carrots, potatoes, from crops it harvests and replants (reusing `packages/shared/core/crops.ts`) | nothing: replanted |
 | **fisher** | water, four blocks or more | the larder: cod, salmon, one time in eight a treasure item | nothing |
+| **rancher** | a **pen of sheep**: two or more grown sheep within sixteen | the wool chest: one to three wool a sheep, in the sheep's colour | none: the sheep is shorn by its own `minecraft:on_sheared` event, exactly as shears do, and regrows its wool on grass. Lambs and shorn sheep are left alone |
 
 The rules for every trade:
 
@@ -251,7 +252,7 @@ The rules for every trade:
   room before the tree is felled; a full chest means the person waits.
 
 The generated villages carry the trades: the tallfolk's field, the
-reedfolk's dock, and two new pieces, a **grove** (a green with three grown
+reedfolk's dock, the drovers' corral and ranch, and two new pieces, a **grove** (a green with three grown
 trees and a lumberjack's post) for the stonefolk and tallfolk, and a
 **mine** (a short shaft into a hillside face with a vein at the end and a
 miner's post) for the stonefolk and the tinkers. What a village produces
@@ -259,9 +260,12 @@ goes into its own storehouse, which is what the trader sells.
 
 **Built** (`packages/villages/scripts/core/trades.ts`, `engine/trades.ts`;
 measured in `docs/villages-jigsaw-results.md`): the survey and its
-thresholds, the lumberjack and the farmer as above, the cycle slider and a
-wages toggle on the settings panel, the field's post and chest, the grove
-piece. Two things differ from the table: the walk is a teleport to the
+thresholds, the lumberjack, the farmer and the rancher as above, the cycle
+slider and a wages toggle on the settings panel, the field's post and
+chest, the grove piece, and the drover ranch (a fenced pasture with a pond
+and a rancher's post; the sheep are the kids' to bring, since a structure
+carries no entities). A pen of sheep wins the survey over a field or
+trees, since sheep are put there on purpose. Two things differ from the table: the walk is a teleport to the
 work and back (§7 item 6, the short-teleport candidate; the walking
 version is still open), and the produce goes into the chest as it is made
 rather than when the person walks back, so an interrupted cycle leaves

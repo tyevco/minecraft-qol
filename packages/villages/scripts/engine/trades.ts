@@ -1,7 +1,8 @@
 /**
- * A worker's trade, carried out: the survey of the blocks round the post,
- * and the work cycles - a lumberjack felling the nearest tree into the
- * nearest chest, a farmer harvesting and replanting. Every decision is in
+ * A worker's trade, carried out: the survey of the blocks (and sheep) round
+ * the post, and the work cycles - a lumberjack felling the nearest tree
+ * into the nearest chest, a farmer harvesting and replanting, a rancher
+ * shearing its pen's sheep. Every decision is in
  * core/trades.ts; this file reads blocks and makes the changes.
  *
  * Fail towards the player keeping their things (CLAUDE.md rule 4): the chest
@@ -9,7 +10,9 @@
  * world only in the same step that puts it in the chest, and if the chest
  * has gone by then the log is dropped at the stump rather than lost; a
  * harvested tile is replanted before its drops are delivered, the
- * Fluidworks way, so a failure between the two never duplicates.
+ * Fluidworks way, so a failure between the two never duplicates; a sheep is
+ * marked shorn (the game's own `minecraft:on_sheared` event, which swaps its
+ * component groups exactly as shears do) before its wool is delivered.
  *
  * Walking is a short teleport for now (docs/design/villages.md §7 item 6):
  * the person appears beside the tree or row, swings for the duration of
@@ -18,6 +21,7 @@
 import {
   BlockComponentTypes,
   BlockVolume,
+  EntityComponentTypes,
   ItemStack,
   system,
   world,
@@ -62,12 +66,29 @@ function blocksOf(dim: Dimension, volume: BlockVolume, types: readonly string[])
   return out;
 }
 
+/** The sheep within `range` of the post, as the core sees them. */
+function flockOf(dim: Dimension, record: PostRecord, range: number): core.Sheep[] {
+  try {
+    return dim.getEntities({ type: "minecraft:sheep", location: { x: record.x + 0.5, y: record.y, z: record.z + 0.5 }, maxDistance: range }).map((e) => ({
+      id: e.id,
+      pos: { x: Math.floor(e.location.x), y: Math.floor(e.location.y), z: Math.floor(e.location.z) },
+      color: e.getComponent(EntityComponentTypes.Color)?.value ?? 0,
+      sheared: e.getComponent(EntityComponentTypes.IsSheared) !== undefined,
+      baby: e.getComponent(EntityComponentTypes.IsBaby) !== undefined,
+    }));
+  } catch (e) {
+    log(`sheep scan failed: ${e}`);
+    return [];
+  }
+}
+
 function survey(dim: Dimension, record: PostRecord): core.Survey {
   const wide = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_ABOVE);
   return {
     farmland: blocksOf(dim, volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW), [core.FARMLAND]).length,
     logs: blocksOf(dim, wide, core.LOG_TYPES).length,
     leaves: blocksOf(dim, wide, core.LEAF_TYPES).length,
+    sheep: flockOf(dim, record, core.SURVEY_RANGE).filter((s) => !s.baby).length,
   };
 }
 
@@ -133,7 +154,7 @@ function payWage(chest: Chest, trade: number): void {
   if (!policy().wages || !chest.container.isValid) return;
   const i = core.pickWage(viewOf(chest.container).slots);
   if (i === undefined) {
-    if (trade === core.LUMBERJACK) log("lumberjack worked unpaid: the chest emptied during the cycle");
+    if (core.PAID_TRADES.includes(trade)) log(`${core.tradeName(trade)} worked unpaid: the chest emptied during the cycle`);
     return;
   }
   takeOne(chest.container, i);
@@ -244,6 +265,35 @@ function farm(dim: Dimension, record: PostRecord, person: Entity, chest: Chest, 
   pace(core.TICKS_PER_CROP, steps, () => finish(true));
 }
 
+/**
+ * A rancher's cycle: the grown, unshorn sheep nearest the post, one every
+ * TICKS_PER_SHEEP. The sheep is shorn by its own event first (the game then
+ * regrows the wool when it eats grass, as after a player's shears), and its
+ * wool goes to the chest in the same step.
+ */
+function ranch(dim: Dimension, record: PostRecord, person: Entity, chest: Chest, finish: (worked: boolean) => void): void {
+  const plan = core.shearPlan(flockOf(dim, record, core.RANCH_RANGE), record);
+  const first = plan[0];
+  if (!first) return finish(false);
+
+  moveTo(person, core.standingSpot(first.pos, record), true);
+  const steps = plan.map((s) => () => {
+    if (!person.isValid) return false;
+    const sheep = dim.getEntities({ type: "minecraft:sheep", location: { x: s.pos.x + 0.5, y: s.pos.y, z: s.pos.z + 0.5 }, maxDistance: core.RANCH_RANGE }).find((e) => e.id === s.id);
+    if (!sheep || !sheep.isValid || sheep.getComponent(EntityComponentTypes.IsSheared) || sheep.getComponent(EntityComponentTypes.IsBaby)) return true;
+    const color = sheep.getComponent(EntityComponentTypes.Color)?.value ?? s.color;
+    try {
+      sheep.triggerEvent("minecraft:on_sheared");
+    } catch (e) {
+      log(`could not shear a sheep at ${s.pos.x},${s.pos.y},${s.pos.z}: ${e}`);
+      return true;
+    }
+    deliver(chest, new ItemStack(core.woolOf(color), core.shearYield(Math.random)), dim, s.pos);
+    return true;
+  });
+  pace(core.TICKS_PER_SHEEP, steps, () => finish(true));
+}
+
 // ---------------------------------------------------------------------------
 // The post's call
 // ---------------------------------------------------------------------------
@@ -262,7 +312,7 @@ export function tick(block: Block, record: PostRecord, person: Entity, now: numb
   if (core.surveyDue(record, now)) {
     const s = survey(dim, record);
     const trade = core.chooseTrade(s);
-    if (trade !== record.trade) log(`the worker at ${record.x},${record.y},${record.z} is now a ${core.tradeName(trade)} (farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves})`);
+    if (trade !== record.trade) log(`the worker at ${record.x},${record.y},${record.z} is now a ${core.tradeName(trade)} (farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, sheep ${s.sheep})`);
     storage.update(record, (row) => {
       row.trade = trade;
       row.surveyedAt = now;
@@ -294,6 +344,7 @@ export function tick(block: Block, record: PostRecord, person: Entity, now: numb
   };
   try {
     if (record.trade === core.LUMBERJACK) fell(dim, record, person, chest, finish);
+    else if (record.trade === core.RANCHER) ranch(dim, record, person, chest, finish);
     else farm(dim, record, person, chest, finish);
   } catch (e) {
     log(`cycle at ${record.x},${record.y},${record.z} failed to start: ${e}`);

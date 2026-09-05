@@ -217,7 +217,7 @@ export const PEOPLES: People[] = [
   },
   {
     key: "drover", title: "Drover", paving: "smooth_sandstone", verge: "sand", post: "spruce_fence", core: "drover_trading_post",
-    houses: [["drover_cabin", 3], ["drover_corral", 2], ["tinker_stall", 1], ["shared_larder", 1]],
+    houses: [["drover_cabin", 3], ["drover_corral", 2], ["drover_ranch", 2], ["tinker_stall", 1], ["shared_larder", 1]],
     greens: [
       ["paddock", 3, (bp, rand, y) => {
         // A fenced paddock: hay, water troughs, dead bushes, a gate on the street.

@@ -54,8 +54,10 @@ const PEOPLES: [id: string, name: string][] = [
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
   [`${p}_square`, `${name} Square`, p],
   [`${p}_street_straight`, `${name} Street`, p],
+  [`${p}_street_long`, `${name} Long Street`, p],
   [`${p}_street_corner`, `${name} Corner`, p],
   [`${p}_street_t`, `${name} T-junction`, p],
+  [`${p}_street_cross`, `${name} Crossroads`, p],
   [`${p}_lamp`, `${name} Lamp Post`, p],
 ] as [string, string, string][]);
 

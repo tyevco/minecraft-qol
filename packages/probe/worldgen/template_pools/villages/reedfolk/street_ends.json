@@ -11,6 +11,14 @@
           "location": "villages/reedfolk/reedfolk_lamp",
           "projection": "rigid"
         },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/reedfolk/reedfolk_tower",
+          "projection": "rigid"
+        },
         "weight": 1
       }
     ]

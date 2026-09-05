@@ -16,6 +16,14 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_street_long",
+          "projection": "rigid"
+        },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
           "location": "villages/tallfolk/tallfolk_street_corner",
           "projection": "rigid"
         },
@@ -28,6 +36,14 @@
           "projection": "rigid"
         },
         "weight": 2
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_street_cross",
+          "projection": "rigid"
+        },
+        "weight": 1
       }
     ],
     "fallback": "villages:tallfolk/street_ends"

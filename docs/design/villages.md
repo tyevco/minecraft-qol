@@ -102,11 +102,19 @@ vanilla village density, one structure set per people with its own salt.
   more), the core at the north facing south, lamps at the south corners,
   and a street socket in the middle of the east, west and south edges.
 - **Streets**: straight (5 wide, 7 long, a house socket on each side at
-  the middle), corner (with a lamp on the outside) and T-junction, a
-  street socket at each open end. Weighted 5 : 2 : 2.
-- **Terminators**: a lamp post (post and lantern on the joint block) where
-  a street ends, and a doorstep (one block of turf) where no house fits.
-  They are the pools' `fallback`.
+  the middle), long (11, two sockets a side), corner (with a lamp on the
+  outside), T-junction and crossroads, a street socket at each open end.
+  Weighted 5 : 3 : 2 : 2 : 1, expanded to depth 6.
+- **Terminators**: a lamp post (post and lantern on the joint block) or,
+  one time in four, the people's watch (watch post, reed tower, gatehouse)
+  facing back up the street; and a doorstep (one block of turf) where no
+  house fits. They are the pools' `fallback`.
+- **The reedfolk build on stilts**: their square and streets are plank
+  walkways three blocks up on mangrove posts, with rails, and a joint's
+  final block is a post rather than paving; the stilt house's floor is a
+  block above the walkway. Their jigsaw structure uses no terrain
+  adaptation, so the posts stand in the water as they are.
+- **The tallfolk square has the well** in its south half.
 - **Houses**: every building in the people's list gets one jigsaw on its
   doorstep, the block outside its door, facing out; the tallfolk also get
   a **field** (fenced farmland with wheat and a water channel, a gate on

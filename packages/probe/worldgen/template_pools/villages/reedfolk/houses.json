@@ -19,20 +19,12 @@
           "location": "villages/reedfolk/reedfolk_rack",
           "projection": "rigid"
         },
-        "weight": 2
-      },
-      {
-        "element": {
-          "element_type": "minecraft:single_pool_element",
-          "location": "villages/reedfolk/reedfolk_tower",
-          "projection": "rigid"
-        },
         "weight": 1
       },
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
-          "location": "villages/reedfolk/shared_larder",
+          "location": "villages/reedfolk/reedfolk_dock",
           "projection": "rigid"
         },
         "weight": 1

@@ -818,4 +818,4 @@ function furredSet(file: string): void {
     ],
   });
 }
-for (const people of ["foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk"]) furredSet(people);
+for (const people of ["foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk"]) furredSet(people);

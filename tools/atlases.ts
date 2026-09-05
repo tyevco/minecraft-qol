@@ -201,4 +201,5 @@ export const FURRED = layout(80, {
   ear: [4, 1],
   tail: [4, 2],
   tailTip: [4, 3],
+  antler: [4, 4],
 });

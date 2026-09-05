@@ -57,6 +57,11 @@ const FURFOLK: [id: string, name: string, notes: string][] = [
   ["wolffolk", "Wolffolk", "Grey with a pale muzzle, wide-set ears and a level tail; a lodge people of the snowy taiga."],
   ["rabbitfolk", "Rabbitfolk", "Chocolate brown with a white blaze, tall ears and a puff tail; a baking people of the birch woods."],
   ["bearfolk", "Bearfolk", "Brown all over, round ears on the sides, a stub tail, the broadest of all; a beekeeping people of the dark forest."],
+  ["fennecfolk", "Fennecfolk", "Sand coat, white cheeks, ears taller than the head and a dark-tipped brush; a cactus-cutting people of the desert."],
+  ["mousefolk", "Mousefolk", "The smallest people: grey with a pale muzzle, big round ears and a whip tail; a mushroom-picking people of the mushroom fields."],
+  ["squirrelfolk", "Squirrelfolk", "Red-brown with tufted ears and a plume tail curling up over the head; a cocoa-picking people of the jungle canopy."],
+  ["otterfolk", "Otterfolk", "Sleek dark brown with a pale throat, tiny ears and a thick rudder tail; a fishing people of the shore."],
+  ["deerfolk", "Deerfolk", "Tall and thin, tan with a pale muzzle and spots, antlers up through the hat, ears out to the sides; an apple-gleaning people of the forest."],
 ];
 const GREENS: Record<string, string[]> = { stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"] };
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [

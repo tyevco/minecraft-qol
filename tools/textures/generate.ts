@@ -389,6 +389,11 @@ const FURFOLK: Furfolk[] = [
   { key: "wolffolk", fur: { coat: 0x6e727a, pale: 0xd9dbdf, inner: 0xc4a0a8, eye: 0x1a1410, markings: ["mask", "brow"] }, head: [8, 8], body: [8, 10], arm: [4, 10], leg: [4, 8], muzzle: [4, 3], ear: [3, 5] },
   { key: "rabbitfolk", fur: { coat: 0x8a5a3a, pale: 0xf5ede1, inner: 0xf0b9c1, eye: 0x1a1410, markings: ["blaze"] }, head: [8, 8], body: [6, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [3, 7] },
   { key: "bearfolk", fur: { coat: 0x6b4a2e, pale: 0xb38b62, inner: 0x8a6a4a, eye: 0x1a1410, markings: [] }, head: [9, 8], body: [10, 10], arm: [4, 10], leg: [4, 7], muzzle: [4, 3], ear: [3, 3] },
+  { key: "fennecfolk", fur: { coat: 0xe3c79a, pale: 0xf8f1e2, inner: 0xe8b0a8, eye: 0x1a1410, tip: 0x3a2a24, markings: ["cheeks"] }, head: [8, 7], body: [5, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [4, 7] },
+  { key: "mousefolk", fur: { coat: 0x9a9097, pale: 0xecdfd6, inner: 0xe8b0b4, eye: 0x1a1410, markings: ["mask"] }, head: [7, 6], body: [5, 6], arm: [2, 6], leg: [3, 4], muzzle: [3, 2], ear: [4, 4] },
+  { key: "squirrelfolk", fur: { coat: 0xb0603a, pale: 0xf0e4d2, inner: 0xd9a0a0, eye: 0x1a1410, tip: 0xb0603a, markings: ["cheeks", "earTips"] }, head: [8, 7], body: [5, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [3, 5] },
+  { key: "otterfolk", fur: { coat: 0x5a3e2b, pale: 0xcfb89a, inner: 0x8a6a58, eye: 0x1a1410, markings: ["mask"] }, head: [8, 7], body: [6, 9], arm: [3, 9], leg: [3, 6], muzzle: [4, 2], ear: [2, 2] },
+  { key: "deerfolk", fur: { coat: 0xa8763f, pale: 0xf1e6d2, inner: 0xe0b8b0, eye: 0x1a1410, markings: ["mask", "spots"] }, head: [8, 8], body: [6, 12], arm: [3, 12], leg: [3, 11], muzzle: [4, 3], ear: [3, 4] },
 ];
 for (const people of FURFOLK) {
   const paw = people.fur.paw ?? people.fur.coat;
@@ -416,7 +421,8 @@ for (const people of FURFOLK) {
         muzzle: T.muzzleTile(people.fur, people.muzzle[0], people.muzzle[1]),
         ear: T.earTile(people.fur, people.ear[0], people.ear[1]),
         tail: T.tailTile(people.fur),
-        tailTip: T.furTile(people.fur.pale, 628),
+        tailTip: T.furTile(people.fur.tip ?? people.fur.pale, 628),
+        antler: T.antlerTile(),
       }),
     );
   }

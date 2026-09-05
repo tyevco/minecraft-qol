@@ -1452,7 +1452,9 @@ export interface Fur {
   eye: Color;
   /** Hands and feet; the fox's dark socks. Defaults to the coat. */
   paw?: Color;
-  markings: ReadonlyArray<"cheeks" | "blaze" | "stripes" | "mask" | "earTips" | "brow">;
+  /** The tail's tip. Defaults to pale; the fennec's is dark, the squirrel's its own coat. */
+  tip?: Color;
+  markings: ReadonlyArray<"cheeks" | "blaze" | "stripes" | "mask" | "earTips" | "brow" | "spots">;
 }
 
 /** Fur: a soft, dense grain in the coat colour. */
@@ -1475,6 +1477,7 @@ export function furFaceTile(fur: Fur, w: number, h: number): Canvas {
     for (const x of [x0 + 1, x0 + Math.floor(w / 2), x0 + w - 2]) c.fill(x, y0, 1, rows, stripeColour(fur.coat));
   }
   if (has("brow")) c.fill(x0 + 1, y0 + Math.round(h * 0.25), w - 2, 1, shade(fur.coat, 0.7));
+  if (has("spots")) for (const [dx, dy] of [[1, 0], [w - 2, 1], [Math.floor(w / 2), 0]] as [number, number][]) c.set(x0 + dx, y0 + dy, fur.pale);
   // Bead eyes: 2x2, a glint in the top-left pixel, set a little wide.
   const ey = y0 + Math.round(h * 0.38);
   const inset = Math.max(1, Math.round(w * 0.2));
@@ -1488,7 +1491,13 @@ export function furFaceTile(fur: Fur, w: number, h: number): Canvas {
 export function furTopTile(fur: Fur): Canvas {
   const c = furTile(fur.coat, 623);
   if (fur.markings.includes("stripes")) for (const y of [4, 8, 12]) c.fill(2, y, 12, 1, stripeColour(fur.coat));
+  if (fur.markings.includes("spots")) for (const [x, y] of [[3, 4], [9, 3], [6, 8], [12, 9], [4, 12], [10, 13]] as [number, number][]) c.set(x, y, fur.pale);
   return c;
+}
+
+/** Antler: bone-coloured, a shade darker at the base rows. */
+export function antlerTile(): Canvas {
+  return tile().fill(0, 0, 16, 16, BONE.mid).grain(0, 0, 16, 16, BONE.mid, BONE.light, BONE.dark, 0.3, 629, 3).fill(0, 14, 16, 2, BONE.dark);
 }
 
 /** The muzzle: pale fur with a nose at the top of the w x h front window. The top-left corner stays plain for the other faces. */

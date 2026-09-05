@@ -1304,9 +1304,11 @@ type FR = keyof typeof A.FURRED.tiles;
 interface FurredSpec extends Omit<BipedSpec, "hat" | "beard" | "goggles"> {
   /** Muzzle cube, on the head's front just above the chin. */
   muzzle: [number, number, number];
-  /** Ear cube, width x height x depth; where it sits and how it tilts. */
-  ear: { size: [number, number, number]; on: "top" | "side"; splay: number; pitch?: number };
-  tail: "bushy" | "thin" | "straight" | "puff" | "stub";
+  /** Ear cube, width x height x depth; where it sits (a side ear may be lifted so it shows above the head) and how it tilts. */
+  ear: { size: [number, number, number]; on: "top" | "side"; splay: number; pitch?: number; lift?: number };
+  /** Two antlers through the hat: an upright, a beam outward and a prong forward, on the head bone. */
+  antlers?: boolean;
+  tail: "bushy" | "brush" | "thin" | "whip" | "plume" | "rudder" | "straight" | "puff" | "stub";
 }
 
 function furred(spec: FurredSpec): void {
@@ -1325,8 +1327,9 @@ function furred(spec: FurredSpec): void {
   });
   // Ears: on the top edge, standing up through the hat, or on the sides for round ones.
   const [ew, eh, ed] = spec.ear.size;
-  const earX = spec.ear.on === "top" ? hw / 2 - ew - 1 : hw / 2 - 1;
-  const earY = spec.ear.on === "top" ? top - 1 : top - eh + 0.5;
+  // Top ears sit a unit in from the head's edge, or at the edge when they are too wide for that (the fennec's).
+  const earX = spec.ear.on === "top" ? Math.max(hw / 2 - ew - 1, 0.5) : hw / 2 - 1;
+  const earY = (spec.ear.on === "top" ? top - 1 : top - eh + 0.5) + (spec.ear.lift ?? 0);
   const ear = (name: string, sign: 1 | -1): Bone<FR> => {
     const x = sign > 0 ? earX : -earX - ew;
     return {
@@ -1338,7 +1341,18 @@ function furred(spec: FurredSpec): void {
     };
   };
   bones.push(ear("left_ear", 1), ear("right_ear", -1));
-  // The tail hangs from the back of the hips; -x pitches its free end down.
+  if (spec.antlers) {
+    const head = bones.find((b) => b.name === "head")!;
+    for (const sign of [1, -1] as const) {
+      const x = sign > 0 ? hw / 2 - 2 : -hw / 2 + 1;
+      head.cubes.push(
+        { origin: [x, top - 0.5, -0.5], size: [1, 6, 1], faces: { all: "antler" } },
+        { origin: [sign > 0 ? x : x - 2, top + 3, -0.5], size: [3, 1, 1], faces: { all: "antler" } },
+        { origin: [x, top + 5, -2.5], size: [1, 1, 2], faces: { all: "antler" } },
+      );
+    }
+  }
+  // The tail hangs from the back of the hips; -x pitches its free end down and +x lifts it.
   const root: readonly [number, number, number] = [0, hip + 1, bd / 2];
   const tailBone = (rotation: [number, number, number], cubes: Cube<FR>[]): Bone<FR> => ({ name: "tail", parent: "body", pivot: root, rotation, cubes });
   switch (spec.tail) {
@@ -1349,6 +1363,44 @@ function furred(spec: FurredSpec): void {
           [
             { origin: [-1.5, hip - 0.5, bd / 2], size: [3, 3, 6], faces: { all: "tail" } },
             { origin: [-1.5, hip - 0.5, bd / 2 + 6], size: [3, 3, 2], faces: { all: "tailTip" } },
+          ],
+        ),
+      );
+      break;
+    case "brush":
+      bones.push(
+        tailBone(
+          [-35, 0, 0],
+          [
+            { origin: [-1.5, hip - 0.5, bd / 2], size: [3, 3, 4], faces: { all: "tail" } },
+            { origin: [-1.5, hip - 0.5, bd / 2 + 4], size: [3, 3, 2], faces: { all: "tailTip" } },
+          ],
+        ),
+      );
+      break;
+    case "whip":
+      bones.push(tailBone([-55, 0, 0], [{ origin: [-0.5, hip + 0.5, bd / 2], size: [1, 1, 7], faces: { all: "tail" } }]));
+      break;
+    case "plume":
+      // Up the back and curling forward over the head, the squirrel's.
+      bones.push(
+        tailBone([75, 0, 0], [{ origin: [-1.5, hip - 0.5, bd / 2], size: [3, 3, 6], faces: { all: "tail" } }]),
+        {
+          name: "tail_tip",
+          parent: "tail",
+          pivot: [0, hip + 1, bd / 2 + 6],
+          rotation: [50, 0, 0],
+          cubes: [{ origin: [-1.5, hip - 0.5, bd / 2 + 6], size: [3, 3, 4], faces: { all: "tailTip" } }],
+        },
+      );
+      break;
+    case "rudder":
+      bones.push(
+        tailBone(
+          [-25, 0, 0],
+          [
+            { origin: [-1.5, hip, bd / 2], size: [3, 2, 5], faces: { all: "tail" } },
+            { origin: [-1, hip + 0.5, bd / 2 + 5], size: [2, 1, 3], faces: { all: "tail" } },
           ],
         ),
       );
@@ -1388,6 +1440,11 @@ furred({ file: "catfolk", identifier: "geometry.concept_catfolk", head: [8, 7, 8
 furred({ file: "wolffolk", identifier: "geometry.concept_wolffolk", head: [8, 8, 9], body: [8, 10, 4], arm: [4, 10, 4], leg: [4, 8, 4], muzzle: [4, 3, 3], ear: { size: [3, 5, 1], on: "top", splay: 10, pitch: -10 }, tail: "straight" });
 furred({ file: "rabbitfolk", identifier: "geometry.concept_rabbitfolk", head: [8, 8, 8], body: [6, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 7, 1], on: "top", splay: 5 }, tail: "puff" });
 furred({ file: "bearfolk", identifier: "geometry.concept_bearfolk", head: [9, 8, 9], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 7, 4], muzzle: [4, 3, 3], ear: { size: [3, 3, 1], on: "side", splay: 0 }, tail: "stub" });
+furred({ file: "fennecfolk", identifier: "geometry.concept_fennecfolk", head: [8, 7, 8], body: [5, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [4, 7, 1], on: "top", splay: 18 }, tail: "brush" });
+furred({ file: "mousefolk", identifier: "geometry.concept_mousefolk", head: [7, 6, 7], body: [5, 6, 3], arm: [2, 6, 2], leg: [3, 4, 3], muzzle: [3, 2, 3], ear: { size: [4, 4, 1], on: "side", splay: 0, lift: 2 }, tail: "whip" });
+furred({ file: "squirrelfolk", identifier: "geometry.concept_squirrelfolk", head: [8, 7, 8], body: [5, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 6 }, tail: "plume" });
+furred({ file: "otterfolk", identifier: "geometry.concept_otterfolk", head: [8, 7, 9], body: [6, 9, 4], arm: [3, 9, 3], leg: [3, 6, 3], muzzle: [4, 2, 2], ear: { size: [2, 2, 1], on: "side", splay: 0, lift: 0.5 }, tail: "rudder" });
+furred({ file: "deerfolk", identifier: "geometry.concept_deerfolk", head: [8, 8, 8], body: [6, 12, 4], arm: [3, 12, 3], leg: [3, 11, 3], muzzle: [4, 3, 3], ear: { size: [3, 4, 1], on: "top", splay: 30 }, antlers: true, tail: "puff" });
 
 // ---------------------------------------------------------------------------
 // Villages job post - the block a person is anchored to. A wooden post with

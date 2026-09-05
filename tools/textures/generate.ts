@@ -319,12 +319,16 @@ interface People {
   body: [number, number];
   arm: [number, number];
   leg: [number, number];
+  /** The hat's cloth (and the neckerchief's, where the rig has one); straw unless said. */
+  hat?: T.Ramp;
 }
+const FELT: T.Ramp = { light: 0xd9564a, mid: 0xb0342b, dark: 0x7d221d, deep: 0x4f1512 };
 const PEOPLES: People[] = [
   { key: "stonefolk", skin: 0xc98f6f, hair: 0xb5442b, eye: 0x3a2a1a, beard: true, head: [8, 7], body: [10, 10], arm: [4, 10], leg: [4, 8] },
   { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14] },
   { key: "tinker", skin: 0xd9a877, hair: 0x6a4a2a, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7] },
   { key: "tallfolk", skin: 0xa0714f, hair: 0x3a2a1a, eye: 0x2a2a2e, beard: false, head: [8, 8], body: [8, 13], arm: [4, 13], leg: [4, 13] },
+  { key: "drover", skin: 0xb97d58, hair: 0xb8562c, eye: 0x3f6b3a, beard: false, head: [8, 8], body: [8, 12], arm: [4, 12], leg: [4, 12], hat: FELT },
 ];
 interface Job {
   key: string;
@@ -340,7 +344,7 @@ const JOBS: Job[] = [
   { key: "trader", cloth: { light: 0x9d7ed0, mid: 0x6a4fa0, dark: 0x47336f, deep: 0x2d2047 }, trim: 0xd9a441, trousers: 0x2d2047, boot: 0x3a2a1a, front: "coat" },
   { key: "builder", cloth: { light: 0x7fb2e0, mid: 0x4a7fb5, dark: 0x30557c, deep: 0x1f3650 }, trim: 0xe8c14a, trousers: 0x4a3a28, boot: 0x2a2a2e, front: "apron" },
 ];
-// Shipped: the four peoples live in packages/villages now.
+// Shipped: the peoples live in packages/villages now.
 const VILLAGES_RP = "packages/villages/resource_pack/textures";
 write(`${VILLAGES_RP}/blocks/post.png`, atlas(A.POST, { post: T.plankV(T.OAK, 701), plaque: T.flatDark(T.DARK_STONE) }));
 for (const people of PEOPLES) {
@@ -360,7 +364,7 @@ for (const people of PEOPLES) {
         hand: T.skinTile(people.skin),
         trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
         helmet: T.helmetTile(),
-        hat: T.straw(T.STRAW, 613),
+        hat: people.hat ? T.clothTile(people.hat, 613) : T.straw(T.STRAW, 613),
         pack: T.packTile(),
         tool: T.toolTile(),
         toolWood: T.plankV(T.OAK, 614),

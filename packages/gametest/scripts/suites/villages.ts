@@ -42,6 +42,22 @@ registerAsync("qol", "villages_post_spawns_person", async (test) => {
   });
 }).maxTicks(400).structureName("qol:arena");
 
+// The fifth people: pins that the person's property range, the block's state
+// list and the people_4 event all reach index 4, since each is a separate
+// hand-written list and a short one spawns a stonefolk in a drover's town.
+registerAsync("qol", "villages_post_spawns_drover", async (test) => {
+  placePost(test, 4, 0);
+  test.succeedWhen(() => {
+    const found = people(test);
+    test.assert(found.length === 1, `expected exactly 1 person at the post, found ${found.length}`);
+    const p = found[0]!;
+    const peopleProp = p.getProperty("villages:people");
+    const jobProp = p.getProperty("villages:job");
+    test.assert(peopleProp === 4, `expected people 4 (drover), got ${String(peopleProp)}`);
+    test.assert(jobProp === 0, `expected job 0 (guard), got ${String(jobProp)}`);
+  });
+}).maxTicks(400).structureName("qol:arena");
+
 registerAsync("qol", "villages_post_break_removes_person", async (test) => {
   placePost(test, 0, 0);
   for (let t = 0; t < 300 && people(test).length === 0; t += 5) await test.idle(5);
@@ -63,6 +79,29 @@ registerAsync("qol", "villages_post_break_removes_person", async (test) => {
  * put the chest at (5,1,5) and the post at AT.
  */
 const CHEST: Vector3 = { x: 5, y: 1, z: 5 };
+
+// The rancher: two grown sheep beside a drover worker's post make it a
+// rancher; its first cycle shears both (the sheep's own on_sheared event) and
+// the wool lands in the chest, one bread fewer for the wage.
+registerAsync("qol", "villages_rancher_shears_sheep", async (test) => {
+  placePost(test, 4, 1);
+  for (const e of test.getDimension().getEntities({ type: "minecraft:sheep", location: test.worldBlockLocation(AT), maxDistance: 20 })) e.remove();
+  const pen = [{ x: 2, y: 1, z: 5 }, { x: 6, y: 1, z: 2 }];
+  // Red sheep (the wololo event), so the wool's colour is asserted too.
+  for (const at of pen) test.spawn("minecraft:sheep<spawn_adult>", at).triggerEvent("wololo");
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:bread", 4));
+  test.succeedWhen(() => {
+    const flock = test.getDimension().getEntities({ type: "minecraft:sheep", location: test.worldBlockLocation(AT), maxDistance: 20 });
+    test.assert(flock.length === 2, `expected the 2 sheep still in the pen, found ${flock.length}`);
+    const shorn = flock.filter((s) => s.getComponent("minecraft:is_sheared") !== undefined).length;
+    test.assert(shorn === 2, `expected both sheep shorn, ${shorn} are`);
+    const wool = count(test, CHEST, "minecraft:red_wool");
+    test.assert(wool >= 2 && wool <= 6, `expected 2 to 6 red wool in the chest, found ${wool}`);
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 3, `expected 3 bread after the wage, found ${bread}`);
+  });
+}).maxTicks(800).structureName("qol:arena");
 
 registerAsync("qol", "villages_lumberjack_fells_tree", async (test) => {
   placePost(test, 0, 1);

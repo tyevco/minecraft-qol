@@ -8,7 +8,8 @@
             "Geometry.stonefolk",
             "Geometry.reedfolk",
             "Geometry.tinker",
-            "Geometry.tallfolk"
+            "Geometry.tallfolk",
+            "Geometry.drover"
           ]
         },
         "textures": {
@@ -28,18 +29,22 @@
             "Texture.tallfolk_guard",
             "Texture.tallfolk_worker",
             "Texture.tallfolk_trader",
-            "Texture.tallfolk_builder"
+            "Texture.tallfolk_builder",
+            "Texture.drover_guard",
+            "Texture.drover_worker",
+            "Texture.drover_trader",
+            "Texture.drover_builder"
           ]
         }
       },
-      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 3)]",
+      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 4)]",
       "materials": [
         {
           "*": "Material.default"
         }
       ],
       "textures": [
-        "Array.look[math.clamp(q.property('villages:people'), 0, 3) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
+        "Array.look[math.clamp(q.property('villages:people'), 0, 4) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
       ],
       "part_visibility": [
         {

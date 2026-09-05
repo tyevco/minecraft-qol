@@ -4,7 +4,7 @@
  * Each people has a palette and a silhouette: stonefolk in stone brick and
  * deepslate with steep tile roofs; reedfolk in mangrove and bamboo on stilts;
  * tinkers in brick and copper; tallfolk in oak on cobblestone with dark oak
- * roofs. Shared buildings use oak and cobblestone so any settlement can have
+ * roofs; drovers in adobe and spruce with flat roofs behind false fronts. Shared buildings use oak and cobblestone so any settlement can have
  * them. Footprints are small on purpose: a builder places one block every few
  * seconds, and a house of a few hundred blocks is twenty real minutes.
  *
@@ -311,6 +311,121 @@ building("tallfolk_gatehouse", "Gatehouse", "tallfolk", "A log palisade with a g
   bp.set(2, 5, 0, "lantern").set(6, 5, 0, "lantern");
   bp.fill(0, 1, 2, 1, 2, 2, "oak_log").fill(8, 1, 2, 1, 2, 2, "oak_log");
   post(bp, 4, 1, 3, "guard");
+});
+
+// ---------------------------------------------------------------------------
+// Drovers: adobe and sun-bleached spruce, flat roofs behind false fronts,
+// porches on fence posts. A cattle people of the desert.
+// ---------------------------------------------------------------------------
+
+/** A porch outside a south wall: a paved row one deep, fence posts at the ends, a slab roof. */
+function porch(bp: Blueprint, x: number, z: number, w: number, roofY: number, wood: string): void {
+  bp.fill(x, 0, z, w, 1, 1, "smooth_sandstone");
+  for (const px of [x, x + w - 1]) bp.fill(px, 1, z, 1, roofY - 1, 1, `${wood}_fence`);
+  for (let i = 0; i < w; i++) bp.slab(x + i, roofY, z, `${wood}_planks`);
+}
+
+/** A flat roof of bottom slabs over x..x+w-1, z..z+d-1. */
+function flatRoof(bp: Blueprint, x: number, y: number, z: number, w: number, d: number, wood: string): void {
+  for (let i = x; i < x + w; i++) for (let k = z; k < z + d; k++) bp.slab(i, y, k, `${wood}_planks`);
+}
+
+const TROUGH = { fill_level: 6, cauldron_liquid: "water" };
+
+building("drover_trading_post", "Trading Post", "drover", "A false-fronted plank store with a porch: barrels behind the counter, chests of trade goods, a jukebox in the corner. The heart of a drover town and the trader's job block.", (bp) => {
+  bp.fill(1, 0, 1, 11, 1, 9, "smooth_sandstone");
+  bp.walls(1, 1, 1, 11, 4, 9, "spruce_planks");
+  for (const [cx, cz] of [[1, 1], [11, 1], [1, 9], [11, 9]] as const) bp.fill(cx, 1, cz, 1, 4, 1, "stripped_spruce_log");
+  bp.door(6, 1, 9, "spruce", "south");
+  for (const x of [3, 4, 8, 9]) bp.set(x, 2, 9, "glass_pane");
+  bp.set(1, 2, 5, "glass_pane").set(11, 2, 5, "glass_pane");
+  // A flat roof, and the front wall carried on above it as a false front
+  // with a dark sign board and a slab cornice.
+  flatRoof(bp, 1, 5, 1, 11, 8, "spruce");
+  bp.fill(1, 5, 9, 11, 2, 1, "spruce_planks");
+  bp.fill(3, 6, 9, 7, 1, 1, "dark_oak_planks");
+  for (let x = 1; x <= 11; x++) bp.slab(x, 7, 9, "spruce_planks");
+  porch(bp, 1, 10, 11, 4, "spruce");
+  // The counter: barrels along the back wall with a chest each end; tables by the windows.
+  for (const x of [4, 5, 6, 7, 8]) bp.set(x, 1, 2, "barrel");
+  bp.set(2, 1, 2, "chest").set(10, 1, 2, "chest").set(2, 1, 3, "chest");
+  bp.set(10, 1, 8, "jukebox");
+  table(bp, 3, 1, 6, "spruce");
+  table(bp, 9, 1, 6, "spruce");
+  post(bp, 6, 1, 5, "trader");
+  bp.set(6, 4, 5, "lantern").set(3, 4, 3, "lantern").set(9, 4, 3, "lantern");
+});
+
+building("drover_cabin", "Adobe Cabin", "drover", "A flat-roofed adobe room with log corners, beam ends through a low parapet, and a porch to sit out the heat. The drover home.", (bp) => {
+  bp.fill(1, 0, 1, 7, 1, 7, "smooth_sandstone");
+  bp.walls(1, 1, 1, 7, 3, 7, "hardened_clay");
+  for (const [cx, cz] of [[1, 1], [7, 1], [1, 7], [7, 7]] as const) bp.fill(cx, 1, cz, 1, 3, 1, "stripped_spruce_log");
+  bp.door(4, 1, 7, "spruce", "south");
+  bp.set(2, 2, 7, "glass_pane").set(6, 2, 7, "glass_pane").set(1, 2, 4, "glass_pane").set(7, 2, 4, "glass_pane");
+  flatRoof(bp, 2, 4, 2, 5, 5, "spruce");
+  bp.walls(1, 4, 1, 7, 1, 7, "hardened_clay");
+  for (const z of [3, 5]) bp.log(0, 4, z, "spruce_log", "x").log(8, 4, z, "spruce_log", "x");
+  porch(bp, 1, 8, 7, 3, "spruce");
+  bed(bp, 2, 1, 2);
+  bp.set(6, 1, 2, "chest").set(6, 1, 3, "crafting_table").set(2, 1, 6, "barrel");
+  bp.set(4, 3, 4, "lantern");
+  post(bp, 4, 1, 4, "builder");
+});
+
+building("drover_corral", "Corral", "drover", "A fenced yard on sand: a fodder strip of wheat along the north side with a water channel through it, hay bales, and a shade roof over the water troughs. The drover worker's post; the fodder strip makes it a farmer.", (bp) => {
+  bp.fill(0, 0, 0, 11, 1, 11, "sand");
+  bp.walls(0, 1, 0, 11, 1, 11, "spruce_fence");
+  bp.gate(5, 1, 10, "spruce", "south");
+  bp.fill(1, 0, 1, 9, 1, 2, "farmland", { moisturized_amount: 7 });
+  bp.fill(5, 0, 1, 1, 1, 2, "water");
+  for (let x = 1; x <= 9; x++) if (x !== 5) for (const z of [1, 2]) bp.set(x, 1, z, "wheat", { growth: 7 });
+  bp.set(9, 1, 4, "chest");
+  post(bp, 5, 1, 4, "worker");
+  bp.fill(1, 1, 7, 2, 1, 2, "hay_block").set(1, 2, 7, "hay_block");
+  bp.log(2, 2, 8, "hay_block", "x");
+  for (const [x, z] of [[6, 6], [9, 6], [6, 9], [9, 9]] as const) bp.fill(x, 1, z, 1, 2, 1, "spruce_fence");
+  flatRoof(bp, 6, 3, 6, 4, 4, "spruce");
+  for (const z of [7, 8]) bp.set(8, 1, z, "cauldron", TROUGH);
+  bp.set(7, 2, 7, "lantern");
+  for (const [x, z] of [[3, 5], [7, 4], [4, 8]] as const) bp.set(x, 1, z, "deadbush");
+});
+
+building("drover_ranch", "Ranch", "drover", "A fenced pasture on grass with a pond in the middle, a lean-to, and hay by the gate. The rancher's post: bring sheep and the worker shears them, and the grass regrows their wool.", (bp) => {
+  bp.fill(0, 0, 0, 13, 1, 11, "grass");
+  bp.walls(0, 1, 0, 13, 1, 11, "spruce_fence");
+  bp.gate(6, 1, 10, "spruce", "south");
+  // The pond, and the grass the flock grazes.
+  bp.fill(5, 0, 4, 3, 1, 2, "water");
+  for (const [x, z] of [[2, 3], [10, 2], [3, 8], [9, 7], [11, 5]] as const) bp.set(x, 1, z, "short_grass");
+  // A lean-to in the north-east corner: log posts, a slab roof, a trough under it.
+  for (const [x, z] of [[9, 1], [12, 1], [9, 4], [12, 4]] as const) bp.fill(x, 1, z, 1, 2, 1, "stripped_spruce_log");
+  flatRoof(bp, 9, 3, 1, 4, 4, "spruce");
+  bp.set(11, 1, 2, "cauldron", TROUGH);
+  bp.set(10, 2, 2, "lantern");
+  // Hay by the gate, the rancher's post and the wool chest inside it.
+  bp.fill(1, 1, 8, 2, 1, 2, "hay_block").set(1, 2, 8, "hay_block");
+  bp.set(8, 1, 8, "chest");
+  post(bp, 6, 1, 7, "worker");
+});
+
+building("drover_water_tower", "Water Tower", "drover", "A plank tank on four tall legs, a railed platform under it and a ladder up the centre post. The drover watch: a guard at its foot sees the whole street.", (bp) => {
+  bp.fill(1, 0, 1, 5, 1, 5, "smooth_sandstone");
+  for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 1, z, 1, 6, 1, "stripped_spruce_log");
+  // Cross braces between the legs, and a centre post the ladder climbs.
+  bp.fill(2, 3, 1, 3, 1, 1, "spruce_fence").fill(2, 3, 5, 3, 1, 1, "spruce_fence");
+  bp.fill(1, 3, 2, 1, 1, 3, "spruce_fence").fill(5, 3, 2, 1, 1, 3, "spruce_fence");
+  bp.fill(3, 1, 3, 1, 6, 1, "stripped_spruce_log");
+  bp.ladder(3, 1, 4, 6, "south");
+  // The platform, railed, with the tank on it; the ladder comes up through a hole.
+  bp.fill(0, 7, 0, 7, 1, 7, "spruce_planks");
+  bp.set(3, 7, 4, "air");
+  bp.walls(0, 8, 0, 7, 1, 7, "spruce_fence");
+  bp.walls(1, 8, 1, 5, 3, 5, "spruce_planks");
+  for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, 8, z, 1, 3, 1, "stripped_spruce_log");
+  bp.fill(2, 8, 2, 3, 3, 3, "water");
+  bp.hipRoof(1, 11, 1, 5, 5, "spruce_planks");
+  bp.set(2, 6, 2, "lantern").set(4, 6, 4, "lantern");
+  post(bp, 3, 1, 5, "guard");
 });
 
 // ---------------------------------------------------------------------------

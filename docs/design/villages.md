@@ -84,10 +84,14 @@ keep walking.
 
 | People | Biomes (vanilla tags) | Centre | Streets | Houses | Ground |
 | --- | --- | --- | --- | --- | --- |
-| **Stonefolk** | `mountains`, `extreme_hills`, `meadow` | Hill Hall on a stone brick terrace | cobblestone and gravel, stone brick steps | forge, storehouse, larder; watch posts at the ends | `beard_thin`, `world_surface` |
+| **Stonefolk** | `extreme_hills` (built; `meadow` went to the high elves) | Hill Hall on a stone brick terrace | cobblestone and gravel, stone brick steps | forge, storehouse, larder; watch posts at the ends | `beard_thin`, `world_surface` |
 | **Reedfolk** | `swamp`, `mangrove_swamp`, `river` | Dock with the stall | bridge spans on stilts | stilt houses, drying racks; the reed tower at one end | `none`, `ocean_floor` + start height for the deck |
 | **Tinker** | `savanna`, `plateau`, `mesa` | Workshop with the still and stall | brick paths, copper lamp posts | burrows, larder | `beard_thin`, `world_surface` |
-| **Tallfolk** | `plains`, `forest` (not `mutated`) | Farmhouse, well and square | dirt paths with oak fences, fields alongside | barn, inn, larder, farmhouses; gatehouse and wall segments at the ends | `beard_thin`, `world_surface` |
+| **Tallfolk** | `plains` (built; `forest` went to the wood elves) | Farmhouse, well and square | dirt paths with oak fences, fields alongside | barn, inn, larder, farmhouses; gatehouse and wall segments at the ends | `beard_thin`, `world_surface` |
+| **Hobbits** | `flower_forest`, `hills` | Inn on a square, the bounder's post outside | grass paths, oak fence lamps | hobbit holes (grass mounds with round doors), gardens, a pantry; the party field and an orchard among the greens; a bounder's shelter at the ends | `beard_thin`, `world_surface` |
+| **Wood elves** | `forest`, `birch`, `taiga` | Hearth tree: a wide platform round a great dark oak | plank walkways six blocks up on dark oak trunks hung with leaves | platform houses, a bower, a larder, each on its own trunk; glades below; a lookout at the ends | `beard_thin`, `world_surface` |
+| **High elves** | `cherry_grove`, `meadow` | Hall of arches with a fountain; a fountain on the square | polished diorite, quartz pillars with sea lanterns | quartz houses under prismarine roofs, a library, cherry gardens; reflecting pools; a spire at the ends | `beard_thin`, `world_surface` |
+| **Drow** | `roofed` (dark forest), `pale_garden` | Sanctum: an amethyst altar under a blackstone roof | deepslate tiles on mycelium, blackstone walls with soul lanterns | deepslate houses, a spinnery, a larder; mushroom groves, web hollows and a mine; a web tower at the ends | `beard_thin`, `world_surface` |
 
 The tags are read from `bedrock-samples/behavior_pack/biomes`, so a filter
 such as `{ "test": "has_biome_tag", "value": "mangrove_swamp" }` names a tag
@@ -132,6 +136,35 @@ in, not left over.
 
 Trees are logs with leaves that never decay (`persistent_bit`), clipped to
 the piece they stand in.
+
+### 3.3 The second four: hobbits and three kinds of elf (built)
+
+Arabella asked for hobbits and elves, and the elves come the D&D way, three
+peoples with a look, a village and a biome each. They ride the same
+machinery as the first four (one entity, a `villages:people` index now
+0–7, the same jobs, posts, trades and pools), so what is new is rigs,
+outfits, buildings and a village style:
+
+| People | Rig | Dress | Village |
+| --- | --- | --- | --- |
+| **Hobbits** | small (body 8×9, legs 6), barefoot, curly brown hair, no hat | earthy: leather, green, gold, rust; brass trim | grass mounds with round oak doors, stepped so flowers grow on the roof; gardens of carrots and potatoes; an inn at the centre with a bounder outside |
+| **Wood elves** | tall and lean, pointed ears, a green hood | forest greens and bark brown, leaf-green trim | platforms in the canopy: a deck six blocks up on dark oak trunks hung with leaves, spruce huts under leaf roofs, a hearth round a great tree; glades of moss and fern below |
+| **High elves** | tall, pointed ears, gold hair, a gold circlet | white and sky blue, gold trim | quartz on diorite under prismarine roofs, light blue glass, sea lanterns on quartz pillars, a hall with a fountain, a library, cherry gardens and reflecting pools |
+| **Drow** | tall, pointed ears, dusky skin, white hair, a dark hood | black, violet, magenta, slate; silver trim | deepslate brick and blackstone on mycelium, purple glass, soul lanterns, webs; a sanctum with an amethyst altar; mushroom groves, web hollows and a mine |
+
+The elves wear their hood or circlet whatever their job (the hat bone is
+shown for a worker, or for any people from index five up). The deck the
+reedfolk stand on over water became a general thing (`deck` on a people:
+height, post, rail, the floor of a lot, and leaves to hang round the
+posts), which is what puts the wood elves in the trees. Biomes were
+re-dealt so each people has ground of its own: the tallfolk keep the
+plains and give the forest to the wood elves; the stonefolk keep the
+stony hills and give the meadow to the high elves.
+
+Not yet: an underground drow village (a jigsaw at a fixed depth with no
+heightmap projection is a probe, §7), and any people-specific behaviour -
+a hobbit's second breakfast, an elf's bow. Each people speaks through
+its buildings and its dress for now.
 
 ### 3.2 Seeing a village before the game does (built)
 
@@ -215,7 +248,7 @@ Standing is **per player**. A sibling who annoys the reedfolk does not cost
 the other their friendship; that is a rule for a family Realm, not a
 simulation choice.
 
-## 5.1 Provisioning: what the workers bring in (lumberjack and farmer built)
+## 5.1 Provisioning: what the workers bring in (built)
 
 The larder and the storehouse are chests, and a worker is only worth
 feeding if something arrives in them. Rather than four more jobs, **a worker
@@ -256,15 +289,23 @@ goes into its own storehouse, which is what the trader sells.
 
 **Built** (`packages/villages/scripts/core/trades.ts`, `engine/trades.ts`;
 measured in `docs/villages-jigsaw-results.md`): the survey and its
-thresholds, the lumberjack and the farmer as above, the cycle slider and a
-wages toggle on the settings panel, the field's post and chest, the grove
-piece. Two things differ from the table: the walk is a teleport to the
-work and back (§7 item 6, the short-teleport candidate; the walking
-version is still open), and the produce goes into the chest as it is made
-rather than when the person walks back, so an interrupted cycle leaves
-nothing carried. The chest that pays and receives is the nearest chest,
-barrel or trapped chest within twelve of the post; a larder is one of
-those. The miner and the fisher are next.
+thresholds, all four trades as above, the cycle slider and a wages toggle
+on the settings panel, the field's post and chest, the grove and mine
+pieces, the dock's worker fishing into its barrel. Where the built thing
+differs from the table: a vein counts only in a cave or a mine (a roof
+over it and over the miner's standing spot), so a vein set down in the
+open is ignored and named; the walk is real pathing to a waypoint (§7
+item 6) with a thirty-second limit, after which the cycle ends where the
+person stands; the produce goes into the chest as it is made rather than when the person
+walks back, so an interrupted cycle leaves nothing carried; the vein's
+daily yield is four cycles per day-long window of ticks counted on the
+miner's post, not on the vein, so a vein needs no state of its own and a
+world with the daylight cycle locked still rolls over; the survey ranks
+signals rather than reading the table top down (vein, field, open water,
+trees, pond, a farmland block), so a reedfolk dock among mangroves fishes
+and a tallfolk field's channel farms. The chest that pays and receives is
+the nearest chest, barrel or trapped chest within twelve of the post; a
+larder is one of those, the dock's barrel another.
 
 ## 6.1 Visitors: a village comes to you
 
@@ -343,23 +384,31 @@ found, in buildings they raised. That is the whole loop.
    `minecraft:tameable`, and release by removing the component group.
 5. **Standing across the invite**: that the property survives the person
    being despawned and respawned by its block.
-6. **A person walking to a spot and back** (§5.1): moving `minecraft:home`
-   by re-triggering it is not in the stable typings; the candidates are a
-   `minecraft:behavior.move_to_block` component group added by event, or a
-   short `teleport` for the last stretch. **Built with the teleport**;
-   whether it reads as walking is in the pack README to confirm in game,
-   and the `move_to_block` group is the alternative if it does not.
+6. ~~**A person walking to a spot and back** (§5.1)~~ **Measured and
+   built**: neither candidate. A `villages:waypoint` entity is spawned at
+   the spot and a `minecraft:behavior.follow_mob` group filtered to its
+   family walks the person there and holds it (`villages-jigsaw-results.md`
+   has the two ways that did not work). The route is real, so the players
+   secure it.
 7. ~~**Felling from script**~~ **Measured, yes**: `Block.setType("minecraft:air")`
    on a log drops nothing, and `Container.addItem` on a chest read through
    `BlockInventoryComponent` takes the log; the remainder-when-full path
    is written (dropped beside the chest) but not yet exercised in game.
-8. **Recognising food for the wage**: not `ItemComponentTypes.Food`, which
+8. **An underground village for the drow**: a jigsaw with `start_height`
+   at a fixed depth and no `heightmap_projection`, buried by
+   `terrain_adaptation`. Whether Bedrock's data-driven jigsaw places
+   below the surface at all is unmeasured; the drow live under the dark
+   forest's canopy until it is.
+9. **Recognising food for the wage**: not `ItemComponentTypes.Food`, which
    only data-driven foods carry; the `minecraft:is_food` item tag
    (`docs/README.md` corrections).
 
 ## 8. Where this goes next
 
-1. ~~§7.1 and §7.2~~ done: generated, and joined by markers.
+1. ~~§7.1 and §7.2~~ done: generated, and joined by markers; and the
+   villages themselves measured generating in a fresh plain world, found
+   by `locate structure` and peopled as their chunks loaded
+   (`villages-jigsaw-results.md`).
 2. ~~Streets, squares, lamp posts, fields and terminators; markers on every
    building; the expander and the `concept · villages` view.~~ Built; the
    pools and structures are emitted into the probe pack.
@@ -369,10 +418,10 @@ found, in buildings they raised. That is the whole loop.
    processor lists for weathering.
 4. ~~A `villages` pack of its own: job posts and the tick that peoples a
    village.~~ Built (`packages/villages`).
-5. **Provisioning** (§5.1): ~~the trade a worker takes from its
+5. ~~**Provisioning** (§5.1): the trade a worker takes from its
    surroundings, the lumberjack and the farmer first (a grove piece, the
-   field), the larder wage~~ built; the miner's vein and the mine piece,
-   and the fisher, next.
+   field), the miner's vein and the mine piece after, the fisher; the
+   larder wage.~~ Built.
 6. **Visitors** (§6.1) with the first errand table, since they give the
    kids' own settlement people before any village is found; then the
    elder, standing tiers and invite in the villages (§5, §6).

@@ -6,5 +6,8 @@
   ],
   "villages:post": {
     "sound": "wood"
+  },
+  "villages:vein": {
+    "sound": "stone"
   }
 }

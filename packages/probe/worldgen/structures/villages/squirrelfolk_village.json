@@ -16,7 +16,7 @@
       }
     ],
     "step": "surface_structures",
-    "terrain_adaptation": "none",
+    "terrain_adaptation": "beard_thin",
     "start_pool": "villages:squirrelfolk/square",
     "max_depth": 6,
     "start_height": {

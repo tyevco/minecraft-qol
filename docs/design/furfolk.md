@@ -237,8 +237,8 @@ code is what was judged in the viewer.
   hole in the ice beside it (a worker's post and a barrel inside). Built
   with snow-block verges and cobblestone paths, a snowfield green, and a
   dark oak **watchtower** to end streets.
-- **Trade:** **fisher** (`villages.md` §5.1, designed and not built): the
-  frozen pond is where it lands. Nothing a wolf does hurts anything.
+- **Trade:** **fisher** (`villages.md` §5.1, built for the reedfolk since):
+  the frozen pond is where it lands too. Nothing a wolf does hurts anything.
 - **Guards:** a wolffolk guard is the same guard as anyone's. Their villages
   weight the watch higher in the house pool, so a wolffolk village has more
   of them, which is the difference a kid will notice.
@@ -387,9 +387,9 @@ code is what was judged in the viewer.
   splayed wide), a puff tail, and **antlers** through the hat: an
   upright, a beam outward and a prong forward on each side, bone
   coloured. A head taller than everyone but the tallfolk.
-- **Where:** forest, shared with the tallfolk; the two structure sets have
-  their own salts, so a deer village and a tallfolk one can be neighbours,
-  which is a reason to have both.
+- **Where:** forest, which is the wood elves' now; the two structure sets
+  have their own salts, so a deer village in the clearing and an elf village
+  in the canopy can be neighbours, which is a reason to have both.
 - **Village:** a clearing people: few walls, many trees. Oak and birch,
   moss carpets, mossy cobble, roofs of leaves. Palette: footing mossy
   cobblestone, wall oak planks, corner oak log, roof oak leaves over
@@ -402,6 +402,12 @@ code is what was judged in the viewer.
   rate leaves would drop them, without breaking a leaf.
 - **Likes:** apples, wheat, sweet berries. **Sells at Friend:** apples,
   oak and birch saplings, moss.
+
+Several furfolk share a biome with one of the eight (foxes and the wood
+elves in the taiga, cats and the high elves in the cherry grove, rabbits and
+the wood elves in the birch, bears and the drow under the dark forest). Each
+structure set has its own salt, so two peoples' villages fall on different
+cells of the same biome; a unit test keeps the salts distinct.
 
 ### 3.11 Later, a line each
 
@@ -432,23 +438,23 @@ change as §2 on four existing specs.
 Additive everywhere, and **append-only** wherever a number is stored: the
 `people` index is in every post's row in the position index, in the block's
 `villages:people` state on every generated village, and in the entity
-property of every person alive. The four keep 0–3; foxfolk are 4, catfolk
-5, wolffolk 6, rabbitfolk 7, bearfolk 8, and so on in whatever order they
-are built.
+property of every person alive. The eight shipped peoples (the four, then
+hobbits, wood elves, high elves and drow) keep 0–7; the furfolk follow from
+8 in whatever order they are built.
 
 | Where | Today | Change |
 | --- | --- | --- |
-| `scripts/core/record.ts` `PEOPLES` | four names | append; `unpackRecord` already bounds-checks against its length, so a row from a newer pack is dropped by an older one rather than misread |
-| `blocks/post.json` `villages:people` state | `[0, 1, 2, 3]` | append values. The block's permutation count is peoples × jobs (56 at fourteen peoples), well within what the engine allows |
-| `entities/person.json` property `villages:people` | `range: [0, 3]` | widen the range; one `villages:people_N` component group and event per people, each with its scale (and the bear's `movement`) |
-| `render_controllers/person.json` | `Array.people` of four geometries, `Array.look` of sixteen textures, index `people * 4 + job` | arrays grow; the clamp bounds and the multiplier come from `JOBS.length`, which is what they always meant. Bone visibility unchanged; `tail` and the ears are always on |
-| `entity/person.entity.json` | four geometries, sixteen textures | one geometry and four textures per new people (eight with coats) |
+| `scripts/core/record.ts` `PEOPLES` | eight names | append; `unpackRecord` already bounds-checks against its length, so a row from a newer pack is dropped by an older one rather than misread |
+| `blocks/post.json` `villages:people` state | `[0, …, 7]` | append values. The block's permutation count is peoples × jobs (72 at eighteen peoples), well within what the engine allows |
+| `entities/person.json` property `villages:people` | `range: [0, 7]` | widen the range; one `villages:people_N` component group and event per people, each with its scale (and the bear's `movement`) |
+| `render_controllers/person.json` | `Array.people` of eight geometries, `Array.look` of thirty-two textures, index `people * 4 + job` | arrays grow; the clamp bounds and the multiplier come from `JOBS.length`, which is what they always meant. Bone visibility unchanged; `tail` and the ears are always on |
+| `entity/person.entity.json` | eight geometries, thirty-two textures | one geometry and four textures per new people (eight with coats) |
 | `tools/models/generate.ts` | `biped()` | the three optional bones and `fur` faces of §2; one call per people |
 | `tools/textures/generate.ts`, `tiles.ts` | `PEOPLES`, human painters | the fur, muzzle-face and muzzle painters; one `People` row per people carrying coat, muzzle and markings |
 | `tools/animations/generate.ts` | one `bipedSet` reading the stonefolk geometry | the concept `furredSet`s move in, one per people, or fold into `bipedSet` if §7 item 4 allows |
-| `tools/structures/buildings.ts`, `villages.ts` | four palettes, four villages | a palette and two signature pieces per people; the square, streets, greens and terminators are the shared generators with the palette swapped |
-| `worldgen/` | four structures, four sets, four pool folders | one each per people, new identifiers, its own salt |
-| `scripts/core/trades.ts`, `engine/trades.ts` | lumberjack, farmer | the trades of §5, each a survey rule and a cycle |
+| `tools/structures/furfolk.ts` | the ten peoples' buildings and villages, as concepts | flip `concept` off a people and its pieces and worldgen move from the probe pack to the villages pack, with real posts |
+| `worldgen/` | eight structures, eight sets, eight pool folders | one each per people, new identifiers, its own salt |
+| `scripts/core/trades.ts`, `engine/trades.ts` | lumberjack, farmer, miner, fisher | the trades of §5, each a survey rule and a cycle |
 | `texts/en_US.lang` | `Settler` | unchanged unless a per-people name is wanted; the kids' names would go here |
 | `manifest.json` | | version bump; the settings panel gains nothing |
 
@@ -470,7 +476,7 @@ lumberjack and the farmer are.
 | --- | --- | --- | --- | --- | --- |
 | **forager** | foxfolk | four or more sweet berry bushes | pick every ripe bush within twelve, nearest first, one every eight ticks; berries to the chest; the bush is set back to its unripe state and left standing | nothing: the bush regrows as it does for a player | the `growth` state's range and which values carry berries, on BDS (the two editions differ); that `setPermutation` to the unripe state does not drop the berries as an item |
 | **shearer** | catfolk | two or more sheep within twelve | shear each grown-wool sheep, one every twenty ticks: 1–3 wool of its colour to the chest, the sheep set sheared | nothing: wool regrows when the sheep grazes | whether `EntityIsShearedComponent` is writable or the sheep's `minecraft:on_sheared` event can be triggered from script; failing both, spawn the wool and trigger the sheared event's group by name; the sheep is never damaged |
-| **fisher** | wolffolk | water, four blocks or more (designed) | cod or salmon into the chest, one time in eight a treasure item | nothing | none beyond `villages.md`; the frozen pond needs a water block under the ice hole |
+| **fisher** | wolffolk | water, four blocks or more (built) | as the reedfolk's | nothing | the frozen pond needs a water block under the ice hole, which the hut piece has |
 | **baker** | rabbitfolk | a furnace or smoker within eight, and wheat in the chest | take three wheat, put one bread; up to eight loaves a cycle, and the furnace lit (`lit_furnace` swap) for the duration | nothing: three wheat become one bread, the recipe's own rate | that swapping `furnace` for `lit_furnace` and back does not eject a furnace's contents; a village furnace is empty, a kid's may not be, so the swap is skipped on a furnace with items |
 | **beekeeper** | bearfolk | a beehive or bee nest within twelve | for each hive at `honey_level` 5: take one glass bottle from the chest, put one honey bottle, set the level to 0; one hive a cycle, so bottles run out before the honey does | nothing: the hive refills; a script mutation is not a player harvest, so the bees should not swarm the bear (to measure) | the state name and range on Bedrock; whether the bees anger on a scripted level change |
 | **cactus cutter** | fennecfolk | four or more cactus within twelve | for each cactus column two or more tall, remove the blocks above the base, one every eight ticks, one cactus item each to the chest | nothing: the base block grows the column back | that `setType("air")` on a cactus block drops nothing (as a log does), and that removing an upper block does not break the ones above it into items before the next step |

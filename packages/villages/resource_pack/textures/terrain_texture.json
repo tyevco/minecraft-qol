@@ -6,6 +6,18 @@
   "texture_data": {
     "villages_post": {
       "textures": "textures/blocks/post"
+    },
+    "villages_vein_stone": {
+      "textures": "textures/blocks/vein_stone"
+    },
+    "villages_vein_coal": {
+      "textures": "textures/blocks/vein_coal"
+    },
+    "villages_vein_iron": {
+      "textures": "textures/blocks/vein_iron"
+    },
+    "villages_vein_copper": {
+      "textures": "textures/blocks/vein_copper"
     }
   }
 }

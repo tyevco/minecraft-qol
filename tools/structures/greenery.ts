@@ -1,12 +1,10 @@
 /**
- * Greenery shared by the village pieces: trees, scattered flowers, a grove.
- * Pure painters over a Blueprint; villages.ts and furfolk.ts both use them.
+ * Greenery shared by the village pieces: trees, scattered flowers, an
+ * orchard, a grove. Pure painters over a Blueprint; villages.ts and
+ * furfolk.ts both use them, which is why they are not in either.
  */
 import type { Blueprint } from "./blueprint";
 
-// ---------------------------------------------------------------------------
-// Greenery
-// ---------------------------------------------------------------------------
 
 /**
  * A tree: a trunk and a two-layer crown. The crown is clipped to the piece,
@@ -32,6 +30,12 @@ export function tree(bp: Blueprint, x: number, y: number, z: number, log: string
 }
 
 export const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
+
+/** An orchard: four small oaks and berry bushes. Tallfolk and hobbits both keep one. */
+export function orchard(bp: Blueprint, rand: () => number, y: number): void {
+  for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, "oak_log", "oak_leaves", 3);
+  for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "sweet_berry_bush", { growth: 3 }); }
+}
 
 /**
  * A grove: three grown trees, a lumberjack's post and a chest for the logs
@@ -60,11 +64,3 @@ export function scatter(bp: Blueprint, rand: () => number, x: number, y: number,
     }
 }
 
-
-/** An orchard: four small trees and a few sweet berry bushes between them. */
-export function orchard(log: string, leaves: string): (bp: Blueprint, rand: () => number, y: number) => void {
-  return (bp, rand, y) => {
-    for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, log, leaves, 3);
-    for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "sweet_berry_bush", { growth: 3 }); }
-  };
-}

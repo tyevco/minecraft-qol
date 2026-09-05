@@ -22,13 +22,33 @@
         "tallfolk_guard": "textures/entity/tallfolk_guard",
         "tallfolk_worker": "textures/entity/tallfolk_worker",
         "tallfolk_trader": "textures/entity/tallfolk_trader",
-        "tallfolk_builder": "textures/entity/tallfolk_builder"
+        "tallfolk_builder": "textures/entity/tallfolk_builder",
+        "hobbit_guard": "textures/entity/hobbit_guard",
+        "hobbit_worker": "textures/entity/hobbit_worker",
+        "hobbit_trader": "textures/entity/hobbit_trader",
+        "hobbit_builder": "textures/entity/hobbit_builder",
+        "wood_elf_guard": "textures/entity/wood_elf_guard",
+        "wood_elf_worker": "textures/entity/wood_elf_worker",
+        "wood_elf_trader": "textures/entity/wood_elf_trader",
+        "wood_elf_builder": "textures/entity/wood_elf_builder",
+        "high_elf_guard": "textures/entity/high_elf_guard",
+        "high_elf_worker": "textures/entity/high_elf_worker",
+        "high_elf_trader": "textures/entity/high_elf_trader",
+        "high_elf_builder": "textures/entity/high_elf_builder",
+        "drow_guard": "textures/entity/drow_guard",
+        "drow_worker": "textures/entity/drow_worker",
+        "drow_trader": "textures/entity/drow_trader",
+        "drow_builder": "textures/entity/drow_builder"
       },
       "geometry": {
         "stonefolk": "geometry.villages_stonefolk",
         "reedfolk": "geometry.villages_reedfolk",
         "tinker": "geometry.villages_tinker",
-        "tallfolk": "geometry.villages_tallfolk"
+        "tallfolk": "geometry.villages_tallfolk",
+        "hobbit": "geometry.villages_hobbit",
+        "wood_elf": "geometry.villages_wood_elf",
+        "high_elf": "geometry.villages_high_elf",
+        "drow": "geometry.villages_drow"
       },
       "animations": {
         "look_at_target": "animation.common.look_at_target",

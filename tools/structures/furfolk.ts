@@ -544,7 +544,7 @@ building("deerfolk_cabin", "Cabin", "deerfolk", "Oak on a mossy footing, tall do
 });
 
 const gleanersOrchard = (bp: Blueprint, rand: () => number, y: number): void => {
-  orchard("oak_log", "oak_leaves")(bp, rand, y);
+  orchard(bp, rand, y);
   if (bp.at(4, y, 8) !== undefined) bp.set(4, y, 8, "air");
   bp.set(5, y, 4, "chest");
   bp.set(4, y, 4, "villages:post", { "villages:people": 0, "villages:job": 1 });
@@ -567,35 +567,35 @@ export const FURFOLK: People[] = [
     houses: [["foxfolk_cabin", 3], ["shared_larder", 1]],
     greens: [["berry_patch", 3, berryPatch], ["grove", 1, grove("spruce_log", "spruce_leaves")]],
     tree: { log: "spruce_log", leaves: "spruce_leaves" },
-    watch: "foxfolk_lookout", biomes: ["taiga"], salt: 20260915,
+    watch: "foxfolk_lookout", biomes: ["taiga"], salt: 20260921,
   },
   {
     ...CONCEPT, key: "catfolk", title: "Catfolk", paving: "smooth_stone", verge: "grass", post: "cherry_fence", core: "catfolk_loom_house",
     houses: [["catfolk_house", 3], ["shared_larder", 1], ["shared_inn", 1]],
     greens: [["paddock", 3, paddock], ["garden", 2, meadow("cherry_log", "cherry_leaves")]],
     tree: { log: "cherry_log", leaves: "cherry_leaves" },
-    biomes: ["cherry_grove", "flower_forest"], salt: 20260916,
+    biomes: ["cherry_grove", "flower_forest"], salt: 20260922,
   },
   {
     ...CONCEPT, key: "wolffolk", title: "Wolffolk", paving: "cobblestone", verge: "snow", post: "spruce_fence", core: "wolffolk_lodge",
     houses: [["wolffolk_cabin", 3], ["wolffolk_fishing_hut", 2], ["shared_larder", 1]],
     greens: [["snowfield", 3, snowfield]],
     tree: { log: "spruce_log", leaves: "spruce_leaves" },
-    watch: "wolffolk_watchtower", biomes: ["cold"], salt: 20260917,
+    watch: "wolffolk_watchtower", biomes: ["cold"], salt: 20260923,
   },
   {
     ...CONCEPT, key: "rabbitfolk", title: "Rabbitfolk", paving: "packed_mud", verge: "grass", post: "birch_fence", core: "rabbitfolk_bakehouse",
     houses: [["rabbitfolk_warren", 4], ["shared_larder", 1]],
     greens: [["carrot_patch", 3, carrotPatch], ["meadow", 2, meadow("birch_log", "birch_leaves")]],
     tree: { log: "birch_log", leaves: "birch_leaves" },
-    biomes: ["birch"], salt: 20260918,
+    biomes: ["birch"], salt: 20260924,
   },
   {
     ...CONCEPT, key: "bearfolk", title: "Bearfolk", paving: "mossy_cobblestone", verge: "grass", post: "dark_oak_fence", core: "bearfolk_great_lodge",
     houses: [["bearfolk_lodge", 3], ["shared_larder", 1]],
     greens: [["apiary", 3, apiary], ["grove", 2, grove("dark_oak_log", "dark_oak_leaves")]],
     tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" },
-    biomes: ["roofed"], salt: 20260919,
+    biomes: ["roofed"], salt: 20260925,
   },
   {
     ...CONCEPT, key: "fennecfolk", title: "Fennecfolk", paving: "smooth_sandstone", verge: "sand", post: "sandstone_wall", core: "fennecfolk_shade_house",
@@ -607,35 +607,35 @@ export const FURFOLK: People[] = [
       const well = BUILDINGS.find((b) => b.key === "fennecfolk_well")!;
       bp.paste(well, Math.floor(side / 2) - Math.floor(well.sx / 2), 0, side - well.sz - 3);
     },
-    biomes: ["desert"], salt: 20260920,
+    biomes: ["desert"], salt: 20260926,
   },
   {
     ...CONCEPT, key: "mousefolk", title: "Mousefolk", paving: "mud_bricks", verge: "mycelium", post: "dark_oak_fence", core: "mousefolk_toadstool_hall",
     houses: [["mousefolk_cap_house", 4]],
     greens: [["mushroom_patch", 3, mushroomPatch]],
     tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" }, plant: giantMushroom,
-    biomes: ["mushroom_island"], salt: 20260921,
+    biomes: ["mushroom_island"], salt: 20260927,
   },
   {
     ...CONCEPT, key: "squirrelfolk", title: "Squirrelfolk", paving: "jungle_planks", verge: "grass", post: "jungle_fence", core: "squirrelfolk_nest_hall",
     houses: [["squirrelfolk_treehouse", 3]],
     greens: [["cocoa_grove", 3, cocoaGrove]],
     tree: { log: "jungle_log", leaves: "jungle_leaves" },
-    deck: { height: DECK_H, post: "jungle_log", rail: "jungle_fence", over: "grass" },
-    biomes: ["jungle"], salt: 20260922,
+    deck: { height: DECK_H, post: "jungle_log", rail: "jungle_fence", floor: "grass" }, lotHeight: DECK_H + 8,
+    biomes: ["jungle"], salt: 20260928,
   },
   {
     ...CONCEPT, key: "otterfolk", title: "Otterfolk", paving: "gravel", verge: "sand", post: "oak_fence", core: "otterfolk_holt",
     houses: [["otterfolk_hut", 3], ["otterfolk_slipway", 2], ["shared_larder", 1]],
     greens: [["shingle", 3, shingle]],
     tree: { log: "oak_log", leaves: "oak_leaves" }, plant: driftwood,
-    biomes: ["beach"], salt: 20260923,
+    biomes: ["beach"], salt: 20260929,
   },
   {
     ...CONCEPT, key: "deerfolk", title: "Deerfolk", paving: "moss_block", verge: "grass", post: "oak_fence", core: "deerfolk_glade_hall",
     houses: [["deerfolk_cabin", 3], ["shared_larder", 1]],
     greens: [["orchard", 3, gleanersOrchard], ["meadow", 2, meadow("oak_log", "oak_leaves")]],
     tree: { log: "oak_log", leaves: "oak_leaves" },
-    biomes: ["forest"], salt: 20260924,
+    biomes: ["forest"], salt: 20260930,
   },
 ];

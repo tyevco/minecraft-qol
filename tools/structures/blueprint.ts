@@ -48,16 +48,22 @@ const MATERIALS: Record<string, { stairs: string; slab: string }> = {
   dark_oak_planks: { stairs: "dark_oak_stairs", slab: "dark_oak_slab" },
   mangrove_planks: { stairs: "mangrove_stairs", slab: "mangrove_slab" },
   bamboo_mosaic: { stairs: "bamboo_mosaic_stairs", slab: "bamboo_mosaic_slab" },
+  birch_planks: { stairs: "birch_stairs", slab: "birch_slab" },
+  cherry_planks: { stairs: "cherry_stairs", slab: "cherry_slab" },
+  mossy_cobblestone: { stairs: "mossy_cobblestone_stairs", slab: "mossy_cobblestone_slab" },
+  quartz_block: { stairs: "quartz_stairs", slab: "quartz_slab" },
+  smooth_quartz: { stairs: "smooth_quartz_stairs", slab: "smooth_quartz_slab" },
+  polished_diorite: { stairs: "polished_diorite_stairs", slab: "polished_diorite_slab" },
+  prismarine_bricks: { stairs: "prismarine_bricks_stairs", slab: "prismarine_brick_slab" },
+  deepslate_bricks: { stairs: "deepslate_brick_stairs", slab: "deepslate_brick_slab" },
+  polished_blackstone_bricks: { stairs: "polished_blackstone_brick_stairs", slab: "polished_blackstone_brick_slab" },
   // The furfolk's (docs/design/furfolk.md).
   sandstone: { stairs: "sandstone_stairs", slab: "sandstone_slab" },
   smooth_sandstone: { stairs: "smooth_sandstone_stairs", slab: "smooth_sandstone_slab" },
   red_sandstone: { stairs: "red_sandstone_stairs", slab: "red_sandstone_slab" },
-  birch_planks: { stairs: "birch_stairs", slab: "birch_slab" },
   jungle_planks: { stairs: "jungle_stairs", slab: "jungle_slab" },
-  cherry_planks: { stairs: "cherry_stairs", slab: "cherry_slab" },
   acacia_planks: { stairs: "acacia_stairs", slab: "acacia_slab" },
   mud_bricks: { stairs: "mud_brick_stairs", slab: "mud_brick_slab" },
-  mossy_cobblestone: { stairs: "mossy_cobblestone_stairs", slab: "mossy_cobblestone_slab" },
 };
 
 export function stairsOf(block: string): string {
@@ -572,11 +578,29 @@ export class Blueprint {
 export function previewColor(name: string): number {
   const n = name.replace("minecraft:", "");
   if (n.includes(":")) {
-    for (const [re, c] of [[/villages:post/, 0x8b5a2b] as const]) if (re.test(n)) return c;
+    for (const [re, c] of [[/villages:post/, 0x8b5a2b] as const, [/villages:vein/, 0x5a5a60] as const]) if (re.test(n)) return c;
     return 0xaa88cc;
   }
   const rules: [RegExp, number][] = [
     [/water/, 0x3f76e4],
+    [/sea_lantern/, 0xbfeee6],
+    [/soul_lantern/, 0x6fd4d8],
+    [/quartz|calcite/, 0xeeeae2],
+    [/prismarine/, 0x5f9a8e],
+    [/diorite/, 0xd8d8d4],
+    [/blackstone/, 0x2a2428],
+    [/amethyst/, 0x9a6ad8],
+    [/crying_obsidian/, 0x5a2a9a],
+    [/obsidian/, 0x1a1024],
+    [/purple_stained/, 0x8a3ab8],
+    [/light_blue_stained/, 0x8ad0f0],
+    [/mycelium/, 0x6e6270],
+    [/web/, 0xe8e8e8],
+    [/mushroom/, 0xb07a5a],
+    [/cherry_leaves|pink_petals/, 0xf0a6c8],
+    [/cherry/, 0xd8b4a8],
+    [/birch/, 0xd8cfa8],
+    [/bookshelf|lectern|loom|fletching/, 0xa88450],
     [/^bed$/, 0xb02e26],
     [/villages:post/, 0x8b5a2b],
     [/ladder/, 0xb08a56],

@@ -8,13 +8,13 @@ references these files, and `npm run mcaddon` never sees them.
   dummy, patrol golem, runner, messenger, pack mule. Each has `models/`,
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
-  moved to `packages/hatchling` when they were built; the four peoples of
-  `docs/design/npcs.md` likewise moved to `packages/villages`. The ten
-  furfolk of `docs/design/furfolk.md` (fox, cat, wolf, rabbit, bear, fennec,
-  mouse, squirrel, otter, deer) are here too: one geometry each on the biped
-  rig with a muzzle, ears and a tail (antlers for the deer), the four job
-  atlases each (`<people>_<job>.png`, on the `FURRED` layout), and an
-  animation set each.
+  moved to `packages/hatchling` when they were built; the peoples of
+  `docs/design/npcs.md` likewise moved to `packages/villages`, eight of them
+  now. The ten furfolk of `docs/design/furfolk.md` (fox, cat, wolf, rabbit,
+  bear, fennec, mouse, squirrel, otter, deer) are here: one geometry each on
+  the biped rig with a muzzle, ears and a tail (antlers for the deer), the
+  four job atlases each (`<people>_<job>.png`, on the `FURRED` layout), and
+  an animation set each.
 - `villages/` — one village per people, grown from the pieces and pools in
   `tools/structures/villages.ts` (the four) and `tools/structures/furfolk.ts`
   (the ten furfolk) by the offline jigsaw expander

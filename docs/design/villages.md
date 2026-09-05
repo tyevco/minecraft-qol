@@ -215,6 +215,85 @@ Standing is **per player**. A sibling who annoys the reedfolk does not cost
 the other their friendship; that is a rule for a family Realm, not a
 simulation choice.
 
+## 5.1 Provisioning: what the workers bring in
+
+The larder and the storehouse are chests, and a worker is only worth
+feeding if something arrives in them. Rather than four more jobs, **a worker
+takes a trade from where its post stands**, read off the blocks within
+sixteen of the post the first time it ticks and again once a day:
+
+| Trade | Chosen when the post is near | Every cycle, into | Cost to the world |
+| --- | --- | --- | --- |
+| **lumberjack** | logs and leaves (a grove, an orchard, a lane's trees) | the nearest chest within twelve of the post: logs, and a sapling one time in three | the felled tree's logs, top down; a sapling planted on the stump, so the grove regrows (vanilla growth) and is never cleared |
+| **miner** | a **vein**, a block the mine piece carries (`villages:vein`, a state for stone, coal, iron or copper) | cobblestone, coal, raw iron or raw copper | none: a vein is a fixture, not terrain. Nothing the kids built or the landscape is ever dug. A vein has a daily yield; the miner idles once it is spent until the next day |
+| **farmer** | farmland | the larder: wheat, carrots, potatoes, from crops it harvests and replants (reusing `packages/shared/core/crops.ts`) | nothing: replanted |
+| **fisher** | water, four blocks or more | the larder: cod, salmon, one time in eight a treasure item | nothing |
+
+The rules for every trade:
+
+- **Slow on purpose.** One cycle every ten minutes by default (a slider on
+  the settings panel), one stack-slot's worth a cycle. A village's workers
+  fill a chest over an evening; they never out-produce a kid with a
+  pickaxe, and a Fluidworks harvester stays the faster machine.
+- **The work is visible.** The person walks to the tree, the vein, the row
+  or the water's edge (a `home` moved to the target for the cycle, then
+  back), the `villages:working` property runs the swing animation for the
+  duration, and the tree comes down log by log. The result appears in the
+  chest when the person walks back to it.
+- **The larder pays the wages.** Each cycle takes one food item from the
+  larder for the worker (any food); an empty larder stops every trade but
+  the farmer's and the fisher's, which fill it. So a settlement that only
+  builds a mine winds down, and one that farms first runs.
+- **Nothing is ever lost** (CLAUDE.md rule 4): the chest is checked for
+  room before the tree is felled; a full chest means the person waits.
+
+The generated villages carry the trades: the tallfolk's field, the
+reedfolk's dock, and two new pieces, a **grove** (a green with three grown
+trees and a lumberjack's post) for the stonefolk and tallfolk, and a
+**mine** (a short shaft into a hillside face with a vein at the end and a
+miner's post) for the stonefolk and the tinkers. What a village produces
+goes into its own storehouse, which is what the trader sells.
+
+## 6.1 Visitors: a village comes to you
+
+A settlement the kids start before they have found a village is empty of
+people, and finding a village takes exploring. **Visitors** close that gap
+and give the standing loop a second doorway. A visitor is a person of one
+of the four peoples who walks into the kids' settlement, stays a day, and
+leaves; a wandering trader who wants something rather than sells.
+
+- **When:** once a settlement has at least two job posts *the kids placed*
+  (a post's record notes whether a player placed it), a visitor arrives
+  every three days or so, at a random point on the settlement's edge, at
+  dawn. Script spawns it; there is no spawn rule to tune. One visitor at a
+  time.
+- **Who:** the people is drawn by what the settlement is: stonefolk if it
+  has a mine or a forge, reedfolk if it stands near water, tinkers if it
+  has copper or a workshop, tallfolk if it farms; and otherwise at random.
+  The same people keep sending the same named visitor (a name and a
+  people in a world dynamic property), so a face becomes familiar.
+- **The quest:** the visitor carries one request from its people's errand
+  table (§5): bring 16 of this, build one of these, keep me safe until
+  morning. It is offered on interact (a form with the request and
+  "accept"), paid on return to the visitor before it leaves: +5 standing
+  with that people, and a small gift from the people's trade goods. A
+  visitor that leaves unpaid comes back with the same request.
+- **Joining:** after **three completed quests** from the same visitor, its
+  form offers to stay. The visitor walks to the nearest **empty post the
+  kids placed** and settles on it, becoming a person of that post exactly
+  as an invited villager does (§6), and the next visitor from that people
+  is a new face. So a settlement can be peopled entirely by visitors who
+  chose to stay, without a village ever being found; finding one only
+  makes it faster.
+- **What it costs:** nothing to the world. A visitor does no work and
+  takes no food; it is a guest. It cannot be hurt by players (a guard
+  would never forgive it) and leaves at the next dawn regardless.
+
+Rejected: a visitor that trades for emeralds (the trader in the village
+does that, and a visitor selling things makes the village pointless), and
+a visitor that arrives uninvited into a settlement with no posts (an empty
+field is not a settlement).
+
 ## 6. Inviting a person home
 
 At Kin, the elder's form offers **invite**. The player picks a job; the
@@ -252,6 +331,14 @@ found, in buildings they raised. That is the whole loop.
    `minecraft:tameable`, and release by removing the component group.
 5. **Standing across the invite**: that the property survives the person
    being despawned and respawned by its block.
+6. **A person walking to a spot and back** (§5.1): moving `minecraft:home`
+   by re-triggering it is not in the stable typings; the candidates are a
+   `minecraft:behavior.move_to_block` component group added by event, or a
+   short `teleport` for the last stretch. Which one reads as walking.
+7. **Felling from script**: `Block.setType("minecraft:air")` on a log
+   drops nothing (so no item entities to chase) and `Container.addItem` on
+   a chest read through `BlockInventoryComponent` returns the remainder
+   when full. Bulwark reads a hopper this way; writing one is unmeasured.
 
 ## 8. Where this goes next
 
@@ -264,5 +351,10 @@ found, in buildings they raised. That is the whole loop.
    watch at the street ends, fields for the tallfolk on more sockets,
    processor lists for weathering.
 4. ~~A `villages` pack of its own: job posts and the tick that peoples a
-   village.~~ Built (`packages/villages`); then the elder, errands and
-   standing (§5); then invite (§6).
+   village.~~ Built (`packages/villages`).
+5. **Provisioning** (§5.1): the trade a worker takes from its
+   surroundings, the lumberjack and the farmer first (a grove piece, the
+   field), the miner's vein and the mine piece after; the larder wage.
+6. **Visitors** (§6.1) with the first errand table, since they give the
+   kids' own settlement people before any village is found; then the
+   elder, standing tiers and invite in the villages (§5, §6).

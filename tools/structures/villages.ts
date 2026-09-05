@@ -29,6 +29,8 @@
  */
 import { Blueprint, type Facing, type Jigsaw } from "./blueprint";
 import { BUILDINGS } from "./buildings";
+import { FURFOLK } from "./furfolk";
+import { DESERT, cactus, grove, orchard, scatter, tree, type Flora } from "./greenery";
 import { canvas, expand, prng, type Expansion, type Pool } from "./jigsaw";
 
 export interface People {
@@ -64,6 +66,15 @@ export interface People {
   plant?: (bp: Blueprint, x: number, y: number, z: number) => void;
   /** What the scatter puts on open ground; the meadow's flowers and grass unless said. */
   flora?: Flora;
+  /** Height of a green or empty lot; 8 unless a people's greens build their own platform. */
+  lotHeight?: number;
+  /**
+   * A people the villages pack does not know yet (docs/design/furfolk.md §4):
+   * its posts are written as lodestones, which a processor list can turn into
+   * posts once the people exists (measured, docs/villages-jigsaw-results.md),
+   * and its pieces and worldgen go to the probe pack rather than the villages pack.
+   */
+  concept?: boolean;
   /** Something more on the square, given the square and its side. */
   squareExtra?: (bp: Blueprint, side: number) => void;
   /** Vanilla biome tags the village generates in (any of). */
@@ -79,56 +90,8 @@ const need = (k: string): Blueprint => {
 };
 
 // ---------------------------------------------------------------------------
-// Greenery
+// Greenery with a pack block in it (the rest is in greenery.ts)
 // ---------------------------------------------------------------------------
-
-/**
- * A tree: a trunk and a two-layer crown. The crown is clipped to the piece,
- * so a tree on a verge leans out of frame rather than failing. The leaves
- * are not persistent: every leaf is within reach of the trunk, so they stay
- * while it stands and decay once a lumberjack has felled it (§5.1).
- */
-function tree(bp: Blueprint, x: number, y: number, z: number, log: string, leaves: string, height = 4): void {
-  const L = { persistent_bit: false, update_bit: false };
-  const leaf = (i: number, j: number, k: number) => {
-    if (i < 0 || k < 0 || j < 0 || i >= bp.sx || k >= bp.sz || j >= bp.sy) return;
-    if (bp.at(i, j, k) === undefined) bp.set(i, j, k, leaves, L);
-  };
-  bp.fill(x, y, z, 1, height, 1, log);
-  const top = y + height;
-  for (let i = -2; i <= 2; i++)
-    for (let k = -2; k <= 2; k++) {
-      if (Math.abs(i) === 2 && Math.abs(k) === 2) continue;
-      for (let j = top - 2; j < top; j++) leaf(x + i, j, z + k);
-    }
-  for (let i = -1; i <= 1; i++) for (let k = -1; k <= 1; k++) if (Math.abs(i) + Math.abs(k) < 2) leaf(x + i, top, z + k);
-  leaf(x, top + 1, z);
-}
-
-const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
-
-/** What grows on a people's open ground: the block it grows on, the rare pick and the common one. */
-export interface Flora {
-  ground: string;
-  rare: string[];
-  common: string;
-}
-const MEADOW: Flora = { ground: "minecraft:grass", rare: FLOWERS, common: "short_grass" };
-const DESERT: Flora = { ground: "minecraft:sand", rare: ["deadbush"], common: "deadbush" };
-
-/** A cactus: a column on sand. Cactus breaks when anything stands beside it, and the scatter keeps clear of it. */
-function cactus(bp: Blueprint, x: number, y: number, z: number, height = 3): void {
-  bp.fill(x, y, z, 1, height, 1, "cactus");
-}
-
-const besideCactus = (bp: Blueprint, x: number, y: number, z: number): boolean =>
-  ([[x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]] as const).some(([i, k]) => i >= 0 && k >= 0 && i < bp.sx && k < bp.sz && bp.at(i, y, k) === "minecraft:cactus");
-
-/** An orchard: four small oaks and berry bushes. Tallfolk and hobbits both keep one. */
-function orchard(bp: Blueprint, rand: () => number, y: number): void {
-  for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, "oak_log", "oak_leaves", 3);
-  for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "sweet_berry_bush", { growth: 3 }); }
-}
 
 /**
  * A mine: the piece brings its own hillside, a cobblestone mound over the
@@ -162,33 +125,6 @@ function mine(support: string, ore: "iron" | "copper"): (bp: Blueprint, rand: ()
     bp.set(4, y, 6, "villages:post", { "villages:people": 0, "villages:job": 1 });
     scatter(bp, rand, 0, y, 5, 9, 4, 5);
   };
-}
-
-/**
- * A grove: three grown trees, a lumberjack's post and a chest for the logs
- * (docs/design/villages.md §5.1). The post's person is spawned south of the
- * post, so the post stands with open grass in front of it.
- */
-function grove(log: string, leaves: string): (bp: Blueprint, rand: () => number, y: number) => void {
-  return (bp, rand, y) => {
-    tree(bp, 2, y, 2, log, leaves, 4);
-    tree(bp, 6, y, 2, log, leaves, 5);
-    tree(bp, 2, y, 6, log, leaves, 4);
-    bp.set(7, y, 5, "chest");
-    bp.set(6, y, 5, "villages:post", { "villages:people": 0, "villages:job": 1 });
-    scatter(bp, rand, 4, y, 4, 5, 5, 5);
-  };
-}
-
-/** The flora scattered over its ground at y, about one cell in `every`: flowers and grass tufts on a meadow. */
-function scatter(bp: Blueprint, rand: () => number, x: number, y: number, z: number, w: number, d: number, every = 4, flora: Flora = MEADOW): void {
-  for (let i = x; i < x + w; i++)
-    for (let k = z; k < z + d; k++) {
-      if (bp.at(i, y, k) !== undefined || bp.at(i, y - 1, k) !== flora.ground || besideCactus(bp, i, y, k)) continue;
-      const r = rand();
-      if (r < 1 / every / 2) bp.set(i, y, k, flora.rare[Math.floor(rand() * flora.rare.length)]!);
-      else if (r < 1 / every) bp.set(i, y, k, flora.common);
-    }
 }
 
 export const PEOPLES: People[] = [
@@ -380,6 +316,7 @@ export const PEOPLES: People[] = [
     },
     biomes: ["desert"], salt: 20260919,
   },
+  ...FURFOLK,
 ];
 
 const STREET_MARK = "villages:street";
@@ -409,7 +346,11 @@ function marker(p: People, facing: Facing, name: string, target: string, pool: s
 /** Every job post in a piece gets the people's index, so its person is one of them. */
 function stampPeople(p: People, bp: Blueprint): Blueprint {
   const people = PEOPLES.indexOf(p);
-  for (const b of bp.blocks()) if (b.name === "villages:post") bp.set(b.x, b.y, b.z, "villages:post", { ...b.states, "villages:people": people });
+  for (const b of bp.blocks()) {
+    if (b.name !== "villages:post") continue;
+    if (p.concept) bp.set(b.x, b.y, b.z, "lodestone");
+    else bp.set(b.x, b.y, b.z, "villages:post", { ...b.states, "villages:people": people });
+  }
   return bp;
 }
 
@@ -582,7 +523,7 @@ export function villageSet(p: People): VillageSet {
     houseElements.push({ piece, weight });
   }
   const lot = (key: string, title: string, notes: string, w: number, d: number, paint?: (bp: Blueprint, y: number) => void): Blueprint => {
-    const bp = new Blueprint(`${p.key}_${key}`, `${p.title} ${title}`, [w, 8, d], p.key, notes);
+    const bp = new Blueprint(`${p.key}_${key}`, `${p.title} ${title}`, [w, p.lotHeight ?? 8, d], p.key, notes);
     bp.fill(0, 0, 0, w, 1, d, p.deck ? p.deck.floor : p.verge);
     paint?.(bp, 1);
     // The socket at the middle of the south edge, facing the street.

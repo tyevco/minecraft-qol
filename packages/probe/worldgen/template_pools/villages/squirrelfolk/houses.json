@@ -1,0 +1,35 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:squirrelfolk/houses"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/squirrelfolk/squirrelfolk_treehouse",
+          "projection": "rigid"
+        },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/squirrelfolk/squirrelfolk_cocoa_grove",
+          "projection": "rigid"
+        },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/squirrelfolk/squirrelfolk_empty_lot",
+          "projection": "rigid"
+        },
+        "weight": 2
+      }
+    ],
+    "fallback": "villages:squirrelfolk/house_ends"
+  }
+}

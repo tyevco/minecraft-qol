@@ -1,0 +1,45 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.concept_foxfolk.general": {
+      "initial_state": "idle",
+      "states": {
+        "idle": {
+          "animations": [
+            "idle"
+          ],
+          "transitions": [
+            {
+              "work": "query.property('villages:working')"
+            },
+            {
+              "walk": "query.modified_move_speed > 0.05"
+            }
+          ]
+        },
+        "walk": {
+          "animations": [
+            "walk"
+          ],
+          "transitions": [
+            {
+              "idle": "query.modified_move_speed <= 0.05"
+            }
+          ],
+          "blend_transition": 0.2
+        },
+        "work": {
+          "animations": [
+            "idle",
+            "work"
+          ],
+          "transitions": [
+            {
+              "idle": "!query.property('villages:working')"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

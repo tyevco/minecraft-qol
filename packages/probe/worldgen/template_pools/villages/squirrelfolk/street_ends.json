@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:squirrelfolk/street_ends"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/squirrelfolk/squirrelfolk_lamp",
+          "projection": "rigid"
+        },
+        "weight": 3
+      }
+    ]
+  }
+}

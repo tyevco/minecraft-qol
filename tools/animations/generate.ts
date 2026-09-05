@@ -26,6 +26,7 @@ import {
   buildControllers,
   geometryBones,
   type AnimationSetSpec,
+  type BoneAnimation,
 } from "./animation";
 
 const ROOT = resolve(__dirname, "../..");
@@ -722,3 +723,99 @@ function bipedSet(dir: string, file: string, name: string, geometry: string, wor
 // Shipped: packages/villages. The four peoples share one rig's bone names, so
 // one set animates all of them; the stonefolk geometry stands in for the bones.
 bipedSet("packages/villages/resource_pack", "person", "villages_person", "packages/villages/resource_pack/models/entity/stonefolk.geo.json", "villages:working");
+
+// ---------------------------------------------------------------------------
+// Furfolk (docs/design/furfolk.md): the biped set with ears that flick and a
+// tail that swishes, one set per people because the tails differ (the cat's
+// has a tip bone). Gated on villages:working, the property they would join.
+// ---------------------------------------------------------------------------
+
+function furredSet(file: string): void {
+  const geometry = `${CONCEPTS}/models/${file}.geo.json`;
+  const bones = bonesOf(geometry);
+  const tipIdle: Record<string, BoneAnimation> = bones.includes("tail_tip") ? { tail_tip: { rotation: [0, "math.sin(query.life_time * 55 + 70) * 20", 0] } } : {};
+  const tipWalk: Record<string, BoneAnimation> = bones.includes("tail_tip") ? { tail_tip: { rotation: [0, `math.sin(${STRIDE} + 60) * ${SPEED} * 25`, 0] } } : {};
+  emit(CONCEPTS, file, {
+    name: `concept_${file}`,
+    bones,
+    animations: [
+      {
+        key: "idle",
+        loop: true,
+        bones: {
+          head: { rotation: ["math.sin(query.life_time * 35) * 3", "math.sin(query.life_time * 22) * 12", 0] },
+          left_arm: { rotation: [0, 0, "-2 - math.sin(query.life_time * 60) * 1.5"] },
+          right_arm: { rotation: [0, 0, "2 + math.sin(query.life_time * 60) * 1.5"] },
+          // An ear flicks now and then: a sine clipped so it rests most of the time.
+          left_ear: { rotation: ["math.clamp(math.sin(query.life_time * 47) * 40 - 30, 0, 12)", 0, 0] },
+          right_ear: { rotation: ["math.clamp(math.sin(query.life_time * 47 + 150) * 40 - 30, 0, 12)", 0, 0] },
+          tail: { rotation: [0, "math.sin(query.life_time * 55) * 14", 0] },
+          ...tipIdle,
+        },
+      },
+      {
+        key: "walk",
+        loop: true,
+        bones: {
+          left_leg: { rotation: [walk(45), 0, 0] },
+          right_leg: { rotation: [walk(45, -1), 0, 0] },
+          left_arm: { rotation: [walk(35, -1), 0, 0] },
+          right_arm: { rotation: [walk(35), 0, 0] },
+          body: { position: [0, `math.abs(math.cos(${STRIDE})) * ${SPEED} * 0.4`, 0] },
+          left_ear: { rotation: [`math.abs(math.cos(${STRIDE})) * ${SPEED} * -8`, 0, 0] },
+          right_ear: { rotation: [`math.abs(math.cos(${STRIDE})) * ${SPEED} * -8`, 0, 0] },
+          tail: { rotation: [0, `math.sin(${STRIDE}) * ${SPEED} * 22`, 0] },
+          ...tipWalk,
+        },
+      },
+      {
+        key: "work",
+        loop: true,
+        length: 0.8,
+        bones: {
+          right_arm: {
+            rotation: [
+              [0, [-20, 0, 0]],
+              [0.3, [-110, 0, 0]],
+              [0.45, [10, 0, 0]],
+              [0.8, [-20, 0, 0]],
+            ],
+          },
+          body: {
+            rotation: [
+              [0, [0, 0, 0]],
+              [0.45, [6, 0, 0]],
+              [0.8, [0, 0, 0]],
+            ],
+          },
+          tail: {
+            rotation: [
+              [0, [0, 0, 0]],
+              [0.3, [12, 0, 0]],
+              [0.45, [-6, 0, 0]],
+              [0.8, [0, 0, 0]],
+            ],
+          },
+        },
+      },
+    ],
+    controllers: [
+      {
+        key: "general",
+        initial: "idle",
+        states: {
+          idle: {
+            animations: ["idle"],
+            transitions: [
+              ["work", "query.property('villages:working')"],
+              ["walk", MOVING],
+            ],
+          },
+          walk: { animations: ["walk"], transitions: [["idle", STOPPED]], blendTransition: 0.2 },
+          work: { animations: ["idle", "work"], transitions: [["idle", "!query.property('villages:working')"]] },
+        },
+      },
+    ],
+  });
+}
+for (const people of ["foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk"]) furredSet(people);

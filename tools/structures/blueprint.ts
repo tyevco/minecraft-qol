@@ -59,6 +59,11 @@ const MATERIALS: Record<string, { stairs: string; slab: string }> = {
   polished_blackstone_bricks: { stairs: "polished_blackstone_brick_stairs", slab: "polished_blackstone_brick_slab" },
   smooth_sandstone: { stairs: "smooth_sandstone_stairs", slab: "smooth_sandstone_slab" },
   sandstone: { stairs: "sandstone_stairs", slab: "sandstone_slab" },
+  // The furfolk's (docs/design/furfolk.md).
+  red_sandstone: { stairs: "red_sandstone_stairs", slab: "red_sandstone_slab" },
+  jungle_planks: { stairs: "jungle_stairs", slab: "jungle_slab" },
+  acacia_planks: { stairs: "acacia_stairs", slab: "acacia_slab" },
+  mud_bricks: { stairs: "mud_brick_stairs", slab: "mud_brick_slab" },
 };
 
 export function stairsOf(block: string): string {

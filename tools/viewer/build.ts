@@ -45,12 +45,6 @@ interface Particle {
   every?: number;
 }
 
-const PEOPLES: [id: string, name: string][] = [
-  ["stonefolk", "Stonefolk"],
-  ["reedfolk", "Reedfolk"],
-  ["tinker", "Tinker"],
-  ["tallfolk", "Tallfolk"],
-];
 const FURFOLK: [id: string, name: string, notes: string][] = [
   ["foxfolk", "Foxfolk", "Rust coat, white cheeks and tail tip, dark socks; a berry-picking people of the taiga."],
   ["catfolk", "Catfolk", "A grey tabby with a cream muzzle and a two-segment tail that curls; a weaving people of the cherry groves."],
@@ -63,7 +57,18 @@ const FURFOLK: [id: string, name: string, notes: string][] = [
   ["otterfolk", "Otterfolk", "Sleek dark brown with a pale throat, tiny ears and a thick rudder tail; a fishing people of the shore."],
   ["deerfolk", "Deerfolk", "Tall and thin, tan with a pale muzzle and spots, antlers up through the hat, ears out to the sides; an apple-gleaning people of the forest."],
 ];
-const GREENS: Record<string, string[]> = { stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"] };
+const PEOPLES: [id: string, name: string][] = [
+  ["stonefolk", "Stonefolk"],
+  ["reedfolk", "Reedfolk"],
+  ["tinker", "Tinker"],
+  ["tallfolk", "Tallfolk"],
+  ...FURFOLK.map(([id, name]): [string, string] => [id, name]),
+];
+const GREENS: Record<string, string[]> = {
+  stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"],
+  foxfolk: ["berry_patch", "grove"], catfolk: ["paddock", "garden"], wolffolk: ["snowfield"], rabbitfolk: ["carrot_patch", "meadow"], bearfolk: ["apiary", "grove"],
+  fennecfolk: ["cactus_garden"], mousefolk: ["mushroom_patch"], squirrelfolk: ["cocoa_grove"], otterfolk: ["shingle"], deerfolk: ["orchard", "meadow"],
+};
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
   ...(GREENS[p] ?? []).map((g): [string, string, string] => [`${p}_${g}`, `${name} ${g[0]!.toUpperCase()}${g.slice(1).replace("_", " ")}`, p]),
   [`${p}_square`, `${name} Square`, p],
@@ -95,6 +100,32 @@ const BUILDINGS: [id: string, name: string, people: string][] = [
   ["tallfolk_barn", "Barn", "tallfolk"],
   ["tallfolk_well", "Well", "tallfolk"],
   ["tallfolk_gatehouse", "Gatehouse", "tallfolk"],
+  ["foxfolk_den", "Den", "foxfolk"],
+  ["foxfolk_cabin", "Cabin", "foxfolk"],
+  ["foxfolk_lookout", "Lookout", "foxfolk"],
+  ["catfolk_loom_house", "Loom House", "catfolk"],
+  ["catfolk_house", "Cherry House", "catfolk"],
+  ["wolffolk_lodge", "Lodge", "wolffolk"],
+  ["wolffolk_cabin", "Cabin", "wolffolk"],
+  ["wolffolk_fishing_hut", "Fishing Hut", "wolffolk"],
+  ["wolffolk_watchtower", "Watchtower", "wolffolk"],
+  ["rabbitfolk_bakehouse", "Bake House", "rabbitfolk"],
+  ["rabbitfolk_warren", "Warren", "rabbitfolk"],
+  ["bearfolk_great_lodge", "Great Lodge", "bearfolk"],
+  ["bearfolk_lodge", "Lodge", "bearfolk"],
+  ["fennecfolk_shade_house", "Shade House", "fennecfolk"],
+  ["fennecfolk_house", "Sand House", "fennecfolk"],
+  ["fennecfolk_tower", "Watch Tower", "fennecfolk"],
+  ["fennecfolk_well", "Well", "fennecfolk"],
+  ["mousefolk_toadstool_hall", "Toadstool Hall", "mousefolk"],
+  ["mousefolk_cap_house", "Cap House", "mousefolk"],
+  ["squirrelfolk_nest_hall", "Nest Hall", "squirrelfolk"],
+  ["squirrelfolk_treehouse", "Treehouse", "squirrelfolk"],
+  ["otterfolk_holt", "Holt", "otterfolk"],
+  ["otterfolk_hut", "Hut", "otterfolk"],
+  ["otterfolk_slipway", "Slipway", "otterfolk"],
+  ["deerfolk_glade_hall", "Glade Hall", "deerfolk"],
+  ["deerfolk_cabin", "Cabin", "deerfolk"],
   ["shared_larder", "Larder", "shared"],
   ["shared_inn", "Inn", "shared"],
   ["shared_bridge", "Bridge Span", "shared"],

@@ -48,6 +48,16 @@ const MATERIALS: Record<string, { stairs: string; slab: string }> = {
   dark_oak_planks: { stairs: "dark_oak_stairs", slab: "dark_oak_slab" },
   mangrove_planks: { stairs: "mangrove_stairs", slab: "mangrove_slab" },
   bamboo_mosaic: { stairs: "bamboo_mosaic_stairs", slab: "bamboo_mosaic_slab" },
+  // The furfolk's (docs/design/furfolk.md).
+  sandstone: { stairs: "sandstone_stairs", slab: "sandstone_slab" },
+  smooth_sandstone: { stairs: "smooth_sandstone_stairs", slab: "smooth_sandstone_slab" },
+  red_sandstone: { stairs: "red_sandstone_stairs", slab: "red_sandstone_slab" },
+  birch_planks: { stairs: "birch_stairs", slab: "birch_slab" },
+  jungle_planks: { stairs: "jungle_stairs", slab: "jungle_slab" },
+  cherry_planks: { stairs: "cherry_stairs", slab: "cherry_slab" },
+  acacia_planks: { stairs: "acacia_stairs", slab: "acacia_slab" },
+  mud_bricks: { stairs: "mud_brick_stairs", slab: "mud_brick_slab" },
+  mossy_cobblestone: { stairs: "mossy_cobblestone_stairs", slab: "mossy_cobblestone_slab" },
 };
 
 export function stairsOf(block: string): string {

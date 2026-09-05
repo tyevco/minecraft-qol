@@ -183,7 +183,10 @@ prototype” list. In suggested order:
   each with a biome, a village palette, a trade (forager, shearer, fisher,
   baker, beekeeper, cactus cutter, mushroom picker, cocoa picker, gleaner)
   and liked gifts. Rigs, job atlases and animation sets are generated under
-  `concepts/entities/` and shown in the viewer as `concept · furfolk`. Says what changes in `packages/villages` (append-only
+  `concepts/entities/` and shown in the viewer as `concept · furfolk`; each
+  people's village (buildings, pieces, pools, worldgen) is generated too,
+  into the probe pack with lodestones for job posts, and previewed under
+  `concept · villages`. Says what changes in `packages/villages` (append-only
   indices) and what to prototype first (property widening, `bury`, the
   bushes, hives and sheep). Prompted by a shelf of flocked animal figures.
 

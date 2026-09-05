@@ -15,7 +15,7 @@
  */
 import { Blueprint } from "./blueprint";
 
-interface Cottage {
+export interface Cottage {
   floor: string;
   wall: string;
   corner: string;
@@ -31,7 +31,7 @@ interface Cottage {
  * roof overhanging by one, a lantern under the ridge. `x, z` is the wall
  * corner; the blueprint must leave one block around it for the roof.
  */
-function cottage(bp: Blueprint, x: number, z: number, w: number, d: number, wallH: number, m: Cottage): number {
+export function cottage(bp: Blueprint, x: number, z: number, w: number, d: number, wallH: number, m: Cottage): number {
   bp.fill(x, 0, z, w, 1, d, m.floor);
   bp.walls(x, 1, z, w, wallH, d, m.wall);
   for (const [cx, cz] of [
@@ -58,7 +58,7 @@ function cottage(bp: Blueprint, x: number, z: number, w: number, d: number, wall
 }
 
 /** A bed with its head against the north, foot at z + 1. */
-function bed(bp: Blueprint, x: number, y: number, z: number): void {
+export function bed(bp: Blueprint, x: number, y: number, z: number): void {
   bp.bed(x, y, z + 1, "north");
 }
 
@@ -68,12 +68,12 @@ function bed(bp: Blueprint, x: number, y: number, z: number): void {
  * villages.ts when the building joins a people's pools; here it is 0.
  */
 const JOB_INDEX = { guard: 0, worker: 1, trader: 2, builder: 3 } as const;
-function post(bp: Blueprint, x: number, y: number, z: number, job: keyof typeof JOB_INDEX): void {
+export function post(bp: Blueprint, x: number, y: number, z: number, job: keyof typeof JOB_INDEX): void {
   bp.set(x, y, z, "villages:post", { "villages:people": 0, "villages:job": JOB_INDEX[job] });
 }
 
 /** A table: a fence post with a slab on it, and a chair (stairs) facing it from the south. */
-function table(bp: Blueprint, x: number, y: number, z: number, wood: string): void {
+export function table(bp: Blueprint, x: number, y: number, z: number, wood: string): void {
   bp.set(x, y, z, `${wood}_fence`).slab(x, y + 1, z, `${wood}_planks`);
   bp.stairs(x, y, z + 1, `${wood}_planks`, "south");
 }
@@ -81,7 +81,7 @@ function table(bp: Blueprint, x: number, y: number, z: number, wood: string): vo
 export const BUILDINGS: Blueprint[] = [];
 
 /** Author into a roomy box; the saved blueprint is trimmed to what was placed. */
-function building(key: string, title: string, people: string, notes: string, author: (bp: Blueprint) => void): void {
+export function building(key: string, title: string, people: string, notes: string, author: (bp: Blueprint) => void): void {
   const bp = new Blueprint(key, title, [32, 32, 32], people, notes);
   author(bp);
   BUILDINGS.push(bp.trimmed());

@@ -1,0 +1,21 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:structure_set": {
+    "description": {
+      "identifier": "villages:mousefolk_villages"
+    },
+    "placement": {
+      "type": "minecraft:random_spread",
+      "spacing": 34,
+      "separation": 8,
+      "salt": 20260921,
+      "spread_type": "triangular"
+    },
+    "structures": [
+      {
+        "structure": "villages:mousefolk_village",
+        "weight": 1
+      }
+    ]
+  }
+}

@@ -16,10 +16,14 @@ references these files, and `npm run mcaddon` never sees them.
   atlases each (`<people>_<job>.png`, on the `FURRED` layout), and an
   animation set each.
 - `villages/` — one village per people, grown from the pieces and pools in
-  `tools/structures/villages.ts` by the offline jigsaw expander
+  `tools/structures/villages.ts` (the four) and `tools/structures/furfolk.ts`
+  (the ten furfolk) by the offline jigsaw expander
   (`tools/structures/jigsaw.ts`) from seed 1, as a preview the viewer draws
   under `concept · villages`. The pieces (squares, streets, lamp posts) sit
-  in `structures/` beside the buildings.
+  in `structures/` beside the buildings. A furfolk village's `.mcstructure`
+  pieces and worldgen go to the probe pack, with its job posts written as
+  lodestones until the villages pack knows the people
+  (`docs/design/furfolk.md` §3).
 - `structures/` — the buildings of `docs/design/settlements.md`, each
   as a `.mcstructure` (what a builder would place) and a `.json` preview
   (size, palette, blocks, materials) the viewer draws as blocks in the

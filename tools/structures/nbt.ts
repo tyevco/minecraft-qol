@@ -1,6 +1,9 @@
 /**
  * Minimal NBT writer, Bedrock flavour: little-endian, uncompressed, a single
- * root compound with an empty name. Enough to write a .mcstructure.
+ * root compound with an empty name. Enough to write a .mcstructure. (A Java
+ * .nbt template written big-endian loads as an empty box from a pack, even
+ * though vanilla's own jigsaw pieces are Java templates: measured in
+ * docs/villages-jigsaw-results.md, so this writer stays Bedrock-only.)
  */
 export type Tag =
   | { type: "byte"; value: number }

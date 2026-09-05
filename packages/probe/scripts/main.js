@@ -39,9 +39,9 @@
  *                                    run again to remove it. Reports maxCount and what
  *                                    the bar lists, so /reload and dimension behaviour
  *                                    are measured (Waypoints W1-W4)
- *   /scriptevent qolprobe:jigsaw-place [x y z]
- *                                    placeJigsawStructure("qolprobe:well") at the given
- *                                    block (default 0 0 0); logs the box or the error (J1)
+ *   /scriptevent qolprobe:jigsaw-place [identifier] [x y z]
+ *                                    placeJigsawStructure (qolprobe:well by default) at the
+ *                                    given block; logs the box or the error (J1)
  *   /scriptevent qolprobe:jigsaw-scan [x z radius delayTicks]
  *                                    list every emerald block (the probe well's marker)
  *                                    in the loaded chunks around x,z; a wells count is
@@ -1120,12 +1120,15 @@ world.afterEvents.worldLoad.subscribe(() => {
   const overworld = world.getDimension("overworld");
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
     if (ev.id === "qolprobe:jigsaw-place") {
-      const [x = 0, y = 0, z = 0] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+      // "<identifier> x y z"; a bare "x y z" places qolprobe:well.
+      const parts = (ev.message || "").split(/\s+/).filter(Boolean);
+      const id = parts.length && isNaN(Number(parts[0])) ? parts.shift() : "qolprobe:well";
+      const [x = 0, y = 0, z = 0] = parts.map(Number);
       try {
-        const box = world.structureManager.placeJigsawStructure("qolprobe:well", overworld, { x, y, z });
-        log(`J1 placeJigsawStructure OK: box min=${JSON.stringify(box.min)} max=${JSON.stringify(box.max)}`);
+        const box = world.structureManager.placeJigsawStructure(id, overworld, { x, y, z });
+        log(`J1 placeJigsawStructure(${id}) OK: box min=${JSON.stringify(box.min)} max=${JSON.stringify(box.max)}`);
       } catch (e) {
-        log(`J1 placeJigsawStructure THREW: ${e} ${e && e.name ? "(" + e.name + ")" : ""}`);
+        log(`J1 placeJigsawStructure(${id}) THREW: ${e} ${e && e.name ? "(" + e.name + ")" : ""}`);
       }
       return;
     }
@@ -1134,6 +1137,9 @@ world.afterEvents.worldLoad.subscribe(() => {
     // ticking areas have not loaded their chunks yet, and an unloaded chunk
     // reads as empty, not as an error.
     const [cx = 0, cz = 0, r = 128, delay = 200] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+    // Emerald marks a well; lapis a pad; gold and diamond are what a resolved
+    // jigsaw leaves behind on each side; a jigsaw block is one that did not.
+    const MARKERS = ["minecraft:emerald_block", "minecraft:lapis_block", "minecraft:gold_block", "minecraft:diamond_block", "minecraft:jigsaw"];
     const found = [];
     let tiles = 0, unloaded = 0;
     function* scan() {
@@ -1150,14 +1156,17 @@ world.afterEvents.worldLoad.subscribe(() => {
           tiles++;
           try {
             const vol = new BlockVolume({ x: x0, y: 40, z: z0 }, { x: x0 + 31, y: 140, z: z0 + 31 });
-            const hits = overworld.getBlocks(vol, { includeTypes: ["minecraft:emerald_block"] }, true);
-            for (const loc of hits.getBlockLocationIterator()) found.push(`${loc.x},${loc.y},${loc.z}`);
+            const hits = overworld.getBlocks(vol, { includeTypes: MARKERS }, true);
+            for (const loc of hits.getBlockLocationIterator()) {
+              const b = overworld.getBlock(loc);
+              found.push(`${b ? b.typeId.replace("minecraft:", "") : "?"}@${loc.x},${loc.y},${loc.z}`);
+            }
           } catch (e) {
             unloaded++;
           }
           yield;
         }
-      log(`J2 scan ${cx},${cz} r=${r}: ${tiles} tiles, ${unloaded} threw (unloaded), wells=${found.length}` + (found.length ? " at " + found.slice(0, 40).join(" ") : ""));
+      log(`J2 scan ${cx},${cz} r=${r}: ${tiles} tiles, ${unloaded} threw (unloaded), markers=${found.length}` + (found.length ? " " + found.slice(0, 60).join(" ") : ""));
     }
     system.runTimeout(() => system.runJob(scan()), delay);
   });

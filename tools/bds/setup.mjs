@@ -26,6 +26,11 @@
  *   --force          re-download and re-unzip even if a server is installed
  *   --fresh          delete the world first, so the next run starts clean
  *   --no-deploy      skip the build-and-deploy step
+ *   --no-experiments leave the world plain: no Beta APIs, so the GameTest pack
+ *                    cannot load, but a shipped pack is measured as the Realm
+ *                    would run it (the jigsaw probe, docs/design/villages.md §7.1)
+ *   --level-type <t> FLAT (default) or DEFAULT, for a probe that needs terrain
+ *   --world <name>   the world folder and level-name (default qoltest)
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
@@ -42,14 +47,15 @@ const LINKS_API = "https://net-secondary.web.minecraft-services.net/api/v1.0/dow
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-const WORLD_NAME = "qoltest";
-
 const args = process.argv.slice(2);
 let serverDir = process.env.BDS_DIR ?? join(REPO, "dist", "bds", "server");
 let version = process.env.BDS_VERSION ?? "";
 let force = false;
 let fresh = false;
 let deploy = true;
+let experiments = true;
+let levelType = "FLAT";
+let WORLD_NAME = "qoltest";
 
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -58,6 +64,9 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--force") force = true;
   else if (a === "--fresh") fresh = true;
   else if (a === "--no-deploy") deploy = false;
+  else if (a === "--no-experiments") experiments = false;
+  else if (a === "--level-type") levelType = args[++i];
+  else if (a === "--world") WORLD_NAME = args[++i];
   else {
     console.error(`unknown argument: ${a}`);
     process.exit(2);
@@ -157,7 +166,7 @@ const PROPERTIES = [
   "server-port=19132",
   "server-portv6=19133",
   `level-name=${WORLD_NAME}`,
-  "level-type=FLAT",
+  `level-type=${levelType}`,
   "level-seed=1",
   "default-player-permission-level=operator",
   "player-idle-timeout=0",
@@ -209,8 +218,12 @@ if (!existsSync(join(worldDir, "level.dat"))) {
   }
 }
 
-step("turning on the Beta APIs experiment");
-must(process.execPath, [join(HERE, "enable-experiments.mjs"), worldDir]);
+if (experiments) {
+  step("turning on the Beta APIs experiment");
+  must(process.execPath, [join(HERE, "enable-experiments.mjs"), worldDir]);
+} else {
+  step("leaving the world without experiments");
+}
 
 step("listing the packs in the world");
 must(process.execPath, [join(HERE, "enable-pack.cjs"), "--all"], {

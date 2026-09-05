@@ -1,6 +1,6 @@
 {
   "format_version": "1.21.20",
-  "minecraft:jigsaw_structure": {
+  "minecraft:jigsaw": {
     "description": { "identifier": "qolprobe:well" },
     "step": "surface_structures",
     "terrain_adaptation": "none",

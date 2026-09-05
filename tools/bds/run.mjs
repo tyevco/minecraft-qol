@@ -16,7 +16,7 @@
  *
  * Exit code is 1 if any line matched a failure pattern, so this is CI-usable.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -105,10 +105,32 @@ const FAILURE = [
 // Run
 // ---------------------------------------------------------------------------
 
+/**
+ * On a Linux box with IPv6 compiled out of the kernel (some containers), BDS
+ * exits at start: its IPv6 socket() fails and it reports both ports "in use".
+ * tools/bds/no-ipv6.c stands in an IPv4 loopback socket for the IPv6 one;
+ * build it once and preload it. Measured in this repo's cloud sandbox: without
+ * it the server never prints "Server started."; with it, it does in a second.
+ */
+function ipv6Shim() {
+  if (process.platform !== "linux" || existsSync("/proc/net/if_inet6")) return {};
+  const so = join(REPO, "dist", "bds", "no-ipv6.so");
+  if (!existsSync(so)) {
+    const r = spawnSync("cc", ["-shared", "-fPIC", "-O2", "-o", so, join(HERE, "no-ipv6.c"), "-ldl"], { stdio: "inherit" });
+    if (r.status !== 0) {
+      console.error("harness: no IPv6 on this machine and the shim did not build; BDS will refuse to start");
+      return {};
+    }
+  }
+  console.log(`harness: no IPv6 on this machine; preloading ${so}`);
+  return { LD_PRELOAD: so };
+}
+
 const child = spawn(EXE, {
   cwd: SERVER_DIR,
   stdio: ["pipe", "pipe", "pipe"],
   windowsHide: true,
+  env: { ...process.env, ...ipv6Shim() },
 });
 
 const lines = [];

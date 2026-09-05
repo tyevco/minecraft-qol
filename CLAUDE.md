@@ -73,6 +73,15 @@ npm run bds:test      the whole GameTest suite headlessly, one test at a time, j
 npm run bds:run       drive a server by hand: node tools/bds/run.mjs "<console command>"
 ```
 
+A second server for a question the test world cannot answer (it has the Beta
+APIs experiment on): `node tools/bds/setup.mjs --dir dist/bds/probe --no-deploy
+--no-experiments --level-type DEFAULT --world qolprobe`, list the pack in the
+world's `world_behavior_packs.json` by hand, and drive it with `BDS_DIR` set
+to that directory's absolute path. One server at a time: they share the port.
+On a machine with no IPv6 (this repo's cloud sandbox) `run.mjs` builds and
+preloads `tools/bds/no-ipv6.c` on its own; without it BDS exits saying the
+ports are in use.
+
 One test at a time:
 
 ```

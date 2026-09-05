@@ -6,7 +6,7 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
-          "location": "qolprobe:well",
+          "location": "qolprobe/well",
           "projection": "rigid"
         },
         "weight": 1

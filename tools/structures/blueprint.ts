@@ -15,6 +15,17 @@ import { byte, compound, encodeRoot, int, list, string, type Tag } from "./nbt";
 
 export type States = Record<string, string | number | boolean>;
 
+/**
+ * The block version a palette entry is stamped with: what the 1.26.45.1
+ * server itself writes when it saves a structure (`structure save`, read
+ * back out of the world database), packed 1.21.60.33. A custom block stamped
+ * with an older version is dropped on load (the loader tries to upgrade it
+ * and cannot), and so is one stamped with the server's own 1.26.45.1 (newer
+ * than this constant); vanilla blocks survive either way. Measured in
+ * docs/villages-jigsaw-results.md.
+ */
+export const BLOCK_VERSION = 18168865;
+
 export type Facing = "north" | "south" | "east" | "west";
 
 /**
@@ -517,8 +528,9 @@ export class Blueprint {
                 palette.map((p) =>
                   compound({
                     name: string(p.name),
-                    states: compound(Object.fromEntries(Object.entries(p.states).map(([k, v]) => [k, stateTag(v)]))),
-                    version: int(18163713),
+                    // Sorted, as the game writes them.
+                    states: compound(Object.fromEntries(Object.entries(p.states).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => [k, stateTag(v)]))),
+                    version: int(BLOCK_VERSION),
                   }),
                 ),
               ),
@@ -549,9 +561,14 @@ export class Blueprint {
 /** A colour for a block name, for the preview only. Vanilla-ish, not exact. */
 export function previewColor(name: string): number {
   const n = name.replace("minecraft:", "");
+  if (n.includes(":")) {
+    for (const [re, c] of [[/villages:post/, 0x8b5a2b] as const]) if (re.test(n)) return c;
+    return 0xaa88cc;
+  }
   const rules: [RegExp, number][] = [
     [/water/, 0x3f76e4],
     [/^bed$/, 0xb02e26],
+    [/villages:post/, 0x8b5a2b],
     [/ladder/, 0xb08a56],
     [/door/, 0xa8814f],
     [/campfire/, 0xe07a2a],

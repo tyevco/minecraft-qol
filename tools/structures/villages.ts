@@ -90,6 +90,13 @@ function marker(p: People, facing: Facing, name: string, target: string, pool: s
  * of its south side. `name` is the marker's name: a house answers a street's
  * house socket; a watch answers a street socket and so ends the street.
  */
+/** Every job post in a piece gets the people's index, so its person is one of them. */
+function stampPeople(p: People, bp: Blueprint): Blueprint {
+  const people = PEOPLES.indexOf(p);
+  for (const b of bp.blocks()) if (b.name === "minecraft:villages:post" || b.name === "villages:post") bp.set(b.x, b.y, b.z, "villages:post", { ...b.states, "villages:people": people });
+  return bp;
+}
+
 function withDoorstep(p: People, b: Blueprint, name = HOUSE_MARK): Blueprint {
   const door = b.blocks().find((x) => /door$/.test(x.name) && !x.states.upper_block_bit);
   let dx = Math.floor(b.sx / 2), dz = b.sz - 1;
@@ -106,7 +113,7 @@ function withDoorstep(p: People, b: Blueprint, name = HOUSE_MARK): Blueprint {
   const out = new Blueprint(b.key, b.title, size, b.people, b.notes);
   out.paste(b, ox, 0, oz);
   out.jigsaw(sx + ox, 0, sz + oz, marker(p, facing, name, name, "minecraft:empty"));
-  return out;
+  return stampPeople(p, out);
 }
 
 function lamp(p: People, bp: Blueprint, x: number, y: number, z: number): void {
@@ -147,7 +154,7 @@ export function villageSet(p: People): VillageSet {
   streetSocket(square, side - 1, mid, "east");
   streetSocket(square, 0, mid, "west");
   streetSocket(square, mid, side - 1, "south");
-  pieces.set("square", square);
+  pieces.set("square", stampPeople(p, square));
 
   // Streets run north-south, 5 wide; a socket at each open end, house
   // sockets on the sides. A stilted street is a walkway with rails.

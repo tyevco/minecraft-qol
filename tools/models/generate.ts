@@ -556,6 +556,8 @@ write("packages/graves/resource_pack/models/entity/gravestone.geo.json", {
 // ===========================================================================
 
 const CONCEPT_MODELS = "concepts/entities/models";
+// Shipped: the four peoples live in packages/villages now.
+const VILLAGES_MODELS = "packages/villages/resource_pack/models/entity";
 
 // ---------------------------------------------------------------------------
 // Decoy dummy - a scarecrow in the `player` family. A stake, a burlap sack
@@ -1230,7 +1232,7 @@ function biped(spec: BipedSpec): void {
             { origin: [-hw / 2 - 1, top - 0.5, -hd / 2 - 1], size: [hw + 2, 1, hd + 2], faces: { all: "pack" } },
             { origin: [-hw / 2 + 1, top + 0.5, -hd / 2 + 1], size: [hw - 2, 3, hd - 2], faces: { all: "pack" } },
           ];
-  write(`${CONCEPT_MODELS}/${spec.file}.geo.json`, {
+  write(`${VILLAGES_MODELS}/${spec.file}.geo.json`, {
     identifier: spec.identifier,
     atlas: A.BIPED,
     visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
@@ -1275,8 +1277,32 @@ function biped(spec: BipedSpec): void {
   });
 }
 
-biped({ file: "stonefolk", identifier: "geometry.concept_stonefolk", head: [8, 7, 8], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 8, 4], beard: true, hat: "cap" });
+biped({ file: "stonefolk", identifier: "geometry.villages_stonefolk", head: [8, 7, 8], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 8, 4], beard: true, hat: "cap" });
 // Tall and lean, not a stick: a player-width body on legs a block long.
-biped({ file: "reedfolk", identifier: "geometry.concept_reedfolk", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], hat: "reed" });
-biped({ file: "tinker", identifier: "geometry.concept_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
-biped({ file: "tallfolk", identifier: "geometry.concept_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });
+biped({ file: "reedfolk", identifier: "geometry.villages_reedfolk", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], hat: "reed" });
+biped({ file: "tinker", identifier: "geometry.villages_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
+biped({ file: "tallfolk", identifier: "geometry.villages_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });
+
+// ---------------------------------------------------------------------------
+// Villages job post - the block a person is anchored to. A wooden post with
+// a plaque, centred on x/z, standing on y = 0 (docs/design/villages.md §4).
+// ---------------------------------------------------------------------------
+
+type PB = keyof typeof A.POST.tiles;
+
+write("packages/villages/resource_pack/models/blocks/post.geo.json", {
+  identifier: "geometry.villages_post",
+  atlas: A.POST,
+  visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "post",
+      pivot: [0, 0, 0],
+      cubes: [
+        { origin: [-2, 0, -2], size: [4, 12, 4], faces: { all: "post" } } as Cube<PB>,
+        { origin: [-6, 7, -3], size: [12, 5, 1], faces: { all: "plaque" } } as Cube<PB>,
+        { origin: [-6, 7, 2], size: [12, 5, 1], faces: { all: "plaque" } } as Cube<PB>,
+      ],
+    },
+  ],
+});

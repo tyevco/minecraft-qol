@@ -1,0 +1,23 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Villages Resources",
+    "description": "Models, textures, animations and names for the four peoples and their job posts. Enabled automatically with the Villages behavior pack.",
+    "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Villages resources",
+      "type": "resources",
+      "uuid": "5f1c2a8e-7d3b-4c4e-9a21-3e6f8b0d1c72",
+      "version": [0, 1, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Sweetpotato Games"],
+    "url": "https://sweetpotato.games",
+    "product_type": "addon"
+  }
+}

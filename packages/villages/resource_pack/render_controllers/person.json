@@ -1,0 +1,63 @@
+{
+  "format_version": "1.10.0",
+  "render_controllers": {
+    "controller.render.villages_person": {
+      "arrays": {
+        "geometries": {
+          "Array.people": [
+            "Geometry.stonefolk",
+            "Geometry.reedfolk",
+            "Geometry.tinker",
+            "Geometry.tallfolk"
+          ]
+        },
+        "textures": {
+          "Array.look": [
+            "Texture.stonefolk_guard",
+            "Texture.stonefolk_worker",
+            "Texture.stonefolk_trader",
+            "Texture.stonefolk_builder",
+            "Texture.reedfolk_guard",
+            "Texture.reedfolk_worker",
+            "Texture.reedfolk_trader",
+            "Texture.reedfolk_builder",
+            "Texture.tinker_guard",
+            "Texture.tinker_worker",
+            "Texture.tinker_trader",
+            "Texture.tinker_builder",
+            "Texture.tallfolk_guard",
+            "Texture.tallfolk_worker",
+            "Texture.tallfolk_trader",
+            "Texture.tallfolk_builder"
+          ]
+        }
+      },
+      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 3)]",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Array.look[math.clamp(q.property('villages:people'), 0, 3) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
+      ],
+      "part_visibility": [
+        {
+          "*": true
+        },
+        {
+          "helmet": "q.property('villages:job') == 0"
+        },
+        {
+          "hat": "q.property('villages:job') == 1"
+        },
+        {
+          "pack": "q.property('villages:job') >= 2"
+        },
+        {
+          "tool": "q.property('villages:job') == 3"
+        }
+      ]
+    }
+  }
+}

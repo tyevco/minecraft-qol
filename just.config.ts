@@ -88,6 +88,12 @@ const PACKS: Pack[] = [
     external: ["@minecraft/server"],
     hasResourcePack: true,
   },
+  {
+    name: "villages",
+    dir: "packages/villages",
+    external: ["@minecraft/server"],
+    hasResourcePack: true,
+  },
   // In-game tests. Beta-only module, throwaway world, never shipped.
   {
     name: "qol_gametest",

@@ -187,6 +187,34 @@ budget because a post's first cycle is due at once:
   That is the design (every worker eats a food item a cycle), so the test
   supplies bread and pins that it is the bread that goes.
 
+- **`villages_vein_in_the_open_is_ignored`**: the same vein under the
+  open sky: the survey names it ("out in the open; a miner works a vein in
+  a cave or a mine, under a roof"), no coal after 400 ticks, no bread
+  taken.
+
+### The walk (design §7 item 6)
+
+The stable API has no "go here" for an entity, so the walk is vanilla
+pathing pointed at a beacon: a `villages:waypoint` entity spawned at the
+spot. Three ways of making a person go to it, measured in one arena on BDS
+1.26.45 (a person at one corner, the waypoint eight blocks off, the
+person's distance to it logged every 20 ticks for 300):
+
+| Way | What happened |
+| --- | --- |
+| `nearest_attackable_target` (family filter, `must_see` false) + `move_towards_target` | Never left random strolling. Closest approach 1.0 at tick 200, by chance, then away again. Also true with the waypoint's `inanimate` family removed and `within_radius` 64. |
+| `hurt_by_target` + `move_towards_target`, the target set by `person.applyDamage(1, { damagingEntity: waypoint })` (returns true) | Walked to it in 100 ticks (1.4 blocks), then wandered off (10.9 at tick 200). |
+| `follow_mob` (`stop_distance` 1, `search_range` 32) | Walked to it in 100 ticks and **stayed**: 0.3 blocks from tick 100 to 300. |
+| `follow_mob` with `"filters": { is_family other villages_waypoint }`, a decoy person two blocks from the walker | Loaded without a content-log error, walked past the decoy (closest 1.5) to the waypoint (0.3) and stayed. |
+
+So the walking group is `follow_mob` with the family filter. The
+behaviour follows the nearest match, which is why only one walk runs at a
+time within 64 blocks. With the walk in, all seven villages GameTests pass,
+the lumberjack's and the miner's among them, whose work spots are outside
+arrival radius of the post (the farmer's and the fisher's are not, so they
+passed with a broken walk too - a spot within two blocks counts as
+arrived).
+
 What was measured on the way:
 
 - **`ItemComponentTypes.Food` is not how to recognise food.** On 1.26.45

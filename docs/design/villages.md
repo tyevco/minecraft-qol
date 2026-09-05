@@ -259,9 +259,11 @@ measured in `docs/villages-jigsaw-results.md`): the survey and its
 thresholds, all four trades as above, the cycle slider and a wages toggle
 on the settings panel, the field's post and chest, the grove and mine
 pieces, the dock's worker fishing into its barrel. Where the built thing
-differs from the table: the walk is a teleport to the work and back (§7
-item 6, the short-teleport candidate; the walking version is still open);
-the produce goes into the chest as it is made rather than when the person
+differs from the table: a vein counts only in a cave or a mine (a roof
+over it and over the miner's standing spot), so a vein set down in the
+open is ignored and named; the walk is real pathing to a waypoint (§7
+item 6) with a thirty-second limit, after which the cycle ends where the
+person stands; the produce goes into the chest as it is made rather than when the person
 walks back, so an interrupted cycle leaves nothing carried; the vein's
 daily yield is four cycles per day-long window of ticks counted on the
 miner's post, not on the vein, so a vein needs no state of its own and a
@@ -349,12 +351,12 @@ found, in buildings they raised. That is the whole loop.
    `minecraft:tameable`, and release by removing the component group.
 5. **Standing across the invite**: that the property survives the person
    being despawned and respawned by its block.
-6. **A person walking to a spot and back** (§5.1): moving `minecraft:home`
-   by re-triggering it is not in the stable typings; the candidates are a
-   `minecraft:behavior.move_to_block` component group added by event, or a
-   short `teleport` for the last stretch. **Built with the teleport**;
-   whether it reads as walking is in the pack README to confirm in game,
-   and the `move_to_block` group is the alternative if it does not.
+6. ~~**A person walking to a spot and back** (§5.1)~~ **Measured and
+   built**: neither candidate. A `villages:waypoint` entity is spawned at
+   the spot and a `minecraft:behavior.follow_mob` group filtered to its
+   family walks the person there and holds it (`villages-jigsaw-results.md`
+   has the two ways that did not work). The route is real, so the players
+   secure it.
 7. ~~**Felling from script**~~ **Measured, yes**: `Block.setType("minecraft:air")`
    on a log drops nothing, and `Container.addItem` on a chest read through
    `BlockInventoryComponent` takes the log; the remainder-when-full path

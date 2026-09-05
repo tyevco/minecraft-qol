@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   FARMER, FISHER, LUMBERJACK, MINER, NONE, MAX_TREE_LOGS, ROOM_NEEDED, RESURVEY_NONE_TICKS, RESURVEY_TICKS,
   VEIN_CYCLES_PER_DAY, VEIN_WINDOW, FISH_PER_CYCLE, COD, SALMON, TREASURES,
-  canWork, catchPlan, chooseTrade, cycleDue, fellOrder, fellPlan, findTrees, fishingSpot, harvestPlan, key, mineYield, minutesToTicks,
-  nearestTree, pickSeed, pickWage, standingSpot, surveyDue, veinAllowance, type LogBlock, type Slot, type Survey, type Vec,
+  ROOF_SPAN, ARRIVE_RADIUS,
+  arrived, canWork, catchPlan, chooseTrade, cycleDue, fellOrder, fellPlan, findTrees, fishingSpot, harvestPlan, key, mineYield, minutesToTicks,
+  nearestTree, pickSeed, pickWage, roofed, standingSpot, surveyDue, veinAllowance, veinEnclosed, type LogBlock, type Slot, type Survey, type Vec,
 } from "../scripts/core/trades";
 import { DEFAULT_POLICY, parsePolicy } from "../scripts/core/settings";
 import { FRESH, SCHEMA, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
@@ -172,6 +173,41 @@ describe("the vein", () => {
     expect(mineYield("coal")).toEqual({ typeId: "minecraft:coal", amount: 6 });
     expect(mineYield("iron").typeId).toBe("minecraft:raw_iron");
     expect(mineYield(undefined)).toEqual({ typeId: "minecraft:cobblestone", amount: 8 });
+  });
+});
+
+describe("a cave or a mine", () => {
+  const world = new Map<string, string>();
+  const put = (x: number, y: number, z: number, t: string) => world.set(key({ x, y, z }), t);
+  const typeAt = (v: Vec) => (v.y > 100 ? undefined : world.get(key(v)) ?? "minecraft:air");
+  it("a roof is anything solid above, within the span; leaves, grass and water are not a roof", () => {
+    expect(roofed({ x: 0, y: 10, z: 0 }, typeAt)).toBe(false);
+    put(0, 40, 0, "minecraft:stone");
+    expect(roofed({ x: 0, y: 10, z: 0 }, typeAt)).toBe(true);
+    expect(roofed({ x: 0, y: 10, z: 0 }, typeAt, 20)).toBe(false);
+    put(0, 40, 0, "minecraft:oak_leaves");
+    expect(roofed({ x: 0, y: 10, z: 0 }, typeAt)).toBe(false);
+    put(0, 11, 0, "minecraft:water");
+    put(0, 12, 0, "minecraft:short_grass");
+    expect(roofed({ x: 0, y: 10, z: 0 }, typeAt)).toBe(false);
+    put(0, 12, 0, "minecraft:cobblestone");
+    expect(roofed({ x: 0, y: 10, z: 0 }, typeAt)).toBe(true);
+    expect(ROOF_SPAN).toBeGreaterThan(20);
+  });
+  it("a vein counts only with a roof over it and over where the miner stands", () => {
+    const vein = { x: 5, y: 10, z: 5 };
+    const post = { x: 9, y: 10, z: 5 }; // the miner stands at 6,10,5
+    expect(veinEnclosed(vein, post, typeAt)).toBe(false);
+    put(5, 13, 5, "minecraft:stone");
+    expect(veinEnclosed(vein, post, typeAt)).toBe(false); // the stand is still open to the sky
+    put(6, 13, 5, "minecraft:stone");
+    expect(veinEnclosed(vein, post, typeAt)).toBe(true);
+  });
+  it("arrival is within the radius horizontally and a couple of blocks vertically", () => {
+    const spot = { x: 10.5, y: 64, z: 10.5 };
+    expect(arrived({ x: 11.2, y: 64, z: 11.9 }, spot)).toBe(true);
+    expect(arrived({ x: 10.5 + ARRIVE_RADIUS + 0.1, y: 64, z: 10.5 }, spot)).toBe(false);
+    expect(arrived({ x: 10.5, y: 67, z: 10.5 }, spot)).toBe(false);
   });
 });
 

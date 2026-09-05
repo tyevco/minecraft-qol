@@ -17,7 +17,9 @@
  * a lane piece, longer, with trees on its verges and no house sockets, puts
  * distance between clusters. A people on a deck (the reedfolk on stilts over
  * water, the wood elves in the canopy) has plank walkways up on posts, and a
- * joint's final block is a post.
+ * joint's final block is a post. The drovers build in the desert: their
+ * verges are sand, cacti stand where the other peoples have trees, and dead
+ * bushes where they have flowers.
  *
  * Marker names are shared: `villages:street` on street ends and square edges,
  * `villages:house` on doorsteps and on the street sides that want a house.
@@ -28,7 +30,7 @@
 import { Blueprint, type Facing, type Jigsaw } from "./blueprint";
 import { BUILDINGS } from "./buildings";
 import { FURFOLK } from "./furfolk";
-import { grove, orchard, scatter, tree } from "./greenery";
+import { DESERT, cactus, grove, orchard, scatter, tree, type Flora } from "./greenery";
 import { canvas, expand, prng, type Expansion, type Pool } from "./jigsaw";
 
 export interface People {
@@ -60,8 +62,10 @@ export interface People {
   deck?: { height: number; post: string; rail: string; floor: string; leaves?: string };
   /** The light on a lamp post; a lantern unless the people has its own. */
   lamp?: string;
-  /** Something other than a tree where a tree would go (a cactus, a giant mushroom, driftwood). */
+  /** What stands where a tree would (the square's corners, a lane's verges), if not a tree. */
   plant?: (bp: Blueprint, x: number, y: number, z: number) => void;
+  /** What the scatter puts on open ground; the meadow's flowers and grass unless said. */
+  flora?: Flora;
   /** Height of a green or empty lot; 8 unless a people's greens build their own platform. */
   lotHeight?: number;
   /**
@@ -277,6 +281,41 @@ export const PEOPLES: People[] = [
     emptyLots: 1, tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" },
     watch: "drow_web_tower", biomes: ["roofed", "pale_garden"], salt: 20260918,
   },
+  // The drovers (settlements.md §2.6): a western town on the sand.
+  {
+    key: "drover", title: "Drover", paving: "smooth_sandstone", verge: "sand", post: "spruce_fence", core: "drover_trading_post",
+    houses: [["drover_cabin", 3], ["drover_corral", 2], ["drover_ranch", 2], ["tinker_stall", 1], ["shared_larder", 1]],
+    greens: [
+      ["paddock", 3, (bp, rand, y) => {
+        // A fenced paddock: hay, water troughs, dead bushes, a gate on the street.
+        bp.walls(0, y, 0, 9, 1, 9, "spruce_fence");
+        bp.gate(4, y, 8, "spruce", "south");
+        bp.fill(2, y, 2, 2, 1, 1, "hay_block").set(2, y + 1, 2, "hay_block");
+        for (const z of [5, 6]) bp.set(7, y, z, "cauldron", { fill_level: 6, cauldron_liquid: "water" });
+        scatter(bp, rand, 1, y, 1, 7, 7, 5, DESERT);
+      }],
+      ["scrub", 2, (bp, rand, y) => {
+        // Open scrub: cacti, a red sandstone boulder, dead bushes.
+        cactus(bp, 2, y, 2, 3);
+        cactus(bp, 6, y, 3, 2);
+        cactus(bp, 3, y, 6, 1);
+        bp.set(6, y, 6, "red_sandstone").set(7, y, 6, "red_sandstone").set(6, y + 1, 6, "red_sandstone");
+        scatter(bp, rand, 0, y, 0, 9, 9, 4, DESERT);
+      }],
+    ],
+    emptyLots: 2, tree: { log: "acacia_log", leaves: "acacia_leaves" },
+    plant: (bp, x, y, z) => cactus(bp, x, y, z, 3),
+    flora: DESERT,
+    watch: "drover_water_tower",
+    squareExtra: (bp, side) => {
+      // A hitching rail with a trough at its end, and the town bell on a post, along the square's south half.
+      const z = side - 4;
+      bp.fill(2, 1, z, 4, 1, 1, "spruce_fence");
+      bp.set(6, 1, z, "cauldron", { fill_level: 6, cauldron_liquid: "water" });
+      bp.set(side - 4, 1, z, "spruce_fence").set(side - 4, 2, z, "bell", { attachment: "standing", direction: 0, toggle_bit: false });
+    },
+    biomes: ["desert"], salt: 20260919,
+  },
   ...FURFOLK,
 ];
 
@@ -434,7 +473,7 @@ export function villageSet(p: People): VillageSet {
   if (!p.deck) {
     plant(lane, 1, 1, 3);
     plant(lane, STREET_W - 2, 1, 9);
-    scatter(lane, rand, 0, 1, 0, STREET_W, 13, 5);
+    scatter(lane, rand, 0, 1, 0, STREET_W, 13, 5, p.flora);
   } else {
     lamp(p, lane, 0, deckOf(p) + 1, 6);
   }
@@ -497,7 +536,7 @@ export function villageSet(p: People): VillageSet {
     pieces.set(key, piece);
     houseElements.push({ piece, weight });
   }
-  const empty = lot("empty_lot", "Empty Lot", "Nothing built here yet.", 7, 7, (bp, y) => { if (!p.deck || p.deck.floor === "grass") scatter(bp, rand, 0, y, 0, 7, 7, 6); });
+  const empty = lot("empty_lot", "Empty Lot", "Nothing built here yet.", 7, 7, (bp, y) => { if (!p.deck || p.deck.floor === "grass") scatter(bp, rand, 0, y, 0, 7, 7, 6, p.flora); });
   pieces.set("empty_lot", empty);
   houseElements.push({ piece: empty, weight: p.emptyLots });
 

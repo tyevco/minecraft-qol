@@ -1,14 +1,15 @@
 # Peoples — Concept Sheet
 
-**Settlers who are not villagers: four peoples, jobs that cost something, and builders that work from blueprints**
+**Settlers who are not villagers: nine peoples, jobs that cost something, and builders that work from blueprints**
 
 Target: `@minecraft/server` 2.9.0 / `@minecraft/server-ui` 2.1.0 · Entity format version 1.26.40 · Draft v0.1
 
-> Brainstorm with models, not a build order. The four peoples have generated
-> rigs, sixteen job atlases and animation sets under `concepts/entities/` so
-> they can be judged in the viewer (`concept · peoples`). Nothing here has
-> been run in game. When a piece is picked up it gets its own design doc, as
-> the hatchling did.
+> Brainstorm with models, not a build order. The peoples have generated rigs,
+> a job atlas each per job and one shared animation set, shipped in
+> `packages/villages` and judged in the viewer (pack `villages`). The
+> peoples and their posts are built (`design/villages.md`); the jobs' work
+> is not, beyond the worker's trades. When a piece is picked up it gets its
+> own design doc, as the hatchling did.
 
 ---
 
@@ -51,6 +52,7 @@ concepted in `design/furfolk.md`.
 | **Wood elves** | tall and lean (body 7×13, legs 13) | pointed ears, a green hood | the canopy; platforms on dark oak trunks |
 | **High elves** | tall (body 8×14, legs 14) | pointed ears, a gold circlet | cherry groves and meadows; quartz halls |
 | **Drow** | tall and lean (body 7×13, legs 13) | pointed ears, white hair, a dark hood | the dark forest; deepslate, webs, amethyst |
+| **Drover** | player-sized and rangy (head 8×8, body 8×12, legs 12) | a braid down the back, a red neckerchief; a wide-brimmed red hat on every job but the guard | the desert; cattle, sheep, leather, hay, the long trail. A cowhand people: the western look without any one film's character |
 
 Skin, hair and eye colour are per people; each people's face is painted for
 its own head window, so a short broad head and a tall narrow one both get

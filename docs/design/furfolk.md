@@ -293,8 +293,9 @@ code is what was judged in the viewer.
   head is (4×7×1, splayed wide), which is the whole joke of a fennec and
   the first thing a kid will see. A short brush tail (3×3×6) with a dark
   tip. As small as the rabbits.
-- **Where:** desert (`desert`, to check); the first people in one, and far
-  from every other village.
+- **Where:** desert (`desert`, to check), which the drovers have taken
+  since; a fennec village and a western town on the same sand, each on its
+  own cells.
 - **Village:** sandstone and terracotta, flat roofs to sit on at dusk,
   awnings for shade, a well in the square. Palette: footing sandstone,
   wall smooth sandstone, corner cut sandstone, roof orange terracotta
@@ -403,9 +404,10 @@ code is what was judged in the viewer.
 - **Likes:** apples, wheat, sweet berries. **Sells at Friend:** apples,
   oak and birch saplings, moss.
 
-Several furfolk share a biome with one of the eight (foxes and the wood
+Several furfolk share a biome with one of the nine (foxes and the wood
 elves in the taiga, cats and the high elves in the cherry grove, rabbits and
-the wood elves in the birch, bears and the drow under the dark forest). Each
+the wood elves in the birch, bears and the drow under the dark forest,
+fennecs and the drovers in the desert). Each
 structure set has its own salt, so two peoples' villages fall on different
 cells of the same biome; a unit test keeps the salts distinct.
 
@@ -438,23 +440,23 @@ change as §2 on four existing specs.
 Additive everywhere, and **append-only** wherever a number is stored: the
 `people` index is in every post's row in the position index, in the block's
 `villages:people` state on every generated village, and in the entity
-property of every person alive. The eight shipped peoples (the four, then
-hobbits, wood elves, high elves and drow) keep 0–7; the furfolk follow from
-8 in whatever order they are built.
+property of every person alive. The nine shipped peoples (the four, then
+hobbits, wood elves, high elves, drow and drovers) keep 0–8; the furfolk
+follow from 9 in whatever order they are built.
 
 | Where | Today | Change |
 | --- | --- | --- |
-| `scripts/core/record.ts` `PEOPLES` | eight names | append; `unpackRecord` already bounds-checks against its length, so a row from a newer pack is dropped by an older one rather than misread |
-| `blocks/post.json` `villages:people` state | `[0, …, 7]` | append values. The block's permutation count is peoples × jobs (72 at eighteen peoples), well within what the engine allows |
-| `entities/person.json` property `villages:people` | `range: [0, 7]` | widen the range; one `villages:people_N` component group and event per people, each with its scale (and the bear's `movement`) |
-| `render_controllers/person.json` | `Array.people` of eight geometries, `Array.look` of thirty-two textures, index `people * 4 + job` | arrays grow; the clamp bounds and the multiplier come from `JOBS.length`, which is what they always meant. Bone visibility unchanged; `tail` and the ears are always on |
-| `entity/person.entity.json` | eight geometries, thirty-two textures | one geometry and four textures per new people (eight with coats) |
+| `scripts/core/record.ts` `PEOPLES` | nine names | append; `unpackRecord` already bounds-checks against its length, so a row from a newer pack is dropped by an older one rather than misread |
+| `blocks/post.json` `villages:people` state | `[0, …, 8]` | append values. The block's permutation count is peoples × jobs (76 at nineteen peoples), well within what the engine allows |
+| `entities/person.json` property `villages:people` | `range: [0, 8]` | widen the range; one `villages:people_N` component group and event per people, each with its scale (and the bear's `movement`) |
+| `render_controllers/person.json` | `Array.people` of nine geometries, `Array.look` of thirty-six textures, index `people * 4 + job` | arrays grow; the clamp bounds and the multiplier come from `JOBS.length`, which is what they always meant. Bone visibility unchanged; `tail` and the ears are always on |
+| `entity/person.entity.json` | nine geometries, thirty-six textures | one geometry and four textures per new people (eight with coats) |
 | `tools/models/generate.ts` | `biped()` | the three optional bones and `fur` faces of §2; one call per people |
 | `tools/textures/generate.ts`, `tiles.ts` | `PEOPLES`, human painters | the fur, muzzle-face and muzzle painters; one `People` row per people carrying coat, muzzle and markings |
 | `tools/animations/generate.ts` | one `bipedSet` reading the stonefolk geometry | the concept `furredSet`s move in, one per people, or fold into `bipedSet` if §7 item 4 allows |
 | `tools/structures/furfolk.ts` | the ten peoples' buildings and villages, as concepts | flip `concept` off a people and its pieces and worldgen move from the probe pack to the villages pack, with real posts |
-| `worldgen/` | eight structures, eight sets, eight pool folders | one each per people, new identifiers, its own salt |
-| `scripts/core/trades.ts`, `engine/trades.ts` | lumberjack, farmer, miner, fisher | the trades of §5, each a survey rule and a cycle |
+| `worldgen/` | nine structures, nine sets, nine pool folders | one each per people, new identifiers, its own salt |
+| `scripts/core/trades.ts`, `engine/trades.ts` | lumberjack, farmer, miner, fisher, rancher | the trades of §5, each a survey rule and a cycle |
 | `texts/en_US.lang` | `Settler` | unchanged unless a per-people name is wanted; the kids' names would go here |
 | `manifest.json` | | version bump; the settings panel gains nothing |
 

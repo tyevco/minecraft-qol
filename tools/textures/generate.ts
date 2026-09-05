@@ -319,11 +319,12 @@ interface People {
   body: [number, number];
   arm: [number, number];
   leg: [number, number];
-  /** What the hat bone wears: straw for the first four, a cloth hood or a gold circlet for the elves. */
-  hat?: "straw" | "hood" | "circlet";
+  /** What the hat bone wears: straw for the first four, a cloth hood or a gold circlet for the elves, red felt for the drovers (and their neckerchief). */
+  hat?: "straw" | "hood" | "circlet" | "felt";
   /** Cloth and trim per job, where a people dresses its own way. */
   cloth?: Partial<Record<string, { cloth: T.Ramp; trim: number }>>;
 }
+const FELT: T.Ramp = { light: 0xd9564a, mid: 0xb0342b, dark: 0x7d221d, deep: 0x4f1512 };
 const ramp = (mid: number): T.Ramp => ({ light: mix(mid, 0xffffff, 0.35), mid, dark: mix(mid, 0x000000, 0.3), deep: mix(mid, 0x000000, 0.55) });
 const dress = (guard: number, worker: number, trader: number, builder: number, trim: number): People["cloth"] => ({
   guard: { cloth: ramp(guard), trim },
@@ -341,6 +342,8 @@ const PEOPLES: People[] = [
   { key: "wood_elf", skin: 0xd8b894, hair: 0x8a4f26, eye: 0x2f7a3a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x2f5a2a, 0x5a7a3a, 0xa0622a, 0x5a4a2a, 0x8fbf4a) },
   { key: "high_elf", skin: 0xf2dcc8, hair: 0xf0e2a8, eye: 0x3a6ab8, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14], hat: "circlet", cloth: dress(0x8fa8c8, 0xe8e6dc, 0x6aa0d8, 0xd8c890, 0xe8c14a) },
   { key: "drow", skin: 0x4a3f6a, hair: 0xf0f0f8, eye: 0xff5a8a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x1e1a2e, 0x4a2f6a, 0x7a2a6a, 0x3a3a4e, 0xc0c0d0) },
+  // The drovers (design §3 and settlements.md §2.6): sun-browned, auburn, the wide red hat.
+  { key: "drover", skin: 0xb97d58, hair: 0xb8562c, eye: 0x3f6b3a, beard: false, head: [8, 8], body: [8, 12], arm: [4, 12], leg: [4, 12], hat: "felt" },
 ];
 interface Job {
   key: string;
@@ -367,7 +370,7 @@ for (const people of PEOPLES) {
     const own = people.cloth?.[job.key];
     const cloth = own?.cloth ?? job.cloth, trim = own?.trim ?? job.trim;
     const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth, trim, trousers: own ? cloth.deep : job.trousers, boot: job.boot, front: job.front };
-    const hat = people.hat === "hood" ? T.clothTile(cloth, 615) : people.hat === "circlet" ? T.circletTile() : T.straw(T.STRAW, 613);
+    const hat = people.hat === "hood" ? T.clothTile(cloth, 615) : people.hat === "circlet" ? T.circletTile() : people.hat === "felt" ? T.clothTile(FELT, 613) : T.straw(T.STRAW, 613);
     write(
       `${VILLAGES_RP}/entity/${people.key}_${job.key}.png`,
       atlas(A.BIPED, {

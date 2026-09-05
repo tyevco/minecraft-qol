@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "Villages Resources",
-    "description": "Models, textures, animations and names for the four peoples and their job posts. Enabled automatically with the Villages behavior pack.",
+    "description": "Models, textures, animations and names for the five peoples and their job posts. Enabled automatically with the Villages behavior pack.",
     "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
     "version": [0, 1, 0],
     "min_engine_version": [1, 26, 40]

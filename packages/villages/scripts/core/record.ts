@@ -15,12 +15,12 @@
  */
 export const SCHEMA = 3;
 
-export const PEOPLES = ["stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow"] as const;
+export const PEOPLES = ["stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow", "drover"] as const;
 export const JOBS = ["guard", "worker", "trader", "builder"] as const;
 /** Index into JOBS of the one job that takes a trade (docs/design/villages.md §5.1). */
 export const WORKER = 1;
 /** What a worker does, read off the blocks round its post. Index into TRADES. */
-export const TRADES = ["none", "lumberjack", "farmer", "miner", "fisher"] as const;
+export const TRADES = ["none", "lumberjack", "farmer", "miner", "fisher", "rancher"] as const;
 
 export interface Position {
   dimId: string;

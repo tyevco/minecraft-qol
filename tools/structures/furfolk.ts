@@ -19,7 +19,7 @@
  */
 import { Blueprint } from "./blueprint";
 import { BUILDINGS, bed, building, cottage, post, table, type Cottage } from "./buildings";
-import { FLOWERS, grove, orchard, scatter, tree } from "./greenery";
+import { DESERT, FLOWERS, cactus, grove, orchard, scatter, tree } from "./greenery";
 import type { People } from "./villages";
 
 // ---------------------------------------------------------------------------
@@ -359,10 +359,6 @@ const cactusGarden = (bp: Blueprint, rand: () => number, y: number): void => {
   for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "deadbush"); }
 };
 
-const cactus = (bp: Blueprint, x: number, y: number, z: number): void => {
-  bp.fill(x, y, z, 1, 3, 1, "cactus", { age: 0 });
-};
-
 // ---------------------------------------------------------------------------
 // Mousefolk: houses under and inside giant mushrooms, on mycelium.
 // ---------------------------------------------------------------------------
@@ -601,7 +597,7 @@ export const FURFOLK: People[] = [
     ...CONCEPT, key: "fennecfolk", title: "Fennecfolk", paving: "smooth_sandstone", verge: "sand", post: "sandstone_wall", core: "fennecfolk_shade_house",
     houses: [["fennecfolk_house", 3]],
     greens: [["cactus_garden", 3, cactusGarden]],
-    tree: { log: "acacia_log", leaves: "acacia_leaves" }, plant: cactus,
+    tree: { log: "acacia_log", leaves: "acacia_leaves" }, plant: cactus, flora: DESERT,
     watch: "fennecfolk_tower",
     squareExtra: (bp, side) => {
       const well = BUILDINGS.find((b) => b.key === "fennecfolk_well")!;
@@ -628,7 +624,7 @@ export const FURFOLK: People[] = [
     ...CONCEPT, key: "otterfolk", title: "Otterfolk", paving: "gravel", verge: "sand", post: "oak_fence", core: "otterfolk_holt",
     houses: [["otterfolk_hut", 3], ["otterfolk_slipway", 2], ["shared_larder", 1]],
     greens: [["shingle", 3, shingle]],
-    tree: { log: "oak_log", leaves: "oak_leaves" }, plant: driftwood,
+    tree: { log: "oak_log", leaves: "oak_leaves" }, plant: driftwood, flora: DESERT,
     biomes: ["beach"], salt: 20260929,
   },
   {

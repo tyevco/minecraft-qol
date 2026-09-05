@@ -1,7 +1,7 @@
 /**
- * Greenery shared by the village pieces: trees, scattered flowers, an
- * orchard, a grove. Pure painters over a Blueprint; villages.ts and
- * furfolk.ts both use them, which is why they are not in either.
+ * Greenery shared by the village pieces: trees, flora scattered on open
+ * ground, a cactus, an orchard, a grove. Pure painters over a Blueprint;
+ * villages.ts and furfolk.ts both use them, which is why they are in neither.
  */
 import type { Blueprint } from "./blueprint";
 
@@ -31,6 +31,23 @@ export function tree(bp: Blueprint, x: number, y: number, z: number, log: string
 
 export const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
 
+/** What grows on a people's open ground: the block it grows on, the rare pick and the common one. */
+export interface Flora {
+  ground: string;
+  rare: string[];
+  common: string;
+}
+export const MEADOW: Flora = { ground: "minecraft:grass", rare: FLOWERS, common: "short_grass" };
+export const DESERT: Flora = { ground: "minecraft:sand", rare: ["deadbush"], common: "deadbush" };
+
+/** A cactus: a column on sand. Cactus breaks when anything stands beside it, and the scatter keeps clear of it. */
+export function cactus(bp: Blueprint, x: number, y: number, z: number, height = 3): void {
+  bp.fill(x, y, z, 1, height, 1, "cactus");
+}
+
+export const besideCactus = (bp: Blueprint, x: number, y: number, z: number): boolean =>
+  ([[x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]] as const).some(([i, k]) => i >= 0 && k >= 0 && i < bp.sx && k < bp.sz && bp.at(i, y, k) === "minecraft:cactus");
+
 /** An orchard: four small oaks and berry bushes. Tallfolk and hobbits both keep one. */
 export function orchard(bp: Blueprint, rand: () => number, y: number): void {
   for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, "oak_log", "oak_leaves", 3);
@@ -53,14 +70,14 @@ export function grove(log: string, leaves: string): (bp: Blueprint, rand: () => 
   };
 }
 
-/** Flowers and grass tufts scattered over a grass floor at y, about one cell in `every`. */
-export function scatter(bp: Blueprint, rand: () => number, x: number, y: number, z: number, w: number, d: number, every = 4): void {
+/** The flora scattered over its ground at y, about one cell in `every`: flowers and grass tufts on a meadow. */
+export function scatter(bp: Blueprint, rand: () => number, x: number, y: number, z: number, w: number, d: number, every = 4, flora: Flora = MEADOW): void {
   for (let i = x; i < x + w; i++)
     for (let k = z; k < z + d; k++) {
-      if (bp.at(i, y, k) !== undefined || bp.at(i, y - 1, k) !== "minecraft:grass") continue;
+      if (bp.at(i, y, k) !== undefined || bp.at(i, y - 1, k) !== flora.ground || besideCactus(bp, i, y, k)) continue;
       const r = rand();
-      if (r < 1 / every / 2) bp.set(i, y, k, FLOWERS[Math.floor(rand() * FLOWERS.length)]!);
-      else if (r < 1 / every) bp.set(i, y, k, "short_grass");
+      if (r < 1 / every / 2) bp.set(i, y, k, flora.rare[Math.floor(rand() * flora.rare.length)]!);
+      else if (r < 1 / every) bp.set(i, y, k, flora.common);
     }
 }
 

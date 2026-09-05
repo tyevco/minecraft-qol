@@ -2,7 +2,9 @@
  * A worker's trade, carried out: the survey of the blocks round the post,
  * and the work cycles - a lumberjack felling the nearest tree into the
  * nearest chest, a farmer harvesting and replanting, a miner at a vein, a
- * fisher at the water's edge. Every decision is in core/trades.ts; this
+ * fisher at the water's edge, a rancher shearing its pen's sheep (the
+ * sheep's own `minecraft:on_sheared` event, which swaps its component
+ * groups exactly as shears do, before its wool is delivered). Every decision is in core/trades.ts; this
  * file reads blocks and makes the changes.
  *
  * A cycle is a walk to the work, the work, and a walk home (engine/walk.ts:
@@ -20,6 +22,7 @@
 import {
   BlockComponentTypes,
   BlockVolume,
+  EntityComponentTypes,
   ItemStack,
   system,
   world,
@@ -96,6 +99,22 @@ function enclosedVeins(dim: Dimension, record: PostRecord, say: boolean): { pos:
   return out;
 }
 
+/** The sheep within `range` of the post, as the core sees them. */
+function flockOf(dim: Dimension, record: PostRecord, range: number): core.Sheep[] {
+  try {
+    return dim.getEntities({ type: "minecraft:sheep", location: { x: record.x + 0.5, y: record.y, z: record.z + 0.5 }, maxDistance: range }).map((e) => ({
+      id: e.id,
+      pos: blockOf(e.location),
+      color: e.getComponent(EntityComponentTypes.Color)?.value ?? 0,
+      sheared: e.getComponent(EntityComponentTypes.IsSheared) !== undefined,
+      baby: e.getComponent(EntityComponentTypes.IsBaby) !== undefined,
+    }));
+  } catch (e) {
+    log(`sheep scan failed: ${e}`);
+    return [];
+  }
+}
+
 function survey(dim: Dimension, record: PostRecord): core.Survey {
   const wide = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_ABOVE);
   const level = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
@@ -105,11 +124,12 @@ function survey(dim: Dimension, record: PostRecord): core.Survey {
     leaves: blocksOf(dim, wide, core.LEAF_TYPES).length,
     veins: enclosedVeins(dim, record, true).length,
     water: blocksOf(dim, level, core.WATER_TYPES).length,
+    sheep: flockOf(dim, record, core.SURVEY_RANGE).filter((s) => !s.baby).length,
   };
 }
 
 const describeSurvey = (s: core.Survey): string =>
-  `farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, veins ${s.veins}, water ${s.water}`;
+  `farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, veins ${s.veins}, water ${s.water}, sheep ${s.sheep}`;
 
 interface Chest {
   block: Block;
@@ -341,12 +361,45 @@ function fishJob(dim: Dimension, record: PostRecord, person: Entity, chest: Ches
   };
 }
 
+/**
+ * The rancher: stands by the nearest woolly sheep and shears the pen one
+ * sheep at a time. The sheep is marked shorn by its own event first (the
+ * game then regrows the wool when it eats grass, as after a player's
+ * shears), and its wool goes to the chest in the same step.
+ */
+function ranchJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const plan = core.shearPlan(flockOf(dim, record, core.RANCH_RANGE), record);
+  const first = plan[0];
+  if (!first) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(first.pos, record)),
+    work(done) {
+      const steps = plan.map((s) => () => {
+        if (!person.isValid) return false;
+        const sheep = dim.getEntities({ type: "minecraft:sheep", location: { x: s.pos.x + 0.5, y: s.pos.y, z: s.pos.z + 0.5 }, maxDistance: core.RANCH_RANGE }).find((e) => e.id === s.id);
+        if (!sheep || !sheep.isValid || sheep.getComponent(EntityComponentTypes.IsSheared) || sheep.getComponent(EntityComponentTypes.IsBaby)) return true;
+        const color = sheep.getComponent(EntityComponentTypes.Color)?.value ?? s.color;
+        try {
+          sheep.triggerEvent("minecraft:on_sheared");
+        } catch (e) {
+          log(`could not shear a sheep at ${s.pos.x},${s.pos.y},${s.pos.z}: ${e}`);
+          return true;
+        }
+        deliver(chest, new ItemStack(core.woolOf(color), core.shearYield(Math.random)), dim, s.pos);
+        return true;
+      });
+      pace(core.TICKS_PER_SHEEP, steps, () => done(person.isValid));
+    },
+  };
+}
+
 function jobFor(trade: number, dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
   switch (trade) {
     case core.LUMBERJACK: return fellJob(dim, record, person, chest);
     case core.FARMER: return farmJob(dim, record, person, chest);
     case core.MINER: return mineJob(dim, record, person, chest);
     case core.FISHER: return fishJob(dim, record, person, chest);
+    case core.RANCHER: return ranchJob(dim, record, person, chest);
     default: return undefined;
   }
 }

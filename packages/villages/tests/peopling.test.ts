@@ -28,7 +28,7 @@ describe("record", () => {
     expect(unpackRecord(packRecord(post))).toEqual(post);
   });
   it("drops a row with an unknown people or job rather than guess", () => {
-    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, 4, 0, "", 0])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, 5, 0, "", 0])).toBeUndefined();
     expect(unpackRecord(["minecraft:overworld", 0, 0, 0, 0, 9, "", 0])).toBeUndefined();
     expect(unpackRecord(["", 0, 0, 0, 0, 0, "", 0])).toBeUndefined();
   });

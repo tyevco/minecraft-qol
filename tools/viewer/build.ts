@@ -50,8 +50,9 @@ const PEOPLES: [id: string, name: string][] = [
   ["reedfolk", "Reedfolk"],
   ["tinker", "Tinker"],
   ["tallfolk", "Tallfolk"],
+  ["drover", "Drover"],
 ];
-const GREENS: Record<string, string[]> = { stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"] };
+const GREENS: Record<string, string[]> = { stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"], drover: ["paddock", "scrub"] };
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
   ...(GREENS[p] ?? []).map((g): [string, string, string] => [`${p}_${g}`, `${name} ${g[0]!.toUpperCase()}${g.slice(1).replace("_", " ")}`, p]),
   [`${p}_square`, `${name} Square`, p],
@@ -83,6 +84,10 @@ const BUILDINGS: [id: string, name: string, people: string][] = [
   ["tallfolk_barn", "Barn", "tallfolk"],
   ["tallfolk_well", "Well", "tallfolk"],
   ["tallfolk_gatehouse", "Gatehouse", "tallfolk"],
+  ["drover_trading_post", "Trading Post", "drover"],
+  ["drover_cabin", "Adobe Cabin", "drover"],
+  ["drover_corral", "Corral", "drover"],
+  ["drover_water_tower", "Water Tower", "drover"],
   ["shared_larder", "Larder", "shared"],
   ["shared_inn", "Inn", "shared"],
   ["shared_bridge", "Bridge Span", "shared"],
@@ -333,6 +338,25 @@ const MODELS: Model[] = [
     },
     defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"],
     notes: "A head taller than a player; farmers and shepherds. Jobs are texture variants; the helmet, hat, pack and tool bones go with a job (guard: helmet; worker: hat; trader: pack; builder: tool and pack). Toggle them here.",
+  },
+  {
+    id: "villages_drover",
+    name: "Drover",
+    pack: "villages",
+    kind: "entity",
+    geometry: "packages/villages/resource_pack/models/entity/drover.geo.json",
+    textures: {
+      guard: "packages/villages/resource_pack/textures/entity/drover_guard.png",
+      worker: "packages/villages/resource_pack/textures/entity/drover_worker.png",
+      trader: "packages/villages/resource_pack/textures/entity/drover_trader.png",
+      builder: "packages/villages/resource_pack/textures/entity/drover_builder.png",
+    },
+    animations: {
+      file: "packages/villages/resource_pack/animations/person.animation.json",
+      controller: "packages/villages/resource_pack/animation_controllers/person.animation_controllers.json",
+    },
+    defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"],
+    notes: "Player-sized and rangy, a braid and a red neckerchief; cattle people of the desert. Jobs are texture variants; the helmet, hat (a wide brim), pack and tool bones go with a job (guard: helmet; worker: hat; trader: pack; builder: tool and pack). Toggle them here.",
   },
   {
     id: "concept_messenger",

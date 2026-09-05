@@ -22,13 +22,18 @@
         "tallfolk_guard": "textures/entity/tallfolk_guard",
         "tallfolk_worker": "textures/entity/tallfolk_worker",
         "tallfolk_trader": "textures/entity/tallfolk_trader",
-        "tallfolk_builder": "textures/entity/tallfolk_builder"
+        "tallfolk_builder": "textures/entity/tallfolk_builder",
+        "drover_guard": "textures/entity/drover_guard",
+        "drover_worker": "textures/entity/drover_worker",
+        "drover_trader": "textures/entity/drover_trader",
+        "drover_builder": "textures/entity/drover_builder"
       },
       "geometry": {
         "stonefolk": "geometry.villages_stonefolk",
         "reedfolk": "geometry.villages_reedfolk",
         "tinker": "geometry.villages_tinker",
-        "tallfolk": "geometry.villages_tallfolk"
+        "tallfolk": "geometry.villages_tallfolk",
+        "drover": "geometry.villages_drover"
       },
       "animations": {
         "look_at_target": "animation.common.look_at_target",

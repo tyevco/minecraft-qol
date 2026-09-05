@@ -42,6 +42,22 @@ registerAsync("qol", "villages_post_spawns_person", async (test) => {
   });
 }).maxTicks(400).structureName("qol:arena");
 
+// The fifth people: pins that the person's property range, the block's state
+// list and the people_4 event all reach index 4, since each is a separate
+// hand-written list and a short one spawns a stonefolk in a drover's town.
+registerAsync("qol", "villages_post_spawns_drover", async (test) => {
+  placePost(test, 4, 0);
+  test.succeedWhen(() => {
+    const found = people(test);
+    test.assert(found.length === 1, `expected exactly 1 person at the post, found ${found.length}`);
+    const p = found[0]!;
+    const peopleProp = p.getProperty("villages:people");
+    const jobProp = p.getProperty("villages:job");
+    test.assert(peopleProp === 4, `expected people 4 (drover), got ${String(peopleProp)}`);
+    test.assert(jobProp === 0, `expected job 0 (guard), got ${String(jobProp)}`);
+  });
+}).maxTicks(400).structureName("qol:arena");
+
 registerAsync("qol", "villages_post_break_removes_person", async (test) => {
   placePost(test, 0, 0);
   for (let t = 0; t < 300 && people(test).length === 0; t += 5) await test.idle(5);

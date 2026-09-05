@@ -6,7 +6,7 @@
       "is_spawnable": false,
       "is_summonable": true,
       "properties": {
-        "villages:people": { "type": "int", "range": [0, 3], "default": 0, "client_sync": true },
+        "villages:people": { "type": "int", "range": [0, 4], "default": 0, "client_sync": true },
         "villages:job": { "type": "int", "range": [0, 3], "default": 1, "client_sync": true },
         "villages:working": { "type": "bool", "default": false, "client_sync": true }
       }
@@ -16,6 +16,7 @@
       "villages:people_1": { "minecraft:scale": { "value": 1.1 } },
       "villages:people_2": { "minecraft:scale": { "value": 0.75 } },
       "villages:people_3": { "minecraft:scale": { "value": 1.15 } },
+      "villages:people_4": { "minecraft:scale": { "value": 1.0 } },
       "villages:guard": {
         "minecraft:attack": { "damage": 4 },
         "minecraft:behavior.melee_box_attack": { "priority": 1, "track_target": true },
@@ -55,6 +56,7 @@
       "villages:people_1": { "set_property": { "villages:people": 1 }, "add": { "component_groups": ["villages:people_1"] } },
       "villages:people_2": { "set_property": { "villages:people": 2 }, "add": { "component_groups": ["villages:people_2"] } },
       "villages:people_3": { "set_property": { "villages:people": 3 }, "add": { "component_groups": ["villages:people_3"] } },
+      "villages:people_4": { "set_property": { "villages:people": 4 }, "add": { "component_groups": ["villages:people_4"] } },
       "villages:job_0": { "set_property": { "villages:job": 0 }, "add": { "component_groups": ["villages:guard"] } },
       "villages:job_1": { "set_property": { "villages:job": 1 }, "remove": { "component_groups": ["villages:guard"] } },
       "villages:job_2": { "set_property": { "villages:job": 2 }, "remove": { "component_groups": ["villages:guard"] } },

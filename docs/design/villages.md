@@ -94,36 +94,49 @@ such as `{ "test": "has_biome_tag", "value": "mangrove_swamp" }` names a tag
 the game has. Spacing starts at 34 chunks with a separation of 8, roughly
 vanilla village density, one structure set per people with its own salt.
 
-### 3.1 New pieces the catalogue needs
+### 3.1 The pieces (built)
 
-The buildings exist; the connective pieces do not. All are small blueprints
-in `buildings.ts` alongside the rest:
+`tools/structures/villages.ts` makes them from the buildings, per people:
 
-- **Streets**: straight (7 long), corner, T, end, per people's paving, each
-  with house sockets on its sides (a jigsaw facing out, target `house`) and
-  street sockets at its ends.
-- **Squares**: the centre's plaza, 15×15, with the core building placed on
-  it and two to four street sockets.
-- **Lamp posts** (fence and lantern), **fields** (farmland rows with wheat
-  and carrots for the tallfolk, a mud patch with sugar cane for the
-  reedfolk), a **terminator** per people.
-- Every existing building gets **one jigsaw at its door**, so the house
-  pool is the catalogue with a marker added, not a second copy.
+- **The square**: paving sized to the core building plus a margin (15 or
+  more), the core at the north facing south, lamps at the south corners,
+  and a street socket in the middle of the east, west and south edges.
+- **Streets**: straight (5 wide, 7 long, a house socket on each side at
+  the middle), corner (with a lamp on the outside) and T-junction, a
+  street socket at each open end. Weighted 5 : 2 : 2.
+- **Terminators**: a lamp post (post and lantern on the joint block) where
+  a street ends, and a doorstep (one block of turf) where no house fits.
+  They are the pools' `fallback`.
+- **Houses**: every building in the people's list gets one jigsaw on its
+  doorstep, the block outside its door, facing out; the tallfolk also get
+  a **field** (fenced farmland with wheat and a water channel, a gate on
+  the street).
 
-### 3.2 Seeing a village before the game does
+Every marker sits in the ground layer and its final block is the paving,
+so a resolved joint is seamless and an open one is a paving stub. The
+marker names are shared across peoples (`villages:street`,
+`villages:house`); the pools are per people (`villages:<people>/streets`,
+`/houses`, `/street_ends`, `/house_ends`, `/square`).
 
-The generator gets a pure **jigsaw expander** under `tools/structures/`: it
-reads the pools and pieces the same way the game would (pick a socket,
-choose a weighted element, rotate it so its target marker faces the socket,
-place if the box is free, recurse to `max_depth`) and writes the result as
-one preview. The viewer draws it under `concept · villages`, seeded, so the
-four villages can be judged whole and re-rolled. Being pure it is Vitest
-material, and it validates the pools before the game ever runs them: an
-unreachable pool, a piece with no sockets, a house that can never fit.
+### 3.2 Seeing a village before the game does (built)
 
-The expander is an approximation of the game's algorithm, not the game. Its
-job is to make the pools right and the look judgeable; §7.2 places the real
-thing.
+`tools/structures/jigsaw.ts` is a pure **jigsaw expander**: it reads the
+pools and pieces the way the game does (for each open socket, draw from its
+pool by weight, turn the piece so its matching marker faces the socket, put
+the two markers adjacent, take the first whose box overlaps nothing placed,
+fall back to the pool's fallback, recurse to `max_depth`) and draws the
+result as one blueprint. `npm run assets` grows one village per people
+from seed 1 into `concepts/villages/`, and the viewer lists them under
+`concept · villages` beside the pieces (`concept · <people> village
+pieces`). Under Vitest (`tools/structures/tests/jigsaw.test.ts`): turning
+states, adjacency, no overlap, depth, fallback, determinism.
+
+The expander is an approximation of the game's algorithm, not the game.
+Measured against it: `placeJigsawStructure("villages:tallfolk_village")`
+on the plain-world server grew a 48×44 village, 12 tall, from the same
+files (`docs/villages-jigsaw-results.md`). The pieces and pools live in
+the probe pack for now, under the `villages` namespace; they move to a
+`villages` pack when the peopling script exists to go with them.
 
 ## 4. The people in a found village
 
@@ -225,10 +238,13 @@ found, in buildings they raised. That is the whole loop.
 ## 8. Where this goes next
 
 1. ~~§7.1 and §7.2~~ done: generated, and joined by markers.
-2. Streets, squares, lamp posts, fields and terminators in `buildings.ts`;
-   jigsaw markers on every building; the offline expander and the
-   `concept · villages` view, so the four villages can be judged whole.
-3. Pools, structure sets and processor lists emitted by the generator into
-   a `villages` pack skeleton.
-4. Job blocks and the tick that peoples a village; then the elder, errands
-   and standing; then invite.
+2. ~~Streets, squares, lamp posts, fields and terminators; markers on every
+   building; the expander and the `concept · villages` view.~~ Built; the
+   pools and structures are emitted into the probe pack.
+3. Judge the four villages in the viewer and fix what reads wrong: the
+   reedfolk over water (`ocean_floor` projection, stilted streets), a
+   watch at the street ends, fields for the tallfolk on more sockets,
+   processor lists for weathering.
+4. A `villages` pack of its own once the peopling script exists: job
+   blocks and the tick that peoples a village; then the elder, errands and
+   standing; then invite.

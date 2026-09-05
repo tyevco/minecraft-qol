@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:stonefolk/house_ends"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/stonefolk/stonefolk_doorstep",
+          "projection": "rigid"
+        },
+        "weight": 1
+      }
+    ]
+  }
+}

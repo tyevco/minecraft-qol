@@ -26,7 +26,7 @@ export interface VanillaBlock {
   /** Texture file per face, relative to the viewer root. */
   faces: Record<Face, string>;
   /** How the viewer draws it; a cube unless the name says otherwise. */
-  shape: "cube" | "pane" | "fence" | "wall" | "lantern" | "campfire" | "chest" | "anvil" | "water" | "cutout" | "stairs" | "slab" | "door" | "bed" | "ladder" | "gate";
+  shape: "cube" | "pane" | "fence" | "wall" | "lantern" | "campfire" | "chest" | "anvil" | "water" | "cutout" | "stairs" | "slab" | "door" | "bed" | "ladder" | "gate" | "cross";
   /** Alternate face textures by state (a door's upper half). */
   variants?: Record<string, Record<Face, string>>;
   /** A multiply colour for grey textures (water). */
@@ -120,6 +120,7 @@ function shapeFor(name: string): VanillaBlock["shape"] {
   if (name === "bed") return "bed";
   if (name === "ladder") return "ladder";
   if (/fence_gate$/.test(name)) return "gate";
+  if (/^(wheat|carrots|potatoes|beetroot|reeds|tall_grass|short_grass|fern)$/.test(name)) return "cross";
   if (/_pane$/.test(name)) return "pane";
   if (/_fence$/.test(name)) return "fence";
   if (/_wall$/.test(name)) return "wall";

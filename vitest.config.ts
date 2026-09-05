@@ -1,9 +1,10 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
 
-// Only pure layers are unit-tested: packages/shared/core and each pack's own
-// core/, none of which import @minecraft/*. They run in plain Node at full speed
-// with no game and no mocks.
+// Only pure layers are unit-tested: packages/shared/core, each pack's own
+// core/, and the structure tools (blueprints and the jigsaw expander), none
+// of which import @minecraft/*. They run in plain Node at full speed with no
+// game and no mocks.
 export default defineConfig({
   resolve: {
     alias: {
@@ -12,6 +13,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["packages/**/tests/**/*.test.ts"],
+    include: ["packages/**/tests/**/*.test.ts", "tools/**/tests/**/*.test.ts"],
   },
 });

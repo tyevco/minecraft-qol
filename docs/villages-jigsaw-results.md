@@ -92,6 +92,16 @@ Two things to know from the join:
   horizontal directions, outward from the piece) with `rotation` 0; the
   pieces joined with that alone.
 
+## A whole village (design §3)
+
+With the pieces and pools `tools/structures/villages.ts` emits into the
+probe pack, `placeJigsawStructure("villages:tallfolk_village", …)` in the
+plain world returned a box of **48 × 12 × 44** (x 39–86, y 62–73, z −102 to
+−59): the square, streets, houses and terminators grown by the game from
+the same files the offline expander draws for the viewer. Not yet judged
+block by block against the expander's version; the box says the pools are
+sound and the markers all resolve.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment

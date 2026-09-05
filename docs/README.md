@@ -23,6 +23,12 @@ Three kinds of document live here, and they carry very different authority.
 - [`gametest-structure-results.md`](gametest-structure-results.md) — test-relative
   `(0,0,0)` is the test's own structure block; writing it kills the test. Also
   how to run the suite headlessly on a dedicated server.
+- [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
+  pack's jigsaw structure loads, places and generates in a world with **no
+  experiments** (25 wells in 400 fresh chunks, one per cell). The files live
+  under `worldgen/structures`, `worldgen/template_pools` and
+  `worldgen/structure_sets`, root key `minecraft:jigsaw`, which the schemas
+  do not say. Also: how a plain-world server is set up beside the test one.
 
 **Awaiting measurement:**
 
@@ -73,6 +79,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | Experiments therefore need a world a person toggled in the client (implicit in the first headless setup) | **No.** The `experiments` compound in a world's `level.dat` can be written directly — `tools/bds/enable-experiments.mjs` adds `gametest: 1b` to the world BDS generates itself, and the next boot logs `Experiment(s) active: gtst`. That is what lets CI run the suite on `ubuntu-latest` with no world to copy. |
 | A `SimulatedPlayer` is an ordinary player as far as permissions go (implicit in `guardian_void_catch`, which skips itself for an operator) | **No.** On a dedicated server it is an **operator**, so that test skips itself and reports a pass that measured nothing. `default-player-permission-level=member` does not change it. A green line from a test with a skip branch is not evidence. |
 | `EntityTameableComponent.tame` / `tameToPlayer` to bond a pet from script (entities concept sheet §2) | **Not in 2.9.0.** The tameable component is read-only (`isTamed`, `tamedToPlayerId`, `getTameItems`); `tame()` and `tameToPlayer()` exist only on `EntityTameMountComponent`, for rideables. A pet is bonded the vanilla way: `minecraft:tameable` with `tame_items` and `probability` in the entity JSON, and script reads the owner back. |
+| Jigsaw definitions live in `jigsaw_structures/`, `template_pools/`, `structure_sets/` with root key `minecraft:jigsaw_structure` (villages design v0.1, read off the JSON schemas) | **Wrong folders and key; loads nothing, silently.** The vanilla pack the server ships puts them under `worldgen/structures` (root key `minecraft:jigsaw`), `worldgen/template_pools`, `worldgen/structure_sets`, `worldgen/processors`, and a pool element's `location` is a path under `structures/`. Measured in `villages-jigsaw-results.md`; with the wrong key `place structure` says only `Invalid structure name`. |
 | Block identifiers `minecraft:bricks`, `grass_block`, `cobblestone_stairs`, `oak_door`, `oak_fence_gate` (first drafts of the settlement blueprints) | **Java names.** Bedrock's are `brick_block`, `grass`, `stone_stairs`, `wooden_door` and `fence_gate`; a structure palette naming the Java ones would not load. Every blueprint block is checked against the vanilla `blocks.json`, and every state against Mojang's block metadata, when the viewer builds (`tools/viewer/vanilla.ts`); that is how these were caught. Doors take `minecraft:cardinal_direction`, not `direction`. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 

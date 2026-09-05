@@ -42,10 +42,11 @@
  *   /scriptevent qolprobe:jigsaw-place [x y z]
  *                                    placeJigsawStructure("qolprobe:well") at the given
  *                                    block (default 0 0 0); logs the box or the error (J1)
- *   /scriptevent qolprobe:jigsaw-scan [x z radius]
+ *   /scriptevent qolprobe:jigsaw-scan [x z radius delayTicks]
  *                                    list every emerald block (the probe well's marker)
  *                                    in the loaded chunks around x,z; a wells count is
- *                                    how many the world generator placed (J2)
+ *                                    how many the world generator placed (J2). Waits
+ *                                    delayTicks (200) first: chunks load after boot.
  *   /scriptevent qolprobe:turret-persist  spawn an UNLINKED turret head here (Bulwark T1)
  *   /scriptevent qolprobe:turret-check    look every remembered head up by id
  *   /scriptevent qolprobe:turret-watch    sample the nearest head's rotation and
@@ -866,6 +867,10 @@ world.afterEvents.worldLoad.subscribe(() => {
     } catch (e) {
       log("W1 addWaypoint THREW: " + e + (e && e.reason ? " reason=" + e.reason : ""));
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // T1-T4: the Bulwark turret head, for docs/bulwark-turret-probe.md.
 //
 // Needs the Bulwark pack enabled alongside this one: every question here is
@@ -1125,10 +1130,21 @@ world.afterEvents.worldLoad.subscribe(() => {
       return;
     }
     if (ev.id !== "qolprobe:jigsaw-scan") return;
-    const [cx = 0, cz = 0, r = 128] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+    // A fourth argument delays the scan, in ticks: right after a boot the
+    // ticking areas have not loaded their chunks yet, and an unloaded chunk
+    // reads as empty, not as an error.
+    const [cx = 0, cz = 0, r = 128, delay = 200] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
     const found = [];
     let tiles = 0, unloaded = 0;
     function* scan() {
+      // Self-check: the block under the scan centre, so an empty result can be
+      // told from a scan that cannot see.
+      try {
+        const top = overworld.getTopmostBlock({ x: cx, z: cz });
+        log(`J2 self-check: topmost at ${cx},${cz} is ${top ? top.typeId + " y=" + top.y : "undefined (unloaded?)"}`);
+      } catch (e) {
+        log(`J2 self-check THREW: ${e}`);
+      }
       for (let x0 = cx - r; x0 < cx + r; x0 += 32)
         for (let z0 = cz - r; z0 < cz + r; z0 += 32) {
           tiles++;
@@ -1143,6 +1159,6 @@ world.afterEvents.worldLoad.subscribe(() => {
         }
       log(`J2 scan ${cx},${cz} r=${r}: ${tiles} tiles, ${unloaded} threw (unloaded), wells=${found.length}` + (found.length ? " at " + found.slice(0, 40).join(" ") : ""));
     }
-    system.runJob(scan());
+    system.runTimeout(() => system.runJob(scan()), delay);
   });
 });

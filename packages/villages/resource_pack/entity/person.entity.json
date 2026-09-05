@@ -38,7 +38,11 @@
         "drow_guard": "textures/entity/drow_guard",
         "drow_worker": "textures/entity/drow_worker",
         "drow_trader": "textures/entity/drow_trader",
-        "drow_builder": "textures/entity/drow_builder"
+        "drow_builder": "textures/entity/drow_builder",
+        "drover_guard": "textures/entity/drover_guard",
+        "drover_worker": "textures/entity/drover_worker",
+        "drover_trader": "textures/entity/drover_trader",
+        "drover_builder": "textures/entity/drover_builder"
       },
       "geometry": {
         "stonefolk": "geometry.villages_stonefolk",
@@ -48,7 +52,8 @@
         "hobbit": "geometry.villages_hobbit",
         "wood_elf": "geometry.villages_wood_elf",
         "high_elf": "geometry.villages_high_elf",
-        "drow": "geometry.villages_drow"
+        "drow": "geometry.villages_drow",
+        "drover": "geometry.villages_drover"
       },
       "animations": {
         "look_at_target": "animation.common.look_at_target",

@@ -1186,7 +1186,11 @@ interface BipedSpec {
   ears?: boolean;
   /** Bare feet: the legs' underside is skin, not boot. Hobbits. */
   bare?: boolean;
-  hat: "cap" | "reed" | "straw" | "hood" | "circlet" | "none";
+  /** A plait down the back of the head. Drovers. */
+  braid?: boolean;
+  /** A neckerchief round the collar, in the hat's cloth. Drovers. */
+  kerchief?: boolean;
+  hat: "cap" | "reed" | "straw" | "hood" | "circlet" | "brim" | "none";
 }
 
 function biped(spec: BipedSpec): void {
@@ -1225,6 +1229,14 @@ function biped(spec: BipedSpec): void {
     headCubes.push({ origin: [hw / 2 - 3, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
     headCubes.push({ origin: [-hw / 2, top - 1.5, -hd / 2 - 0.5], size: [hw, 1, 1], faces: { all: "pack" } });
   }
+  if (spec.braid) headCubes.push({ origin: [-1, shoulder - 5, hd / 2 - 0.5], size: [2, hh - 1 + 5, 1.5], faces: { all: "hair" } });
+  const bodyCubes: Cube<BP>[] = [
+    { origin: [-bw / 2, hip, -bd / 2], size: [bw, bh, bd], faces: { north: "shirt", south: "shirtBack", east: "shirtSide", west: "shirtSide", up: "dark", down: "dark" } },
+  ];
+  if (spec.kerchief) {
+    bodyCubes.push({ origin: [-bw / 2 - 0.5, shoulder - 2, -bd / 2 - 0.5], size: [bw + 1, 2, bd + 1], faces: { all: "hat" } });
+    bodyCubes.push({ origin: [-1, shoulder - 4, -bd / 2 - 1], size: [2, 2, 1], faces: { all: "hat" } });
+  }
   const hatCubes: Cube<BP>[] =
     spec.hat === "reed"
       ? [
@@ -1241,6 +1253,13 @@ function biped(spec: BipedSpec): void {
             ]
           : spec.hat === "circlet"
             ? [{ origin: [-hw / 2 - 0.5, top - 2, -hd / 2 - 0.5], size: [hw + 1, 1, hd + 1], faces: { all: "hat" } }]
+      : spec.hat === "brim"
+        ? [
+            // A wide brim, a tall crown, a dark band round its foot.
+            { origin: [-hw / 2 - 3, top - 0.5, -hd / 2 - 3], size: [hw + 6, 1, hd + 6], faces: { all: "hat" } },
+            { origin: [-hw / 2 + 1, top + 0.5, -hd / 2 + 1], size: [hw - 2, 4, hd - 2], faces: { all: "hat" } },
+            { origin: [-hw / 2 + 0.75, top + 0.5, -hd / 2 + 0.75], size: [hw - 1.5, 1, hd - 1.5], faces: { all: "dark" } },
+          ]
       : spec.hat === "straw"
         ? [
             { origin: [-hw / 2 - 3, top - 0.5, -hd / 2 - 3], size: [hw + 6, 1, hd + 6], faces: { all: "hat" } },
@@ -1258,7 +1277,7 @@ function biped(spec: BipedSpec): void {
       {
         name: "body",
         pivot: [0, hip, 0],
-        cubes: [{ origin: [-bw / 2, hip, -bd / 2], size: [bw, bh, bd], faces: { north: "shirt", south: "shirtBack", east: "shirtSide", west: "shirtSide", up: "dark", down: "dark" } }],
+        cubes: bodyCubes,
       },
       { name: "head", parent: "body", pivot: [0, shoulder, 0], locators: { eyes: [0, shoulder + hh * 0.55, -hd / 2] }, cubes: headCubes },
       armSpec("left_arm", bw / 2),
@@ -1306,6 +1325,8 @@ biped({ file: "hobbit", identifier: "geometry.villages_hobbit", head: [8, 7, 8],
 biped({ file: "wood_elf", identifier: "geometry.villages_wood_elf", head: [7, 8, 7], body: [7, 13, 4], arm: [3, 13, 3], leg: [3, 13, 3], ears: true, hat: "hood" });
 biped({ file: "high_elf", identifier: "geometry.villages_high_elf", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], ears: true, hat: "circlet" });
 biped({ file: "drow", identifier: "geometry.villages_drow", head: [7, 8, 7], body: [7, 13, 4], arm: [3, 13, 3], leg: [3, 13, 3], ears: true, hat: "hood" });
+// The drovers: player-sized and rangy, a braid, a neckerchief, a wide-brimmed hat.
+biped({ file: "drover", identifier: "geometry.villages_drover", head: [8, 8, 8], body: [8, 12, 4], arm: [4, 12, 4], leg: [4, 12, 4], braid: true, kerchief: true, hat: "brim" });
 
 // ---------------------------------------------------------------------------
 // Villages job post - the block a person is anchored to. A wooden post with

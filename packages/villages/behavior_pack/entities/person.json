@@ -10,7 +10,7 @@
           "type": "int",
           "range": [
             0,
-            7
+            8
           ],
           "default": 0,
           "client_sync": true
@@ -110,6 +110,11 @@
       "villages:people_7": {
         "minecraft:scale": {
           "value": 1.05
+        }
+      },
+      "villages:people_8": {
+        "minecraft:scale": {
+          "value": 1.0
         }
       }
     },
@@ -310,6 +315,16 @@
         "add": {
           "component_groups": [
             "villages:people_7"
+          ]
+        }
+      },
+      "villages:people_8": {
+        "set_property": {
+          "villages:people": 8
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_8"
           ]
         }
       }

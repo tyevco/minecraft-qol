@@ -57,6 +57,8 @@ const MATERIALS: Record<string, { stairs: string; slab: string }> = {
   prismarine_bricks: { stairs: "prismarine_bricks_stairs", slab: "prismarine_brick_slab" },
   deepslate_bricks: { stairs: "deepslate_brick_stairs", slab: "deepslate_brick_slab" },
   polished_blackstone_bricks: { stairs: "polished_blackstone_brick_stairs", slab: "polished_blackstone_brick_slab" },
+  smooth_sandstone: { stairs: "smooth_sandstone_stairs", slab: "smooth_sandstone_slab" },
+  sandstone: { stairs: "sandstone_stairs", slab: "sandstone_slab" },
 };
 
 export function stairsOf(block: string): string {
@@ -599,6 +601,13 @@ export function previewColor(name: string): number {
     [/ladder/, 0xb08a56],
     [/door/, 0xa8814f],
     [/campfire/, 0xe07a2a],
+    [/cactus/, 0x3d7a2a],
+    [/deadbush/, 0x8a6a3a],
+    [/cauldron/, 0x4a4a4a],
+    [/bell/, 0xd9a441],
+    [/jukebox/, 0x6b4a2a],
+    [/hardened_clay|terracotta/, 0x9e5a3c],
+    [/red_sandstone|red_sand/, 0xb8602e],
     [/scaffolding/, 0xd8c27a],
     [/dried_kelp/, 0x3f5a2e],
     [/glass/, 0xbfe6ff],

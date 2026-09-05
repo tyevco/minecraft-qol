@@ -12,7 +12,8 @@
             "Geometry.hobbit",
             "Geometry.wood_elf",
             "Geometry.high_elf",
-            "Geometry.drow"
+            "Geometry.drow",
+            "Geometry.drover"
           ]
         },
         "textures": {
@@ -48,18 +49,22 @@
             "Texture.drow_guard",
             "Texture.drow_worker",
             "Texture.drow_trader",
-            "Texture.drow_builder"
+            "Texture.drow_builder",
+            "Texture.drover_guard",
+            "Texture.drover_worker",
+            "Texture.drover_trader",
+            "Texture.drover_builder"
           ]
         }
       },
-      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 7)]",
+      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 8)]",
       "materials": [
         {
           "*": "Material.default"
         }
       ],
       "textures": [
-        "Array.look[math.clamp(q.property('villages:people'), 0, 7) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
+        "Array.look[math.clamp(q.property('villages:people'), 0, 8) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
       ],
       "part_visibility": [
         {
@@ -69,7 +74,7 @@
           "helmet": "q.property('villages:job') == 0"
         },
         {
-          "hat": "q.property('villages:job') == 1 || q.property('villages:people') >= 5"
+          "hat": "q.property('villages:job') == 1 || (q.property('villages:people') >= 5 && q.property('villages:people') <= 7) || (q.property('villages:people') == 8 && q.property('villages:job') != 0)"
         },
         {
           "pack": "q.property('villages:job') >= 2"

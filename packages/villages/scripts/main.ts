@@ -1,5 +1,5 @@
 /**
- * Villages - found villages of four peoples, peopled by job posts.
+ * Villages - found villages of five peoples, peopled by job posts.
  *
  * The world generator raises the villages from jigsaw structures (behavior
  * pack `worldgen/`); every building carries a job post block, and the post

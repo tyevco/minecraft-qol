@@ -17,7 +17,9 @@
  * a lane piece, longer, with trees on its verges and no house sockets, puts
  * distance between clusters. A people on a deck (the reedfolk on stilts over
  * water, the wood elves in the canopy) has plank walkways up on posts, and a
- * joint's final block is a post.
+ * joint's final block is a post. The drovers build in the desert: their
+ * verges are sand, cacti stand where the other peoples have trees, and dead
+ * bushes where they have flowers.
  *
  * Marker names are shared: `villages:street` on street ends and square edges,
  * `villages:house` on doorsteps and on the street sides that want a house.
@@ -58,6 +60,10 @@ export interface People {
   deck?: { height: number; post: string; rail: string; floor: string; leaves?: string };
   /** The light on a lamp post; a lantern unless the people has its own. */
   lamp?: string;
+  /** What stands where a tree would (the square's corners, a lane's verges), if not a tree. */
+  plant?: (bp: Blueprint, x: number, y: number, z: number) => void;
+  /** What the scatter puts on open ground; the meadow's flowers and grass unless said. */
+  flora?: Flora;
   /** Something more on the square, given the square and its side. */
   squareExtra?: (bp: Blueprint, side: number) => void;
   /** Vanilla biome tags the village generates in (any of). */
@@ -100,6 +106,23 @@ function tree(bp: Blueprint, x: number, y: number, z: number, log: string, leave
 }
 
 const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
+
+/** What grows on a people's open ground: the block it grows on, the rare pick and the common one. */
+export interface Flora {
+  ground: string;
+  rare: string[];
+  common: string;
+}
+const MEADOW: Flora = { ground: "minecraft:grass", rare: FLOWERS, common: "short_grass" };
+const DESERT: Flora = { ground: "minecraft:sand", rare: ["deadbush"], common: "deadbush" };
+
+/** A cactus: a column on sand. Cactus breaks when anything stands beside it, and the scatter keeps clear of it. */
+function cactus(bp: Blueprint, x: number, y: number, z: number, height = 3): void {
+  bp.fill(x, y, z, 1, height, 1, "cactus");
+}
+
+const besideCactus = (bp: Blueprint, x: number, y: number, z: number): boolean =>
+  ([[x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]] as const).some(([i, k]) => i >= 0 && k >= 0 && i < bp.sx && k < bp.sz && bp.at(i, y, k) === "minecraft:cactus");
 
 /** An orchard: four small oaks and berry bushes. Tallfolk and hobbits both keep one. */
 function orchard(bp: Blueprint, rand: () => number, y: number): void {
@@ -157,14 +180,14 @@ function grove(log: string, leaves: string): (bp: Blueprint, rand: () => number,
   };
 }
 
-/** Flowers and grass tufts scattered over a grass floor at y, about one cell in `every`. */
-function scatter(bp: Blueprint, rand: () => number, x: number, y: number, z: number, w: number, d: number, every = 4): void {
+/** The flora scattered over its ground at y, about one cell in `every`: flowers and grass tufts on a meadow. */
+function scatter(bp: Blueprint, rand: () => number, x: number, y: number, z: number, w: number, d: number, every = 4, flora: Flora = MEADOW): void {
   for (let i = x; i < x + w; i++)
     for (let k = z; k < z + d; k++) {
-      if (bp.at(i, y, k) !== undefined || bp.at(i, y - 1, k) !== "minecraft:grass") continue;
+      if (bp.at(i, y, k) !== undefined || bp.at(i, y - 1, k) !== flora.ground || besideCactus(bp, i, y, k)) continue;
       const r = rand();
-      if (r < 1 / every / 2) bp.set(i, y, k, FLOWERS[Math.floor(rand() * FLOWERS.length)]!);
-      else if (r < 1 / every) bp.set(i, y, k, "short_grass");
+      if (r < 1 / every / 2) bp.set(i, y, k, flora.rare[Math.floor(rand() * flora.rare.length)]!);
+      else if (r < 1 / every) bp.set(i, y, k, flora.common);
     }
 }
 
@@ -322,6 +345,41 @@ export const PEOPLES: People[] = [
     emptyLots: 1, tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" },
     watch: "drow_web_tower", biomes: ["roofed", "pale_garden"], salt: 20260918,
   },
+  // The drovers (settlements.md §2.6): a western town on the sand.
+  {
+    key: "drover", title: "Drover", paving: "smooth_sandstone", verge: "sand", post: "spruce_fence", core: "drover_trading_post",
+    houses: [["drover_cabin", 3], ["drover_corral", 2], ["drover_ranch", 2], ["tinker_stall", 1], ["shared_larder", 1]],
+    greens: [
+      ["paddock", 3, (bp, rand, y) => {
+        // A fenced paddock: hay, water troughs, dead bushes, a gate on the street.
+        bp.walls(0, y, 0, 9, 1, 9, "spruce_fence");
+        bp.gate(4, y, 8, "spruce", "south");
+        bp.fill(2, y, 2, 2, 1, 1, "hay_block").set(2, y + 1, 2, "hay_block");
+        for (const z of [5, 6]) bp.set(7, y, z, "cauldron", { fill_level: 6, cauldron_liquid: "water" });
+        scatter(bp, rand, 1, y, 1, 7, 7, 5, DESERT);
+      }],
+      ["scrub", 2, (bp, rand, y) => {
+        // Open scrub: cacti, a red sandstone boulder, dead bushes.
+        cactus(bp, 2, y, 2, 3);
+        cactus(bp, 6, y, 3, 2);
+        cactus(bp, 3, y, 6, 1);
+        bp.set(6, y, 6, "red_sandstone").set(7, y, 6, "red_sandstone").set(6, y + 1, 6, "red_sandstone");
+        scatter(bp, rand, 0, y, 0, 9, 9, 4, DESERT);
+      }],
+    ],
+    emptyLots: 2, tree: { log: "acacia_log", leaves: "acacia_leaves" },
+    plant: (bp, x, y, z) => cactus(bp, x, y, z, 3),
+    flora: DESERT,
+    watch: "drover_water_tower",
+    squareExtra: (bp, side) => {
+      // A hitching rail with a trough at its end, and the town bell on a post, along the square's south half.
+      const z = side - 4;
+      bp.fill(2, 1, z, 4, 1, 1, "spruce_fence");
+      bp.set(6, 1, z, "cauldron", { fill_level: 6, cauldron_liquid: "water" });
+      bp.set(side - 4, 1, z, "spruce_fence").set(side - 4, 2, z, "bell", { attachment: "standing", direction: 0, toggle_bit: false });
+    },
+    biomes: ["desert"], salt: 20260919,
+  },
 ];
 
 const STREET_MARK = "villages:street";
@@ -419,6 +477,7 @@ export function villageSet(p: People): VillageSet {
     if (!p.deck) bp.set(x === 0 ? 1 : x - 1, 0, z, p.paving);
   };
   const rand = prng(PEOPLES.indexOf(p) + 11);
+  const plant = p.plant ?? ((bp: Blueprint, x: number, y: number, z: number) => tree(bp, x, y, z, p.tree.log, p.tree.leaves, 4));
 
   // The square: paving, the core building at the north facing south, trees
   // in the north corners, lamps at the south corners, a socket in the middle
@@ -431,7 +490,7 @@ export function villageSet(p: People): VillageSet {
   if (!p.deck) {
     for (const cx of [1, side - 4]) {
       square.fill(cx, 0, 1, 3, 1, 3, p.verge);
-      tree(square, cx + 1, 1, 2, p.tree.log, p.tree.leaves, 4);
+      plant(square, cx + 1, 1, 2);
     }
   }
   for (const [x, z] of [[1, side - 2], [side - 2, side - 2]] as const) lamp(p, square, x, g + 1, z);
@@ -471,9 +530,9 @@ export function villageSet(p: People): VillageSet {
   streetSocket(lane, 3, 0, "north");
   streetSocket(lane, 3, 12, "south");
   if (!p.deck) {
-    tree(lane, 1, 1, 3, p.tree.log, p.tree.leaves, 4);
-    tree(lane, STREET_W - 2, 1, 9, p.tree.log, p.tree.leaves, 4);
-    scatter(lane, rand, 0, 1, 0, STREET_W, 13, 5);
+    plant(lane, 1, 1, 3);
+    plant(lane, STREET_W - 2, 1, 9);
+    scatter(lane, rand, 0, 1, 0, STREET_W, 13, 5, p.flora);
   } else {
     lamp(p, lane, 0, deckOf(p) + 1, 6);
   }
@@ -536,7 +595,7 @@ export function villageSet(p: People): VillageSet {
     pieces.set(key, piece);
     houseElements.push({ piece, weight });
   }
-  const empty = lot("empty_lot", "Empty Lot", "Nothing built here yet.", 7, 7, (bp, y) => { if (!p.deck || p.deck.floor === "grass") scatter(bp, rand, 0, y, 0, 7, 7, 6); });
+  const empty = lot("empty_lot", "Empty Lot", "Nothing built here yet.", 7, 7, (bp, y) => { if (!p.deck || p.deck.floor === "grass") scatter(bp, rand, 0, y, 0, 7, 7, 6, p.flora); });
   pieces.set("empty_lot", empty);
   houseElements.push({ piece: empty, weight: p.emptyLots });
 

@@ -69,6 +69,29 @@ the probe well: a stone brick pad with one emerald block, the tallfolk well
 on top), so a generated structure with a real palette and block states loads
 too; that was §7.2's question.
 
+## Jigsaw markers in a generated piece (design §7.2)
+
+Two pieces: a 7×7 stone brick pad with a `minecraft:jigsaw` on its east edge
+(name `qolprobe:out`, target `qolprobe:in`, target pool `qolprobe:well_socket`,
+final block gold), and the well with a jigsaw on its west edge (name
+`qolprobe:in`, final block diamond). A jigsaw structure `qolprobe:pair`
+starts from the pad pool with `max_depth: 2`.
+
+| Encoding of the marker | Result |
+| --- | --- |
+| `.mcstructure`, the jigsaw as a block entity in `block_position_data`: `id "JigsawBlock", name, target, target_pool, final_state, joint, placement_priority, selection_priority` (the field names the server binary carries) | **Joined.** `place structure qolprobe:pair 100 64 100` left the pad's lapis corner at `100,62,100`, its jigsaw replaced by gold at `97,63,106`, the socket's jigsaw replaced by diamond in the adjacent block `97,63,107`, and the well's emerald corner at `99,62,107`. Both final blocks applied; the second piece attached on the facing side, correctly aligned. |
+| Java-format `.nbt` template (gzipped big-endian, Java names, Java jigsaw entity), the form vanilla's own abandoned-camp pieces take | **Loads as an empty box.** `placeJigsawStructure` returned a 2×2×2 bounding box and placed nothing; the console placement left nothing either. A pack's `.nbt` is not read the way vanilla's is, so the generator writes `.mcstructure` only. |
+
+Two things to know from the join:
+
+- **The start piece is rotated at random**, as vanilla village centres are:
+  the pad's east jigsaw ended up on its south side, and the socket followed
+  it round. Anything that must face a fixed way (a village facing a river)
+  is a later problem; the pieces themselves stay consistent.
+- The jigsaw block's own state is `facing_direction` (2–5 for the four
+  horizontal directions, outward from the piece) with `rotation` 0; the
+  pieces joined with that alone.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment
@@ -111,7 +134,7 @@ too; that was §7.2's question.
   `tools/structures/` can write them from the same source as the buildings.
 - `placeJigsawStructure` is the GameTest and probe path: a whole village can
   be raised in the arena and looked at, with `keepJigsaws` for debugging.
-- Still open, in order: jigsaw *blocks* in a generated structure (a
-  multi-piece village needs markers; whether the 1.21.80 metadata sidecar or
-  block-entity NBT is what the loader reads), `beard_thin` on real
-  buildings, and biome filters with the tags in `villages.md` §3.
+- Jigsaw markers work as block entities in the `.mcstructure`, so a
+  multi-piece village is authored with `Blueprint.jigsaw()` and nothing else.
+- Still open, in order: `beard_thin` on real buildings, and biome filters
+  with the tags in `villages.md` §3.

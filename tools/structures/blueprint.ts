@@ -67,6 +67,23 @@ const DIRECTION: Record<Facing, number> = { south: 0, west: 1, north: 2, east: 3
 const FACING_DIRECTION: Record<Facing, number> = { north: 2, south: 3, west: 4, east: 5 };
 const STEP: Record<Facing, [number, number]> = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 
+/**
+ * A jigsaw marker: the block the game's jigsaw generator joins pieces at.
+ * `name` is what another piece's `target` looks for; `pool` is where this
+ * piece looks for the next one; `final` is the block left behind. Faces
+ * outward, as vanilla's do. The data goes in the structure as the block
+ * entity of a `minecraft:jigsaw` block (docs/design/villages.md §2).
+ */
+export interface Jigsaw {
+  facing: Facing;
+  name: string;
+  target: string;
+  pool: string;
+  final: string;
+  joint?: "rollable" | "aligned";
+}
+
+
 /** Blocks a wall or a pane does not join to. */
 const NOT_JOINABLE = /water|lantern|campfire|ladder|torch|door|bed$|_slab$|_stairs$/;
 
@@ -78,6 +95,8 @@ interface PaletteEntry {
 export class Blueprint {
   readonly cells: Int32Array;
   readonly palette: PaletteEntry[] = [];
+  /** Jigsaw markers by cell index. */
+  readonly jigsaws = new Map<number, Jigsaw>();
   private readonly keys = new Map<string, number>();
 
   constructor(
@@ -102,6 +121,10 @@ export class Blueprint {
 
   private index(x: number, y: number, z: number): number {
     return (x * this.sy + y) * this.sz + z;
+  }
+
+  private cellAt(i: number): [number, number, number] {
+    return [Math.floor(i / (this.sy * this.sz)), Math.floor(i / this.sz) % this.sy, i % this.sz];
   }
 
   private paletteIndex(name: string, states: States): number {
@@ -162,6 +185,13 @@ export class Blueprint {
   /** A closed fence gate across a fence line, opening towards `facing`. */
   gate(x: number, y: number, z: number, wood: string, facing: Facing): this {
     return this.set(x, y, z, gateOf(wood), { "minecraft:cardinal_direction": facing, in_wall_bit: false, open_bit: false });
+  }
+
+  /** A jigsaw marker block, facing outward from the piece's edge. */
+  jigsaw(x: number, y: number, z: number, j: Jigsaw): this {
+    this.set(x, y, z, "jigsaw", { facing_direction: FACING_DIRECTION[j.facing], rotation: 0 });
+    this.jigsaws.set(this.index(x, y, z), { joint: "rollable", ...j });
+    return this;
   }
 
   /** A log or other pillar lying along an axis. */
@@ -326,6 +356,10 @@ export class Blueprint {
     }
     const out = new Blueprint(this.key, this.title, [max[0]! - min[0]! + 1, max[1]! - min[1]! + 1, max[2]! - min[2]! + 1], this.people, this.notes);
     for (const b of bs) out.set(b.x - min[0]!, b.y - min[1]!, b.z - min[2]!, b.name, b.states);
+    for (const [i, j] of this.jigsaws) {
+      const b = this.cellAt(i);
+      out.jigsaws.set(out.index(b[0] - min[0]!, b[1] - min[1]!, b[2] - min[2]!), j);
+    }
     return out;
   }
 
@@ -362,6 +396,28 @@ export class Blueprint {
       : [{ name: "minecraft:air", states: {} }];
     const stateTag = (v: string | number | boolean): Tag =>
       typeof v === "string" ? string(v) : typeof v === "boolean" ? byte(v ? 1 : 0) : int(v);
+    // Jigsaw markers as the JigsawBlock block entity, the field names the
+    // server binary carries (target_pool, final_state, joint, priorities).
+    const positionData: Record<string, Tag> = {};
+    for (const [i, j] of this.jigsaws) {
+      const [x, y, z] = this.cellAt(i);
+      positionData[String(i)] = compound({
+        block_entity_data: compound({
+          id: string("JigsawBlock"),
+          name: string(j.name),
+          target: string(j.target),
+          target_pool: string(j.pool),
+          final_state: string(j.final.includes(":") ? j.final : `minecraft:${j.final}`),
+          joint: string(j.joint ?? "rollable"),
+          placement_priority: int(0),
+          selection_priority: int(0),
+          isMovable: byte(1),
+          x: int(x),
+          y: int(y),
+          z: int(z),
+        }),
+      });
+    }
     return encodeRoot(
       compound({
         format_version: int(1),
@@ -380,7 +436,7 @@ export class Blueprint {
                   }),
                 ),
               ),
-              block_position_data: compound({}),
+              block_position_data: compound(positionData),
             }),
           }),
         }),

@@ -57,3 +57,23 @@ mkdirSync(PROBE, { recursive: true });
   writeFileSync(resolve(PROBE, "well.mcstructure"), well.toMcstructure());
   console.log(`packages/probe/structures/qolprobe/well.mcstructure  ${well.size.join("x")}`);
 }
+
+// The marker probe (villages.md §7.2): a pad with a jigsaw on its east edge
+// asking for the well-socket pool, and the well with a jigsaw on its west
+// edge answering it. Measured joining (docs/villages-jigsaw-results.md).
+{
+  const pad = new Blueprint("pad", "Probe Pad", [7, 2, 7], "probe", "");
+  pad.fill(0, 0, 0, 7, 1, 7, "stone_bricks").set(0, 0, 0, "lapis_block");
+  pad.jigsaw(6, 1, 3, { facing: "east", name: "qolprobe:out", target: "qolprobe:in", pool: "qolprobe:well_socket", final: "gold_block" });
+  const socket = new Blueprint("well_socket", "Probe Well Socket", [5, 8, 5], "probe", "");
+  socket.fill(0, 0, 0, 5, 1, 5, "stone_bricks").set(0, 0, 0, "emerald_block");
+  socket.fill(0, 1, 0, 5, 1, 5, "cobblestone");
+  socket.walls(1, 2, 1, 3, 1, 3, "cobblestone");
+  socket.set(2, 1, 2, "water");
+  for (const [x, z] of [[1, 1], [3, 3], [1, 3], [3, 1]] as const) socket.fill(x, 3, z, 1, 2, 1, "oak_fence");
+  socket.hipRoof(1, 5, 1, 3, 3, "dark_oak_planks");
+  socket.set(2, 4, 2, "lantern");
+  socket.jigsaw(0, 1, 2, { facing: "west", name: "qolprobe:in", target: "qolprobe:out", pool: "minecraft:empty", final: "diamond_block" });
+  for (const bp of [pad, socket]) writeFileSync(resolve(PROBE, `${bp.key}.mcstructure`), bp.toMcstructure());
+  console.log("packages/probe/structures/qolprobe/{pad,well_socket}.mcstructure");
+}

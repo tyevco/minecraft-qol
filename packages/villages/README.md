@@ -16,7 +16,46 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   its states. It ticks every two to four seconds and keeps one person: spawns
   one on its first tick, and replaces a lost one a day later
   (`scripts/core/peopling.ts`). Breaking the post removes the person. Records
-  live in the shared position index (`vl:posts`, schema 1).
+  live in the shared position index (`vl:posts`, schema 2; schema-1 rows are
+  read with the trade fields defaulted). A post placed over an existing
+  record (a structure load, `/fill`) retires the old person and starts over.
+- **Trades** (design §5.1, `scripts/core/trades.ts` decides,
+  `scripts/engine/trades.ts` acts): a **worker's** post surveys the blocks
+  within sixteen of it on the first tick its person is present, and again
+  once a day (every 2½ minutes while it has found nothing): eight or more
+  farmland makes a **farmer**; four logs with leaves on them a
+  **lumberjack**; a single farmland a farmer; anything else no trade, and
+  the worker just lives there. Every cycle (ten minutes by default; the
+  first at once) the worker is teleported to its work, swings
+  (`villages:working`) for the duration, and is put back at its post:
+  - the lumberjack fells the nearest tree top down, one log every half
+    second, each log into the nearest chest, barrel or trapped chest within
+    twelve of the post as it comes off; then plants the tree's sapling on
+    the stump (mangrove: a propagule), and one time in three puts a spare
+    sapling in the chest. A tree is a face-connected group of up to 32
+    logs with leaves touching it, so a log cabin, a fence of logs or a
+    stack in a yard is never cut. Stripped logs are not trees.
+  - the farmer harvests up to eight ripe wheat, carrots, potatoes or
+    beetroot within twelve, nearest first, one every eight ticks, and
+    replants each tile from its own drops (`packages/shared/core/crops.ts`,
+    the Fluidworks harvester's rule); a roll with no seed takes one from the
+    chest, and only if there is none does the tile stay bare.
+  - nothing is ever lost: a cycle needs two empty slots before it starts, a
+    log leaves the world in the same step that puts it in the chest, and
+    anything the chest cannot take is dropped beside it.
+  - **wages**: a cycle ends with one food item (anything tagged
+    `minecraft:is_food`) taken from the chest. A lumberjack with no food to
+    take waits; a farmer works unpaid, since it is what fills the chest. The
+    toggle on the settings panel turns wages off.
+- **Settings panel** (manifest format 3): minutes between a worker's cycles
+  (1–60, default 10) and whether workers are paid.
+- **Pieces that carry the trades**: the tallfolk field has the farmer's
+  post and a chest at the end of its channel, and stonefolk and tallfolk
+  villages grow a **grove** (three trees, a lumberjack's post, a chest)
+  among their greens. Tree leaves in every piece are no longer persistent,
+  so a felled crown decays.
+- `/scriptevent villages:debug` lists every post, its trade and whether its
+  person is present, working or idle.
 - **Villages** as jigsaw structures (`behavior_pack/worldgen/`, `structures/`),
   generated from `tools/structures/villages.ts`: a square with the people's
   core building, streets, houses with a post each, lamp posts and watches at
@@ -37,6 +76,15 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   and job (`docs/villages-jigsaw-results.md`).
 - A post finds its person by id and then by the tag it stamped, so a person
   in an unloaded chunk is not counted lost and replaced.
+- `villages_lumberjack_fells_tree` and `villages_farmer_harvests_wheat`
+  pass headlessly: four oak logs on dirt with a crown become four logs in
+  the chest, a sapling on the stump and one bread fewer; nine ripe wheat
+  become eight wheat in the chest with at most one ripe tile left and the
+  field replanted.
+- `ItemStack.getComponent(ItemComponentTypes.Food)` is **undefined for
+  bread and cooked beef** on BDS 1.26.45 (only data-driven foods such as an
+  apple carry the component); every food carries the `minecraft:is_food`
+  item tag, which is what the wage uses.
 
 ## To confirm in game
 
@@ -55,6 +103,19 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   stilted reedfolk village standing in water rather than cut into a bank.
 - Guards versus monsters at night, and that a fight does not spill onto a
   player.
+- **A lumberjack in a generated grove.** A found village's chest starts
+  empty, so its lumberjack waits for food unless a player drops some in or
+  turns wages off; the farmer in a tallfolk field runs from the start. If
+  a stonefolk grove should work unattended, either seed the grove chest
+  from the structure or exempt world-generated posts from wages.
+- **The teleport reads as walking.** The person appears beside the tree
+  or row and swings for the duration; if that jars, design §7 item 6's
+  alternative is a `behavior.move_to_block` group added by event.
+- **A regrown tree is felled again** on a later cycle: the sapling's growth
+  is vanilla and needs light and time; a grove that is planted and never
+  regrows means the stump's ground is not dirt or grass (the sapling then
+  goes to the chest).
 
-Not yet built (design §5–6): the elder, errands and standing; inviting a
-person home; the larder loop between guards and workers.
+Not yet built (design §5–6): the miner's vein and the mine piece, the
+fisher, visitors and their errands, the elder and standing, inviting a
+person home.

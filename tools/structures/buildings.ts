@@ -278,11 +278,14 @@ building("tallfolk_barn", "Barn", "tallfolk", "Spruce walls, a wide door, hay ba
   bp.fill(2, 1, 6, 1, 1, 4, "oak_fence").fill(8, 1, 6, 1, 1, 4, "oak_fence");
 });
 
-building("tallfolk_field", "Field", "tallfolk", "Rows of wheat either side of a water channel, fenced, with a gate on the street. What the tallfolk worker tends.", (bp) => {
+building("tallfolk_field", "Field", "tallfolk", "Rows of wheat either side of a water channel, fenced, with a gate on the street. The farmer's post and a chest for the harvest stand at the end of the channel, inside the gate.", (bp) => {
   bp.fill(0, 0, 0, 9, 1, 9, "grass");
   bp.fill(1, 0, 1, 7, 1, 7, "farmland", { moisturized_amount: 7 });
-  bp.fill(4, 0, 1, 1, 1, 7, "water");
+  bp.fill(4, 0, 1, 1, 1, 4, "water");
+  bp.fill(4, 0, 5, 1, 1, 3, "grass_path");
   for (const x of [1, 2, 3, 5, 6, 7]) for (let z = 1; z < 8; z++) bp.set(x, 1, z, "wheat", { growth: 7 });
+  bp.set(4, 1, 5, "chest");
+  post(bp, 4, 1, 6, "worker");
   bp.walls(0, 1, 0, 9, 1, 9, "oak_fence");
   bp.gate(4, 1, 8, "oak", "south");
 });

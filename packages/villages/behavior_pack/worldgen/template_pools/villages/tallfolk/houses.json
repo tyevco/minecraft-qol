@@ -64,6 +64,14 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_grove",
+          "projection": "rigid"
+        },
+        "weight": 2
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
           "location": "villages/tallfolk/tallfolk_empty_lot",
           "projection": "rigid"
         },

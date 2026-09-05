@@ -158,6 +158,46 @@ Also found on the way: the tallfolk farmhouse's cobblestone floor course
 had overwritten the lower half of its door since the stair pass; the
 piece census (one door block where there should be two) showed it.
 
+## Trades (design §5.1, `packages/villages`)
+
+Both trade GameTests pass on the headless server (BDS 1.26.45.1, the
+GameTest world), each running a whole work cycle inside its 600-tick
+budget because a post's first cycle is due at once:
+
+- **`villages_lumberjack_fells_tree`**: four oak logs on dirt with a
+  crown of seventeen leaves, a chest with four bread, a tallfolk worker
+  post. The survey reports `logs 4, leaves 17`, the worker becomes a
+  lumberjack, and after the cycle the four logs are in the chest, an oak
+  sapling stands on the stump, no log block remains and the chest holds
+  three bread: the wage was taken.
+- **`villages_farmer_harvests_wheat`**: nine ripe wheat on wet farmland,
+  an empty chest. The survey reports `farmland 9`; a cycle of eight puts
+  eight wheat in the chest, at most one ripe tile is left, and the field
+  is replanted from the drops.
+
+What was measured on the way:
+
+- **`ItemComponentTypes.Food` is not how to recognise food.** On 1.26.45
+  `new ItemStack("minecraft:bread").getComponent(ItemComponentTypes.Food)`
+  is `undefined`, and `getComponents()` lists only `minecraft:compostable`;
+  cooked beef has no components at all. An apple, a data-driven food, has
+  `minecraft:food`. Every one of them has the **`minecraft:is_food` item
+  tag** (`getTags()`), which is what the wage checks. The first run of the
+  lumberjack test waited "no wage" with bread in the chest.
+- **A post placed where a record already exists** must start over. The
+  harness re-places a test's post at the same position as an earlier
+  test's (a structure reload restores blocks, not records), and the old
+  record — a lumberjack, surveyed a minute before — kept the new post from
+  surveying, so the farmer's test found no wheat. `onPlace` now retires the
+  old record and its person. The same happens in a world when a structure
+  load or `/fill` replaces a post.
+- `Dimension.getBlocks(volume, { includeTypes }, true)` finds custom and
+  vanilla types alike across a 33×17×33 survey volume in one call, and a
+  log removed with `Block.setType("minecraft:air")` drops nothing, so a
+  felled log exists only as the stack the same step puts in the chest.
+  `Container.addItem` returned no remainder in either test; the
+  remainder-to-drop path is untested in game.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment

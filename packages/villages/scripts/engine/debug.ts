@@ -7,9 +7,10 @@
  */
 import { Player, system, world } from "@minecraft/server";
 import { spawnSpot } from "../core/peopling";
-import { JOBS, PEOPLES } from "../core/record";
+import { JOBS, PEOPLES, TRADES, WORKER } from "../core/record";
 import { PERSON, postTag } from "./post";
 import * as storage from "./storage";
+import * as trades from "./trades";
 
 export function install(): void {
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
@@ -32,7 +33,8 @@ export function install(): void {
         } catch {
           state = "unloaded";
         }
-        lines.push(`${PEOPLES[r.people]} ${JOBS[r.job]} @${r.x},${r.y},${r.z} ${state}`);
+        const trade = r.job === WORKER ? ` ${TRADES[r.trade]} ${trades.status(r)}`.trimEnd() : "";
+        lines.push(`${PEOPLES[r.people]} ${JOBS[r.job]}${trade} @${r.x},${r.y},${r.z} ${state}`);
       }
       const text = `[Villages] ${storage.count()} post(s), ${alive} person(s) present\n${lines.join("\n")}`;
       if (src instanceof Player) src.sendMessage(text);

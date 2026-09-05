@@ -70,12 +70,13 @@ const need = (k: string): Blueprint => {
 // ---------------------------------------------------------------------------
 
 /**
- * A tree: a trunk and a two-layer crown, leaves that never decay. The crown
- * is clipped to the piece, so a tree on a verge leans out of frame rather
- * than failing.
+ * A tree: a trunk and a two-layer crown. The crown is clipped to the piece,
+ * so a tree on a verge leans out of frame rather than failing. The leaves
+ * are not persistent: every leaf is within reach of the trunk, so they stay
+ * while it stands and decay once a lumberjack has felled it (§5.1).
  */
 function tree(bp: Blueprint, x: number, y: number, z: number, log: string, leaves: string, height = 4): void {
-  const L = { persistent_bit: true, update_bit: false };
+  const L = { persistent_bit: false, update_bit: false };
   const leaf = (i: number, j: number, k: number) => {
     if (i < 0 || k < 0 || j < 0 || i >= bp.sx || k >= bp.sz || j >= bp.sy) return;
     if (bp.at(i, j, k) === undefined) bp.set(i, j, k, leaves, L);
@@ -92,6 +93,22 @@ function tree(bp: Blueprint, x: number, y: number, z: number, log: string, leave
 }
 
 const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
+
+/**
+ * A grove: three grown trees, a lumberjack's post and a chest for the logs
+ * (docs/design/villages.md §5.1). The post's person is spawned south of the
+ * post, so the post stands with open grass in front of it.
+ */
+function grove(log: string, leaves: string): (bp: Blueprint, rand: () => number, y: number) => void {
+  return (bp, rand, y) => {
+    tree(bp, 2, y, 2, log, leaves, 4);
+    tree(bp, 6, y, 2, log, leaves, 5);
+    tree(bp, 2, y, 6, log, leaves, 4);
+    bp.set(7, y, 5, "chest");
+    bp.set(6, y, 5, "villages:post", { "villages:people": 0, "villages:job": 1 });
+    scatter(bp, rand, 4, y, 4, 5, 5, 5);
+  };
+}
 
 /** Flowers and grass tufts scattered over a grass floor at y, about one cell in `every`. */
 function scatter(bp: Blueprint, rand: () => number, x: number, y: number, z: number, w: number, d: number, every = 4): void {
@@ -116,6 +133,7 @@ export const PEOPLES: People[] = [
         tree(bp, 4, y, 4, "spruce_log", "spruce_leaves", 5);
         for (let i = 0; i < 6; i++) { const x = 1 + Math.floor(rand() * 7), z = 1 + Math.floor(rand() * 7); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "fern"); }
       }],
+      ["grove", 2, grove("spruce_log", "spruce_leaves")],
     ],
     emptyLots: 2, tree: { log: "spruce_log", leaves: "spruce_leaves" },
     watch: "stonefolk_watchpost", biomes: ["mountains", "extreme_hills", "meadow"], salt: 20260911,
@@ -164,6 +182,7 @@ export const PEOPLES: People[] = [
         for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, "oak_log", "oak_leaves", 3);
         for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "sweet_berry_bush", { growth: 3 }); }
       }],
+      ["grove", 2, grove("oak_log", "oak_leaves")],
     ],
     emptyLots: 2, tree: { log: "oak_log", leaves: "oak_leaves" },
     watch: "tallfolk_gatehouse",
@@ -379,7 +398,7 @@ export function villageSet(p: People): VillageSet {
     // The socket at the middle of the south edge, facing the street.
     bp.set(Math.floor(w / 2), 0, d - 1, p.stilts ? "water" : p.verge);
     bp.jigsaw(Math.floor(w / 2), 0, d - 1, marker(p, "south", HOUSE_MARK, HOUSE_MARK, "minecraft:empty"));
-    return bp;
+    return stampPeople(p, bp);
   };
   for (const [key, weight, paint] of p.greens) {
     const piece = lot(key, key[0]!.toUpperCase() + key.slice(1).replace("_", " "), "Open ground with something growing on it.", 9, 9, (bp, y) => paint(bp, rand, y));

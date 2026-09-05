@@ -85,6 +85,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | Jigsaw definitions live in `jigsaw_structures/`, `template_pools/`, `structure_sets/` with root key `minecraft:jigsaw_structure` (villages design v0.1, read off the JSON schemas) | **Wrong folders and key; loads nothing, silently.** The vanilla pack the server ships puts them under `worldgen/structures` (root key `minecraft:jigsaw`), `worldgen/template_pools`, `worldgen/structure_sets`, `worldgen/processors`, and a pool element's `location` is a path under `structures/`. Measured in `villages-jigsaw-results.md`; with the wrong key `place structure` says only `Invalid structure name`. |
 | A structure file changed in the pack is what the world places next time (implicit everywhere a structure is iterated on) | **Not in a world that has already loaded it.** A structure template is cached per world at first use: after the village pieces had once been loaded without job posts, every later load of the same identifier returned the post-less template across restarts and pack changes, while the same bytes under a new identifier loaded correctly. Measured in `villages-jigsaw-results.md`. Iterate on a fresh world or a new identifier; what a Realm world first saw is what it keeps. |
 | Block identifiers `minecraft:bricks`, `grass_block`, `cobblestone_stairs`, `oak_door`, `oak_fence_gate` (first drafts of the settlement blueprints) | **Java names.** Bedrock's are `brick_block`, `grass`, `stone_stairs`, `wooden_door` and `fence_gate`; a structure palette naming the Java ones would not load. Every blueprint block is checked against the vanilla `blocks.json`, and every state against Mojang's block metadata, when the viewer builds (`tools/viewer/vanilla.ts`); that is how these were caught. Doors take `minecraft:cardinal_direction`, not `direction`. |
+| A food item can be recognised by `ItemStack.getComponent(ItemComponentTypes.Food)` (the Villages wage, first draft) | **Only data-driven foods carry it.** On BDS 1.26.45 bread has only `minecraft:compostable` and cooked beef has no components at all; an apple has `minecraft:food`. Every food has the `minecraft:is_food` item tag (`ItemStack.hasTag`), which is what the wage checks. Measured in `villages-jigsaw-results.md`. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -168,8 +169,9 @@ prototype” list. In suggested order:
   settlement blueprints (checked against Mojang's published schemas), peopled
   by job blocks that tick, and a per-player standing system that ends in
   inviting a villager to the kids' own settlement. Revises the "no world
-  generation" stance in `settlements.md`. The first probe decides whether
-  villages are generated or script-placed.
+  generation" stance in `settlements.md`. Built so far in `packages/villages`:
+  the generated villages, the posts that people them, and the lumberjack
+  and farmer trades (§5.1); measurements in `villages-jigsaw-results.md`.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must

@@ -1,6 +1,6 @@
-import { BlockPermutation, GameMode, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, GameMode, ItemStack, type Vector3 } from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
-import { floor } from "./rig";
+import { count, floor, put } from "./rig";
 
 /**
  * Villages: a job post keeps one person.
@@ -53,5 +53,58 @@ registerAsync("qol", "villages_post_break_removes_person", async (test) => {
     test.assertBlockPresent(POST, AT, false);
     const n = people(test).length;
     test.assert(n === 0, `expected the person gone with the post, found ${n}`);
+  });
+}).maxTicks(600).structureName("qol:arena");
+
+/**
+ * Trades (docs/design/villages.md §5.1). A worker's post surveys its
+ * surroundings on the first tick its person is present; the first cycle is
+ * due at once, so a test sees a whole cycle inside its budget. Both rigs
+ * put the chest at (5,1,5) and the post at AT.
+ */
+const CHEST: Vector3 = { x: 5, y: 1, z: 5 };
+
+registerAsync("qol", "villages_lumberjack_fells_tree", async (test) => {
+  placePost(test, 0, 1);
+  // An oak: four logs on dirt, a crown round the top two, and bread for the wage.
+  test.setBlockType("minecraft:dirt", { x: 2, y: 0, z: 2 });
+  for (let y = 1; y <= 4; y++) test.setBlockType("minecraft:oak_log", { x: 2, y, z: 2 });
+  for (let y = 4; y <= 5; y++)
+    for (let i = -1; i <= 1; i++)
+      for (let k = -1; k <= 1; k++) if (i !== 0 || k !== 0 || y === 5) test.setBlockType("minecraft:oak_leaves", { x: 2 + i, y, z: 2 + k });
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:bread", 4));
+  test.succeedWhen(() => {
+    for (let y = 1; y <= 4; y++) test.assertBlockPresent("minecraft:oak_log", { x: 2, y, z: 2 }, false);
+    test.assertBlockPresent("minecraft:oak_sapling", { x: 2, y: 1, z: 2 }, true);
+    const logs = count(test, CHEST, "minecraft:oak_log");
+    test.assert(logs >= 4, `expected the 4 logs in the chest, found ${logs}`);
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 3, `expected one bread taken as the wage (3 left), found ${bread}`);
+  });
+}).maxTicks(600).structureName("qol:arena");
+
+registerAsync("qol", "villages_farmer_harvests_wheat", async (test) => {
+  placePost(test, 3, 1);
+  // Nine ripe wheat on wet farmland, and an empty chest for the harvest.
+  for (let x = 1; x <= 3; x++)
+    for (let z = 1; z <= 3; z++) {
+      test.setBlockPermutation(BlockPermutation.resolve("minecraft:farmland", { moisturized_amount: 7 }), { x, y: 0, z });
+      test.setBlockPermutation(BlockPermutation.resolve("minecraft:wheat", { growth: 7 }), { x, y: 1, z });
+    }
+  test.setBlockType("minecraft:chest", CHEST);
+  test.succeedWhen(() => {
+    const wheat = count(test, CHEST, "minecraft:wheat");
+    test.assert(wheat >= 8, `expected a cycle's 8 wheat in the chest, found ${wheat}`);
+    let ripe = 0, tiles = 0;
+    for (let x = 1; x <= 3; x++)
+      for (let z = 1; z <= 3; z++) {
+        const b = test.getBlock({ x, y: 1, z });
+        if (b.typeId !== "minecraft:wheat") continue;
+        tiles++;
+        if (b.permutation.getState("growth") === 7) ripe++;
+      }
+    test.assert(ripe <= 1, `expected at most 1 ripe tile left after a cycle of 8, found ${ripe}`);
+    test.assert(tiles >= 6, `expected the field replanted (9 tiles, seeds from the drops), found ${tiles} wheat blocks`);
   });
 }).maxTicks(600).structureName("qol:arena");

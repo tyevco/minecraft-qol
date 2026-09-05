@@ -9,6 +9,7 @@
 import { system, world } from "@minecraft/server";
 import * as debug from "./engine/debug";
 import { COMPONENT_ID, postComponent } from "./engine/post";
+import * as settings from "./engine/settings";
 import * as storage from "./engine/storage";
 
 const log = (...parts: unknown[]): void => console.warn("[Villages]", ...parts);
@@ -27,6 +28,8 @@ system.beforeEvents.startup.subscribe((event) => {
 
 world.afterEvents.worldLoad.subscribe(() => {
   const known = storage.load();
+  settings.install(log);
+  system.runInterval(() => settings.refresh(), 200);
   debug.install();
   log(`ready at tick ${system.currentTick}: ${known} post(s) known; block component ${componentRegistered ? "registered" : "NOT registered - re-enter the world"}`);
 });

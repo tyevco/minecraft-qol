@@ -11,12 +11,13 @@
  * The person is spawned plainly and then given its people and job by event -
  * never by spawnEvent, which would replace entity_spawned (docs/README.md
  * corrections). Its `minecraft:home` is wherever it spawned, so it stays by
- * its post.
+ * its post. A worker's post also runs its trade each tick (engine/trades.ts).
  */
 import { system, world, type Block, type BlockCustomComponent, type Dimension, type Entity } from "@minecraft/server";
 import { decide, spawnSpot } from "../core/peopling";
 import { JOBS, PEOPLES, type Position, type PostRecord } from "../core/record";
 import * as storage from "./storage";
+import * as trades from "./trades";
 
 export const COMPONENT_ID = "villages:post";
 export const PERSON = "villages:person";
@@ -76,15 +77,29 @@ function spawn(dim: Dimension, record: PostRecord): Entity | undefined {
   }
 }
 
-/** Register the post if it is new, then keep its person. */
-function tick(block: Block): void {
+/**
+ * Register the post if it is new, then keep its person. A placement over an
+ * existing record means the old post went without us hearing (a structure
+ * load, /fill): that post's person is retired and the record starts over,
+ * with the people, job and trade of the block that is there now.
+ */
+function tick(block: Block, placed = false): void {
   const pos = positionOf(block);
   let record = storage.get(pos);
+  if (record && placed) {
+    retire(block.dimension, pos);
+    record = undefined;
+  }
   if (!record) {
-    record = { ...pos, people: stateOf(block, "villages:people"), job: stateOf(block, "villages:job"), spawnedAt: 0 };
+    record = { ...pos, people: stateOf(block, "villages:people"), job: stateOf(block, "villages:job"), spawnedAt: 0, trade: 0, surveyedAt: 0, cycleAt: 0 };
     storage.put(record);
   }
-  const verdict = decide(record, personOf(block.dimension, record) !== undefined, system.currentTick);
+  const person = personOf(block.dimension, record);
+  const verdict = decide(record, person !== undefined, system.currentTick);
+  if (verdict.kind === "keep" && person) {
+    trades.tick(block, record, person, system.currentTick);
+    return;
+  }
   if (verdict.kind !== "spawn") return;
   // A spawn that fails (the spot is in a chunk that is not loaded yet - a
   // post at a chunk edge on a world's first boot; measured) leaves the
@@ -113,7 +128,7 @@ function retire(dim: Dimension, pos: Position): void {
 
 export const postComponent: BlockCustomComponent = {
   onPlace(ev) {
-    tick(ev.block);
+    tick(ev.block, true);
   },
   onTick(ev) {
     tick(ev.block);

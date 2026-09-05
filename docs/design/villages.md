@@ -367,7 +367,10 @@ found, in buildings they raised. That is the whole loop.
 
 ## 8. Where this goes next
 
-1. ~~§7.1 and §7.2~~ done: generated, and joined by markers.
+1. ~~§7.1 and §7.2~~ done: generated, and joined by markers; and the
+   villages themselves measured generating in a fresh plain world, found
+   by `locate structure` and peopled as their chunks loaded
+   (`villages-jigsaw-results.md`).
 2. ~~Streets, squares, lamp posts, fields and terminators; markers on every
    building; the expander and the `concept · villages` view.~~ Built; the
    pools and structures are emitted into the probe pack.

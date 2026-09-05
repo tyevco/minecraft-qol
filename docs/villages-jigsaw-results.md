@@ -111,6 +111,40 @@ four placed the same way:
 | reedfolk (stilted, no terrain adaptation) | 86 × 15 × 88 |
 | tallfolk (first pass) | 48 × 12 × 44 |
 
+## Villages generate on their own (design §2, §3)
+
+Measured on BDS 1.26.45.1 in a **fresh `DEFAULT`-terrain world with no
+experiments** (`dist/bds/probe`, world `qolgen`, only the probe pack and
+Villages listed), the current pack deployed:
+
+- `locate structure` finds every people's village from spawn, which means
+  the four structure sets are registered and the biome filters pass
+  somewhere:
+
+  | Village | Nearest, from spawn |
+  | --- | --- |
+  | `villages:reedfolk_village` | 216, 104 (239 blocks) |
+  | `villages:tallfolk_village` | 295, 135 (324 blocks) |
+  | `villages:tinker_village` | −2471, 1385 (2832 blocks) |
+  | `villages:stonefolk_village` | −1978, −2518 (3202 blocks) |
+  | vanilla `minecraft:village`, for scale | 152, 808 (822 blocks) |
+
+- One ticking area (224–383 × 64–223, 100 chunks) round the two nearest
+  and a `qolprobe:jigsaw-scan` a minute later: **57 markers** in the
+  region, among them nine `villages:post` blocks - four at 227/257 ×
+  94/114 on the reedfolk village's stilts over water (`water 1823` in
+  their survey), five across the tallfolk village at 275–338 × 122–136
+  with its doors and lanterns - and `villages:debug` reports **9 posts, 9
+  persons present**. The reedfolk workers surveyed themselves into
+  fishers as their chunks loaded; the tallfolk posts in range were guards,
+  traders and builders. Nothing was placed by hand.
+
+So the "villages are generated, not script-placed" stance holds for the
+villages themselves, not only the probe's well, and the biome filters put
+the reedfolk in the wet and the tallfolk on the plains. The stonefolk and
+tinker villages are far from this spawn (mountains and savanna are), and
+were not loaded; they place by hand as before, and `locate` finds them.
+
 ## A peopled village (design §4, `packages/villages`)
 
 With the villages pack listed in the plain world, two tallfolk villages

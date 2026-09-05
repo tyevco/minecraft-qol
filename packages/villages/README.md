@@ -113,6 +113,12 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   experiments, and a placed village's posts people it: 15 persons at 16
   posts across two tallfolk villages, each by its post with the right people
   and job (`docs/villages-jigsaw-results.md`).
+- **The villages generate on their own.** In a fresh plain world with no
+  experiments, `locate structure` finds all four from spawn (reedfolk 239
+  blocks off, tallfolk 324, tinker and stonefolk two to three thousand,
+  where their biomes are), and loading the region round the two nearest
+  found both generated - nine posts among the stilts, doors and lanterns -
+  with nine persons present. Nothing placed by hand.
 - A post finds its person by id and then by the tag it stamped, so a person
   in an unloaded chunk is not counted lost and replaced.
 - `villages_lumberjack_fells_tree` and `villages_farmer_harvests_wheat`
@@ -151,10 +157,11 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   the same way as chunks first load.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
-- **Natural generation in the right biomes**: walk a plains, a swamp, a
-  savanna and a mountain meadow in a new world. The biome tags are the
-  vanilla ones; if a village never appears, check the content log for the
-  structure set on world load.
+- **The stonefolk and tinker villages generated, not placed**: the
+  reedfolk and tallfolk ones were seen generated near a plains spawn; the
+  other two `locate` finds two to three thousand blocks off and have only
+  been placed by hand. Walk to one (`/locate structure
+  villages:stonefolk_village`), or spawn in mountains or savanna.
 - **Terrain adaptation** (`beard_thin`) under buildings on a slope, and the
   stilted reedfolk village standing in water rather than cut into a bank.
 - Guards versus monsters at night, and that a fight does not spill onto a

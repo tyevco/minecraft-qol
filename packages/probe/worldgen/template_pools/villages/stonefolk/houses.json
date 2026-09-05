@@ -24,14 +24,6 @@
       {
         "element": {
           "element_type": "minecraft:single_pool_element",
-          "location": "villages/stonefolk/stonefolk_watchpost",
-          "projection": "rigid"
-        },
-        "weight": 1
-      },
-      {
-        "element": {
-          "element_type": "minecraft:single_pool_element",
           "location": "villages/stonefolk/shared_larder",
           "projection": "rigid"
         },

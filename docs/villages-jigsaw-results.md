@@ -100,7 +100,16 @@ plain world returned a box of **48 × 12 × 44** (x 39–86, y 62–73, z −102
 −59): the square, streets, houses and terminators grown by the game from
 the same files the offline expander draws for the viewer. Not yet judged
 block by block against the expander's version; the box says the pools are
-sound and the markers all resolve.
+sound and the markers all resolve. After the second pass over the pieces
+(long streets, crossroads, watches at street ends, reedfolk on stilts) all
+four placed the same way:
+
+| Village | Box the game returned |
+| --- | --- |
+| stonefolk | 64 × 12 × 67 |
+| tinker | 44 × 14 × 100 |
+| reedfolk (stilted, no terrain adaptation) | 86 × 15 × 88 |
+| tallfolk (first pass) | 48 × 12 × 44 |
 
 ## How the measurement was taken, and what it cost
 

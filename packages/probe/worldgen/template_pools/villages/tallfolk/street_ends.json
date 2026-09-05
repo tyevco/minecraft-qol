@@ -11,6 +11,14 @@
           "location": "villages/tallfolk/tallfolk_lamp",
           "projection": "rigid"
         },
+        "weight": 3
+      },
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/tallfolk/tallfolk_gatehouse",
+          "projection": "rigid"
+        },
         "weight": 1
       }
     ]

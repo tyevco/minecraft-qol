@@ -170,8 +170,9 @@ prototype” list. In suggested order:
   by job blocks that tick, and a per-player standing system that ends in
   inviting a villager to the kids' own settlement. Revises the "no world
   generation" stance in `settlements.md`. Built so far in `packages/villages`:
-  the generated villages, the posts that people them, and the lumberjack
-  and farmer trades (§5.1); measurements in `villages-jigsaw-results.md`.
+  the generated villages, the posts that people them, and the four trades
+  (§5.1: lumberjack, farmer, miner at a vein, fisher); measurements in
+  `villages-jigsaw-results.md`.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must

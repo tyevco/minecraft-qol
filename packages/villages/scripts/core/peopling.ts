@@ -17,7 +17,10 @@ export const DAY = 24000;
 
 export function decide(record: PostRecord, personAlive: boolean, now: number, respawnAfter = DAY): Verdict {
   if (personAlive) return { kind: "keep" };
-  if (record.spawnedAt === 0) return { kind: "spawn" };
+  // A stamp ahead of the clock means the clock restarted (system.currentTick
+  // counts from the server's boot, not the world's): a day has not passed,
+  // but nor will one until the clock catches up, so treat it as passed.
+  if (record.spawnedAt === 0 || record.spawnedAt > now) return { kind: "spawn" };
   const due = record.spawnedAt + respawnAfter;
   if (now < due) return { kind: "wait", ticksLeft: due - now };
   return { kind: "spawn" };

@@ -14,7 +14,7 @@ import { cropOf, isMature } from "@qol/shared/core/crops";
 import { TRADES } from "./record";
 
 export type Trade = (typeof TRADES)[number];
-export const NONE = 0, LUMBERJACK = 1, FARMER = 2;
+export const NONE = 0, LUMBERJACK = 1, FARMER = 2, MINER = 3, FISHER = 4;
 
 /** How far round the post, horizontally, the survey and the lumberjack look. */
 export const SURVEY_RANGE = 16;
@@ -68,6 +68,36 @@ export const CHEST_TYPES: readonly string[] = ["minecraft:chest", "minecraft:tra
 export const FARM_CROPS: readonly string[] = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
 export const FARMLAND = "minecraft:farmland";
 
+/** The vein: a fixture the mine piece carries (and a player can place), never terrain. */
+export const VEIN = "villages:vein";
+export const ORE_STATE = "villages:ore";
+export const ORES = ["stone", "coal", "iron", "copper"] as const;
+/** What a cycle at a vein yields: a stack-slot's worth, scaled to the ore's worth. */
+export const MINE_YIELD: Readonly<Record<(typeof ORES)[number], { typeId: string; amount: number }>> = {
+  stone: { typeId: "minecraft:cobblestone", amount: 8 },
+  coal: { typeId: "minecraft:coal", amount: 6 },
+  iron: { typeId: "minecraft:raw_iron", amount: 3 },
+  copper: { typeId: "minecraft:raw_copper", amount: 4 },
+};
+/** A vein's daily yield, in cycles; after that the miner idles until the window rolls over. */
+export const VEIN_CYCLES_PER_DAY = 4;
+export const VEIN_WINDOW = 24000;
+/** Swings at the vein or the water before the cycle's produce appears. */
+export const WORK_SWINGS = 8;
+export const TICKS_PER_SWING = 8;
+
+export const WATER_TYPES: readonly string[] = ["minecraft:water", "minecraft:flowing_water"];
+/** A cycle's catch, and what it can be. */
+export const FISH_PER_CYCLE = 4;
+export const COD = "minecraft:cod", SALMON = "minecraft:salmon";
+export const TREASURES: readonly string[] = ["minecraft:nautilus_shell", "minecraft:name_tag", "minecraft:saddle"];
+export const TREASURE_CHANCE = 1 / 8;
+/** Blocks nobody stands on: what a fishing spot's footing must not be. */
+export const NOT_FOOTING: readonly string[] = [
+  "minecraft:air", "minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava",
+  "minecraft:waterlily", "minecraft:reeds", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern",
+];
+
 export interface Vec {
   x: number;
   y: number;
@@ -84,23 +114,32 @@ export interface Survey {
   farmland: number;
   logs: number;
   leaves: number;
+  veins: number;
+  water: number;
 }
 
 /**
- * Which trade the surroundings offer. A field wins over a few trees, trees
- * win over a stray farmland block; a post beside neither has no trade and
- * the worker just lives there.
+ * Which trade the surroundings offer, strongest signal first: a vein is
+ * placed on purpose; a field beats a few trees; open water (a marsh, a
+ * river) beats trees, since a reedfolk dock stands among mangroves; trees
+ * beat a pond; a stray farmland block still makes a farmer. A post beside
+ * none of these has no trade, and the worker just lives there.
  */
 export function chooseTrade(s: Survey): number {
+  if (s.veins >= 1) return MINER;
   if (s.farmland >= 8) return FARMER;
+  if (s.water >= 16) return FISHER;
   if (s.logs >= 4 && s.leaves >= 4) return LUMBERJACK;
+  if (s.water >= 4) return FISHER;
   if (s.farmland >= 1) return FARMER;
   return NONE;
 }
 
+/** A stamp ahead of the clock: the clock restarted (system.currentTick counts from boot), so the wait is over. */
+const elapsed = (stamp: number, now: number, wait: number): boolean => stamp === 0 || stamp > now || now >= stamp + wait;
+
 export function surveyDue(record: { trade: number; surveyedAt: number }, now: number): boolean {
-  if (record.surveyedAt === 0) return true;
-  return now >= record.surveyedAt + (record.trade === NONE ? RESURVEY_NONE_TICKS : RESURVEY_TICKS);
+  return elapsed(record.surveyedAt, now, record.trade === NONE ? RESURVEY_NONE_TICKS : RESURVEY_TICKS);
 }
 
 // ---------------------------------------------------------------------------
@@ -263,20 +302,118 @@ export type CycleVerdict = { kind: "work" } | { kind: "wait"; reason: WaitReason
 export const minutesToTicks = (minutes: number): number => Math.max(1, Math.round(minutes * 1200));
 
 export function cycleDue(record: { cycleAt: number }, now: number, intervalTicks: number): boolean {
-  return record.cycleAt === 0 || now >= record.cycleAt + intervalTicks;
+  return elapsed(record.cycleAt, now, intervalTicks);
 }
+
+/** The trades that fill the larder work unpaid; the rest are paid from it. */
+export const paid = (trade: number): boolean => trade === LUMBERJACK || trade === MINER;
 
 /**
  * May a cycle start? The chest must exist and have room (nothing is ever
- * lost: a full chest means the worker waits), and if wages are on, a
- * lumberjack must be fed - the farmer works unpaid, since it is the one
- * filling the larder.
+ * lost: a full chest means the worker waits), and if wages are on, a paid
+ * trade must be fed - the farmer and the fisher work unpaid, since they
+ * are the ones filling the larder.
  */
 export function canWork(trade: number, chest: ChestView | undefined, wages: boolean): CycleVerdict {
   if (!chest) return { kind: "wait", reason: "no chest" };
   if (chest.emptySlots < ROOM_NEEDED) return { kind: "wait", reason: "chest full" };
-  if (wages && trade === LUMBERJACK && pickWage(chest.slots) === undefined) return { kind: "wait", reason: "no wage" };
+  if (wages && paid(trade) && pickWage(chest.slots) === undefined) return { kind: "wait", reason: "no wage" };
   return { kind: "work" };
+}
+
+// ---------------------------------------------------------------------------
+// The vein
+// ---------------------------------------------------------------------------
+
+export interface VeinAllowance {
+  /** Whether a cycle may be worked now. */
+  allowed: boolean;
+  /** The record's window fields after this cycle is counted (unchanged when not allowed). */
+  veinAt: number;
+  veinCycles: number;
+}
+
+/**
+ * A vein yields VEIN_CYCLES_PER_DAY cycles per day-long window, counted on
+ * the post. The window is a span of ticks rather than the world's day, so a
+ * world with the daylight cycle locked still rolls over; a restarted clock
+ * opens a fresh window.
+ */
+export function veinAllowance(record: { veinAt: number; veinCycles: number }, now: number): VeinAllowance {
+  const fresh = elapsed(record.veinAt, now, VEIN_WINDOW);
+  const cycles = fresh ? 0 : record.veinCycles;
+  if (cycles >= VEIN_CYCLES_PER_DAY) return { allowed: false, veinAt: record.veinAt, veinCycles: record.veinCycles };
+  return { allowed: true, veinAt: fresh ? now : record.veinAt, veinCycles: cycles + 1 };
+}
+
+export function nearestOf<T extends { pos: Vec }>(items: readonly T[], from: Vec): T | undefined {
+  let best: T | undefined;
+  let bestD = Infinity;
+  for (const it of items) {
+    const d = dist2(it.pos, from);
+    if (d < bestD) {
+      bestD = d;
+      best = it;
+    }
+  }
+  return best;
+}
+
+/** What a cycle at a vein of `ore` produces; an unknown ore state yields stone. */
+export function mineYield(ore: unknown): { typeId: string; amount: number } {
+  const key = typeof ore === "string" && (ORES as readonly string[]).includes(ore) ? (ore as (typeof ORES)[number]) : "stone";
+  return MINE_YIELD[key];
+}
+
+// ---------------------------------------------------------------------------
+// The water
+// ---------------------------------------------------------------------------
+
+export interface FishingSpot {
+  /** Where the fisher stands (a block with footing under it and air in it). */
+  stand: Vec;
+  /** The water fished. */
+  water: Vec;
+}
+
+/**
+ * Where to fish from: beside a water block, on a bank at the water's own
+ * level (footing at the water's height, air above), or on a deck up to
+ * three blocks over it (the reedfolk way). Nearest to the post wins.
+ * `typeAt` reads a block's type; the pure code never touches the world.
+ */
+export function fishingSpot(waters: readonly Vec[], typeAt: (v: Vec) => string | undefined, from: Vec): FishingSpot | undefined {
+  const footing = (v: Vec): boolean => {
+    const t = typeAt(v);
+    return t !== undefined && !NOT_FOOTING.includes(t);
+  };
+  const open = (v: Vec): boolean => typeAt(v) === "minecraft:air";
+  const spots: FishingSpot[] = [];
+  for (const w of waters) {
+    if (!open({ x: w.x, y: w.y + 1, z: w.z })) continue; // not the surface
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const bank = { x: w.x + dx, y: w.y, z: w.z + dz };
+      const stand = { x: bank.x, y: bank.y + 1, z: bank.z };
+      if (footing(bank) && open(stand)) spots.push({ stand, water: w });
+    }
+    for (let up = 2; up <= 4; up++) {
+      const deck = { x: w.x, y: w.y + up, z: w.z };
+      const stand = { x: w.x, y: w.y + up + 1, z: w.z };
+      if (footing(deck) && open(stand)) spots.push({ stand, water: w });
+    }
+  }
+  return nearestOf(spots.map((s) => ({ pos: s.stand, spot: s })), from)?.spot;
+}
+
+/** A cycle's catch: cod and salmon, and one time in eight something from the deep. */
+export function catchPlan(rand: () => number): { typeId: string; amount: number }[] {
+  let cod = 0;
+  for (let i = 0; i < FISH_PER_CYCLE; i++) if (rand() < 0.65) cod++;
+  const out: { typeId: string; amount: number }[] = [];
+  if (cod > 0) out.push({ typeId: COD, amount: cod });
+  if (FISH_PER_CYCLE - cod > 0) out.push({ typeId: SALMON, amount: FISH_PER_CYCLE - cod });
+  if (rand() < TREASURE_CHANCE) out.push({ typeId: TREASURES[Math.floor(rand() * TREASURES.length)]!, amount: 1 });
+  return out;
 }
 
 export const tradeName = (trade: number): Trade => TRADES[trade] ?? "none";

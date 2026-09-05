@@ -15,7 +15,7 @@
  */
 import { system, world, type Block, type BlockCustomComponent, type Dimension, type Entity } from "@minecraft/server";
 import { decide, spawnSpot } from "../core/peopling";
-import { JOBS, PEOPLES, type Position, type PostRecord } from "../core/record";
+import { FRESH, JOBS, PEOPLES, type Position, type PostRecord } from "../core/record";
 import * as storage from "./storage";
 import * as trades from "./trades";
 
@@ -91,7 +91,7 @@ function tick(block: Block, placed = false): void {
     record = undefined;
   }
   if (!record) {
-    record = { ...pos, people: stateOf(block, "villages:people"), job: stateOf(block, "villages:job"), spawnedAt: 0, trade: 0, surveyedAt: 0, cycleAt: 0 };
+    record = { ...pos, people: stateOf(block, "villages:people"), job: stateOf(block, "villages:job"), ...FRESH };
     storage.put(record);
   }
   const person = personOf(block.dimension, record);

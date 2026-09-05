@@ -43,7 +43,7 @@
   "settings": [
     {
       "type": "label",
-      "text": "A worker takes a trade from the blocks round its post: among trees it is a lumberjack, beside farmland a farmer. Each cycle it walks to its work, does it, and puts what it made in the nearest chest. A lumberjack plants a sapling on every stump."
+      "text": "A worker takes a trade from the blocks round its post: among trees it is a lumberjack, beside farmland a farmer, at a vein a miner, by open water a fisher. Each cycle it walks to its work, does it, and puts what it made in the nearest chest."
     },
     {
       "type": "slider",
@@ -56,7 +56,7 @@
     },
     {
       "type": "label",
-      "text": "Wages: a cycle costs the worker one food item from its chest. An unpaid lumberjack waits; a farmer works regardless, since it is what fills the chest."
+      "text": "Wages: a cycle costs the worker one food item from its chest. An unpaid lumberjack or miner waits; a farmer or fisher works regardless, since they are what fill the chest."
     },
     {
       "type": "toggle",

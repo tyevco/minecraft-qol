@@ -16,16 +16,20 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   its states. It ticks every two to four seconds and keeps one person: spawns
   one on its first tick, and replaces a lost one a day later
   (`scripts/core/peopling.ts`). Breaking the post removes the person. Records
-  live in the shared position index (`vl:posts`, schema 2; schema-1 rows are
-  read with the trade fields defaulted). A post placed over an existing
+  live in the shared position index (`vl:posts`, schema 3; older rows are
+  read with the newer fields defaulted). Stamps are `system.currentTick`,
+  which counts from the server's boot: a stamp ahead of the clock means a
+  restart, and every wait treats it as over rather than waiting for the
+  clock to catch up. A post placed over an existing
   record (a structure load, `/fill`) retires the old person and starts over.
 - **Trades** (design §5.1, `scripts/core/trades.ts` decides,
   `scripts/engine/trades.ts` acts): a **worker's** post surveys the blocks
   within sixteen of it on the first tick its person is present, and again
-  once a day (every 2½ minutes while it has found nothing): eight or more
-  farmland makes a **farmer**; four logs with leaves on them a
-  **lumberjack**; a single farmland a farmer; anything else no trade, and
-  the worker just lives there. Every cycle (ten minutes by default; the
+  once a day (every 2½ minutes while it has found nothing), strongest
+  signal first: a **vein** makes a **miner**; eight or more farmland a
+  **farmer**; sixteen or more water a **fisher**; four logs with leaves on
+  them a **lumberjack**; four water a fisher; a single farmland a farmer;
+  anything else no trade, and the worker just lives there. Every cycle (ten minutes by default; the
   first at once) the worker is teleported to its work, swings
   (`villages:working`) for the duration, and is put back at its post:
   - the lumberjack fells the nearest tree top down, one log every half
@@ -40,20 +44,38 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
     replants each tile from its own drops (`packages/shared/core/crops.ts`,
     the Fluidworks harvester's rule); a roll with no seed takes one from the
     chest, and only if there is none does the tile stay bare.
+  - the miner swings at the nearest **vein** (`villages:vein`, a block with
+    a `villages:ore` state of stone, coal, iron or copper) for about three
+    seconds, and the vein's yield appears in the chest: eight cobblestone,
+    six coal, three raw iron or four raw copper. The vein is a fixture and
+    is never changed; a vein yields four cycles per day-long window,
+    counted on the post, then the miner idles until the window rolls over.
+    The window is a span of ticks, so a world with the daylight cycle
+    locked still rolls over. A player can mine a vein and place it at home.
+  - the fisher stands at the water's edge (a bank at the water's level, or
+    a deck up to three blocks over it, the reedfolk way) nearest the post
+    and, after the same swing, four fish appear in the chest: cod about two
+    times in three, salmon otherwise, and one time in eight a nautilus
+    shell, a name tag or a saddle besides.
   - nothing is ever lost: a cycle needs two empty slots before it starts, a
     log leaves the world in the same step that puts it in the chest, and
     anything the chest cannot take is dropped beside it.
   - **wages**: a cycle ends with one food item (anything tagged
-    `minecraft:is_food`) taken from the chest. A lumberjack with no food to
-    take waits; a farmer works unpaid, since it is what fills the chest. The
-    toggle on the settings panel turns wages off.
+    `minecraft:is_food`) taken from the chest. A lumberjack or miner with
+    no food to take waits; a farmer or fisher works unpaid, since they are
+    what fill the chest, and a fisher with nothing else to eat eats one of
+    its own catch (raw fish is food). The toggle on the settings panel
+    turns wages off.
 - **Settings panel** (manifest format 3): minutes between a worker's cycles
   (1–60, default 10) and whether workers are paid.
 - **Pieces that carry the trades**: the tallfolk field has the farmer's
-  post and a chest at the end of its channel, and stonefolk and tallfolk
+  post and a chest at the end of its channel; stonefolk and tallfolk
   villages grow a **grove** (three trees, a lumberjack's post, a chest)
-  among their greens. Tree leaves in every piece are no longer persistent,
-  so a felled crown decays.
+  among their greens; stonefolk and tinker villages a **mine** (a
+  cobblestone mound with a timbered adit, rails, a lantern, a coal vein and
+  an iron or copper vein at the end, the miner's post and a chest outside);
+  the reedfolk dock's worker fishes from the pier into its barrel. Tree
+  leaves in every piece are no longer persistent, so a felled crown decays.
 - `/scriptevent villages:debug` lists every post, its trade and whether its
   person is present, working or idle.
 - **Villages** as jigsaw structures (`behavior_pack/worldgen/`, `structures/`),
@@ -81,6 +103,11 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   the chest, a sapling on the stump and one bread fewer; nine ripe wheat
   become eight wheat in the chest with at most one ripe tile left and the
   field replanted.
+- `villages_miner_works_vein` and `villages_fisher_catches_fish` pass
+  headlessly: a coal vein yields six coal, stays in place and costs one
+  bread; a pond of eight water blocks yields four fish and the bread. Run
+  without the bread, the fisher ate one of its own catch: 3 fish of 4,
+  three runs out of three, which is the wage working as designed.
 - `ItemStack.getComponent(ItemComponentTypes.Food)` is **undefined for
   bread and cooked beef** on BDS 1.26.45 (only data-driven foods such as an
   apple carry the component); every food carries the `minecraft:is_food`
@@ -116,6 +143,14 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   regrows means the stump's ground is not dirt or grass (the sapling then
   goes to the chest).
 
-Not yet built (design §5–6): the miner's vein and the mine piece, the
-fisher, visitors and their errands, the elder and standing, inviting a
-person home.
+- **A vein a player carries home.** Mining a vein drops the block itself
+  (no loot table), so a kid can bring one to their own settlement and put a
+  worker post by it. Unconfirmed: that the dropped item keeps its ore
+  state; if it comes back as stone, give the block a loot table per
+  permutation.
+- **The mine piece on a slope.** The mound is four high; `beard_thin`
+  should bed it in. If the adit floods or the mouth hangs in the air,
+  lower the mound or move the piece to the square's pool.
+
+Not yet built (design §5–6): visitors and their errands, the elder and
+standing, inviting a person home.

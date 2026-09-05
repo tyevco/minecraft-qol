@@ -30,14 +30,16 @@ function placePost(test: Test, peopleIndex: number, job: number): void {
 }
 
 registerAsync("qol", "villages_post_spawns_person", async (test) => {
-  placePost(test, 3, 1);
+  // People 7, the drow: the highest index, so the property range and the
+  // eighth people event are exercised; the trade tests cover the lower ones.
+  placePost(test, 7, 1);
   test.succeedWhen(() => {
     const found = people(test);
     test.assert(found.length === 1, `expected exactly 1 person at the post, found ${found.length}`);
     const p = found[0]!;
     const peopleProp = p.getProperty("villages:people");
     const jobProp = p.getProperty("villages:job");
-    test.assert(peopleProp === 3, `expected people 3 (tallfolk), got ${String(peopleProp)}`);
+    test.assert(peopleProp === 7, `expected people 7 (drow), got ${String(peopleProp)}`);
     test.assert(jobProp === 1, `expected job 1 (worker), got ${String(jobProp)}`);
   });
 }).maxTicks(400).structureName("qol:arena");

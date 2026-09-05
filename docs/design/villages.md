@@ -84,10 +84,14 @@ keep walking.
 
 | People | Biomes (vanilla tags) | Centre | Streets | Houses | Ground |
 | --- | --- | --- | --- | --- | --- |
-| **Stonefolk** | `mountains`, `extreme_hills`, `meadow` | Hill Hall on a stone brick terrace | cobblestone and gravel, stone brick steps | forge, storehouse, larder; watch posts at the ends | `beard_thin`, `world_surface` |
+| **Stonefolk** | `extreme_hills` (built; `meadow` went to the high elves) | Hill Hall on a stone brick terrace | cobblestone and gravel, stone brick steps | forge, storehouse, larder; watch posts at the ends | `beard_thin`, `world_surface` |
 | **Reedfolk** | `swamp`, `mangrove_swamp`, `river` | Dock with the stall | bridge spans on stilts | stilt houses, drying racks; the reed tower at one end | `none`, `ocean_floor` + start height for the deck |
 | **Tinker** | `savanna`, `plateau`, `mesa` | Workshop with the still and stall | brick paths, copper lamp posts | burrows, larder | `beard_thin`, `world_surface` |
-| **Tallfolk** | `plains`, `forest` (not `mutated`) | Farmhouse, well and square | dirt paths with oak fences, fields alongside | barn, inn, larder, farmhouses; gatehouse and wall segments at the ends | `beard_thin`, `world_surface` |
+| **Tallfolk** | `plains` (built; `forest` went to the wood elves) | Farmhouse, well and square | dirt paths with oak fences, fields alongside | barn, inn, larder, farmhouses; gatehouse and wall segments at the ends | `beard_thin`, `world_surface` |
+| **Hobbits** | `flower_forest`, `hills` | Inn on a square, the bounder's post outside | grass paths, oak fence lamps | hobbit holes (grass mounds with round doors), gardens, a pantry; the party field and an orchard among the greens; a bounder's shelter at the ends | `beard_thin`, `world_surface` |
+| **Wood elves** | `forest`, `birch`, `taiga` | Hearth tree: a wide platform round a great dark oak | plank walkways six blocks up on dark oak trunks hung with leaves | platform houses, a bower, a larder, each on its own trunk; glades below; a lookout at the ends | `beard_thin`, `world_surface` |
+| **High elves** | `cherry_grove`, `meadow` | Hall of arches with a fountain; a fountain on the square | polished diorite, quartz pillars with sea lanterns | quartz houses under prismarine roofs, a library, cherry gardens; reflecting pools; a spire at the ends | `beard_thin`, `world_surface` |
+| **Drow** | `roofed` (dark forest), `pale_garden` | Sanctum: an amethyst altar under a blackstone roof | deepslate tiles on mycelium, blackstone walls with soul lanterns | deepslate houses, a spinnery, a larder; mushroom groves, web hollows and a mine; a web tower at the ends | `beard_thin`, `world_surface` |
 
 The tags are read from `bedrock-samples/behavior_pack/biomes`, so a filter
 such as `{ "test": "has_biome_tag", "value": "mangrove_swamp" }` names a tag
@@ -132,6 +136,35 @@ in, not left over.
 
 Trees are logs with leaves that never decay (`persistent_bit`), clipped to
 the piece they stand in.
+
+### 3.3 The second four: hobbits and three kinds of elf (built)
+
+Arabella asked for hobbits and elves, and the elves come the D&D way, three
+peoples with a look, a village and a biome each. They ride the same
+machinery as the first four (one entity, a `villages:people` index now
+0–7, the same jobs, posts, trades and pools), so what is new is rigs,
+outfits, buildings and a village style:
+
+| People | Rig | Dress | Village |
+| --- | --- | --- | --- |
+| **Hobbits** | small (body 8×9, legs 6), barefoot, curly brown hair, no hat | earthy: leather, green, gold, rust; brass trim | grass mounds with round oak doors, stepped so flowers grow on the roof; gardens of carrots and potatoes; an inn at the centre with a bounder outside |
+| **Wood elves** | tall and lean, pointed ears, a green hood | forest greens and bark brown, leaf-green trim | platforms in the canopy: a deck six blocks up on dark oak trunks hung with leaves, spruce huts under leaf roofs, a hearth round a great tree; glades of moss and fern below |
+| **High elves** | tall, pointed ears, gold hair, a gold circlet | white and sky blue, gold trim | quartz on diorite under prismarine roofs, light blue glass, sea lanterns on quartz pillars, a hall with a fountain, a library, cherry gardens and reflecting pools |
+| **Drow** | tall, pointed ears, dusky skin, white hair, a dark hood | black, violet, magenta, slate; silver trim | deepslate brick and blackstone on mycelium, purple glass, soul lanterns, webs; a sanctum with an amethyst altar; mushroom groves, web hollows and a mine |
+
+The elves wear their hood or circlet whatever their job (the hat bone is
+shown for a worker, or for any people from index five up). The deck the
+reedfolk stand on over water became a general thing (`deck` on a people:
+height, post, rail, the floor of a lot, and leaves to hang round the
+posts), which is what puts the wood elves in the trees. Biomes were
+re-dealt so each people has ground of its own: the tallfolk keep the
+plains and give the forest to the wood elves; the stonefolk keep the
+stony hills and give the meadow to the high elves.
+
+Not yet: an underground drow village (a jigsaw at a fixed depth with no
+heightmap projection is a probe, §7), and any people-specific behaviour -
+a hobbit's second breakfast, an elf's bow. Each people speaks through
+its buildings and its dress for now.
 
 ### 3.2 Seeing a village before the game does (built)
 
@@ -361,7 +394,12 @@ found, in buildings they raised. That is the whole loop.
    on a log drops nothing, and `Container.addItem` on a chest read through
    `BlockInventoryComponent` takes the log; the remainder-when-full path
    is written (dropped beside the chest) but not yet exercised in game.
-8. **Recognising food for the wage**: not `ItemComponentTypes.Food`, which
+8. **An underground village for the drow**: a jigsaw with `start_height`
+   at a fixed depth and no `heightmap_projection`, buried by
+   `terrain_adaptation`. Whether Bedrock's data-driven jigsaw places
+   below the surface at all is unmeasured; the drow live under the dark
+   forest's canopy until it is.
+9. **Recognising food for the wage**: not `ItemComponentTypes.Food`, which
    only data-driven foods carry; the `minecraft:is_food` item tag
    (`docs/README.md` corrections).
 

@@ -8,8 +8,9 @@ references these files, and `npm run mcaddon` never sees them.
   dummy, patrol golem, runner, messenger, pack mule. Each has `models/`,
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
-  moved to `packages/hatchling` when they were built; the four peoples of
-  `docs/design/npcs.md` likewise moved to `packages/villages`.
+  moved to `packages/hatchling` when they were built; the peoples of
+  `docs/design/npcs.md` likewise moved to `packages/villages`, eight of them
+  now.
 - `villages/` — one village per people, grown from the pieces and pools in
   `tools/structures/villages.ts` by the offline jigsaw expander
   (`tools/structures/jigsaw.ts`) from seed 1, as a preview the viewer draws

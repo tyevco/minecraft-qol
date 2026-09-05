@@ -8,7 +8,11 @@
             "Geometry.stonefolk",
             "Geometry.reedfolk",
             "Geometry.tinker",
-            "Geometry.tallfolk"
+            "Geometry.tallfolk",
+            "Geometry.hobbit",
+            "Geometry.wood_elf",
+            "Geometry.high_elf",
+            "Geometry.drow"
           ]
         },
         "textures": {
@@ -28,18 +32,34 @@
             "Texture.tallfolk_guard",
             "Texture.tallfolk_worker",
             "Texture.tallfolk_trader",
-            "Texture.tallfolk_builder"
+            "Texture.tallfolk_builder",
+            "Texture.hobbit_guard",
+            "Texture.hobbit_worker",
+            "Texture.hobbit_trader",
+            "Texture.hobbit_builder",
+            "Texture.wood_elf_guard",
+            "Texture.wood_elf_worker",
+            "Texture.wood_elf_trader",
+            "Texture.wood_elf_builder",
+            "Texture.high_elf_guard",
+            "Texture.high_elf_worker",
+            "Texture.high_elf_trader",
+            "Texture.high_elf_builder",
+            "Texture.drow_guard",
+            "Texture.drow_worker",
+            "Texture.drow_trader",
+            "Texture.drow_builder"
           ]
         }
       },
-      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 3)]",
+      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 7)]",
       "materials": [
         {
           "*": "Material.default"
         }
       ],
       "textures": [
-        "Array.look[math.clamp(q.property('villages:people'), 0, 3) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
+        "Array.look[math.clamp(q.property('villages:people'), 0, 7) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
       ],
       "part_visibility": [
         {
@@ -49,7 +69,7 @@
           "helmet": "q.property('villages:job') == 0"
         },
         {
-          "hat": "q.property('villages:job') == 1"
+          "hat": "q.property('villages:job') == 1 || q.property('villages:people') >= 5"
         },
         {
           "pack": "q.property('villages:job') >= 2"

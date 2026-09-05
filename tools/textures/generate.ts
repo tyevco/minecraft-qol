@@ -10,7 +10,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import * as A from "../atlases";
-import { Canvas } from "./canvas";
+import { Canvas, mix } from "./canvas";
 import * as T from "./tiles";
 
 const ROOT = resolve(__dirname, "../..");
@@ -319,12 +319,28 @@ interface People {
   body: [number, number];
   arm: [number, number];
   leg: [number, number];
+  /** What the hat bone wears: straw for the first four, a cloth hood or a gold circlet for the elves. */
+  hat?: "straw" | "hood" | "circlet";
+  /** Cloth and trim per job, where a people dresses its own way. */
+  cloth?: Partial<Record<string, { cloth: T.Ramp; trim: number }>>;
 }
+const ramp = (mid: number): T.Ramp => ({ light: mix(mid, 0xffffff, 0.35), mid, dark: mix(mid, 0x000000, 0.3), deep: mix(mid, 0x000000, 0.55) });
+const dress = (guard: number, worker: number, trader: number, builder: number, trim: number): People["cloth"] => ({
+  guard: { cloth: ramp(guard), trim },
+  worker: { cloth: ramp(worker), trim },
+  trader: { cloth: ramp(trader), trim },
+  builder: { cloth: ramp(builder), trim },
+});
 const PEOPLES: People[] = [
   { key: "stonefolk", skin: 0xc98f6f, hair: 0xb5442b, eye: 0x3a2a1a, beard: true, head: [8, 7], body: [10, 10], arm: [4, 10], leg: [4, 8] },
   { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14] },
   { key: "tinker", skin: 0xd9a877, hair: 0x6a4a2a, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7] },
   { key: "tallfolk", skin: 0xa0714f, hair: 0x3a2a1a, eye: 0x2a2a2e, beard: false, head: [8, 8], body: [8, 13], arm: [4, 13], leg: [4, 13] },
+  // The second four (docs/design/villages.md §3.3). Each dresses its own way.
+  { key: "hobbit", skin: 0xe6b894, hair: 0x6b4426, eye: 0x3a6a3a, beard: false, head: [8, 7], body: [8, 9], arm: [3, 9], leg: [3, 6], cloth: dress(0x7a5a3a, 0x4f7a3a, 0xd9a83a, 0x9c4a3a, 0xb8862b) },
+  { key: "wood_elf", skin: 0xd8b894, hair: 0x8a4f26, eye: 0x2f7a3a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x2f5a2a, 0x5a7a3a, 0xa0622a, 0x5a4a2a, 0x8fbf4a) },
+  { key: "high_elf", skin: 0xf2dcc8, hair: 0xf0e2a8, eye: 0x3a6ab8, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14], hat: "circlet", cloth: dress(0x8fa8c8, 0xe8e6dc, 0x6aa0d8, 0xd8c890, 0xe8c14a) },
+  { key: "drow", skin: 0x4a3f6a, hair: 0xf0f0f8, eye: 0xff5a8a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x1e1a2e, 0x4a2f6a, 0x7a2a6a, 0x3a3a4e, 0xc0c0d0) },
 ];
 interface Job {
   key: string;
@@ -348,7 +364,10 @@ for (const [ore, ramp] of [["stone", undefined], ["coal", T.COAL], ["iron", T.IR
   write(`${VILLAGES_RP}/blocks/vein_${ore}.png`, T.oreVein(T.STONE, ramp, 710));
 for (const people of PEOPLES) {
   for (const job of JOBS) {
-    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
+    const own = people.cloth?.[job.key];
+    const cloth = own?.cloth ?? job.cloth, trim = own?.trim ?? job.trim;
+    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth, trim, trousers: own ? cloth.deep : job.trousers, boot: job.boot, front: job.front };
+    const hat = people.hat === "hood" ? T.clothTile(cloth, 615) : people.hat === "circlet" ? T.circletTile() : T.straw(T.STRAW, 613);
     write(
       `${VILLAGES_RP}/entity/${people.key}_${job.key}.png`,
       atlas(A.BIPED, {
@@ -357,13 +376,13 @@ for (const people of PEOPLES) {
         hair: T.hairTile(people.hair),
         hairTop: T.hairTile(people.hair),
         shirt: T.shirtTile(look, people.body[0], people.body[1]),
-        shirtBack: T.clothTile(job.cloth, 611),
-        shirtSide: T.clothTile(job.cloth, 612),
+        shirtBack: T.clothTile(cloth, 611),
+        shirtSide: T.clothTile(cloth, 612),
         sleeve: T.sleeveTile(look, people.arm[0], people.arm[1]),
         hand: T.skinTile(people.skin),
         trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
         helmet: T.helmetTile(),
-        hat: T.straw(T.STRAW, 613),
+        hat,
         pack: T.packTile(),
         tool: T.toolTile(),
         toolWood: T.plankV(T.OAK, 614),

@@ -10,7 +10,7 @@
           "type": "int",
           "range": [
             0,
-            3
+            7
           ],
           "default": 0,
           "client_sync": true
@@ -90,6 +90,26 @@
             "subject": "other",
             "value": "villages_waypoint"
           }
+        }
+      },
+      "villages:people_4": {
+        "minecraft:scale": {
+          "value": 0.7
+        }
+      },
+      "villages:people_5": {
+        "minecraft:scale": {
+          "value": 1.1
+        }
+      },
+      "villages:people_6": {
+        "minecraft:scale": {
+          "value": 1.15
+        }
+      },
+      "villages:people_7": {
+        "minecraft:scale": {
+          "value": 1.05
         }
       }
     },
@@ -250,6 +270,46 @@
         "remove": {
           "component_groups": [
             "villages:walking"
+          ]
+        }
+      },
+      "villages:people_4": {
+        "set_property": {
+          "villages:people": 4
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_4"
+          ]
+        }
+      },
+      "villages:people_5": {
+        "set_property": {
+          "villages:people": 5
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_5"
+          ]
+        }
+      },
+      "villages:people_6": {
+        "set_property": {
+          "villages:people": 6
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_6"
+          ]
+        }
+      },
+      "villages:people_7": {
+        "set_property": {
+          "villages:people": 7
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_7"
           ]
         }
       }

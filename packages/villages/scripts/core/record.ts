@@ -15,7 +15,7 @@
  */
 export const SCHEMA = 3;
 
-export const PEOPLES = ["stonefolk", "reedfolk", "tinker", "tallfolk"] as const;
+export const PEOPLES = ["stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow"] as const;
 export const JOBS = ["guard", "worker", "trader", "builder"] as const;
 /** Index into JOBS of the one job that takes a trade (docs/design/villages.md §5.1). */
 export const WORKER = 1;

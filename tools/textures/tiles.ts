@@ -59,6 +59,8 @@ export const DARK_STONE: Ramp = {
   dark: 0x3f3f47,
   deep: 0x2c2c33,
 };
+export const GOLD: Ramp = { light: 0xfff0a0, mid: 0xe8c14a, dark: 0xb08a2a, deep: 0x6e5416 };
+
 export const COAL: Ramp = { light: 0x4a4a4a, mid: 0x2b2b2b, dark: 0x1a1a1a, deep: 0x0d0d0d };
 
 export const IRON: Ramp = {
@@ -1455,6 +1457,11 @@ export function helmetTile(): Canvas {
 /** A leather pack: a flap and a buckle. */
 export function packTile(): Canvas {
   return satchel(LEATHER).fill(0, 0, 16, 5, LEATHER.dark).fill(0, 5, 16, 1, LEATHER.light);
+}
+
+/** A circlet: a gold band with a gem at the front, for the hat tile. */
+export function circletTile(): Canvas {
+  return tile().fill(0, 0, 16, 16, GOLD.mid).fill(0, 0, 16, 1, GOLD.light).fill(0, 15, 16, 1, GOLD.dark).fill(7, 6, 2, 4, 0x6ec8ff).fill(7, 6, 1, 1, 0xdff4ff);
 }
 
 /** A tool head: iron with a bright edge. */

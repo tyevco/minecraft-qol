@@ -5,13 +5,16 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
 
 ## What is built
 
-- **Four peoples** (`villages:person`): stonefolk, reedfolk, tinker and
-  tallfolk, one entity with `villages:people` and `villages:job` properties
-  that pick the rig, the outfit and the accessory bones (helmet for a guard,
-  hat for a worker, pack for a trader and builder, tool for a builder). A
-  guard fights monsters within twelve blocks; nobody targets players. Every
-  person has a `minecraft:home` where it spawned and strolls within ten
-  blocks of it.
+- **Eight peoples** (`villages:person`): stonefolk, reedfolk, tinker,
+  tallfolk, hobbits, wood elves, high elves and drow, one entity with
+  `villages:people` (0–7) and `villages:job` properties that pick the rig,
+  the outfit and the accessory bones (helmet for a guard, hat for a worker
+  and for every elf, pack for a trader and builder, tool for a builder).
+  The second four (design §3.3) have their own dress per job, pointed ears
+  on the elves, a hood for the wood elves and the drow, a circlet for the
+  high elves, bare feet for the hobbits. A guard fights monsters within
+  twelve blocks; nobody targets players. Every person has a
+  `minecraft:home` where it spawned and strolls within ten blocks of it.
 - **The job post** (`villages:post`): a block with the people and the job in
   its states. It ticks every two to four seconds and keeps one person: spawns
   one on its first tick, and replaces a lost one a day later
@@ -100,6 +103,13 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   core building, streets, houses with a post each, lamp posts and watches at
   the ends. They generate every 34 chunks (separation 8) in each people's
   biomes; `/place structure villages:<people>_village` raises one by hand.
+  Each people has ground of its own: stonefolk in the stony hills
+  (`extreme_hills`), reedfolk in swamp and river, tinkers on the savanna,
+  tallfolk on the plains, hobbits in flower forests and hills, wood elves
+  in forest, birch and taiga, high elves in cherry groves and meadows,
+  drow under the dark forest and in the pale garden. The wood elf village
+  is in the canopy: plank walkways six blocks up on dark oak trunks, the
+  same deck machinery as the reedfolk's stilts.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
 
@@ -113,6 +123,13 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   experiments, and a placed village's posts people it: 15 persons at 16
   posts across two tallfolk villages, each by its post with the right people
   and job (`docs/villages-jigsaw-results.md`).
+- **The second four place and people themselves**: in a fresh plain
+  world `locate` finds hobbit, wood elf, high elf and drow villages in
+  their own biomes, and one of each placed from the API returned its box
+  and spawned its people (47 posts, 41 present with the two generated
+  villages nearby); the drow miner found its mine's two veins enclosed,
+  the elves' workers became lumberjacks among their trees. The spawn
+  GameTest now places a drow post, people 7, and passes.
 - **The villages generate on their own.** In a fresh plain world with no
   experiments, `locate structure` finds all four from spawn (reedfolk 239
   blocks off, tallfolk 324, tinker and stonefolk two to three thousand,
@@ -157,6 +174,14 @@ Design: `docs/design/villages.md`; measurements: `docs/villages-jigsaw-results.m
   the same way as chunks first load.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
+- **The look of the second four on a real client**: hobbit mounds on a
+  slope, wood elf walkways through a real forest (the deck's posts stand
+  on whatever is below; a walkway over a ravine hangs), the high elves'
+  sea lanterns and glass, the drow among dark oaks. The viewer
+  (`npm run viewer`) has each village grown from seed 1.
+- **A hobbit hole's front on a hill**: the mound is authored flat; on a
+  slope `beard_thin` should bed it in, and a door half buried means the
+  front row needs the doorstep raised.
 - **The stonefolk and tinker villages generated, not placed**: the
   reedfolk and tallfolk ones were seen generated near a plains spawn; the
   other two `locate` finds two to three thousand blocks off and have only

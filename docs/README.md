@@ -177,11 +177,12 @@ prototype” list. In suggested order:
   with generated models under `concepts/entities/`, each with its own "must
   prototype" list. Becomes a design doc per entity when one is picked up, as
   the hatchling and its egg were (`design/hatchling.md`, `packages/hatchling`).
-- [`design/furfolk.md`](design/furfolk.md) — a concept sheet, no models yet:
+- [`design/furfolk.md`](design/furfolk.md) — a concept sheet with models:
   animal peoples for the villages (foxfolk, catfolk, wolffolk, rabbitfolk,
   bearfolk) on the four peoples' rig and job outfits, each with a biome, a
   village palette, a trade (forager, shearer, fisher, baker, beekeeper) and
-  liked gifts. Says what changes in `packages/villages` (append-only
+  liked gifts. Rigs, job atlases and animation sets are generated under
+  `concepts/entities/` and shown in the viewer as `concept · furfolk`. Says what changes in `packages/villages` (append-only
   indices) and what to prototype first (property widening, `bury`, the
   bushes, hives and sheep). Prompted by a shelf of flocked animal figures.
 

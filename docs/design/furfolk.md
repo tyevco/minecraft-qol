@@ -4,16 +4,16 @@
 
 Companion to `design/npcs.md` and `design/villages.md` · Draft v0.1
 
-> Concept, not a build order, and not yet a model. It was prompted by a
-> shelf of flocked animal figures in a toy shop — rabbits on bicycles with
-> race numbers, a bear family at a picnic, a cat at a piano, a hedgehog in
+> Concept with models, not a build order. It was prompted by a shelf of
+> flocked animal figures in a toy shop — rabbits on bicycles with race
+> numbers, a bear family at a picnic, a cat at a piano, a hedgehog in
 > glasses — that one of the kids did not want to leave. Everything the four
 > peoples have (one rig, job outfits, posts, generated villages, standing)
 > carries over; what is new is the head, the tail and the village each people
-> builds. Nothing here has been run in game or drawn by the generator. §7
-> says what to prototype and §8 where to start, and the first step is rigs in
-> `concepts/entities/` so the look can be judged in the viewer before any
-> pack changes.
+> builds. The five peoples have generated rigs, twenty job atlases and an
+> animation set each under `concepts/entities/`, listed in the viewer as
+> `concept · furfolk` beside the four (`npm run viewer`). Nothing here has
+> been run in game. §7 says what to prototype and §8 where to start.
 
 ---
 
@@ -60,8 +60,9 @@ nothing is taken from a village. Rejected:
 
 ## 2. What the toy look means for the rig
 
-One change to the biped builder in `tools/models/generate.ts`: three
-optional bones and one substitution.
+One change to the biped builder in `tools/models/generate.ts`, built: the
+rig is split out (`bipedRig`) and a `furred()` builder adds three bones
+and one substitution to it, writing to `concepts/entities/models/`.
 
 | Part | Today | Furfolk |
 | --- | --- | --- |
@@ -89,15 +90,19 @@ For comparison the tinker is 21 units at 0.75 and the tallfolk 34 at 1.15.
 The head is two fifths of the body-plus-legs height or more in every row;
 that ratio is the whole difference between "a short villager" and "a toy".
 
-**Textures.** The `BIPED` atlas layout in `tools/atlases.ts` keeps its
-tiles; `skin`, `face`, `hair`, `hairTop` and `hand` are painted by three new
-painters in `tools/textures/tiles.ts`: `furTile(coat)` (a grain like
-`hairTile`, in the coat colour), `muzzleFaceTile(look, w, h, markings)` (two
-2×2 bead eyes with a single glint pixel each, a nose on the muzzle window,
-markings drawn from a small per-people list: blaze, cheeks, stripes, mask,
-ear tips) and `muzzleTile(coat, muzzleColour)`. The window sizes are the
-model's, as now, and the two generators' comments keep saying so. The four
-job looks (`JOBS` in `tools/textures/generate.ts`) are reused as they are.
+**Textures** (built). A `FURRED` atlas layout in `tools/atlases.ts` keeps
+the `BIPED` tiles in their slots and adds `muzzle`, `ear`, `tail` and
+`tailTip` in a fifth row and column (80 px). `skin`, `face`, `hair`,
+`hairTop` and `hand` are painted by fur painters in `tools/textures/tiles.ts`:
+`furTile(coat)` (a soft grain in the coat colour), `furFaceTile(fur, w, h)`
+(two 2×2 bead eyes with a single glint pixel each, no mouth, markings drawn
+from a small per-people list: cheeks, blaze, stripes, mask, ear tips, brow),
+`muzzleTile` (pale fur, the nose at the top of the window, the top-left
+corner left plain for the muzzle's other faces), `earTile` (the coat round a
+pink inside) and `tailTile`. The window sizes are the model's, as now, and
+the two generators' comments keep saying so. The four job looks (`JOBS` in
+`tools/textures/generate.ts`) are reused as they are, so a foxfolk guard
+wears the same breastplate as a stonefolk one.
 
 **Coats.** The figures come in colour families (a chocolate rabbit and a
 milk rabbit are the same rabbit). A second coat per people doubles the
@@ -106,13 +111,14 @@ person wears would come from a hash of the post's position, so the record
 does not change and a respawned person keeps its coat. Worth having, not
 worth doing first; §8.
 
-**Animation.** The one `bipedSet` in `tools/animations/generate.ts` serves
-all peoples and reads a geometry back so every animated bone exists. It
-would read a furfolk geometry with the union of the new bones and add an
-ear flick to the idle, a tail swish to idle and walk, and a tail sway to the
-work swing. Whether an animation may name a bone a given geometry lacks (a
-foxfolk set applied to the tailless tinker) is §7 item 4; if not, the set is
-generated twice, one for the four and one for the furred.
+**Animation** (built as concepts). `tools/animations/generate.ts` emits one
+`furredSet` per people, since the generator checks every animated bone
+against the geometry and the cat alone has a `tail_tip`: the biped idle,
+walk and work, plus an ear flick now and then (a clipped sine, so the ears
+rest most of the time), a tail swish in the idle and walk, and a tail sway
+on the work swing. Whether a shipped pack could instead use one set naming
+bones some geometries lack is §7 item 4; if it can, the five sets fold back
+into `bipedSet`.
 
 ## 3. The peoples
 
@@ -126,7 +132,7 @@ signature pieces drawn.
 ### 3.1 Foxfolk — the berry pickers
 
 - **Look:** rust coat, white muzzle, cheeks and chest, dark ear tips and
-  dark "socks" on the arms and legs. Tall triangular ears (2×4×1, tilted
+  dark "socks" on the arms and legs. Tall ears (3×6×1, splayed
   out). A big bushy tail (3×3×8) with a white tip, held low; the tail alone
   says fox from behind.
 - **Where:** taiga and old-growth taiga, where the game's own foxes live;
@@ -148,7 +154,7 @@ signature pieces drawn.
 ### 3.2 Catfolk — the weavers
 
 - **Look:** a grey tabby with darker stripes across the top of the head and
-  down the tail; a cream muzzle; small pointed ears (2×3×1). A thin tail in
+  down the tail; a cream muzzle; small ears (3×5×1). A thin tail in
   two segments (1×1×4 and 1×1×3) so the tip can curl up. The smallest
   muzzle: cats are flat-faced in the figures.
 - **Where:** cherry grove and flower forest (the tallfolk's filter excludes
@@ -167,7 +173,7 @@ signature pieces drawn.
 ### 3.3 Wolffolk — the lodge people
 
 - **Look:** grey coat, pale muzzle and underside, a dark saddle across the
-  shoulders; ears set wide (2×3×1, upright); a straight tail (2×2×7) held
+  shoulders; ears set wide (3×5×1, pitched back); a straight tail (2×2×7) held
   level. The longest muzzle. Broadest shoulders after the bear.
 - **Where:** snowy taiga, snowy plains and the frozen peaks' feet (`cold`
   and `frozen`, to check). Wolves are the one people at home in snow.
@@ -188,7 +194,7 @@ signature pieces drawn.
 ### 3.4 Rabbitfolk — the bakers
 
 - **Look:** brown coat with a white blaze down the face and a white muzzle;
-  the toy shop's favourite. Tall ears (2×6×1, upright) that stand a full
+  the toy shop's favourite. Tall ears (3×7×1, near upright) that stand a full
   head above the hat; a second coat with lop ears (hanging beside the head)
   if coats come. A puff tail (3×3×2). The shortest people.
 - **Where:** birch forest and the flower forest's edge; the tag is `birch`
@@ -211,7 +217,7 @@ signature pieces drawn.
 ### 3.5 Bearfolk — the beekeepers
 
 - **Look:** a brown coat all over, small round ears on the top corners of
-  the head (3×3×1, no tilt), a wide muzzle with a lighter patch, a stub
+  the head (3×3×1, on the sides), a wide muzzle with a lighter patch, a stub
   tail (2×2×1). The biggest people, broader than the stonefolk, and the
   slowest walk (`movement` 0.22).
 - **Where:** dark forest (`roofed`, to check), where the game puts mushrooms
@@ -336,9 +342,11 @@ bakes if there is a furnace near it.
    applied to the stonefolk). Silent, or a content-log error; the answer
    decides whether there is one biped animation set or two.
 5. **Ears through a hat.** That two cubes interpenetrating (the ear rising
-   through the hat crown) render as ear holes and not as z-fighting at the
-   join. If they fight, the hat cube shrinks by half a unit where the ears
-   pass.
+   through the hat crown) render as ear holes in game and not as z-fighting
+   at the join. In the viewer they do, which is why every top-set ear is at
+   least five units tall: the cap's crown is three above the head and a
+   four-unit ear vanished inside it. If they fight in game, the hat cube
+   shrinks by half a unit where the ears pass.
 6. **`terrain_adaptation: bury`** on a jigsaw structure whose houses are
    meant to sit in a bank (the fox den, the rabbit warren), and whether it
    applies per structure only (which the schema suggests) or can differ per
@@ -356,11 +364,12 @@ bakes if there is a furnace near it.
 
 ## 8. Where this goes next
 
-1. **Rigs in the viewer, first.** The §2 builder change and painters, one
-   call per people, into `concepts/entities/` with the peoples' job atlases
-   and the animation set, listed as `concept · furfolk` beside the four.
-   Judge them with the kids; let them pick the first people and its name.
-   Nothing in a shipped pack changes for this step.
+1. ~~**Rigs in the viewer, first.**~~ Built: the §2 builder change and
+   painters, one call per people, into `concepts/entities/` with the
+   peoples' job atlases and an animation set each, listed as `concept ·
+   furfolk` beside the four. Nothing in a shipped pack changed. Judge them
+   with the kids; let them pick the first people and its name, and change
+   the numbers in the two `FURFOLK` tables until each reads right.
 2. **Probe items 1–5** in the probe pack, in one session, since each is a
    read.
 3. **One people end to end**: append it to the record, the block, the

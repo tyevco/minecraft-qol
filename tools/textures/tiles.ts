@@ -1434,3 +1434,85 @@ export function packTile(): Canvas {
 export function toolTile(): Canvas {
   return tile().fill(0, 0, 16, 16, IRON.mid).grain(0, 0, 16, 16, IRON.mid, IRON.light, IRON.dark, 0.3, 609, 4).fill(0, 0, 16, 2, IRON.light);
 }
+
+// ---------------------------------------------------------------------------
+// Furfolk (docs/design/furfolk.md): the peoples' painters with fur for skin
+// and hair, and the pieces an animal head adds. The toy look is the brief:
+// black bead eyes with one glint, no mouth (the nose is on the muzzle), and
+// flat markings in one or two colours rather than shading.
+// ---------------------------------------------------------------------------
+
+/** A people's coat and markings. */
+export interface Fur {
+  coat: Color;
+  /** The muzzle, cheeks, blaze and tail tip: the coat's light colour. */
+  pale: Color;
+  /** Inside the ears. */
+  inner: Color;
+  eye: Color;
+  /** Hands and feet; the fox's dark socks. Defaults to the coat. */
+  paw?: Color;
+  markings: ReadonlyArray<"cheeks" | "blaze" | "stripes" | "mask" | "earTips" | "brow">;
+}
+
+/** Fur: a soft, dense grain in the coat colour. */
+export function furTile(coat: Color, seed = 621): Canvas {
+  return tile().fill(0, 0, 16, 16, coat).grain(0, 0, 16, 16, coat, mix(coat, GLINT, 0.18), shade(coat, 0.82), 0.45, seed, 3);
+}
+
+const stripeColour = (coat: Color) => shade(coat, 0.55);
+
+/** The face for a w x h front window: markings first, then two bead eyes. The muzzle cube covers the middle of the lower half. */
+export function furFaceTile(fur: Fur, w: number, h: number): Canvas {
+  const c = furTile(fur.coat, 622);
+  const [x0, y0] = win(w, h);
+  const has = (m: Fur["markings"][number]) => fur.markings.includes(m);
+  if (has("mask")) c.fill(x0, y0 + Math.round(h * 0.55), w, h - Math.round(h * 0.55), fur.pale);
+  if (has("cheeks")) c.fill(x0 + 1, y0 + Math.round(h * 0.5), w - 2, h - Math.round(h * 0.5), fur.pale);
+  if (has("blaze")) c.fill(x0 + Math.floor(w / 2) - 1, y0, 2, h, fur.pale);
+  if (has("stripes")) {
+    const rows = Math.max(1, Math.round(h * 0.3));
+    for (const x of [x0 + 1, x0 + Math.floor(w / 2), x0 + w - 2]) c.fill(x, y0, 1, rows, stripeColour(fur.coat));
+  }
+  if (has("brow")) c.fill(x0 + 1, y0 + Math.round(h * 0.25), w - 2, 1, shade(fur.coat, 0.7));
+  // Bead eyes: 2x2, a glint in the top-left pixel, set a little wide.
+  const ey = y0 + Math.round(h * 0.38);
+  const inset = Math.max(1, Math.round(w * 0.2));
+  for (const ex of [x0 + inset, x0 + w - inset - 2]) {
+    c.fill(ex, ey, 2, 2, fur.eye).set(ex, ey, GLINT);
+  }
+  return c;
+}
+
+/** The top of the head: fur, with a tabby's stripes across it if asked. */
+export function furTopTile(fur: Fur): Canvas {
+  const c = furTile(fur.coat, 623);
+  if (fur.markings.includes("stripes")) for (const y of [4, 8, 12]) c.fill(2, y, 12, 1, stripeColour(fur.coat));
+  return c;
+}
+
+/** The muzzle: pale fur with a nose at the top of the w x h front window. The top-left corner stays plain for the other faces. */
+export function muzzleTile(fur: Fur, w: number, h: number): Canvas {
+  const c = furTile(fur.pale, 624);
+  const [x0, y0] = win(w, h);
+  const nose = w >= 4 ? 2 : 1;
+  c.fill(x0 + Math.floor((w - nose) / 2), y0, nose, 1, shade(fur.eye, 1.2));
+  if (h >= 3) c.set(x0 + Math.floor(w / 2), y0 + 1, shade(fur.pale, 0.7));
+  return c;
+}
+
+/** An ear's front for a w x h window: the coat round a pink inside; a dark tip if asked. */
+export function earTile(fur: Fur, w: number, h: number): Canvas {
+  const c = furTile(fur.coat, 625);
+  const [x0, y0] = win(w, h);
+  if (w >= 3 && h >= 3) c.fill(x0 + 1, y0 + 1, w - 2, h - 2, fur.inner);
+  if (fur.markings.includes("earTips")) c.fill(x0, y0, w, 1, stripeColour(fur.coat));
+  return c;
+}
+
+/** The tail: fur, ringed for a tabby. */
+export function tailTile(fur: Fur): Canvas {
+  const c = furTile(fur.coat, 626);
+  if (fur.markings.includes("stripes")) for (const y of [3, 7, 11]) c.fill(0, y, 16, 1, stripeColour(fur.coat));
+  return c;
+}

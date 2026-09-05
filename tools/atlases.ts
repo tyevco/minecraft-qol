@@ -189,3 +189,16 @@ export const BIPED = layout(64, {
   toolWood: [2, 3],
   dark: [3, 3],
 });
+
+/**
+ * The furfolk (docs/design/furfolk.md): the biped layout's tiles in the same
+ * slots, so the outfit painters and the biped rig carry over, plus a fifth
+ * row and column for what an animal head and body add.
+ */
+export const FURRED = layout(80, {
+  ...BIPED.tiles,
+  muzzle: [4, 0],
+  ear: [4, 1],
+  tail: [4, 2],
+  tailTip: [4, 3],
+});

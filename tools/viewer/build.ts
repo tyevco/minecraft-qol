@@ -51,6 +51,13 @@ const PEOPLES: [id: string, name: string][] = [
   ["tinker", "Tinker"],
   ["tallfolk", "Tallfolk"],
 ];
+const FURFOLK: [id: string, name: string, notes: string][] = [
+  ["foxfolk", "Foxfolk", "Rust coat, white cheeks and tail tip, dark socks; a berry-picking people of the taiga."],
+  ["catfolk", "Catfolk", "A grey tabby with a cream muzzle and a two-segment tail that curls; a weaving people of the cherry groves."],
+  ["wolffolk", "Wolffolk", "Grey with a pale muzzle, wide-set ears and a level tail; a lodge people of the snowy taiga."],
+  ["rabbitfolk", "Rabbitfolk", "Chocolate brown with a white blaze, tall ears and a puff tail; a baking people of the birch woods."],
+  ["bearfolk", "Bearfolk", "Brown all over, round ears on the sides, a stub tail, the broadest of all; a beekeeping people of the dark forest."],
+];
 const GREENS: Record<string, string[]> = { stonefolk: ["terrace"], reedfolk: ["reed_bed"], tinker: ["yard"], tallfolk: ["meadow", "orchard"] };
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
   ...(GREENS[p] ?? []).map((g): [string, string, string] => [`${p}_${g}`, `${name} ${g[0]!.toUpperCase()}${g.slice(1).replace("_", " ")}`, p]),
@@ -360,6 +367,26 @@ const MODELS: Model[] = [
     textures: { default: "concepts/entities/textures/mule.png" },
     notes: "A donkey with panniers and a harness. Each pannier is its own bone so an empty side can be hidden by bone visibility.",
   },
+  // Furfolk (docs/design/furfolk.md): animal peoples on the biped rig, in the four job outfits.
+  ...FURFOLK.map(([id, name, notes]): Model => ({
+    id: `concept_${id}`,
+    name: `${name} (concept)`,
+    pack: "concept · furfolk",
+    kind: "entity",
+    geometry: `concepts/entities/models/${id}.geo.json`,
+    textures: {
+      guard: `concepts/entities/textures/${id}_guard.png`,
+      worker: `concepts/entities/textures/${id}_worker.png`,
+      trader: `concepts/entities/textures/${id}_trader.png`,
+      builder: `concepts/entities/textures/${id}_builder.png`,
+    },
+    animations: {
+      file: `concepts/entities/animations/${id}.animation.json`,
+      controller: `concepts/entities/animation_controllers/${id}.animation_controllers.json`,
+    },
+    defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg", "left_ear", "right_ear", "tail", "tail_tip"],
+    notes: `${notes} Same job outfits and accessory bones as the four peoples (guard: helmet; worker: hat; trader: pack; builder: tool and pack); the ears stand up through the hat. Ears flick and the tail swishes in the idle.`,
+  })),
   // Concept buildings (docs/design/settlements.md), drawn in vanilla textures.
   ...BUILDINGS.map(([id, name, people]): Model => ({
     id: `building_${id}`,

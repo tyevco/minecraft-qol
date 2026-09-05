@@ -1185,7 +1185,8 @@ interface BipedSpec {
   hat: "cap" | "reed" | "straw";
 }
 
-function biped(spec: BipedSpec): void {
+/** The biped's bones, and the heights the accessories and the furfolk hang off. */
+function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: number; top: number } {
   const [hw, hh, hd] = spec.head;
   const [bw, bh, bd] = spec.body;
   const [aw, ah, ad] = spec.arm;
@@ -1232,48 +1233,53 @@ function biped(spec: BipedSpec): void {
             { origin: [-hw / 2 - 1, top - 0.5, -hd / 2 - 1], size: [hw + 2, 1, hd + 2], faces: { all: "pack" } },
             { origin: [-hw / 2 + 1, top + 0.5, -hd / 2 + 1], size: [hw - 2, 3, hd - 2], faces: { all: "pack" } },
           ];
+  const bones: Bone<BP>[] = [
+    {
+      name: "body",
+      pivot: [0, hip, 0],
+      cubes: [{ origin: [-bw / 2, hip, -bd / 2], size: [bw, bh, bd], faces: { north: "shirt", south: "shirtBack", east: "shirtSide", west: "shirtSide", up: "dark", down: "dark" } }],
+    },
+    { name: "head", parent: "body", pivot: [0, shoulder, 0], locators: { eyes: [0, shoulder + hh * 0.55, -hd / 2] }, cubes: headCubes },
+    armSpec("left_arm", bw / 2),
+    armSpec("right_arm", rightArmX),
+    legSpec("left_leg", 0),
+    legSpec("right_leg", -lw),
+    // Accessories, hidden or shown per job.
+    {
+      name: "helmet",
+      parent: "head",
+      pivot: [0, shoulder, 0],
+      cubes: [
+        { origin: [-hw / 2 - 0.5, shoulder + hh * 0.5, -hd / 2 - 0.5], size: [hw + 1, hh * 0.5 + 0.5, hd + 1], faces: { sides: "helmet", up: "helmet", down: "dark" } },
+        { origin: [-1, shoulder + hh * 0.3, -hd / 2 - 1], size: [2, hh * 0.3, 1], faces: { all: "helmet" } },
+      ],
+    },
+    { name: "hat", parent: "head", pivot: [0, shoulder, 0], cubes: hatCubes },
+    {
+      name: "pack",
+      parent: "body",
+      pivot: [0, hip, 0],
+      cubes: [{ origin: [-bw / 2 + 1, hip + 1, bd / 2], size: [bw - 2, bh - 2, 3], faces: { all: "pack" } }],
+    },
+    {
+      name: "tool",
+      parent: "right_arm",
+      pivot: [rightArmX + aw / 2, shoulder - 1, 0],
+      cubes: [
+        { origin: [rightArmX + aw / 2 - 0.5, handY - 6, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
+        { origin: [rightArmX + aw / 2 - 2, handY - 8, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
+      ],
+    },
+  ];
+  return { bones, hip, shoulder, top };
+}
+
+function biped(spec: BipedSpec): void {
   write(`${VILLAGES_MODELS}/${spec.file}.geo.json`, {
     identifier: spec.identifier,
     atlas: A.BIPED,
     visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
-    bones: [
-      {
-        name: "body",
-        pivot: [0, hip, 0],
-        cubes: [{ origin: [-bw / 2, hip, -bd / 2], size: [bw, bh, bd], faces: { north: "shirt", south: "shirtBack", east: "shirtSide", west: "shirtSide", up: "dark", down: "dark" } }],
-      },
-      { name: "head", parent: "body", pivot: [0, shoulder, 0], locators: { eyes: [0, shoulder + hh * 0.55, -hd / 2] }, cubes: headCubes },
-      armSpec("left_arm", bw / 2),
-      armSpec("right_arm", rightArmX),
-      legSpec("left_leg", 0),
-      legSpec("right_leg", -lw),
-      // Accessories, hidden or shown per job.
-      {
-        name: "helmet",
-        parent: "head",
-        pivot: [0, shoulder, 0],
-        cubes: [
-          { origin: [-hw / 2 - 0.5, shoulder + hh * 0.5, -hd / 2 - 0.5], size: [hw + 1, hh * 0.5 + 0.5, hd + 1], faces: { sides: "helmet", up: "helmet", down: "dark" } },
-          { origin: [-1, shoulder + hh * 0.3, -hd / 2 - 1], size: [2, hh * 0.3, 1], faces: { all: "helmet" } },
-        ],
-      },
-      { name: "hat", parent: "head", pivot: [0, shoulder, 0], cubes: hatCubes },
-      {
-        name: "pack",
-        parent: "body",
-        pivot: [0, hip, 0],
-        cubes: [{ origin: [-bw / 2 + 1, hip + 1, bd / 2], size: [bw - 2, bh - 2, 3], faces: { all: "pack" } }],
-      },
-      {
-        name: "tool",
-        parent: "right_arm",
-        pivot: [rightArmX + aw / 2, shoulder - 1, 0],
-        cubes: [
-          { origin: [rightArmX + aw / 2 - 0.5, handY - 6, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
-          { origin: [rightArmX + aw / 2 - 2, handY - 8, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
-        ],
-      },
-    ],
+    bones: bipedRig(spec).bones,
   });
 }
 
@@ -1282,6 +1288,106 @@ biped({ file: "stonefolk", identifier: "geometry.villages_stonefolk", head: [8, 
 biped({ file: "reedfolk", identifier: "geometry.villages_reedfolk", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], hat: "reed" });
 biped({ file: "tinker", identifier: "geometry.villages_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
 biped({ file: "tallfolk", identifier: "geometry.villages_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });
+
+// ---------------------------------------------------------------------------
+// Furfolk (docs/design/furfolk.md): animal peoples on the biped rig. The same
+// bones and job accessories, in toy proportions (a head two fifths of the
+// height), plus a muzzle on the head, two ears on their own bones so they
+// can flick, and a tail on the body so it can swish. Ears stand up through
+// the cap, which is what a hat with ear holes looks like. Concepts, under
+// concepts/entities/, until one is picked up; the window sizes here must
+// match the fur painters' arguments in tools/textures/generate.ts.
+// ---------------------------------------------------------------------------
+
+type FR = keyof typeof A.FURRED.tiles;
+
+interface FurredSpec extends Omit<BipedSpec, "hat" | "beard" | "goggles"> {
+  /** Muzzle cube, on the head's front just above the chin. */
+  muzzle: [number, number, number];
+  /** Ear cube, width x height x depth; where it sits and how it tilts. */
+  ear: { size: [number, number, number]; on: "top" | "side"; splay: number; pitch?: number };
+  tail: "bushy" | "thin" | "straight" | "puff" | "stub";
+}
+
+function furred(spec: FurredSpec): void {
+  const rig = bipedRig({ ...spec, hat: "cap" });
+  const { hip, shoulder, top } = rig;
+  const [hw, , hd] = spec.head;
+  const [, , bd] = spec.body;
+  const [mw, mh, md] = spec.muzzle;
+  const plain = { tile: "muzzle", align: "topleft" } as const;
+  const bones: Bone<FR>[] = [...rig.bones];
+  // The muzzle rides on the head bone: a cube on its front, nose painted at the top of the window.
+  bones.find((b) => b.name === "head")!.cubes.push({
+    origin: [-mw / 2, shoulder + 1, -hd / 2 - md],
+    size: [mw, mh, md],
+    faces: { north: "muzzle", south: plain, east: plain, west: plain, up: plain, down: plain },
+  });
+  // Ears: on the top edge, standing up through the hat, or on the sides for round ones.
+  const [ew, eh, ed] = spec.ear.size;
+  const earX = spec.ear.on === "top" ? hw / 2 - ew - 1 : hw / 2 - 1;
+  const earY = spec.ear.on === "top" ? top - 1 : top - eh + 0.5;
+  const ear = (name: string, sign: 1 | -1): Bone<FR> => {
+    const x = sign > 0 ? earX : -earX - ew;
+    return {
+      name,
+      parent: "head",
+      pivot: [x + ew / 2, earY, 0],
+      rotation: [spec.ear.pitch ?? 0, 0, sign * spec.ear.splay],
+      cubes: [{ origin: [x, earY, -ed / 2], size: [ew, eh, ed], faces: { north: "ear", south: "hair", east: "hair", west: "hair", up: "hair", down: "hair" } }],
+    };
+  };
+  bones.push(ear("left_ear", 1), ear("right_ear", -1));
+  // The tail hangs from the back of the hips; -x pitches its free end down.
+  const root: readonly [number, number, number] = [0, hip + 1, bd / 2];
+  const tailBone = (rotation: [number, number, number], cubes: Cube<FR>[]): Bone<FR> => ({ name: "tail", parent: "body", pivot: root, rotation, cubes });
+  switch (spec.tail) {
+    case "bushy":
+      bones.push(
+        tailBone(
+          [-35, 0, 0],
+          [
+            { origin: [-1.5, hip - 0.5, bd / 2], size: [3, 3, 6], faces: { all: "tail" } },
+            { origin: [-1.5, hip - 0.5, bd / 2 + 6], size: [3, 3, 2], faces: { all: "tailTip" } },
+          ],
+        ),
+      );
+      break;
+    case "thin":
+      bones.push(
+        tailBone([-50, 0, 0], [{ origin: [-0.5, hip + 0.5, bd / 2], size: [1, 1, 4], faces: { all: "tail" } }]),
+        {
+          name: "tail_tip",
+          parent: "tail",
+          pivot: [0, hip + 1, bd / 2 + 4],
+          rotation: [70, 0, 0],
+          cubes: [{ origin: [-0.5, hip + 0.5, bd / 2 + 4], size: [1, 1, 3], faces: { all: "tailTip" } }],
+        },
+      );
+      break;
+    case "straight":
+      bones.push(tailBone([-15, 0, 0], [{ origin: [-1, hip, bd / 2], size: [2, 2, 7], faces: { all: "tail" } }]));
+      break;
+    case "puff":
+      bones.push(tailBone([0, 0, 0], [{ origin: [-1.5, hip - 0.5, bd / 2], size: [3, 3, 2], faces: { all: "tailTip" } }]));
+      break;
+    case "stub":
+      bones.push(tailBone([0, 0, 0], [{ origin: [-1, hip, bd / 2], size: [2, 2, 1], faces: { all: "tail" } }]));
+      break;
+  }
+  write(`${CONCEPT_MODELS}/${spec.file}.geo.json`, {
+    identifier: spec.identifier,
+    atlas: A.FURRED,
+    visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
+    bones,
+  });
+}
+
+furred({ file: "foxfolk", identifier: "geometry.concept_foxfolk", head: [8, 8, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [4, 3, 2], ear: { size: [3, 6, 1], on: "top", splay: 12 }, tail: "bushy" });
+furred({ file: "catfolk", identifier: "geometry.concept_catfolk", head: [8, 7, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 8 }, tail: "thin" });
+furred({ file: "wolffolk", identifier: "geometry.concept_wolffolk", head: [8, 8, 9], body: [8, 10, 4], arm: [4, 10, 4], leg: [4, 8, 4], muzzle: [4, 3, 3], ear: { size: [3, 5, 1], on: "top", splay: 10, pitch: -10 }, tail: "straight" });
+furred({ file: "rabbitfolk", identifier: "geometry.concept_rabbitfolk", head: [8, 8, 8], body: [6, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 7, 1], on: "top", splay: 5 }, tail: "puff" });
+furred({ file: "bearfolk", identifier: "geometry.concept_bearfolk", head: [9, 8, 9], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 7, 4], muzzle: [4, 3, 3], ear: { size: [3, 3, 1], on: "side", splay: 0 }, tail: "stub" });
 
 // ---------------------------------------------------------------------------
 // Villages job post - the block a person is anchored to. A wooden post with

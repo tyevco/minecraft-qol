@@ -9,7 +9,11 @@ references these files, and `npm run mcaddon` never sees them.
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built; the four peoples of
-  `docs/design/npcs.md` likewise moved to `packages/villages`.
+  `docs/design/npcs.md` likewise moved to `packages/villages`. The five
+  furfolk of `docs/design/furfolk.md` (foxfolk, catfolk, wolffolk,
+  rabbitfolk, bearfolk) are here too: one geometry each on the biped rig
+  with a muzzle, ears and a tail, the four job atlases each
+  (`<people>_<job>.png`, on the `FURRED` layout), and an animation set each.
 - `villages/` — one village per people, grown from the pieces and pools in
   `tools/structures/villages.ts` by the offline jigsaw expander
   (`tools/structures/jigsaw.ts`) from seed 1, as a preview the viewer draws

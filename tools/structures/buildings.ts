@@ -366,3 +366,287 @@ building("shared_wall", "Wall Segment", "shared", "Cobblestone, four high and on
   // Steps up onto the walkway at the east end.
   bp.set(6, 4, 2, "air").stairs(6, 3, 1, "cobblestone", "west").stairs(6, 3, 2, "cobblestone", "west");
 });
+
+// ---------------------------------------------------------------------------
+// The second four peoples (docs/design/villages.md §3.3): hobbits in hills,
+// wood elves in the canopy, high elves in white stone, drow in the dark.
+// ---------------------------------------------------------------------------
+
+/** A tree for a building's own garden: a trunk and a two-layer crown, leaves persistent since nothing else holds them. */
+function gardenTree(bp: Blueprint, x: number, y: number, z: number, log: string, leaves: string, height = 4): void {
+  const L = { persistent_bit: true, update_bit: false };
+  bp.fill(x, y, z, 1, height, 1, log);
+  const top = y + height;
+  for (let i = -2; i <= 2; i++)
+    for (let k = -2; k <= 2; k++) {
+      if (Math.abs(i) === 2 && Math.abs(k) === 2) continue;
+      for (let j = top - 2; j < top; j++) if (x + i >= 0 && z + k >= 0 && bp.at(x + i, j, z + k) === undefined) bp.set(x + i, j, z + k, leaves, L);
+    }
+  for (let i = -1; i <= 1; i++) for (let k = -1; k <= 1; k++) if (Math.abs(i) + Math.abs(k) < 2 && x + i >= 0 && z + k >= 0) bp.set(x + i, top, z + k, leaves, L);
+}
+
+// Hobbits: grass mounds with round oak doors, oak and cobblestone, gardens.
+
+/** A hobbit hole's front: oak planks with a round-ish door ringed in logs and two round windows. */
+function holeFront(bp: Blueprint, x: number, y: number, z: number, w: number): void {
+  bp.fill(x, y, z, w, 3, 1, "oak_planks");
+  const dx = x + Math.floor(w / 2);
+  for (const [i, j] of [[dx - 1, 0], [dx + 1, 0], [dx - 1, 1], [dx + 1, 1]] as const) bp.log(i, y + j, z, "stripped_oak_log", "y");
+  bp.log(dx, y + 2, z, "stripped_oak_log", "x").log(dx - 1, y + 2, z, "stripped_oak_log", "x").log(dx + 1, y + 2, z, "stripped_oak_log", "x");
+  bp.door(dx, y, z, "oak", "south");
+  if (w >= 7) bp.set(x + 1, y + 1, z, "glass").set(x + w - 2, y + 1, z, "glass");
+}
+
+building("hobbit_hole", "Hobbit Hole", "hobbit", "A grassy mound with a round oak door in its face and two round windows, a bed, a chest and a table inside, flowers on the roof. The hobbit home.", (bp) => {
+  bp.fill(0, 0, 0, 9, 1, 7, "grass");
+  bp.fill(0, 1, 0, 9, 2, 6, "grass");
+  bp.fill(1, 3, 0, 7, 1, 6, "grass");
+  bp.fill(2, 4, 1, 5, 1, 4, "grass");
+  bp.fill(3, 5, 2, 3, 1, 2, "grass");
+  bp.fill(2, 1, 1, 5, 2, 5, "air");
+  bp.fill(2, 0, 1, 5, 1, 5, "oak_planks");
+  holeFront(bp, 1, 1, 6, 7);
+  bp.fill(7, 3, 2, 1, 2, 1, "cobblestone");
+  for (const [x, z] of [[0, 2], [8, 4], [1, 5], [3, 1]] as const) bp.set(x, bp.at(x, 3, z) === undefined ? 3 : 4, z, x % 2 ? "poppy" : "dandelion");
+  bed(bp, 2, 1, 2);
+  bp.set(6, 1, 2, "chest").set(4, 2, 3, "lantern");
+  table(bp, 6, 1, 4, "oak");
+  post(bp, 3, 1, 4, "builder");
+});
+
+building("hobbit_garden", "Garden", "hobbit", "Carrots one side of the channel, potatoes the other, fenced, with a gate on the street. The farmer's post and a chest stand at the channel's end.", (bp) => {
+  bp.fill(0, 0, 0, 9, 1, 9, "grass");
+  bp.fill(1, 0, 1, 7, 1, 7, "farmland", { moisturized_amount: 7 });
+  bp.fill(4, 0, 1, 1, 1, 4, "water");
+  bp.fill(4, 0, 5, 1, 1, 3, "grass_path");
+  for (const x of [1, 2, 3]) for (let z = 1; z < 8; z++) bp.set(x, 1, z, "carrots", { growth: 7 });
+  for (const x of [5, 6, 7]) for (let z = 1; z < 8; z++) bp.set(x, 1, z, "potatoes", { growth: 7 });
+  bp.set(4, 1, 5, "chest");
+  post(bp, 4, 1, 6, "worker");
+  bp.walls(0, 1, 0, 9, 1, 9, "oak_fence");
+  bp.gate(4, 1, 8, "oak", "south");
+});
+
+const HOBBIT: Cottage = { floor: "cobblestone", wall: "oak_planks", corner: "oak_log", roof: "spruce_planks", door: "oak", ridge: "oak_log" };
+
+building("hobbit_inn", "Inn", "hobbit", "Oak on cobblestone under a spruce roof, a bar of barrels, tables, a lantern at the door and the bounder's post outside. The heart of a hobbit village.", (bp) => {
+  cottage(bp, 1, 1, 11, 9, 3, HOBBIT);
+  bp.fill(2, 1, 2, 4, 1, 1, "barrel");
+  bp.set(9, 1, 2, "chest").set(10, 1, 2, "chest");
+  table(bp, 3, 1, 5, "oak");
+  table(bp, 9, 1, 5, "oak");
+  bp.set(6, 2, 2, "cake");
+  post(bp, 6, 1, 4, "trader");
+  bp.set(0, 1, 9, "oak_fence").set(0, 2, 9, "lantern");
+  post(bp, 12, 1, 8, "guard");
+});
+
+building("hobbit_pantry", "Pantry", "hobbit", "A smaller mound full of chests and barrels behind a round door. The larder of a hobbit village.", (bp) => {
+  bp.fill(0, 0, 0, 7, 1, 5, "grass");
+  bp.fill(0, 1, 0, 7, 2, 4, "grass");
+  bp.fill(1, 3, 0, 5, 1, 4, "grass");
+  bp.set(3, 4, 1, "grass");
+  bp.fill(1, 1, 1, 5, 2, 3, "air");
+  bp.fill(1, 0, 1, 5, 1, 3, "oak_planks");
+  holeFront(bp, 1, 1, 4, 5);
+  for (const x of [1, 2, 4, 5]) bp.set(x, 1, 1, "chest");
+  bp.set(1, 1, 3, "barrel").set(5, 1, 3, "barrel").set(3, 2, 2, "lantern");
+  post(bp, 4, 1, 2, "trader");
+});
+
+building("hobbit_bounder", "Bounder's Shelter", "hobbit", "Four fence posts and a slab roof with a lantern under it. Where the bounder keeps watch at the end of a lane.", (bp) => {
+  bp.fill(0, 0, 0, 5, 1, 5, "grass");
+  for (const [x, z] of [[1, 1], [3, 1], [1, 3], [3, 3]] as const) bp.fill(x, 1, z, 1, 2, 1, "oak_fence");
+  for (let x = 0; x < 5; x++) for (let z = 0; z < 5; z++) bp.slab(x, 3, z, "oak_planks");
+  bp.set(2, 2, 0, "lantern");
+  post(bp, 2, 1, 2, "guard");
+});
+
+// Wood elves: platforms in the canopy on dark oak trunks, spruce huts under leaf roofs.
+
+const CANOPY = 6;
+const LEAF = { persistent_bit: true, update_bit: false };
+
+/** Grass, a two-wide trunk with leaves round it, and a plank platform at CANOPY with a rail (the south middle open). */
+function canopy(bp: Blueprint, w: number, d: number, trunk = 2): number {
+  bp.fill(0, 0, 0, w, 1, d, "grass");
+  const cx = Math.floor((w - trunk) / 2), cz = Math.floor((d - trunk) / 2);
+  bp.fill(cx - 2, 3, cz - 2, trunk + 4, 3, trunk + 4, "dark_oak_leaves", LEAF);
+  bp.fill(cx, 1, cz, trunk, CANOPY - 1, trunk, "dark_oak_log");
+  bp.fill(0, CANOPY, 0, w, 1, d, "dark_oak_planks");
+  bp.walls(0, CANOPY + 1, 0, w, 1, d, "dark_oak_fence");
+  bp.set(Math.floor(w / 2), CANOPY + 1, d - 1, "air");
+  return CANOPY;
+}
+
+/** A hut on a platform: spruce walls with log corners, a spruce door south, a leaf roof, a lantern. Returns the floor y. */
+function elfHut(bp: Blueprint, x: number, y: number, z: number, w: number, d: number): void {
+  bp.walls(x, y + 1, z, w, 2, d, "spruce_planks");
+  for (const [cx, cz] of [[x, z], [x + w - 1, z], [x, z + d - 1], [x + w - 1, z + d - 1]] as const) bp.fill(cx, y + 1, cz, 1, 2, 1, "dark_oak_log");
+  bp.door(x + Math.floor(w / 2), y + 1, z + d - 1, "spruce", "south");
+  bp.set(x, y + 2, z + Math.floor(d / 2), "glass_pane").set(x + w - 1, y + 2, z + Math.floor(d / 2), "glass_pane");
+  bp.fill(x - 1, y + 3, z - 1, w + 2, 1, d + 2, "dark_oak_leaves", LEAF);
+  bp.fill(x, y + 4, z, w, 1, d, "dark_oak_leaves", LEAF);
+  bp.fill(x + 1, y + 5, z + 1, w - 2, 1, d - 2, "dark_oak_leaves", LEAF);
+  bp.set(x + Math.floor(w / 2), y + 2, z + Math.floor(d / 2), "lantern");
+}
+
+building("wood_elf_platform_house", "Platform House", "wood_elf", "A spruce hut under a leaf roof on a plank platform six blocks up a dark oak trunk, a rail round the edge. The wood elf home.", (bp) => {
+  const y = canopy(bp, 7, 7);
+  elfHut(bp, 1, y, 1, 5, 5);
+  bed(bp, 2, y + 1, 2);
+  bp.set(4, y + 1, 2, "chest");
+  post(bp, 4, y + 1, 4, "builder");
+});
+
+building("wood_elf_hearth", "Hearth Tree", "wood_elf", "A wide platform round a great dark oak, a fire ring, lanterns under the crown, the trader's and the guard's posts. The heart of a wood elf village.", (bp) => {
+  bp.fill(0, 0, 0, 11, 1, 11, "grass");
+  bp.fill(2, 3, 2, 7, 3, 7, "dark_oak_leaves", LEAF);
+  bp.fill(0, CANOPY, 0, 11, 1, 11, "dark_oak_planks");
+  bp.walls(0, CANOPY + 1, 0, 11, 1, 11, "dark_oak_fence");
+  bp.set(5, CANOPY + 1, 10, "air");
+  bp.fill(4, 1, 4, 3, 13, 3, "dark_oak_log");
+  bp.fill(1, 11, 1, 9, 2, 9, "dark_oak_leaves", LEAF);
+  bp.fill(2, 13, 2, 7, 1, 7, "dark_oak_leaves", LEAF);
+  bp.fill(4, 14, 4, 3, 1, 3, "dark_oak_leaves", LEAF);
+  for (const [x, z] of [[1, 1], [9, 1], [1, 9], [9, 9]] as const) bp.set(x, 10, z, "lantern");
+  bp.set(2, CANOPY + 1, 8, "campfire");
+  bp.fill(1, CANOPY + 1, 7, 1, 1, 3, "cobblestone").fill(2, CANOPY + 1, 9, 2, 1, 1, "cobblestone");
+  bp.set(8, CANOPY + 1, 1, "chest").set(9, CANOPY + 1, 1, "barrel");
+  post(bp, 8, CANOPY + 1, 8, "trader");
+  post(bp, 2, CANOPY + 1, 2, "guard");
+});
+
+building("wood_elf_lookout", "Lookout", "wood_elf", "A single trunk with a railed nest at the top, above the leaves, a lantern on one corner. The guard's post at the end of a walkway.", (bp) => {
+  bp.fill(0, 0, 0, 5, 1, 5, "grass");
+  bp.fill(0, 5, 0, 5, 4, 5, "dark_oak_leaves", LEAF);
+  bp.fill(2, 1, 2, 1, 9, 1, "dark_oak_log");
+  bp.fill(1, 10, 1, 3, 1, 3, "dark_oak_planks");
+  bp.walls(1, 11, 1, 3, 1, 3, "dark_oak_fence");
+  bp.set(2, 11, 2, "air").set(2, 11, 3, "air");
+  bp.set(1, 12, 1, "lantern");
+  post(bp, 2, 11, 2, "guard");
+});
+
+building("wood_elf_bower", "Bower", "wood_elf", "An open platform under a leaf roof on fence posts: a crafting table, a fletching table, a barrel and a chest. The wood elf worker's post.", (bp) => {
+  const y = canopy(bp, 7, 7);
+  for (const [x, z] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(x, y + 1, z, 1, 2, 1, "dark_oak_fence");
+  bp.fill(0, y + 3, 0, 7, 1, 7, "dark_oak_leaves", LEAF);
+  bp.fill(1, y + 4, 1, 5, 1, 5, "dark_oak_leaves", LEAF);
+  bp.set(2, y + 1, 1, "crafting_table").set(4, y + 1, 1, "fletching_table");
+  bp.set(1, y + 1, 3, "barrel").set(5, y + 1, 3, "chest");
+  bp.set(3, y + 2, 4, "lantern");
+  post(bp, 3, y + 1, 2, "worker");
+});
+
+building("wood_elf_larder", "Larder", "wood_elf", "A hut of barrels and chests on its platform. What the wood elves gather, and the builder's post.", (bp) => {
+  const y = canopy(bp, 7, 7);
+  elfHut(bp, 1, y, 1, 5, 5);
+  bp.set(2, y + 1, 2, "chest").set(3, y + 1, 2, "chest").set(4, y + 1, 2, "barrel");
+  post(bp, 4, y + 1, 4, "builder");
+});
+
+// High elves: quartz and diorite, prismarine roofs, sea lanterns, cherry trees.
+
+const HIGH: Cottage = { floor: "polished_diorite", wall: "quartz_block", corner: "quartz_pillar", roof: "prismarine_bricks", door: "birch", ridge: "smooth_quartz", window: "light_blue_stained_glass_pane" };
+
+building("high_elf_hall", "Hall of Arches", "high_elf", "A long quartz hall under a prismarine roof: pillars, a fountain in the middle, sea lanterns in the walls, the trader's and the guard's posts. The heart of a high elf village.", (bp) => {
+  cottage(bp, 1, 1, 13, 9, 4, HIGH);
+  for (const [x, z] of [[3, 3], [11, 3], [3, 7], [11, 7]] as const) bp.fill(x, 1, z, 1, 4, 1, "quartz_pillar");
+  bp.fill(6, 1, 4, 3, 1, 3, "smooth_quartz");
+  bp.set(7, 1, 5, "water").set(7, 2, 5, "quartz_pillar").set(7, 3, 5, "sea_lantern");
+  bp.set(1, 4, 5, "sea_lantern").set(13, 4, 5, "sea_lantern").set(7, 4, 1, "sea_lantern");
+  for (const x of [3, 5, 9, 11]) bp.set(x, 2, 9, "light_blue_stained_glass_pane").set(x, 3, 9, "light_blue_stained_glass_pane");
+  bp.set(2, 1, 2, "chest").set(12, 1, 2, "chest");
+  post(bp, 10, 1, 7, "trader");
+  post(bp, 4, 1, 7, "guard");
+});
+
+building("high_elf_house", "House", "high_elf", "Quartz on diorite under a prismarine roof, light blue glass, a bed, a chest and a flower pot. The high elf home.", (bp) => {
+  cottage(bp, 1, 1, 7, 7, 3, HIGH);
+  bed(bp, 2, 1, 2);
+  bp.set(6, 1, 2, "chest").set(2, 1, 6, "flower_pot");
+  post(bp, 5, 1, 5, "builder");
+});
+
+building("high_elf_library", "Library", "high_elf", "Bookshelves to the ceiling on three walls, a lectern, candles. The builder's post; the high elves keep what they know.", (bp) => {
+  cottage(bp, 1, 1, 9, 9, 4, HIGH);
+  bp.fill(2, 1, 2, 7, 3, 1, "bookshelf");
+  bp.fill(2, 1, 3, 1, 3, 5, "bookshelf").fill(8, 1, 3, 1, 3, 5, "bookshelf");
+  bp.set(5, 1, 5, "lectern").set(3, 1, 7, "candle").set(7, 1, 7, "candle");
+  post(bp, 4, 1, 6, "builder");
+});
+
+building("high_elf_garden", "Cherry Garden", "high_elf", "Two cherry trees inside a low quartz wall, petals on the grass, a diorite path to a chest and the worker's post.", (bp) => {
+  bp.fill(0, 0, 0, 9, 1, 9, "grass");
+  bp.walls(0, 1, 0, 9, 1, 9, "quartz_slab");
+  bp.set(4, 1, 8, "air");
+  for (let z = 4; z < 9; z++) bp.set(4, 0, z, "polished_diorite");
+  gardenTree(bp, 2, 1, 2, "cherry_log", "cherry_leaves", 4);
+  gardenTree(bp, 6, 1, 2, "cherry_log", "cherry_leaves", 4);
+  for (const [x, z] of [[1, 5], [7, 6], [2, 7], [6, 4]] as const) if (bp.at(x, 1, z) === undefined) bp.set(x, 1, z, "pink_petals", { growth: 3 });
+  bp.set(4, 1, 5, "chest");
+  post(bp, 4, 1, 6, "worker");
+});
+
+building("high_elf_spire", "Spire", "high_elf", "A slender quartz tower with a prismarine cap and a sea lantern at its point. The guard's post at the end of a street.", (bp) => {
+  bp.fill(0, 0, 0, 5, 1, 5, "polished_diorite");
+  bp.fill(1, 1, 1, 3, 8, 3, "quartz_block");
+  bp.fill(2, 2, 2, 1, 7, 1, "air");
+  for (const y of [3, 6]) bp.set(2, y, 3, "light_blue_stained_glass_pane").set(2, y, 1, "light_blue_stained_glass_pane");
+  bp.set(2, 9, 2, "sea_lantern");
+  bp.hipRoof(1, 10, 1, 3, 3, "prismarine_bricks");
+  post(bp, 2, 1, 4, "guard");
+});
+
+// Drow: deepslate and blackstone, purple glass, soul lanterns, webs.
+
+const DROW: Cottage = { floor: "deepslate_tiles", wall: "deepslate_bricks", corner: "polished_blackstone", roof: "polished_blackstone_bricks", door: "dark_oak", ridge: "crying_obsidian", window: "purple_stained_glass_pane" };
+
+building("drow_sanctum", "Sanctum", "drow", "A hall of deepslate brick on blackstone pillars, an amethyst altar between crying obsidian, soul lanterns and webs in the corners. The heart of a drow village.", (bp) => {
+  cottage(bp, 1, 1, 11, 11, 5, DROW);
+  bp.set(6, 5, 6, "soul_lantern");
+  for (const [x, z] of [[3, 3], [9, 3], [3, 9], [9, 9]] as const) bp.fill(x, 1, z, 1, 5, 1, "polished_blackstone");
+  bp.fill(5, 1, 3, 3, 1, 1, "crying_obsidian");
+  bp.set(6, 1, 3, "amethyst_block").set(6, 2, 3, "amethyst_block");
+  for (const [x, z] of [[2, 2], [10, 2], [2, 10], [10, 10]] as const) bp.set(x, 4, z, "web");
+  bp.set(2, 1, 6, "soul_lantern").set(10, 1, 6, "soul_lantern");
+  bp.set(2, 1, 2, "chest").set(10, 1, 2, "chest");
+  post(bp, 8, 1, 8, "trader");
+  post(bp, 4, 1, 8, "guard");
+});
+
+building("drow_house", "House", "drow", "Deepslate brick under a blackstone roof, purple glass, a soul lantern, a web in the corner. The drow home.", (bp) => {
+  cottage(bp, 1, 1, 7, 7, 3, DROW);
+  bp.set(4, 3, 4, "soul_lantern");
+  bed(bp, 2, 1, 2);
+  bp.set(6, 1, 2, "chest").set(2, 3, 2, "web");
+  post(bp, 5, 1, 5, "builder");
+});
+
+building("drow_spinnery", "Spinnery", "drow", "Looms and webs under a blackstone roof: where the drow spin their silk. The trader's post.", (bp) => {
+  cottage(bp, 1, 1, 7, 7, 3, DROW);
+  bp.set(4, 3, 4, "soul_lantern");
+  bp.set(2, 1, 2, "loom").set(3, 1, 2, "loom").set(6, 1, 2, "chest");
+  bp.set(6, 3, 6, "web").set(2, 2, 5, "web");
+  post(bp, 5, 1, 5, "trader");
+});
+
+building("drow_web_tower", "Web Tower", "drow", "A blackstone brick tower hung with webs, a soul lantern on its roof. The guard's post at the end of a street.", (bp) => {
+  bp.fill(0, 0, 0, 5, 1, 5, "deepslate_tiles");
+  bp.fill(1, 1, 1, 3, 7, 3, "polished_blackstone_bricks");
+  bp.fill(2, 2, 2, 1, 6, 1, "air");
+  for (const y of [3, 6]) bp.set(2, y, 3, "purple_stained_glass_pane");
+  bp.set(0, 3, 2, "web").set(4, 5, 2, "web").set(2, 4, 0, "web");
+  for (let x = 0; x < 5; x++) for (let z = 0; z < 5; z++) bp.slab(x, 8, z, "polished_blackstone_bricks");
+  bp.set(2, 9, 2, "soul_lantern");
+  post(bp, 2, 1, 4, "guard");
+});
+
+building("drow_larder", "Larder", "drow", "Chests and barrels under a blackstone roof, a soul lantern over them. What the drow bring in; the builder's post.", (bp) => {
+  cottage(bp, 1, 1, 7, 7, 3, DROW);
+  bp.set(4, 3, 4, "soul_lantern");
+  for (const x of [2, 3, 5, 6]) bp.set(x, 1, 2, "chest");
+  bp.set(2, 1, 4, "barrel").set(6, 1, 4, "barrel");
+  post(bp, 4, 1, 5, "builder");
+});

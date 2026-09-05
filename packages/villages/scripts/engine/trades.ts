@@ -43,6 +43,14 @@ const FOOD_TAG = "minecraft:is_food";
 /** Posts with a cycle in progress, and posts idling after a cycle found nothing to do. Module state: a /reload just stops a cycle. */
 const busy = new Set<string>();
 const idleUntil = new Map<string, number>();
+/** The last reason each post waited, so a reason is logged when it changes and not every minute. */
+const lastWait = new Map<string, string>();
+
+function waitOnce(k: string, record: PostRecord, reason: string): void {
+  if (lastWait.get(k) === reason) return;
+  lastWait.set(k, reason);
+  log(`the ${core.tradeName(record.trade)} at ${record.x},${record.y},${record.z} ${reason}`);
+}
 
 function volumeAround(pos: Vector3, range: number, below: number, above: number): BlockVolume {
   return new BlockVolume(
@@ -375,16 +383,17 @@ export function tick(block: Block, record: PostRecord, person: Entity, now: numb
   const chest = nearestChest(dim, record);
   const verdict = core.canWork(record.trade, chest ? viewOf(chest.container) : undefined, policy().wages);
   if (verdict.kind === "wait" || !chest) {
-    log(`the ${core.tradeName(record.trade)} at ${record.x},${record.y},${record.z} waits: ${verdict.kind === "wait" ? verdict.reason : "no chest"}`);
+    waitOnce(k, record, `waits: ${verdict.kind === "wait" ? verdict.reason : "no chest"}`);
     idleUntil.set(k, now + core.IDLE_TICKS);
     return;
   }
   const job = jobFor(record.trade, dim, record, person, chest);
   if (!job) {
-    log(`the ${core.tradeName(record.trade)} at ${record.x},${record.y},${record.z} found nothing to do`);
+    waitOnce(k, record, "found nothing to do");
     idleUntil.set(k, now + core.IDLE_TICKS);
     return;
   }
+  lastWait.delete(k);
   if (!walk.canStart(record)) {
     idleUntil.set(k, now + core.WALK_RETRY_TICKS); // a neighbour is on the road; wait for them
     return;

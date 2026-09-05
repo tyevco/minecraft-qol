@@ -145,6 +145,36 @@ the reedfolk in the wet and the tallfolk on the plains. The stonefolk and
 tinker villages are far from this spawn (mountains and savanna are), and
 were not loaded; they place by hand as before, and `locate` finds them.
 
+## The second four peoples (design §3.3)
+
+Same fresh-world setup (`qolgen2`, plain terrain, no experiments, only the
+probe pack and Villages), the pack with eight peoples deployed:
+
+- `locate structure` finds all four new villages from spawn, each in its
+  own biome and none of them near this plains spawn: hobbits at 1690,
+  3514; wood elves at 839, 1303; high elves at −1589, −843; drow at 1846,
+  −362.
+- Placed by hand from the API into two ticking areas, every one returned
+  a box: hobbit 90 × 10 × 130, wood elf 100 × 15 × 77 (walkways six
+  blocks up: the topmost block over the middle of that area read
+  `dark_oak_planks` at y = 72), high elf 55 × 13 × 124, drow 88 × 13 ×
+  115. The scans found their posts, doors and lanterns, and
+  `villages:debug` reported **47 posts, 41 persons present** across the
+  four placed villages and the two that had generated on their own (the
+  six missing were in chunks outside the ticking areas: the hobbit box
+  runs twenty blocks past the loaded edge).
+- The trades read the new villages as they should: the drow miner found
+  **2 enclosed veins** in its mine piece; the wood elf and high elf
+  workers surveyed themselves lumberjacks among their own trees (2505 and
+  1075 leaves in range); every one then waited for a wage, since a found
+  village's chest starts empty.
+- What that log also showed: a waiting worker repeated its reason every
+  minute, four workers filling the content log between them. A reason is
+  now logged when it changes, not each time it holds.
+- The eighth people index works end to end: `villages_post_spawns_person`
+  now places a drow post (people 7) and passes, with the rest of the
+  villages suite.
+
 ## A peopled village (design §4, `packages/villages`)
 
 With the villages pack listed in the plain world, two tallfolk villages

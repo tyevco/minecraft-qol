@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.20",
+  "minecraft:template_pool": {
+    "description": {
+      "identifier": "villages:wood_elf/square"
+    },
+    "elements": [
+      {
+        "element": {
+          "element_type": "minecraft:single_pool_element",
+          "location": "villages/wood_elf/wood_elf_square",
+          "projection": "rigid"
+        },
+        "weight": 1
+      }
+    ]
+  }
+}

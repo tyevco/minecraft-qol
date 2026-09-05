@@ -1182,7 +1182,11 @@ interface BipedSpec {
   leg: [number, number, number];
   beard?: boolean;
   goggles?: boolean;
-  hat: "cap" | "reed" | "straw";
+  /** Pointed ears, for the elves. */
+  ears?: boolean;
+  /** Bare feet: the legs' underside is skin, not boot. Hobbits. */
+  bare?: boolean;
+  hat: "cap" | "reed" | "straw" | "hood" | "circlet" | "none";
 }
 
 function biped(spec: BipedSpec): void {
@@ -1205,12 +1209,17 @@ function biped(spec: BipedSpec): void {
     name,
     parent: "body",
     pivot: [x + lw / 2, hip, 0],
-    cubes: [{ origin: [x, 0, -ld / 2], size: [lw, lh, ld], faces: { sides: "trousers", up: "dark", down: "dark" } }],
+    cubes: [{ origin: [x, 0, -ld / 2], size: [lw, lh, ld], faces: { sides: "trousers", up: "dark", down: spec.bare ? "hand" : "dark" } }],
   });
   const headCubes: Cube<BP>[] = [
     { origin: [-hw / 2, shoulder, -hd / 2], size: [hw, hh, hd], faces: { sides: "hair", north: "face", up: "hairTop", down: "skin" } },
   ];
   if (spec.beard) headCubes.push({ origin: [-hw / 2 + 1, shoulder - 3, -hd / 2 - 0.5], size: [hw - 2, 4, 1], faces: { all: "hair" } });
+  if (spec.ears) {
+    // Pointed ears: a thin cube either side of the head, rising above the ear line.
+    headCubes.push({ origin: [-hw / 2 - 1, top - 4, -0.5], size: [1, 4, 1], faces: { all: "hand" } });
+    headCubes.push({ origin: [hw / 2, top - 4, -0.5], size: [1, 4, 1], faces: { all: "hand" } });
+  }
   if (spec.goggles) {
     headCubes.push({ origin: [-hw / 2 + 1, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
     headCubes.push({ origin: [hw / 2 - 3, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
@@ -1223,6 +1232,15 @@ function biped(spec: BipedSpec): void {
           { origin: [-hw / 2 - 1, top + 0.5, -hd / 2 - 1], size: [hw + 2, 2, hd + 2], faces: { all: "hat" } },
           { origin: [-1.5, top + 2.5, -1.5], size: [3, 2, 3], faces: { all: "hat" } },
         ]
+      : spec.hat === "none"
+        ? []
+        : spec.hat === "hood"
+          ? [
+              { origin: [-hw / 2 - 0.5, shoulder + hh * 0.4, -hd / 2 + 1], size: [hw + 1, hh * 0.6 + 1, hd], faces: { all: "hat" } },
+              { origin: [-hw / 2 - 0.5, top + 0.5, -hd / 2 - 0.5], size: [hw + 1, 1, hd + 1], faces: { all: "hat" } },
+            ]
+          : spec.hat === "circlet"
+            ? [{ origin: [-hw / 2 - 0.5, top - 2, -hd / 2 - 0.5], size: [hw + 1, 1, hd + 1], faces: { all: "hat" } }]
       : spec.hat === "straw"
         ? [
             { origin: [-hw / 2 - 3, top - 0.5, -hd / 2 - 3], size: [hw + 6, 1, hd + 6], faces: { all: "hat" } },
@@ -1282,6 +1300,12 @@ biped({ file: "stonefolk", identifier: "geometry.villages_stonefolk", head: [8, 
 biped({ file: "reedfolk", identifier: "geometry.villages_reedfolk", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], hat: "reed" });
 biped({ file: "tinker", identifier: "geometry.villages_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
 biped({ file: "tallfolk", identifier: "geometry.villages_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });
+// The second four (docs/design/villages.md §3.3): hobbits, small and barefoot;
+// three kinds of elf, tall and pointed-eared, told apart by colour and hat.
+biped({ file: "hobbit", identifier: "geometry.villages_hobbit", head: [8, 7, 8], body: [8, 9, 4], arm: [3, 9, 3], leg: [3, 6, 4], bare: true, hat: "none" });
+biped({ file: "wood_elf", identifier: "geometry.villages_wood_elf", head: [7, 8, 7], body: [7, 13, 4], arm: [3, 13, 3], leg: [3, 13, 3], ears: true, hat: "hood" });
+biped({ file: "high_elf", identifier: "geometry.villages_high_elf", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], ears: true, hat: "circlet" });
+biped({ file: "drow", identifier: "geometry.villages_drow", head: [7, 8, 7], body: [7, 13, 4], arm: [3, 13, 3], leg: [3, 13, 3], ears: true, hat: "hood" });
 
 // ---------------------------------------------------------------------------
 // Villages job post - the block a person is anchored to. A wooden post with

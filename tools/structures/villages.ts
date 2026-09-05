@@ -15,9 +15,9 @@
  * blocks back from the path; greens (a meadow, an orchard, a terrace, a reed
  * bed) and plain empty lots compete with houses for every house socket; and
  * a lane piece, longer, with trees on its verges and no house sockets, puts
- * distance between clusters. The reedfolk build on stilts over water: their
- * streets are plank walkways three blocks up on mangrove posts, and a joint's
- * final block is a post.
+ * distance between clusters. A people on a deck (the reedfolk on stilts over
+ * water, the wood elves in the canopy) has plank walkways up on posts, and a
+ * joint's final block is a post.
  *
  * Marker names are shared: `villages:street` on street ends and square edges,
  * `villages:house` on doorsteps and on the street sides that want a house.
@@ -49,8 +49,15 @@ export interface People {
   tree: { log: string; leaves: string };
   /** A building that can end a street, facing back up it. */
   watch?: string;
-  /** Built on stilts over water: walkways at y = 3, joints are posts. */
-  stilts?: boolean;
+  /**
+   * Built on a deck: walkways `height` up on `post` columns, rails of `rail`,
+   * joints are posts, and a lot's floor is `floor` (water for the reedfolk,
+   * grass for a people in the canopy). `leaves` hangs a clump round each
+   * post below the deck, so a walkway reads as passing through trees.
+   */
+  deck?: { height: number; post: string; rail: string; floor: string; leaves?: string };
+  /** The light on a lamp post; a lantern unless the people has its own. */
+  lamp?: string;
   /** Something more on the square, given the square and its side. */
   squareExtra?: (bp: Blueprint, side: number) => void;
   /** Vanilla biome tags the village generates in (any of). */
@@ -93,6 +100,12 @@ function tree(bp: Blueprint, x: number, y: number, z: number, log: string, leave
 }
 
 const FLOWERS = ["poppy", "dandelion", "cornflower", "oxeye_daisy", "azure_bluet"];
+
+/** An orchard: four small oaks and berry bushes. Tallfolk and hobbits both keep one. */
+function orchard(bp: Blueprint, rand: () => number, y: number): void {
+  for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, "oak_log", "oak_leaves", 3);
+  for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "sweet_berry_bush", { growth: 3 }); }
+}
 
 /**
  * A mine: the piece brings its own hillside, a cobblestone mound over the
@@ -171,7 +184,7 @@ export const PEOPLES: People[] = [
       ["mine", 1, mine("spruce_log", "iron")],
     ],
     emptyLots: 2, tree: { log: "spruce_log", leaves: "spruce_leaves" },
-    watch: "stonefolk_watchpost", biomes: ["mountains", "extreme_hills", "meadow"], salt: 20260911,
+    watch: "stonefolk_watchpost", biomes: ["extreme_hills"], salt: 20260911,
   },
   {
     key: "reedfolk", title: "Reedfolk", paving: "mangrove_planks", verge: "mangrove_planks", post: "mangrove_fence", core: "reedfolk_stilt_house",
@@ -188,7 +201,8 @@ export const PEOPLES: People[] = [
       }],
     ],
     emptyLots: 2, tree: { log: "mangrove_log", leaves: "mangrove_leaves" },
-    watch: "reedfolk_tower", stilts: true, biomes: ["swamp", "mangrove_swamp", "river"], salt: 20260912,
+    watch: "reedfolk_tower", deck: { height: 3, post: "mangrove_log", rail: "mangrove_fence", floor: "water" },
+    biomes: ["swamp", "mangrove_swamp", "river"], salt: 20260912,
   },
   {
     key: "tinker", title: "Tinker", paving: "brick_block", verge: "grass", post: "oak_fence", core: "tinker_workshop",
@@ -214,10 +228,7 @@ export const PEOPLES: People[] = [
         tree(bp, 6, y, 3, "oak_log", "oak_leaves", 4);
         scatter(bp, rand, 0, y, 0, 9, 9, 3);
       }],
-      ["orchard", 1, (bp, rand, y) => {
-        for (const [x, z] of [[2, 2], [6, 2], [2, 6], [6, 6]] as const) tree(bp, x, y, z, "oak_log", "oak_leaves", 3);
-        for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "sweet_berry_bush", { growth: 3 }); }
-      }],
+      ["orchard", 1, orchard],
       ["grove", 2, grove("oak_log", "oak_leaves")],
     ],
     emptyLots: 2, tree: { log: "oak_log", leaves: "oak_leaves" },
@@ -226,7 +237,90 @@ export const PEOPLES: People[] = [
       const well = need("tallfolk_well");
       bp.paste(well, Math.floor(side / 2) - Math.floor(well.sx / 2), 0, side - well.sz - 3);
     },
-    biomes: ["plains", "forest"], salt: 20260914,
+    biomes: ["plains"], salt: 20260914,
+  },
+  // The second four (docs/design/villages.md §3.3).
+  {
+    key: "hobbit", title: "Hobbit", paving: "grass_path", verge: "grass", post: "oak_fence", core: "hobbit_inn",
+    houses: [["hobbit_hole", 4], ["hobbit_garden", 2], ["hobbit_pantry", 1]],
+    greens: [
+      ["party_field", 2, (bp, rand, y) => {
+        // The party tree: a tall oak with lanterns under its crown, and a long table.
+        tree(bp, 4, y, 4, "oak_log", "oak_leaves", 6);
+        for (const [x, z] of [[2, 4], [6, 4], [4, 2], [4, 6]] as const) bp.set(x, y + 3, z, "lantern");
+        for (const x of [1, 2, 3]) bp.set(x, y, 7, "oak_fence").slab(x, y + 1, 7, "oak_planks");
+        bp.set(2, y + 2, 7, "cake");
+        scatter(bp, rand, 0, y, 0, 9, 9, 4);
+      }],
+      ["orchard", 1, orchard],
+    ],
+    emptyLots: 2, tree: { log: "oak_log", leaves: "oak_leaves" },
+    watch: "hobbit_bounder", biomes: ["flower_forest", "hills"], salt: 20260915,
+  },
+  {
+    key: "wood_elf", title: "Wood Elf", paving: "dark_oak_planks", verge: "dark_oak_planks", post: "dark_oak_fence", core: "wood_elf_hearth",
+    houses: [["wood_elf_platform_house", 3], ["wood_elf_bower", 1], ["wood_elf_larder", 1]],
+    greens: [
+      ["glade", 3, (bp, rand, y) => {
+        // Under the walkways: moss, ferns, flowers and a young tree at ground level.
+        for (let i = 0; i < 6; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y - 1, z) === "minecraft:grass") bp.set(x, y - 1, z, "moss_block"); }
+        tree(bp, 4, y, 4, "dark_oak_log", "dark_oak_leaves", 3);
+        for (let i = 0; i < 6; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "fern"); }
+        scatter(bp, rand, 0, y, 0, 9, 9, 4);
+      }],
+    ],
+    emptyLots: 1, tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" },
+    watch: "wood_elf_lookout", deck: { height: 6, post: "dark_oak_log", rail: "dark_oak_fence", floor: "grass", leaves: "dark_oak_leaves" },
+    biomes: ["forest", "birch", "taiga"], salt: 20260916,
+  },
+  {
+    key: "high_elf", title: "High Elf", paving: "polished_diorite", verge: "grass", post: "quartz_pillar", lamp: "sea_lantern", core: "high_elf_hall",
+    houses: [["high_elf_house", 3], ["high_elf_library", 1], ["high_elf_garden", 2]],
+    greens: [
+      ["reflecting_pool", 2, (bp, rand, y) => {
+        // A still pool in a quartz rim, lily pads, petals on the grass round it.
+        bp.fill(1, y - 1, 1, 7, 1, 7, "water");
+        bp.walls(1, y - 1, 1, 7, 1, 7, "smooth_quartz");
+        for (let i = 0; i < 3; i++) { const x = 2 + Math.floor(rand() * 5), z = 2 + Math.floor(rand() * 5); bp.set(x, y, z, "waterlily"); }
+        for (const [x, z] of [[0, 3], [8, 5], [4, 0], [4, 8]] as const) bp.set(x, y, z, "pink_petals", { growth: 2 });
+      }],
+      ["cherry_garden", 2, (bp, rand, y) => {
+        tree(bp, 2, y, 6, "cherry_log", "cherry_leaves", 4);
+        tree(bp, 6, y, 2, "cherry_log", "cherry_leaves", 4);
+        for (let i = 0; i < 5; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "pink_petals", { growth: 1 + Math.floor(rand() * 3) }); }
+        scatter(bp, rand, 0, y, 0, 9, 9, 4);
+      }],
+    ],
+    emptyLots: 1, tree: { log: "cherry_log", leaves: "cherry_leaves" },
+    watch: "high_elf_spire",
+    squareExtra: (bp, side) => {
+      // A fountain in the middle of the square: a quartz basin, a pillar, a sea lantern at its top.
+      const m = Math.floor(side / 2);
+      bp.fill(m - 1, 1, m - 1, 3, 1, 3, "smooth_quartz");
+      bp.set(m, 1, m, "water").set(m, 2, m, "quartz_pillar").set(m, 3, m, "sea_lantern");
+    },
+    biomes: ["cherry_grove", "meadow"], salt: 20260917,
+  },
+  {
+    key: "drow", title: "Drow", paving: "deepslate_tiles", verge: "mycelium", post: "polished_blackstone_wall", lamp: "soul_lantern", core: "drow_sanctum",
+    houses: [["drow_house", 3], ["drow_spinnery", 1], ["drow_larder", 1]],
+    greens: [
+      ["mushroom_grove", 2, (bp, rand, y) => {
+        // Mycelium, a huge brown mushroom, and small ones scattered under it.
+        bp.fill(4, y, 4, 1, 3, 1, "brown_mushroom_block");
+        bp.fill(3, y + 3, 3, 3, 1, 3, "brown_mushroom_block");
+        for (let i = 0; i < 7; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, rand() < 0.5 ? "brown_mushroom" : "red_mushroom"); }
+      }],
+      ["web_hollow", 1, (bp, rand, y) => {
+        // Deepslate boulders, webs between them, dead bushes.
+        for (const [x, z] of [[1, 2], [6, 1], [7, 6], [2, 7]] as const) bp.set(x, y, z, "deepslate").set(x, y + 1, z, rand() < 0.5 ? "web" : "deepslate");
+        for (const [x, z] of [[4, 4], [3, 2], [6, 4]] as const) bp.set(x, y + 1, z, "web");
+        for (let i = 0; i < 4; i++) { const x = Math.floor(rand() * 9), z = Math.floor(rand() * 9); if (bp.at(x, y, z) === undefined) bp.set(x, y, z, "deadbush"); }
+      }],
+      ["mine", 1, mine("dark_oak_log", "iron")],
+    ],
+    emptyLots: 1, tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" },
+    watch: "drow_web_tower", biomes: ["roofed", "pale_garden"], salt: 20260918,
   },
 ];
 
@@ -236,8 +330,10 @@ const HOUSE_MARK = "villages:house";
 const STREET_W = 7;
 const PATH_X0 = 2;
 const PATH_W = 3;
-/** Walkway height for a people on stilts. */
-const DECK = 3;
+/** Walkway height for a people on a deck; ground level for the rest. */
+const deckOf = (p: People): number => p.deck?.height ?? 0;
+/** Leaves hung round a deck post: persistent, since a walkway is not a tree. */
+const HUNG = { persistent_bit: true, update_bit: false };
 
 export interface VillageSet {
   people: People;
@@ -249,7 +345,7 @@ export interface VillageSet {
 }
 
 function marker(p: People, facing: Facing, name: string, target: string, pool: string): Jigsaw {
-  return { facing, name, target, pool, final: p.stilts ? "mangrove_log" : p.paving };
+  return { facing, name, target, pool, final: p.deck ? p.deck.post : p.paving };
 }
 
 /** Every job post in a piece gets the people's index, so its person is one of them. */
@@ -285,7 +381,7 @@ function withDoorstep(p: People, b: Blueprint, name = HOUSE_MARK): Blueprint {
 }
 
 function lamp(p: People, bp: Blueprint, x: number, y: number, z: number): void {
-  bp.set(x, y, z, p.post).set(x, y + 1, z, "lantern");
+  bp.set(x, y, z, p.post).set(x, y + 1, z, p.lamp ?? "lantern");
 }
 
 /**
@@ -294,17 +390,20 @@ function lamp(p: People, bp: Blueprint, x: number, y: number, z: number): void {
  * height of the walking surface's top face.
  */
 function ground(p: People, bp: Blueprint, w: number, d: number, path?: (x: number, z: number) => boolean): number {
-  if (!p.stilts) {
+  if (!p.deck) {
     bp.fill(0, 0, 0, w, 1, d, p.verge);
     if (path) for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) if (path(x, z)) bp.set(x, 0, z, p.paving);
     return 0;
   }
-  bp.fill(0, DECK, 0, w, 1, d, p.paving);
-  for (let i = 0; i < w; i += Math.max(1, w - 1))
-    for (let k = 0; k < d; k += 4) bp.fill(i, 0, k, 1, DECK, 1, "mangrove_log");
-  for (let k = 0; k < d; k += Math.max(1, d - 1))
-    for (let i = 0; i < w; i += 4) bp.fill(i, 0, k, 1, DECK, 1, "mangrove_log");
-  return DECK;
+  const { height, post, leaves } = p.deck;
+  const column = (x: number, z: number) => {
+    if (leaves) bp.fill(Math.max(0, x - 1), Math.max(1, height - 3), Math.max(0, z - 1), Math.min(3, w - Math.max(0, x - 1)), 2, Math.min(3, d - Math.max(0, z - 1)), leaves, HUNG);
+    bp.fill(x, 0, z, 1, height, 1, post);
+  };
+  for (let i = 0; i < w; i += Math.max(1, w - 1)) for (let k = 0; k < d; k += 4) column(i, k);
+  for (let k = 0; k < d; k += Math.max(1, d - 1)) for (let i = 0; i < w; i += 4) column(i, k);
+  bp.fill(0, height, 0, w, 1, d, p.paving);
+  return height;
 }
 
 const inPathX = (x: number) => x >= PATH_X0 && x < PATH_X0 + PATH_W;
@@ -317,7 +416,7 @@ export function villageSet(p: People): VillageSet {
   /** A house socket at the verge's edge, with the path stub across the verge drawn in. */
   const houseSocket = (bp: Blueprint, x: number, z: number, facing: Facing) => {
     bp.jigsaw(x, 0, z, marker(p, facing, HOUSE_MARK, HOUSE_MARK, housesPool));
-    if (!p.stilts) bp.set(x === 0 ? 1 : x - 1, 0, z, p.paving);
+    if (!p.deck) bp.set(x === 0 ? 1 : x - 1, 0, z, p.paving);
   };
   const rand = prng(PEOPLES.indexOf(p) + 11);
 
@@ -326,10 +425,10 @@ export function villageSet(p: People): VillageSet {
   // of the east, west and south edges.
   const core = need(p.core);
   const side = Math.max(17, core.sx + 8);
-  const square = new Blueprint(`${p.key}_square`, `${p.title} Square`, [side, Math.max(core.sy, DECK + 3), side], p.key, `The centre of a ${p.title.toLowerCase()} village: the ${core.title.toLowerCase()} on a square, streets from three sides.`);
+  const square = new Blueprint(`${p.key}_square`, `${p.title} Square`, [side, Math.max(core.sy, deckOf(p) + 3, 7), side], p.key, `The centre of a ${p.title.toLowerCase()} village: the ${core.title.toLowerCase()} on a square, streets from three sides.`);
   const g = ground(p, square, side, side, () => true);
   square.paste(core, Math.floor((side - core.sx) / 2), 0, 1);
-  if (!p.stilts) {
+  if (!p.deck) {
     for (const cx of [1, side - 4]) {
       square.fill(cx, 0, 1, 3, 1, 3, p.verge);
       tree(square, cx + 1, 1, 2, p.tree.log, p.tree.leaves, 4);
@@ -347,9 +446,9 @@ export function villageSet(p: People): VillageSet {
   // socket at each open end, house sockets at the verge edges. A stilted
   // street is a walkway with rails.
   const streetPiece = (key: string, title: string, length: number, notes: string, path: (x: number, z: number) => boolean): Blueprint => {
-    const bp = new Blueprint(`${p.key}_${key}`, `${p.title} ${title}`, [STREET_W, DECK + 4, length], p.key, notes);
+    const bp = new Blueprint(`${p.key}_${key}`, `${p.title} ${title}`, [STREET_W, Math.max(7, deckOf(p) + 4), length], p.key, notes);
     const y = ground(p, bp, STREET_W, length, path);
-    if (p.stilts) for (const x of [0, STREET_W - 1]) for (let z = 0; z < length; z++) if (z % 4 !== 3) bp.set(x, y + 1, z, "mangrove_fence");
+    if (p.deck) for (const x of [0, STREET_W - 1]) for (let z = 0; z < length; z++) if (z % 4 !== 3) bp.set(x, y + 1, z, p.deck.rail);
     return bp;
   };
   const straight = streetPiece("street_straight", "Street", 7, "A straight run of street, a house socket each side.", (x) => inPathX(x));
@@ -371,19 +470,19 @@ export function villageSet(p: People): VillageSet {
   const lane = streetPiece("lane", "Lane", 13, "A lane between clusters: trees on the verges, no houses.", (x) => inPathX(x));
   streetSocket(lane, 3, 0, "north");
   streetSocket(lane, 3, 12, "south");
-  if (!p.stilts) {
+  if (!p.deck) {
     tree(lane, 1, 1, 3, p.tree.log, p.tree.leaves, 4);
     tree(lane, STREET_W - 2, 1, 9, p.tree.log, p.tree.leaves, 4);
     scatter(lane, rand, 0, 1, 0, STREET_W, 13, 5);
   } else {
-    lamp(p, lane, 0, DECK + 1, 6);
+    lamp(p, lane, 0, deckOf(p) + 1, 6);
   }
   pieces.set("lane", lane);
 
   const corner = streetPiece("street_corner", "Corner", STREET_W, "A street turning a corner, with a lamp on the outside.", (x, z) => (inPathX(x) && z <= 4) || (inPathX(z) && x >= 2));
   streetSocket(corner, 3, 0, "north");
   streetSocket(corner, STREET_W - 1, 3, "east");
-  lamp(p, corner, 0, (p.stilts ? DECK : 0) + 1, STREET_W - 1);
+  lamp(p, corner, 0, deckOf(p) + 1, STREET_W - 1);
   pieces.set("street_corner", corner);
 
   const tee = streetPiece("street_t", "T-junction", STREET_W, "A street forking three ways.", (x, z) => (inPathX(x) && z <= 4) || inPathX(z));
@@ -400,13 +499,13 @@ export function villageSet(p: People): VillageSet {
   pieces.set("street_cross", cross);
 
   // Terminators: a lamp post (or the watch) where a street ends, a doorstep where no house fits.
-  const lampPost = new Blueprint(`${p.key}_lamp`, `${p.title} Lamp Post`, [1, DECK + 3, 1], p.key, "Where a street ends.");
+  const lampPost = new Blueprint(`${p.key}_lamp`, `${p.title} Lamp Post`, [1, deckOf(p) + 3, 1], p.key, "Where a street ends.");
   lampPost.jigsaw(0, 0, 0, marker(p, "north", STREET_MARK, STREET_MARK, "minecraft:empty"));
-  if (p.stilts) lampPost.fill(0, 1, 0, 1, DECK, 1, "mangrove_log");
-  lamp(p, lampPost, 0, (p.stilts ? DECK : 0) + 1, 0);
+  if (p.deck) lampPost.fill(0, 1, 0, 1, p.deck.height, 1, p.deck.post);
+  lamp(p, lampPost, 0, deckOf(p) + 1, 0);
   pieces.set("lamp", lampPost);
   const doorstep = new Blueprint(`${p.key}_doorstep`, `${p.title} Doorstep`, [1, 1, 1], p.key, "Where no house fits.");
-  doorstep.jigsaw(0, 0, 0, { facing: "north", name: HOUSE_MARK, target: HOUSE_MARK, pool: "minecraft:empty", final: p.stilts ? "mangrove_log" : "grass" });
+  doorstep.jigsaw(0, 0, 0, { facing: "north", name: HOUSE_MARK, target: HOUSE_MARK, pool: "minecraft:empty", final: p.deck ? p.deck.post : p.verge });
   pieces.set("doorstep", doorstep);
   const ends: Pool["elements"] = [{ piece: lampPost, weight: 3 }];
   if (p.watch) {
@@ -425,14 +524,10 @@ export function villageSet(p: People): VillageSet {
   }
   const lot = (key: string, title: string, notes: string, w: number, d: number, paint?: (bp: Blueprint, y: number) => void): Blueprint => {
     const bp = new Blueprint(`${p.key}_${key}`, `${p.title} ${title}`, [w, 8, d], p.key, notes);
-    if (p.stilts) {
-      bp.fill(0, 0, 0, w, 1, d, "water");
-    } else {
-      bp.fill(0, 0, 0, w, 1, d, p.verge);
-    }
+    bp.fill(0, 0, 0, w, 1, d, p.deck ? p.deck.floor : p.verge);
     paint?.(bp, 1);
     // The socket at the middle of the south edge, facing the street.
-    bp.set(Math.floor(w / 2), 0, d - 1, p.stilts ? "water" : p.verge);
+    bp.set(Math.floor(w / 2), 0, d - 1, p.deck ? p.deck.floor : p.verge);
     bp.jigsaw(Math.floor(w / 2), 0, d - 1, marker(p, "south", HOUSE_MARK, HOUSE_MARK, "minecraft:empty"));
     return stampPeople(p, bp);
   };
@@ -441,7 +536,7 @@ export function villageSet(p: People): VillageSet {
     pieces.set(key, piece);
     houseElements.push({ piece, weight });
   }
-  const empty = lot("empty_lot", "Empty Lot", "Nothing built here yet.", 7, 7, (bp, y) => { if (!p.stilts) scatter(bp, rand, 0, y, 0, 7, 7, 6); });
+  const empty = lot("empty_lot", "Empty Lot", "Nothing built here yet.", 7, 7, (bp, y) => { if (!p.deck || p.deck.floor === "grass") scatter(bp, rand, 0, y, 0, 7, 7, 6); });
   pieces.set("empty_lot", empty);
   houseElements.push({ piece: empty, weight: p.emptyLots });
 
@@ -485,8 +580,8 @@ export function villageWorldgen(set: VillageSet): Record<string, object> {
       description: { identifier: `villages:${p.key}_village` },
       biome_filters: [{ any_of: p.biomes.map((tag) => ({ test: "has_biome_tag", operator: "==", value: tag })) }],
       step: "surface_structures",
-      // Buildings on the ground get the terrain drawn up to them; stilts stand in the water as they are.
-      terrain_adaptation: p.stilts ? "none" : "beard_thin",
+      // Buildings on the ground get the terrain drawn up to them; a deck over water stands in it as it is.
+      terrain_adaptation: p.deck?.floor === "water" ? "none" : "beard_thin",
       start_pool: set.startPool,
       max_depth: set.maxDepth,
       start_height: { type: "constant", value: { absolute: 0 } },

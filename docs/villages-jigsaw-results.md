@@ -494,6 +494,32 @@ identifier an item the server knows, every amount within a stack. The
 form itself, the emeralds leaving and the goods arriving need a real
 player (issue #84).
 
+## A village's bounds (design §5, `packages/villages`)
+
+Design §5 costs a broken village block −1 and would have every block
+"position-indexed at generation by the same tick that spawns the
+people". Nothing records a generated village's box (a jigsaw structure
+leaves no bounds a script can read on the stable API; only the posts
+survive, in the pack's own index), and indexing every block of every
+piece would be a record per block of a village for a rule that fires on
+a break. Built as a hull instead (`core/standing.ts`, `villageOf`): a
+block within twenty on x/z of any post the world placed, from three
+under its floor to twelve over it, belongs to that post's people (the
+nearest post's when two hulls overlap). Measured from the 289 pieces in
+`behavior_pack/structures/villages/`: the squares are up to 23 wide with
+the core's post at the middle, the lots up to 14, and the streets between
+them 7 or 11 long, so a street block is at most about twenty from the
+post at either end. Natural blocks are free inside the hull
+(`isNatural`: soil, rock, ore, trees, plants and crops, snow, water, the
+vein), since the villages are built on and of them; and a block the
+player placed inside the hull this session is theirs to take back.
+
+Not measured on the server: `playerBreakBlock` carries the player, and a
+SimulatedPlayer marshals as `undefined` there as everywhere (issue #31),
+so the rule is under Vitest (the hull's edges, both dimensions, the kids'
+posts making no village, forty block kinds sorted) and on the in-game
+list (#84).
+
 ## The gap at a deck joint (design §3)
 
 "Blocks missing where the jigsaw blocks were", seen in game, chased on

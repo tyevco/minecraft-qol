@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { FRESH, PEOPLES, PLACED_BY_PLAYER, type PostRecord } from "../scripts/core/record";
+import { FRESH, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, type PostRecord } from "../scripts/core/record";
 import {
-  ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, WARES,
-  acceptGift, countTrade, elderOffer, inviteCandidate, lapsed, likes, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, standingWords, tierOf, wares,
+  ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, VILLAGE_ABOVE, VILLAGE_BELOW, VILLAGE_HULL, WARES,
+  acceptGift, countTrade, elderOffer, inviteCandidate, isNatural, lapsed, likes, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, standingWords, tierOf, villageOf, wares,
 } from "../scripts/core/standing";
 
 const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 9, job: 2, ...FRESH, ...extra });
@@ -88,6 +88,32 @@ describe("standing", () => {
     expect(parseTradeDay(JSON.stringify(over.next), 4)).toEqual({ day: 4, counts: {} }); // a new day
     expect(parseTradeDay("junk", 4)).toEqual({ day: 4, counts: {} });
     expect(parseTradeDay(JSON.stringify({ day: 4, counts: { 9: "two" } }), 4)).toEqual({ day: 4, counts: {} });
+  });
+  it("a spot is in the village of the nearest world post whose hull holds it; the kids' posts make no village", () => {
+    const world = (x: number, z: number, people: number, extra: Partial<PostRecord> = {}): PostRecord => post(x, z, { placedBy: PLACED_BY_WORLD, people, ...extra });
+    const posts = [world(0, 0, 9), world(24, 0, 3), post(120, 0, { placedBy: PLACED_BY_PLAYER, people: 5 })];
+    const at = (x: number, y: number, z: number, dimId = "minecraft:overworld") => ({ dimId, x, y, z });
+    expect(villageOf(posts, at(1, 66, 1))!.people).toBe(9);
+    expect(villageOf(posts, at(-VILLAGE_HULL, 64, 0))!.people).toBe(9); // on the edge, in
+    expect(villageOf(posts, at(-VILLAGE_HULL - 1, 64, 0))).toBeUndefined(); // one past it, out
+    expect(villageOf(posts, at(11, 64, 0))!.people).toBe(9); // in both hulls: the nearer post's people
+    expect(villageOf(posts, at(13, 64, 0))!.people).toBe(3);
+    expect(villageOf(posts, at(0, 64 - VILLAGE_BELOW, 0))!.people).toBe(9);
+    expect(villageOf(posts, at(0, 64 - VILLAGE_BELOW - 1, 0))).toBeUndefined(); // the mine under the village is free
+    expect(villageOf(posts, at(0, 64 + VILLAGE_ABOVE, 0))!.people).toBe(9);
+    expect(villageOf(posts, at(0, 64 + VILLAGE_ABOVE + 1, 0))).toBeUndefined();
+    expect(villageOf(posts, at(120, 64, 0))).toBeUndefined(); // the kids' own post
+    expect(villageOf(posts, at(1, 64, 1, "minecraft:nether"))).toBeUndefined();
+  });
+  it("the ground, rock, ore, trees, plants, crops, snow, water and the vein are natural; the village's fabric is not", () => {
+    for (const id of ["grass_block", "dirt", "stone", "deepslate", "iron_ore", "deepslate_gold_ore", "raw_copper_block", "oak_log", "stripped_spruce_log", "birch_leaves", "sand", "sandstone", "gravel", "snow_layer", "snow", "water", "wheat", "sweet_berry_bush", "poppy", "tall_grass", "brown_mushroom", "cactus", "moss_block", "mycelium", "mud", "kelp", "bamboo", "cobblestone", "orange_terracotta", "air"]) {
+      expect(isNatural(`minecraft:${id}`), id).toBe(true);
+    }
+    expect(isNatural("villages:vein")).toBe(true);
+    for (const id of ["oak_planks", "stone_bricks", "cobblestone_wall", "lantern", "chest", "barrel", "glass_pane", "oak_fence", "hay_block", "white_wool", "mud_bricks", "smooth_sandstone", "cut_sandstone", "sandstone_wall", "oak_stairs", "spruce_slab", "torch", "crafting_table", "furnace", "oak_door", "bed", "polished_blackstone_bricks", "prismarine_bricks"]) {
+      expect(isNatural(`minecraft:${id}`), id).toBe(false);
+    }
+    expect(isNatural("villages:post")).toBe(false);
   });
   it("names the nearest present person of the job in the elder's own village, never the elder", () => {
     const elder = post(0, 0);

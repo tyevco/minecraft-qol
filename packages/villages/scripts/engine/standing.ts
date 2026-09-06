@@ -14,8 +14,11 @@
  * - a trade with the village's trader (engine/elder.ts), +1 for the first
  *   few each day with a people (core.TRADES_PER_DAY), counted here.
  *
- * Building for a people (+10) waits for the builder; breaking a village
- * block (−1) waits for a village to know its own blocks (issue #73).
+ * - breaking a village's block, −1: a block that is not natural, inside
+ *   the hull round a village's posts (core.villageOf), and not one the
+ *   player placed there this session.
+ *
+ * Building for a people (+10) waits for the builder (issue #80).
  *
  * `/scriptevent villages:standing [people [value]]` (operator) reads the
  * caller's standing with every people back, or sets one: the in-game
@@ -28,9 +31,17 @@ import { standingProperty } from "../core/visitors";
 import { showElder } from "./elder";
 import { PERSON } from "./post";
 import { VISITOR_TAG } from "./visitors";
+import * as storage from "./storage";
 import * as walk from "./walk";
 
 const GIFTS_PROPERTY = "villages:gifts";
+/** Position keys of blocks players placed inside a village's hull this session, so taking one's own block back is free. */
+const placedInVillage = new Set<string>();
+const PLACED_CAP = 4096;
+/** The last tick each player was told of a broken block, so a wall coming down is one line, not one a block. */
+const toldAt = new Map<string, number>();
+const TELL_EVERY = 100;
+const keyOf = (at: core.Spot): string => `${at.dimId}:${at.x},${at.y},${at.z}`;
 const TRADES_PROPERTY = "villages:trades";
 const ERRAND_PROPERTY = "villages:errand.";
 const TRADER_JOB = 2;
@@ -153,6 +164,32 @@ export function install(logger: (...parts: unknown[]) => void): void {
       return `${PEOPLES[i]} ${s} (${core.TIERS[core.tierOf(s)]})`;
     });
     player.sendMessage(`[Villages] ${player.name}'s standing: ${lines.join("; ")}`);
+  });
+  world.afterEvents.playerPlaceBlock.subscribe((ev) => {
+    const at = { dimId: ev.dimension.id, x: ev.block.location.x, y: ev.block.location.y, z: ev.block.location.z };
+    if (!core.villageOf(storage.all(), at)) return;
+    if (placedInVillage.size >= PLACED_CAP) placedInVillage.delete(placedInVillage.values().next().value!);
+    placedInVillage.add(keyOf(at));
+  });
+  world.afterEvents.playerBreakBlock.subscribe((ev) => {
+    const player = ev.player;
+    if (!(player instanceof Player)) return;
+    const typeId = ev.brokenBlockPermutation.type.id;
+    if (core.isNatural(typeId)) return;
+    const at = { dimId: ev.dimension.id, x: ev.block.location.x, y: ev.block.location.y, z: ev.block.location.z };
+    if (placedInVillage.delete(keyOf(at))) return;
+    const village = core.villageOf(storage.all(), at);
+    if (!village) return;
+    const before = standingOf(player, village.people);
+    const s = addStanding(player, village.people, core.STANDING_BREAK);
+    const name = typeId.replace("minecraft:", "").replace(/_/g, " ");
+    const dropped = core.tierOf(s) < core.tierOf(before);
+    const last = toldAt.get(player.id) ?? -Infinity;
+    if (dropped || system.currentTick - last >= TELL_EVERY) {
+      toldAt.set(player.id, system.currentTick);
+      player.sendMessage(`The ${peopleName(village.people)} see their ${name} broken. ${core.standingWords(village.people, s)}`);
+    }
+    log(`${player.name} broke ${typeId} at ${at.x},${at.y},${at.z} in the ${peopleName(village.people)}' village: standing ${s}`);
   });
   world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
     const person = ev.target;

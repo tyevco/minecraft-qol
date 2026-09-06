@@ -216,8 +216,16 @@ measurements: `docs/villages-jigsaw-results.md`.
   where the blow landed (they walk there; nobody targets players, design
   §4); a **trade** with the trader, +1 for the first four each day with a
   people (`villages:trades`, a player property with the day's counts).
-  Building for a people (+10) waits for the builder; breaking a village
-  block (−1) waits for a village to know its own blocks (issue #73).
+  **breaking a village's block**, −1 a block: a block inside the hull round
+  a village's posts (twenty blocks on x/z from any post the world placed,
+  three under its floor to twelve over it; the nearest post's people) that
+  is not natural (the ground, rock and ore, trees, plants and crops, snow,
+  water and the vein are free, so digging past a village or felling its
+  trees costs nothing) and that the player did not place there this
+  session (taking your own torch back is free; a `/reload` forgets which
+  those were). One chat line per five seconds while a wall comes down,
+  and always when the tier drops. Building for a people (+10) waits for
+  the builder (issue #80).
   `/scriptevent villages:standing [people [value]]` (operator) reads the
   caller's standing with every people back in numbers and tiers, or sets
   one: the testers' hatch, since the game never shows the number.
@@ -480,7 +488,9 @@ measurements: `docs/villages-jigsaw-results.md`.
   a second gift to the same person refused today); the trader's form and
   its errand, payment and the post for six emeralds; the wares form at
   guest (the emeralds leave, the goods arrive, the fifth trade of a day
-  with a people says nothing of standing); hitting a person
+  with a people says nothing of standing); breaking a village's plank or
+  lantern (−1 and a line; the dirt under it, a tree beside it or a torch
+  you placed, nothing); hitting a person
   (−5, and the guards walk to where you stood); a zombie killed by a
   guard (+1); and at kin the invite's two forms, the follow behind you
   through a real village, and the settle by tapping your own post. If the
@@ -600,8 +610,9 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): building for a people, losing standing for
-a village's broken blocks, and the guest tier's inn (a Hearthstone-style
-respawn point); the trader's blueprints wait for the builder
-(`docs/design/settlements.md`), and the wares are a fixed table per
-people rather than the village's own storehouse (issue #85).
+Not yet built (design §5–6): building for a people and the guest tier's
+inn (a Hearthstone-style respawn point); the trader's blueprints wait for
+the builder (`docs/design/settlements.md`), and the wares are a fixed
+table per people rather than the village's own storehouse (issue #85).
+A kid's own house within twenty blocks of a village's plaques is inside
+the hull, so build a little further off or expect the village to mind.

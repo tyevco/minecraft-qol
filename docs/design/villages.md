@@ -248,7 +248,10 @@ Ways to earn it, each small, so a friendship takes an evening or two:
 
 Ways to lose it: hitting a person (−5, and the guards come), breaking a
 village block (−1 per block, position-indexed at generation by the same
-tick that spawns the people), letting an errand lapse (−2).
+tick that spawns the people), letting an errand lapse (−2). (Built with
+no index: nothing records a generated village's box, so its bounds are a
+hull round its posts, twenty blocks on x/z and a floor-to-roof band on
+y, and natural blocks inside it are free; `packages/villages/README.md`.)
 
 Standing is **per player**. A sibling who annoys the reedfolk does not cost
 the other their friendship; that is a rule for a family Realm, not a
@@ -445,5 +448,6 @@ found, in buildings they raised. That is the whole loop.
    whose plaque has been turned to its job (the post item places a
    guard's; a tap turns it). Trading is the trader's form: the people's
    wares for emeralds at guest, the fourth at friend, +1 for the first
-   four trades a day. Building for standing and the guest's inn are
-   still open (issue #73).
+   four trades a day. Breaking a village's block is −1 inside a hull
+   round its posts, natural blocks free. Building for standing and the
+   guest's inn are still open (issue #73).

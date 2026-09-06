@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FRESH, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, type PostRecord } from "../scripts/core/record";
 import {
   ERRAND_DAYS, ESCORT_TICKS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, VILLAGE_ABOVE, VILLAGE_BELOW, VILLAGE_HULL, WARES,
-  acceptGift, countTrade, elderOffer, escortCandidate, escortOver, inviteCandidate, isNatural, lapsed, likes, mayRest, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, restWords, standingWords, tierOf, villageOf, wares,
+  acceptGift, countTrade, elderOffer, escortCandidate, escortOver, inviteCandidate, isNatural, lapsed, likes, mayRest, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, restWords, standingWords, stock, stockPrice, storehousePosts, tierOf, villageOf, wares,
 } from "../scripts/core/standing";
 
 const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 9, job: 2, ...FRESH, ...extra });
@@ -142,6 +142,31 @@ describe("standing", () => {
     expect(escortOver(1000, 1000 + ESCORT_TICKS - 1)).toBe(false);
     expect(escortOver(1000, 1000 + ESCORT_TICKS)).toBe(true);
     expect(escortOver(90000, 120)).toBe(true); // the clock restarted
+  });
+  it("the storehouse prices produce only, offers a sale's worth of what the chests hold, and leaves the fixed wares to themselves", () => {
+    expect(stockPrice("minecraft:oak_log")).toEqual({ amount: 8, price: 1 });
+    expect(stockPrice("minecraft:raw_iron")).toEqual({ amount: 2, price: 2 });
+    expect(stockPrice("minecraft:light_blue_wool")).toEqual({ amount: 4, price: 1 });
+    expect(stockPrice("minecraft:iron_pickaxe")).toBeUndefined();
+    expect(stockPrice("minecraft:cooked_beef")).toBeUndefined(); // a wage, not produce
+    const counts = { "minecraft:wheat": 40, "minecraft:oak_log": 7, "minecraft:cod": 6, "minecraft:sweet_berries": 30, "minecraft:iron_pickaxe": 1 };
+    expect(stock(counts, STRANGER, [])).toEqual([]);
+    const lines = stock(counts, GUEST, wares(9, GUEST)); // the foxfolk's fixed wares already sell sweet berries
+    expect(lines.map((l) => l.item)).toEqual(["minecraft:cod", "minecraft:wheat"]);
+    expect(lines[1]).toEqual({ item: "minecraft:wheat", amount: 16, price: 1, from: GUEST, available: 40 });
+    expect(stock(counts, GUEST, []).map((l) => l.item)).toContain("minecraft:sweet_berries");
+  });
+  it("a trader's storehouse is the worker posts of its own village", () => {
+    const elder = post(0, 0, { placedBy: PLACED_BY_WORLD });
+    const posts = [
+      elder,
+      post(10, 0, { placedBy: PLACED_BY_WORLD, job: 1 }),
+      post(0, 70, { placedBy: PLACED_BY_WORLD, job: 1 }), // too far
+      post(5, 0, { placedBy: PLACED_BY_WORLD, job: 0 }), // a guard has no chest to sell from
+      post(6, 0, { placedBy: PLACED_BY_WORLD, job: 1, people: 3 }), // another people's
+      post(7, 0, { placedBy: PLACED_BY_PLAYER, job: 1 }), // the kids' own
+    ];
+    expect(storehousePosts(posts, elder).map((p) => p.x)).toEqual([10]);
   });
   it("a follower takes an empty post of its own job", () => {
     const worker = post(0, 0, { job: 1, placedBy: PLACED_BY_PLAYER });

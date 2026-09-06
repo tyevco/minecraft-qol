@@ -131,6 +131,71 @@ export const ESCORT_TICKS = 24000;
 export const GUARD_JOB = 0;
 export const escortOver = (since: number, now: number): boolean => now < since || now - since >= ESCORT_TICKS;
 
+/**
+ * The storehouse (villages.md §5.1: "what a village produces goes into its
+ * own storehouse, which is what the trader sells"; issue #85). The
+ * workers' chests are the storehouse: the trader also sells what the
+ * worker posts of its own village (the same people, within STOCK_RANGE of
+ * its post) have in their chests, at a price per kind of produce below.
+ * Only produce is priced, so a tool or a wage the kids left in a chest is
+ * not for sale; the fixed wares stay as the floor, and a thing in both is
+ * offered once, from the storehouse.
+ */
+export const STOCK_RANGE = 64;
+export interface StockPrice {
+  amount: number;
+  price: number;
+}
+const sp = (amount: number, price: number): StockPrice => ({ amount, price });
+const STOCK_PRICES: readonly (readonly [RegExp, StockPrice])[] = [
+  [/^minecraft:[a-z_]+_log$/, sp(8, 1)],
+  [/^minecraft:[a-z_]+_sapling$/, sp(4, 1)],
+  [/^minecraft:[a-z_]+_wool$/, sp(4, 1)],
+  [/^minecraft:(wheat|carrot|potato|beetroot|melon_slice|sugar_cane)$/, sp(16, 1)],
+  [/^minecraft:[a-z_]+_seeds$/, sp(16, 1)],
+  [/^minecraft:(cobblestone|stone)$/, sp(16, 1)],
+  [/^minecraft:coal$/, sp(8, 1)],
+  [/^minecraft:raw_iron$/, sp(2, 2)],
+  [/^minecraft:raw_copper$/, sp(4, 1)],
+  [/^minecraft:(cod|salmon)$/, sp(6, 1)],
+  [/^minecraft:sweet_berries$/, sp(8, 1)],
+  [/^minecraft:bread$/, sp(4, 1)],
+  [/^minecraft:honey_bottle$/, sp(1, 1)],
+  [/^minecraft:cactus$/, sp(4, 1)],
+  [/^minecraft:(brown_mushroom|red_mushroom)$/, sp(8, 1)],
+  [/^minecraft:cocoa_beans$/, sp(8, 1)],
+  [/^minecraft:apple$/, sp(8, 1)],
+];
+/** What a kind of produce sells for, or undefined if it is not produce. */
+export function stockPrice(typeId: string): StockPrice | undefined {
+  for (const [re, price] of STOCK_PRICES) if (re.test(typeId)) return price;
+  return undefined;
+}
+
+/** A line of the storehouse: a ware, and how many the chests hold. */
+export interface StockLine extends Ware {
+  available: number;
+}
+
+/** What the storehouse offers a player of this tier: every priced kind the chests hold a sale's worth of, sorted, less what the fixed wares already offer. */
+export function stock(counts: Readonly<Record<string, number>>, tier: number, fixed: readonly Ware[]): StockLine[] {
+  if (tier < GUEST) return [];
+  const offered = new Set(fixed.map((w) => w.item));
+  const lines: StockLine[] = [];
+  for (const [item, available] of Object.entries(counts)) {
+    if (offered.has(item)) continue;
+    const price = stockPrice(item);
+    if (!price || available < price.amount) continue;
+    lines.push({ item, amount: price.amount, price: price.price, from: GUEST, available });
+  }
+  return lines.sort((a, b) => (a.item < b.item ? -1 : a.item > b.item ? 1 : 0));
+}
+
+/** The worker posts whose chests are a trader's storehouse: its own village's (same people and dimension, within STOCK_RANGE), the world's. */
+export function storehousePosts(posts: readonly PostRecord[], elder: PostRecord): PostRecord[] {
+  return posts.filter((p) => p.placedBy === PLACED_BY_WORLD && p.people === elder.people && p.dimId === elder.dimId && p.job === WORKER && (p.x - elder.x) ** 2 + (p.z - elder.z) ** 2 <= STOCK_RANGE * STOCK_RANGE);
+}
+
 /** The wares a people shows a player of this tier: none below Guest. */
 export function wares(people: number, tier: number): readonly Ware[] {
   if (tier < GUEST) return [];

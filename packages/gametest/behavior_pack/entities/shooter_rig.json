@@ -1,0 +1,422 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "qol:shooter_rig",
+      "is_spawnable": false,
+      "is_summonable": true
+    },
+    "component_groups": {
+      "qol:aim": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "monster"
+              },
+              "max_dist": 16
+            }
+          ]
+        },
+        "minecraft:behavior.look_at_target": {
+          "priority": 2,
+          "look_distance": 16,
+          "probability": 1.0,
+          "look_time": {
+            "min": 1,
+            "max": 5
+          },
+          "angle_of_view_horizontal": 360,
+          "angle_of_view_vertical": 360
+        }
+      },
+      "qol:rate_slow": {
+        "minecraft:behavior.ranged_attack": {
+          "priority": 0,
+          "attack_interval": {
+            "min": 2.0,
+            "max": 2.0
+          },
+          "attack_radius": 16,
+          "x_max_rotation": 90,
+          "y_max_head_rotation": 180
+        }
+      },
+      "qol:rate_fast": {
+        "minecraft:behavior.ranged_attack": {
+          "priority": 0,
+          "attack_interval": {
+            "min": 0.5,
+            "max": 0.5
+          },
+          "attack_radius": 16,
+          "x_max_rotation": 90,
+          "y_max_head_rotation": 180
+        }
+      },
+      "qol:shoot_arrow": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "sound": "bow"
+        }
+      },
+      "qol:shoot_arrow_power_1": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "sound": "bow",
+          "power": 1.0
+        }
+      },
+      "qol:shoot_arrow_power_3": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "sound": "bow",
+          "power": 3.0
+        }
+      },
+      "qol:shoot_poison": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "aux_val": 26,
+          "sound": "bow"
+        }
+      },
+      "qol:shoot_slowness": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "aux_val": 18,
+          "sound": "bow"
+        }
+      },
+      "qol:shoot_weakness": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "aux_val": 35,
+          "sound": "bow"
+        }
+      },
+      "qol:shoot_snowball": {
+        "minecraft:shooter": {
+          "def": "minecraft:snowball",
+          "sound": "throw"
+        }
+      },
+      "qol:shoot_splash": {
+        "minecraft:shooter": {
+          "def": "minecraft:splash_potion",
+          "aux_val": 34,
+          "magic": true,
+          "power": 0.75,
+          "sound": "throw"
+        }
+      },
+      "qol:shoot_bolt": {
+        "minecraft:shooter": {
+          "def": "qol:bolt",
+          "sound": "bow"
+        }
+      },
+      "qol:shoot_by_target": {
+        "minecraft:shooter": {
+          "def": "minecraft:arrow",
+          "aux_val": 35,
+          "sound": "bow",
+          "projectiles": [
+            {
+              "def": "minecraft:arrow",
+              "aux_val": 18,
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "undead"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "qol_rig",
+          "inanimate"
+        ]
+      },
+      "minecraft:physics": {
+        "has_gravity": false,
+        "has_collision": false
+      },
+      "minecraft:collision_box": {
+        "width": 0.9,
+        "height": 0.47
+      },
+      "minecraft:health": {
+        "value": 20,
+        "max": 20
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "deals_damage": "no"
+          }
+        ]
+      },
+      "minecraft:persistent": {},
+      "minecraft:fire_immune": {},
+      "minecraft:follow_range": {
+        "value": 16,
+        "max": 16
+      },
+      "minecraft:movement": {
+        "value": 0.0,
+        "max": 0.0
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:navigation.walk": {},
+      "minecraft:conditional_bandwidth_optimization": {}
+    },
+    "events": {
+      "minecraft:entity_spawned": {
+        "add": {
+          "component_groups": [
+            "qol:aim",
+            "qol:rate_slow"
+          ]
+        }
+      },
+      "qol:rate_slow": {
+        "remove": {
+          "component_groups": [
+            "qol:rate_fast"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:rate_slow"
+          ]
+        }
+      },
+      "qol:rate_fast": {
+        "remove": {
+          "component_groups": [
+            "qol:rate_slow"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:rate_fast"
+          ]
+        }
+      },
+      "qol:shoot_arrow": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_arrow"
+          ]
+        }
+      },
+      "qol:shoot_arrow_power_1": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_arrow_power_1"
+          ]
+        }
+      },
+      "qol:shoot_arrow_power_3": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_arrow_power_3"
+          ]
+        }
+      },
+      "qol:shoot_poison": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_poison"
+          ]
+        }
+      },
+      "qol:shoot_slowness": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_slowness"
+          ]
+        }
+      },
+      "qol:shoot_weakness": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_weakness"
+          ]
+        }
+      },
+      "qol:shoot_snowball": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_splash",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_snowball"
+          ]
+        }
+      },
+      "qol:shoot_splash": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_bolt",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_splash"
+          ]
+        }
+      },
+      "qol:shoot_bolt": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_by_target"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_bolt"
+          ]
+        }
+      },
+      "qol:shoot_by_target": {
+        "remove": {
+          "component_groups": [
+            "qol:shoot_arrow",
+            "qol:shoot_arrow_power_1",
+            "qol:shoot_arrow_power_3",
+            "qol:shoot_poison",
+            "qol:shoot_slowness",
+            "qol:shoot_weakness",
+            "qol:shoot_snowball",
+            "qol:shoot_splash",
+            "qol:shoot_bolt"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:shoot_by_target"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -462,6 +462,40 @@ registerAsync("qol", "builder_turned_inn_matches_the_games_rotation", async (tes
   });
 }).maxTicks(3000).structureName(ARENA16);
 
+// The well as the high elves build it: a people's row taken from the
+// generator's cottage record rather than the design's §4 table, and a roof
+// whose stairs go by a legacy name (`prismarine_bricks_stairs`, slab
+// `prismarine_brick_slab`). The chest is filled by those names, so a wrong
+// one fails at the rig; the cells are checked as the stonefolk well's are.
+const HIGH_ELF_WELL: Record<string, number> = {
+  "minecraft:polished_diorite": 32,
+  "minecraft:prismarine_bricks_stairs": 24,
+  "minecraft:prismarine_bricks": 10,
+  "minecraft:oak_fence": 8,
+  "minecraft:prismarine_brick_slab": 1,
+  "minecraft:lantern": 1,
+};
+registerAsync("qol", "builder_well_as_the_high_elves_build_it", async (test) => {
+  rig(test, HIGH_ELF_WELL);
+  place(test, 0, 1, "tallfolk_well", false, "high_elf");
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok") && last(test).endsWith("as high_elf"), `expected the hatch to accept the well as the high elves build it, got "${last(test)}"`);
+  for (let t = 0; t < 600 && compareSwapped(test, "high_elf").right < WELL_CELLS; t += 10) await test.idle(10);
+  const r = compareSwapped(test, "high_elf");
+  test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the swapped well: ${r.wrong.slice(0, 3).join("; ")}`);
+  test.assert(r.right === WELL_CELLS, `expected all ${WELL_CELLS} cells of the swapped well, found ${r.right} (${r.missing.length} missing: ${r.missing.slice(0, 3).join("; ")})`);
+  test.assert(r.swapped === 67, `expected 67 cells swapped to high elf blocks, found ${r.swapped}`);
+  test.assert(chestTotal(test) === 0, `expected the high elf materials all taken from the chest, ${chestTotal(test)} item(s) left`);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:remove ${o.x + 2} ${o.y + 2} ${o.z + 2} 1`);
+  test.succeedWhen(() => {
+    test.assert(compareSwapped(test, "high_elf").placed === 0, `expected the swapped well gone, ${compareSwapped(test, "high_elf").placed} block(s) still stand`);
+    for (const [item, n] of Object.entries(HIGH_ELF_WELL)) test.assert(count(test, CHEST, item) === n, `expected ${n} ${item} back in the chest, found ${count(test, CHEST, item)}`);
+    const want = Object.values(HIGH_ELF_WELL).reduce((a, b) => a + b, 0);
+    test.assert(chestTotal(test) === want, `expected exactly ${want} items in the chest, found ${chestTotal(test)}`);
+  });
+}).maxTicks(1600).structureName("qol:arena");
+
 // The market stall as the reedfolk build it (settlements.md §2.5, §4): the
 // awning row of the palette table. Authored under tinker in brick with red
 // and white stripes, it goes up from a chest of mangrove logs and green and

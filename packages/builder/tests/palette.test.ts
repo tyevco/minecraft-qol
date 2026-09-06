@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { slabOf, stairsOf } from "../../../tools/structures/blueprint";
 import { BUILDINGS } from "../../../tools/structures/buildings";
+import { PEOPLES } from "../../../tools/structures/villages";
 import { materials, type Cell } from "../scripts/core/blueprint";
-import { applyPalette, FAMILIES, PALETTES, paletteByKey, paletteTable, shapeStates, sourcePaletteOf, swapTable } from "../scripts/core/palette";
+import { applyPalette, FAMILIES, PALETTES, paletteByKey, paletteTable, ROLES, shapeStates, sourcePaletteOf, swapTable } from "../scripts/core/palette";
 
 /** A catalogue building's cells as the builder pack ships them: the villages' job post left out (`builderBlueprint` in tools/structures/generate.ts). */
 const cells = (key: string): Cell[] =>
@@ -19,11 +20,34 @@ describe("palettes", () => {
       expect(`minecraft:${slabOf(short)}`, `${block} slab`).toBe(f.slab);
     }
   });
-  it("name every people of the design's table and the shared row", () => {
-    expect(PALETTES.map((p) => p.key)).toEqual(["stonefolk", "reedfolk", "tinker", "tallfolk", "drover", "shared"]);
+  it("name every people of the villages pack and the shared row, and know whose a building is", () => {
+    expect(PALETTES.map((p) => p.key)).toEqual([...PEOPLES.map((p) => p.key), "shared"]);
+    for (const people of PEOPLES) expect(paletteByKey(people.key)?.title, people.key).toBe(people.title);
     expect(sourcePaletteOf("tallfolk_well")?.key).toBe("tallfolk");
+    expect(sourcePaletteOf("wood_elf_hearth")?.key).toBe("wood_elf");
+    expect(sourcePaletteOf("high_elf_hall")?.key).toBe("high_elf");
     expect(sourcePaletteOf("shared_larder")?.key).toBe("shared");
     expect(sourcePaletteOf("survey_3")).toBeUndefined();
+  });
+  it("are drawn from the blocks each people's buildings are built of", () => {
+    // Every role block of every people stands in one of that people's generated buildings (glass and wool aside: a cottage's
+    // window and a stall's stripes are what the swap gives, whether or not the people has authored one yet).
+    for (const pal of PALETTES) {
+      if (pal.key === "shared") continue;
+      const built = new Set(BUILDINGS.filter((b) => b.key.startsWith(`${pal.key}_`)).flatMap((b) => b.blocks().map((c) => c.name)));
+      expect(built.size, `${pal.key} has generated buildings`).toBeGreaterThan(0);
+      for (const role of ROLES) for (const block of pal.roles[role]) if (!/glass|wool/.test(block)) expect(built.has(block), `${pal.key} ${role} ${block} is built somewhere`).toBe(true);
+    }
+  });
+  it("give a swapped leaf or mushroom block the states it needs to stand", () => {
+    expect(shapeStates("minecraft:dark_oak_leaves", { weirdo_direction: 1 })).toEqual({ persistent_bit: true, update_bit: false });
+    expect(shapeStates("minecraft:mushroom_stem", { pillar_axis: "y" })).toEqual({ huge_mushroom_bits: 15 });
+    expect(shapeStates("minecraft:red_mushroom_block", {})).toEqual({ huge_mushroom_bits: 14 });
+    expect(shapeStates("minecraft:quartz_pillar", { pillar_axis: "x" })).toEqual({ pillar_axis: "x" });
+  });
+  it("raise the well as the high elves build it: diorite footing, a prismarine roof by its legacy stair name", () => {
+    const m = materials(applyPalette(cells("tallfolk_well"), paletteTable("tallfolk_well", "high_elf")));
+    expect(m).toEqual({ "minecraft:polished_diorite": 32, "minecraft:prismarine_bricks_stairs": 24, "minecraft:prismarine_bricks": 10, "minecraft:oak_fence": 8, "minecraft:prismarine_brick_slab": 1, "minecraft:lantern": 1 });
   });
   it("turn the tallfolk row into the stonefolk row block for block, stairs and slabs with it", () => {
     const t = swapTable(paletteByKey("tallfolk")!, paletteByKey("stonefolk")!);

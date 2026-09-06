@@ -53,13 +53,40 @@ function full(name: string): string {
   return name.includes(":") ? name : `minecraft:${name}`;
 }
 
-/** The §4 table, the first block of each cell being what a target takes; the awning's two stripes, coloured then white. */
+/**
+ * Every people's row, as their buildings are built: the settlements' §4
+ * table for the first five, the generator's cottage records for the second
+ * four (`tools/structures/buildings.ts`) and the ten furfolk
+ * (`tools/structures/furfolk.ts`, and `docs/design/furfolk.md` §3 for the
+ * awnings). The first block of a cell is what a target takes; an awning is
+ * the coloured stripe then white. Then the shared row.
+ */
 export const PALETTES: readonly Palette[] = [
   p("stonefolk", "Stonefolk", ["stone_bricks"], ["stone_bricks"], ["polished_deepslate"], ["deepslate_tiles"], ["polished_deepslate"], ["glass_pane"], ["red_wool", "white_wool"]),
   p("reedfolk", "Reedfolk", ["mangrove_log"], ["mangrove_planks"], ["mangrove_log"], ["bamboo_mosaic"], ["mangrove_log"], ["glass_pane"], ["green_wool", "white_wool"]),
   p("tinker", "Tinker", ["brick_block"], ["brick_block"], ["copper_block"], ["cut_copper"], ["oxidized_copper"], ["glass"], ["red_wool", "white_wool"]),
   p("tallfolk", "Tallfolk", ["cobblestone"], ["oak_planks"], ["oak_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"], ["yellow_wool", "white_wool"]),
+  // The second four (villages.md §3.3), then the drovers, in the villages
+  // pack's order. The wood elves roof with leaves, which have no stairs, so
+  // a roof's stairs stay as authored under them.
+  p("hobbit", "Hobbit", ["cobblestone"], ["oak_planks"], ["oak_log"], ["spruce_planks"], ["oak_log"], ["glass_pane"], []),
+  p("wood_elf", "Wood Elf", ["dark_oak_planks"], ["spruce_planks"], ["dark_oak_log"], ["dark_oak_leaves"], ["dark_oak_log"], ["glass_pane"], []),
+  p("high_elf", "High Elf", ["polished_diorite"], ["quartz_block"], ["quartz_pillar"], ["prismarine_bricks"], ["smooth_quartz"], ["light_blue_stained_glass_pane"], []),
+  p("drow", "Drow", ["deepslate_tiles"], ["deepslate_bricks"], ["polished_blackstone"], ["polished_blackstone_bricks"], ["crying_obsidian"], ["purple_stained_glass_pane"], []),
   p("drover", "Drover", ["smooth_sandstone"], ["hardened_clay"], ["stripped_spruce_log"], ["spruce_planks"], ["dark_oak_planks"], ["glass_pane"], ["red_wool", "white_wool"]),
+  // The furfolk (furfolk.md §3), roofs as built: the cats' and rabbits' are
+  // their wall planks (terracotta and turf have no stairs), the fennecs' is
+  // flat smooth sandstone, the mice live in mushroom blocks.
+  p("foxfolk", "Foxfolk", ["cobblestone"], ["spruce_planks"], ["spruce_log"], ["mossy_cobblestone"], ["stripped_spruce_log"], ["glass_pane"], ["orange_wool", "white_wool"]),
+  p("catfolk", "Catfolk", ["hardened_clay"], ["cherry_planks"], ["cherry_log"], ["cherry_planks"], ["cherry_log"], ["glass_pane"], ["pink_wool", "white_wool"]),
+  p("wolffolk", "Wolffolk", ["stone_bricks"], ["spruce_planks"], ["dark_oak_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"], ["light_gray_wool", "white_wool"]),
+  p("rabbitfolk", "Rabbitfolk", ["packed_mud"], ["birch_planks"], ["birch_log"], ["birch_planks"], ["birch_log"], ["glass_pane"], ["yellow_wool", "white_wool"]),
+  p("bearfolk", "Bearfolk", ["cobblestone"], ["dark_oak_log"], ["dark_oak_log"], ["spruce_planks"], ["dark_oak_log"], ["glass_pane"], ["yellow_wool", "brown_wool"]),
+  p("fennecfolk", "Fennecfolk", ["sandstone"], ["smooth_sandstone"], ["cut_sandstone"], ["smooth_sandstone"], ["cut_sandstone"], ["glass_pane"], ["orange_wool", "white_wool"]),
+  p("mousefolk", "Mousefolk", ["mud_bricks"], ["brown_mushroom_block"], ["mushroom_stem"], ["red_mushroom_block"], ["red_mushroom_block"], ["glass_pane"], ["red_wool", "white_wool"]),
+  p("squirrelfolk", "Squirrelfolk", ["jungle_log"], ["jungle_planks"], ["jungle_log"], ["jungle_planks"], ["jungle_log"], ["glass_pane"], ["lime_wool", "white_wool"]),
+  p("otterfolk", "Otterfolk", ["cobblestone"], ["stripped_oak_log"], ["oak_log"], ["oak_planks"], ["oak_log"], ["glass_pane"], ["cyan_wool", "white_wool"]),
+  p("deerfolk", "Deerfolk", ["mossy_cobblestone"], ["oak_planks"], ["oak_log"], ["oak_planks"], ["oak_log"], ["glass_pane"], ["green_wool", "white_wool"]),
   // The shared buildings: stone brick or cobblestone footings, spruce walls,
   // dark oak roofs, no awning. The larder's roof is spruce too and swaps as wall.
   p("shared", "Shared", ["stone_bricks", "cobblestone"], ["spruce_planks"], ["spruce_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"], []),
@@ -67,10 +94,9 @@ export const PALETTES: readonly Palette[] = [
 
 export const paletteByKey = (key: string): Palette | undefined => PALETTES.find((x) => x.key === key);
 
-/** Which palette a catalogue building was authored in: the people in its key, or the shared row. */
+/** Which palette a catalogue building was authored in: the people its key starts with (`wood_elf_hearth` is the wood elves'), or the shared row. */
 export function sourcePaletteOf(buildingKey: string): Palette | undefined {
-  const people = buildingKey.split("_")[0] ?? "";
-  return paletteByKey(people) ?? (buildingKey.startsWith("shared_") ? paletteByKey("shared") : undefined);
+  return PALETTES.find((x) => buildingKey.startsWith(`${x.key}_`));
 }
 
 /**
@@ -93,6 +119,20 @@ export const FAMILIES: Readonly<Record<string, { stairs: string; slab: string }>
   "minecraft:mangrove_planks": { stairs: "minecraft:mangrove_stairs", slab: "minecraft:mangrove_slab" },
   "minecraft:bamboo_mosaic": { stairs: "minecraft:bamboo_mosaic_stairs", slab: "minecraft:bamboo_mosaic_slab" },
   "minecraft:smooth_sandstone": { stairs: "minecraft:smooth_sandstone_stairs", slab: "minecraft:smooth_sandstone_slab" },
+  "minecraft:sandstone": { stairs: "minecraft:sandstone_stairs", slab: "minecraft:sandstone_slab" },
+  "minecraft:birch_planks": { stairs: "minecraft:birch_stairs", slab: "minecraft:birch_slab" },
+  "minecraft:cherry_planks": { stairs: "minecraft:cherry_stairs", slab: "minecraft:cherry_slab" },
+  "minecraft:jungle_planks": { stairs: "minecraft:jungle_stairs", slab: "minecraft:jungle_slab" },
+  "minecraft:acacia_planks": { stairs: "minecraft:acacia_stairs", slab: "minecraft:acacia_slab" },
+  "minecraft:mossy_cobblestone": { stairs: "minecraft:mossy_cobblestone_stairs", slab: "minecraft:mossy_cobblestone_slab" },
+  "minecraft:quartz_block": { stairs: "minecraft:quartz_stairs", slab: "minecraft:quartz_slab" },
+  "minecraft:smooth_quartz": { stairs: "minecraft:smooth_quartz_stairs", slab: "minecraft:smooth_quartz_slab" },
+  "minecraft:polished_diorite": { stairs: "minecraft:polished_diorite_stairs", slab: "minecraft:polished_diorite_slab" },
+  "minecraft:prismarine_bricks": { stairs: "minecraft:prismarine_bricks_stairs", slab: "minecraft:prismarine_brick_slab" },
+  "minecraft:deepslate_bricks": { stairs: "minecraft:deepslate_brick_stairs", slab: "minecraft:deepslate_brick_slab" },
+  "minecraft:polished_blackstone_bricks": { stairs: "minecraft:polished_blackstone_brick_stairs", slab: "minecraft:polished_blackstone_brick_slab" },
+  "minecraft:red_sandstone": { stairs: "minecraft:red_sandstone_stairs", slab: "minecraft:red_sandstone_slab" },
+  "minecraft:mud_bricks": { stairs: "minecraft:mud_brick_stairs", slab: "minecraft:mud_brick_slab" },
 };
 
 /**
@@ -125,9 +165,17 @@ export function swapTable(from: Palette, to: Palette): Record<string, string> {
 
 const isStairs = (n: string): boolean => /_stairs$/.test(n);
 const isSlab = (n: string): boolean => /_slab$/.test(n);
+const isMushroom = (n: string): boolean => /mushroom_(block|stem)$/.test(n);
+const isLeaves = (n: string): boolean => /_leaves$/.test(n);
 const isPillar = (n: string): boolean => /(_log|_wood|_pillar|_stem|_hyphae)$/.test(n);
 
-/** The states a cell of `name` keeps when it arrives by a swap: its kind's shape states only. */
+/**
+ * The states a cell of `name` keeps when it arrives by a swap: its kind's
+ * shape states only, and the states a kind needs to stand as a building
+ * block at all: leaves persistent so they do not decay, a mushroom stem
+ * or block solid on every face (the generator's 15 and 14; the default 0
+ * is pores all round).
+ */
 export function shapeStates(name: string, states: Cell["states"]): Cell["states"] {
   const out: Cell["states"] = {};
   if (isStairs(name)) {
@@ -135,6 +183,11 @@ export function shapeStates(name: string, states: Cell["states"]): Cell["states"
     if ("upside_down_bit" in states) out.upside_down_bit = states.upside_down_bit!;
   } else if (isSlab(name)) {
     if ("minecraft:vertical_half" in states) out["minecraft:vertical_half"] = states["minecraft:vertical_half"]!;
+  } else if (isMushroom(name)) {
+    out.huge_mushroom_bits = name.endsWith("_stem") ? 15 : 14;
+  } else if (isLeaves(name)) {
+    out.persistent_bit = true;
+    out.update_bit = false;
   } else if (isPillar(name)) {
     if ("pillar_axis" in states) out.pillar_axis = states.pillar_axis!;
   }

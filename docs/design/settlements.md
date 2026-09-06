@@ -271,7 +271,9 @@ before placement, not a second file.
 measured (`docs/settlements-results.md`, "Palette swaps"): the table below,
 the first block of a cell being what a target takes, an awning's two stripes
 swapping stripe for stripe, with stairs and slabs following their material.
-The tallfolk and drover cells with two walls or corners take the first.*
+The tallfolk and drover cells with two walls or corners take the first. The
+second four peoples and the ten furfolk have rows too, drawn from the blocks
+their buildings are built of.*
 
 | Role | Stonefolk | Reedfolk | Tinker | Tallfolk | Drover | Shared |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -20,8 +20,9 @@ import { BlockPermutation, system, world, type Dimension, type Entity, type Vect
 import { catalogueEntry, plainName, type Cell } from "../core/blueprint";
 import { nextPlacement, nextRemoval, stillOurs, ticksPerBlock, withinReach, type Step } from "../core/job";
 import { removalOrder, worldCells } from "../core/order";
-import type { BuildingRecord, Position } from "../core/record";
+import { boxOfRecord, type BuildingRecord, type Position } from "../core/record";
 import * as chest from "./chest";
+import * as outline from "./outline";
 import * as settings from "./settings";
 import * as storage from "./storage";
 import * as structures from "./structures";
@@ -38,6 +39,8 @@ interface Job {
   cells: Cell[];
   removal: Cell[];
   timer: number;
+  /** The outline's own beat, a second, whatever the block pace. */
+  outline: number;
   ticks: number;
   waited: number;
   builderId?: string;
@@ -112,8 +115,10 @@ export function start(record: BuildingRecord, ticks?: number): boolean {
     return false;
   }
   const cells = worldCells(b.cells, b.size, record.rotation, record);
-  const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0 };
+  const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, outline: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0 };
   job.timer = system.runInterval(() => tick(job), job.ticks);
+  const dim = dimensionOf(record);
+  if (dim) job.outline = system.runInterval(() => outline.pulse(dim, boxOfRecord(job.record)), 20);
   jobs.set(key, job);
   log(`${record.phase} the ${record.key} at ${record.x},${record.y},${record.z}: ${record.done}/${cells.length} done, a block every ${job.ticks} ticks`);
   return true;
@@ -135,6 +140,7 @@ export function forget(record: BuildingRecord): void {
   const job = jobs.get(keyOf(record));
   if (job) {
     system.clearRun(job.timer);
+    system.clearRun(job.outline);
     jobs.delete(keyOf(record));
     walk.halt(builderOf(job));
   }
@@ -150,6 +156,7 @@ export function resume(): number {
 
 function stop(job: Job, why: string): void {
   system.clearRun(job.timer);
+  system.clearRun(job.outline);
   jobs.delete(keyOf(job.record));
   const b = builderOf(job);
   walk.halt(b);
@@ -165,6 +172,7 @@ function stop(job: Job, why: string): void {
 
 function finish(job: Job): void {
   system.clearRun(job.timer);
+  system.clearRun(job.outline);
   jobs.delete(keyOf(job.record));
   const b = builderOf(job);
   walk.halt(b);

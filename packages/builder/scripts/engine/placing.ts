@@ -7,6 +7,7 @@ import type { Dimension, Vector3 } from "@minecraft/server";
 import { catalogueEntry, materials, plainName, type Cell } from "../core/blueprint";
 import { boxOf, fits, grounded, overlapping, paidFor, type Lookup, type Shortfall } from "../core/checks";
 import { worldCells } from "../core/order";
+import { paletteByKey, paletteTable } from "../core/palette";
 import { boxOfRecord, type BuildingRecord } from "../core/record";
 import { doorFacing, rotatedSize, type Rotation } from "../core/rotate";
 import * as chest from "./chest";
@@ -39,14 +40,15 @@ export function lookupIn(dim: Dimension): Lookup {
  * Refusals come in the order of §5.2, first one wins, and each names the spot
  * or the material.
  */
-export function plan(dim: Dimension, key: string, origin: Vector3, rotation: Rotation, table: Vector3, free = false): Plan | { refused: string } {
+export function plan(dim: Dimension, key: string, origin: Vector3, rotation: Rotation, table: Vector3, free = false, palette = ""): Plan | { refused: string } {
   const entry = catalogueEntry(key);
   const b = structures.building(key);
   if (!entry || !b) return { refused: `there is no blueprint called ${key}` };
+  if (palette && !paletteByKey(palette)) return { refused: `there is no palette called ${palette}` };
   const size = rotatedSize(b.size, rotation);
-  const cells = worldCells(b.cells, b.size, rotation, origin);
+  const cells = worldCells(b.cells, b.size, rotation, origin, paletteTable(key, palette));
   const needed = materials(cells);
-  const record: BuildingRecord = { dimId: dim.id, x: origin.x, y: origin.y, z: origin.z, key, rotation, sx: size.x, sy: size.y, sz: size.z, phase: "building", done: 0, table: { x: table.x, y: table.y, z: table.z }, free };
+  const record: BuildingRecord = { dimId: dim.id, x: origin.x, y: origin.y, z: origin.z, key, rotation, sx: size.x, sy: size.y, sz: size.z, phase: "building", done: 0, table: { x: table.x, y: table.y, z: table.z }, free, palette };
   const c = chest.chestBeside(dim, table);
   const have = c ? chest.counts(c) : {};
   const paid = free ? { ok: true as const } : paidFor(needed, have);
@@ -70,7 +72,7 @@ export function describe(p: Plan): string[] {
   const entry = catalogueEntry(p.record.key);
   const r = p.record;
   const lines = [
-    `${entry?.title ?? r.key}: ${entry?.description ?? ""}`.trim(),
+    `${entry?.title ?? r.key}${r.palette ? ` as the ${paletteByKey(r.palette)?.title ?? r.palette} build it` : ""}: ${entry?.description ?? ""}`.trim(),
     `${r.sx} wide, ${r.sy} high, ${r.sz} deep, the door facing ${doorFacing(r.rotation)}; from ${r.x},${r.y},${r.z} toward the east and south.`,
     r.free ? "Materials (buildings are free: nothing is taken, and nothing comes back when it is taken down):" : "Materials, and what the chest holds:",
     ...Object.entries(p.needed).map(([item, n]) => `  ${plainName(item)}: ${n}${!r.free && (p.have[item] ?? 0) < n ? ` (chest has ${p.have[item] ?? 0})` : ""}`),

@@ -1,5 +1,6 @@
 import { BlockPermutation, ItemStack, StructureRotation, StructureSaveMode, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
+import { paletteTable, shapeStates } from "../../../builder/scripts/core/palette";
 import { container, count, floor, put } from "./rig";
 
 /**
@@ -66,9 +67,9 @@ function rig(test: Test, chest: Record<string, number> = MATERIALS): void {
   }
 }
 
-function place(test: Test, rotation = 0, ticks = 2, key = "tallfolk_well", free = false): void {
+function place(test: Test, rotation = 0, ticks = 2, key = "tallfolk_well", free = false, palette = ""): void {
   const o = test.worldBlockLocation(ORIGIN);
-  test.getDimension().runCommand(`scriptevent builder:place ${key} ${o.x} ${o.y} ${o.z} ${rotation} ${ticks}${free ? " free" : ""}`);
+  test.getDimension().runCommand(`scriptevent builder:place ${key} ${o.x} ${o.y} ${o.z} ${rotation} ${ticks}${free ? " free" : ""}${palette ? ` ${palette}` : ""}`);
 }
 
 /** Every item in the chest. */
@@ -246,6 +247,94 @@ registerAsync("qol", "builder_turned_well_matches_the_games_rotation", async (te
     test.assert(r.right === WELL_CELLS, `expected all ${WELL_CELLS} cells as the game turns them, found ${r.right}`);
   });
 }).maxTicks(800).structureName("qol:arena");
+
+// Palette swaps (settlements.md §4): the tallfolk well raised "as the
+// stonefolk build it". The chest holds only the stonefolk materials, so the
+// placement is refused unless the materials list is the swapped one; every
+// cell is checked against the shipped structure through the pack's own swap
+// table, its stairs keeping their direction; and taking it down puts the
+// stonefolk blocks back, never the tallfolk ones.
+const STONEFOLK_WELL: Record<string, number> = {
+  "minecraft:stone_bricks": 32,
+  "minecraft:deepslate_tile_stairs": 24,
+  "minecraft:deepslate_tiles": 10,
+  "minecraft:oak_fence": 8,
+  "minecraft:deepslate_tile_slab": 1,
+  "minecraft:lantern": 1,
+};
+
+/** The world at the origin against the shipped well with a palette's swap table applied, unturned. */
+function compareSwapped(test: Test, palette: string): { right: number; swapped: number; wrong: string[]; missing: string[]; placed: number } {
+  const s = world.structureManager.get(WELL);
+  test.assert(s !== undefined, `the structure ${WELL} is not in the world's packs`);
+  const table = paletteTable("tallfolk_well", palette);
+  const dim = test.getDimension();
+  const o = test.worldBlockLocation(ORIGIN);
+  let right = 0, swapped = 0, placed = 0;
+  const wrong: string[] = [];
+  const missing: string[] = [];
+  for (let x = 0; x < WELL_SIZE.x; x++)
+    for (let y = 0; y < WELL_SIZE.y; y++)
+      for (let z = 0; z < WELL_SIZE.z; z++) {
+        const want = s!.getBlockPermutation({ x, y, z });
+        const b = dim.getBlock({ x: o.x + x, y: o.y + y, z: o.z + z });
+        if (!b) continue;
+        if (!b.isAir) placed++;
+        if (!want) {
+          if (!b.isAir) wrong.push(`${x},${y},${z} should be air, is ${b.typeId}`);
+          continue;
+        }
+        const name = table[want.type.id] ?? want.type.id;
+        if (b.isAir) {
+          missing.push(`${x},${y},${z} wants ${name}, is air`);
+          continue;
+        }
+        if (b.typeId !== name) {
+          wrong.push(`${x},${y},${z} wants ${name} (${want.type.id} swapped), is ${b.typeId}`);
+          continue;
+        }
+        if (name !== want.type.id) {
+          swapped++;
+          const kept = Object.entries(shapeStates(name, want.getAllStates()));
+          const states = b.permutation.getAllStates() as Record<string, unknown>;
+          const lost = kept.filter(([k, v]) => states[k] !== v);
+          if (lost.length) {
+            wrong.push(`${x},${y},${z} ${name} lost its shape: wants ${JSON.stringify(Object.fromEntries(kept))}, is ${JSON.stringify(b.permutation.getAllStates())}`);
+            continue;
+          }
+        }
+        right++;
+      }
+  return { right, swapped, wrong, missing, placed };
+}
+
+registerAsync("qol", "builder_well_as_the_stonefolk_build_it", async (test) => {
+  rig(test, STONEFOLK_WELL);
+  place(test, 0, 1, "tallfolk_well", false, "stonefolk");
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok") && last(test).endsWith("as stonefolk"), `expected the hatch to accept the well as the stonefolk build it from a chest of their materials, got "${last(test)}"`);
+  for (let t = 0; t < 600 && compareSwapped(test, "stonefolk").right < WELL_CELLS; t += 10) await test.idle(10);
+  const r = compareSwapped(test, "stonefolk");
+  test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the swapped well: ${r.wrong.slice(0, 3).join("; ")}`);
+  test.assert(r.right === WELL_CELLS, `expected all ${WELL_CELLS} cells of the swapped well, found ${r.right} (${r.missing.length} missing: ${r.missing.slice(0, 3).join("; ")})`);
+  test.assert(r.swapped === 67, `expected 67 cells swapped to stonefolk blocks (32 footing, 24 stairs, 10 roof, 1 slab), found ${r.swapped}`);
+  test.assert(chestTotal(test) === 0, `expected the stonefolk materials all taken from the chest, ${chestTotal(test)} item(s) left`);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:remove ${o.x + 2} ${o.y + 2} ${o.z + 2} 1`);
+  await test.idle(5);
+  test.assert(last(test).startsWith("builder:remove ok"), `expected the removal to start, got "${last(test)}"`);
+  test.succeedWhen(() => {
+    const after = compareSwapped(test, "stonefolk");
+    test.assert(after.placed === 0, `expected the swapped well gone, ${after.placed} block(s) still stand`);
+    for (const [item, n] of Object.entries(STONEFOLK_WELL)) {
+      const back = count(test, CHEST, item);
+      test.assert(back === n, `expected ${n} ${item} back in the chest, found ${back}`);
+    }
+    for (const item of ["minecraft:cobblestone", "minecraft:dark_oak_stairs", "minecraft:dark_oak_planks", "minecraft:dark_oak_slab"]) test.assert(count(test, CHEST, item) === 0, `expected no ${item} back from a stonefolk well, found ${count(test, CHEST, item)}`);
+    const want = Object.values(STONEFOLK_WELL).reduce((a, b) => a + b, 0);
+    test.assert(chestTotal(test) === want, `expected exactly ${want} items in the chest, found ${chestTotal(test)}`);
+  });
+}).maxTicks(1600).structureName("qol:arena");
 
 // Repair (settlements.md §5.4): four blocks knocked out of a finished well and
 // a stone put where a fifth should be. The gaps are filled from the chest,

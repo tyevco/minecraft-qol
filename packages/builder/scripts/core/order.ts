@@ -7,6 +7,7 @@
  * poured into it. Taking a building down runs the same list backwards.
  */
 import { isWater, type Cell, type Size } from "./blueprint";
+import { applyPalette } from "./palette";
 import { rotateCell } from "./rotate";
 
 export function placementOrder(cells: readonly Cell[]): Cell[] {
@@ -123,8 +124,8 @@ export function removalOrder(placed: readonly Cell[]): Cell[] {
  * The cells of a building as they will stand in the world: ordered, turned,
  * and moved to the origin. This list is the job; `done` counts into it.
  */
-export function worldCells(cells: readonly Cell[], size: Size, turns: number, origin: { x: number; y: number; z: number }): Cell[] {
-  return placementOrder(cells).map((c) => {
+export function worldCells(cells: readonly Cell[], size: Size, turns: number, origin: { x: number; y: number; z: number }, palette: Readonly<Record<string, string>> = {}): Cell[] {
+  return placementOrder(applyPalette(cells, palette)).map((c) => {
     const r = rotateCell(c, size, turns);
     return { ...r, x: r.x + origin.x, y: r.y + origin.y, z: r.z + origin.z };
   });

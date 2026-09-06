@@ -20,6 +20,7 @@ import { BlockPermutation, system, world, type Dimension, type Entity, type Vect
 import { catalogueEntry, itemFor, plainName, type Cell } from "../core/blueprint";
 import { nextPlacement, nextRemoval, nextRepair, stillOurs, ticksPerBlock, withinReach, type Step } from "../core/job";
 import { companionOf, removalOrder, worldCells } from "../core/order";
+import { paletteTable } from "../core/palette";
 import { boxOfRecord, type BuildingRecord, type Position } from "../core/record";
 import * as chest from "./chest";
 import * as outline from "./outline";
@@ -118,7 +119,7 @@ export function start(record: BuildingRecord, ticks?: number): boolean {
     log(`cannot start on ${record.key} at ${record.x},${record.y},${record.z}: no such structure`);
     return false;
   }
-  const cells = worldCells(b.cells, b.size, record.rotation, record);
+  const cells = worldCells(b.cells, b.size, record.rotation, record, paletteTable(record.key, record.palette));
   const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, outline: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0, placed: 0, blocked: new Set() };
   job.timer = system.runInterval(() => tick(job), job.ticks);
   const dim = dimensionOf(record);

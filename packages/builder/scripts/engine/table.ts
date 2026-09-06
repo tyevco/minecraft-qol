@@ -14,6 +14,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import { roleOf } from "@qol/shared/engine/roles";
 import { catalogueEntry, keyOfBlueprintItem } from "../core/blueprint";
 import { sameTable, type BuildingRecord } from "../core/record";
+import { PALETTES, sourcePaletteOf } from "../core/palette";
 import { doorFacing, rotationFromYaw } from "../core/rotate";
 import { mayBuild } from "../core/settings";
 import * as jobs from "./jobs";
@@ -34,22 +35,45 @@ function mainhand(player: Player): ItemStack | undefined {
   }
 }
 
-async function blueprintForm(player: Player, table: Block, key: string): Promise<void> {
+/**
+ * The blueprint's form: the building as authored, "Place here", and one
+ * button per other people's palette (settlements.md §4), which opens the
+ * same form again with that palette's materials against the chest.
+ */
+async function blueprintForm(player: Player, table: Block, key: string, palette = ""): Promise<void> {
   const origin = { x: Math.floor(player.location.x), y: Math.floor(player.location.y) - 1, z: Math.floor(player.location.z) };
   const rotation = rotationFromYaw(player.getRotation().y);
-  const p = placing.plan(table.dimension, key, origin, rotation, table.location, settings.policy().freeBuild);
+  const p = placing.plan(table.dimension, key, origin, rotation, table.location, settings.policy().freeBuild, palette);
   if (!("record" in p)) {
     tell(player, `Cannot place: ${p.refused}.`);
     return;
   }
   const title = catalogueEntry(key)?.title ?? key;
   const form = new ActionFormData().title(`Blueprint: ${title}`).body(placing.describe(p).join("\n"));
-  if (!p.refused) form.button("Place here");
-  form.button(p.refused ? "Close" : "Not now");
+  const actions: (() => Promise<void> | void)[] = [];
+  if (!p.refused) {
+    form.button("Place here");
+    actions.push(() => start(player, table, key, origin, rotation, palette, title));
+  }
+  const own = sourcePaletteOf(key)?.key;
+  for (const pal of PALETTES) {
+    if (pal.key === own || pal.key === "shared" || pal.key === palette) continue;
+    form.button(`As the ${pal.title} build it`);
+    actions.push(() => blueprintForm(player, table, key, pal.key));
+  }
+  if (palette) {
+    form.button("As authored");
+    actions.push(() => blueprintForm(player, table, key, ""));
+  }
+  form.button(p.refused && !actions.length ? "Close" : "Not now");
   const r = await form.show(player);
-  if (r.canceled || r.selection !== 0 || p.refused) return;
+  if (r.canceled || r.selection === undefined) return;
+  await actions[r.selection]?.();
+}
+
+async function start(player: Player, table: Block, key: string, origin: { x: number; y: number; z: number }, rotation: ReturnType<typeof rotationFromYaw>, palette: string, title: string): Promise<void> {
   // Check again: the world may have changed while the form was open.
-  const again = placing.plan(table.dimension, key, origin, rotation, table.location, settings.policy().freeBuild);
+  const again = placing.plan(table.dimension, key, origin, rotation, table.location, settings.policy().freeBuild, palette);
   if (!("record" in again) || again.refused) {
     tell(player, `Cannot place: ${again.refused}.`);
     return;

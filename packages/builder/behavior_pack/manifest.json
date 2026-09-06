@@ -59,6 +59,12 @@
       "default": 4
     },
     {
+      "type": "toggle",
+      "text": "Buildings are free: nothing is taken from the chest, and a building raised free returns nothing when it is taken down",
+      "name": "builder:free_build",
+      "default": false
+    },
+    {
       "type": "dropdown",
       "text": "Who may use the blueprint table",
       "name": "builder:who_may_build",

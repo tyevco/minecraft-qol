@@ -27,6 +27,11 @@ Three kinds of document live here, and they carry very different authority.
   shooter fires from its eye, and the eye is 0.85 × the collision box height;
   the vanilla arrow's `anchor: 1` is that eye. The turret's box is sized so
   the shot leaves at the barrel. Measured headlessly with `turret_shot_origin`.
+- [`bulwark-ammo-results.md`](bulwark-ammo-results.md) — a tipped arrow is a
+  `minecraft:arrow` with **no potion component**; only its `localizationKey`
+  (`tipped_arrow.effect.*`) names the tint, and script cannot construct one
+  (no arrow delivery type in `Potions`). An arrow's aux value is its potion's
+  registry index plus one. Read off a chest with `qolprobe:item-at`.
 - [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
   pack's jigsaw structure loads, places and generates in a world with **no
   experiments** (25 wells in 400 fresh chunks, one per cell). The files live
@@ -120,6 +125,16 @@ in script. And `ranged_attack.attack_interval` did not replace the min/max pair
 so much as join it — both load. What the doc misses and a turret needs is
 `in_range_movement_mode: hold_position` and raising the default 30° head-rotation
 caps. The lens half of that design shipped separately as `packages/lens`.
+
+**[`design/bulwark-ammo-and-upgrades.md`](design/bulwark-ammo-and-upgrades.md)** —
+**Phase 3 research, unbuilt.** What the vanilla `minecraft:shooter`,
+`ranged_attack` and `minecraft:projectile` definitions offer a turret beyond a
+plain arrow, rated against the stable API and rule 4. Recommends tipped
+arrows, snowballs and a custom non-griefing ember drawn straight from the
+hopper (special ammo is never buffered, because it cannot be given back), one
+tier axis on the `bulwark:tier` property the head already carries, and range
+as a world setting. Carries its own "must prototype" list; nothing in it is
+pinned by a GameTest yet.
 
 **[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
 (funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times

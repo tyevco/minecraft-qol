@@ -53,13 +53,17 @@ job in the villages pack takes it over. Measurements:
   block that is no longer the building's (a different type stands there) is
   left alone and skipped. If the chest is gone, short or full the job stops
   where it is and says so; the record keeps its progress.
-- **Records** in the shared position index (`bd:buildings`, schema 1),
+- **Records** in the shared position index (`bd:buildings`, schema 2),
   keyed by the building's origin: key, rotation, box, phase (building,
   built, removing), how far it got, and the table it was raised from. Jobs
   saved mid-way resume a few seconds after the world loads.
-- **The settings panel**: seconds between blocks (1–30, default 4), and who
+- **The settings panel**: seconds between blocks (1–30, default 4); who
   may use the table (operators; members and operators, the default;
-  everyone).
+  everyone); and **buildings are free** (off by default): the table takes
+  nothing from the chest and needs none, the form says so, and a building
+  raised free returns nothing when it is taken down. The record remembers
+  which it was, so turning the toggle off again cannot turn a free building
+  into a chest of materials. The hatch's `free` word builds the same way.
 - **Script events**, console or operator only: `builder:debug`;
   `builder:place <key> x y z <rotation> [ticksPerBlock]`, the form's path
   from a command (the origin is the footing corner, the table the nearest
@@ -83,12 +87,22 @@ palette swaps wait on that.
   stairs, 6 door halves, the corner staying on the origin); blocks set over
   water are waterlogged on their own and the structure's second layer is
   honoured.
+- **Seen on a client** (the first in-game look): the builder appears at
+  the table, walks to the well and places it, in the blue outfit with the
+  hammer showing. Two things came of it: the well's first layer sits in the
+  turf and could not be seen going in, so a job now pulses sparks
+  (`minecraft:endrod`) round the box's edges every second while it runs and
+  the chat names the corner, the extent and the door's facing; and the
+  hammer hung head-down along the forearm, so the rig gained an upright
+  grip (`toolUp` in `tools/models/generate.ts`), used by the builder only
+  until the villages' people are looked at the same way.
 - Five GameTests pass headlessly (`suites/builder.ts`): the well goes up
   block by block and matches the structure cell for cell, materials gone
   from the chest; a stone in the way is refused by name and position; a
   chest one cobblestone short is refused naming it; remove puts exactly the
   76 items back; the well turned once by the pack equals the game's
-  `Rotate90` placement cell for cell.
+  `Rotate90` placement cell for cell; a free well goes up from an empty
+  chest and comes down leaving it empty.
 
 ## To confirm in game
 
@@ -105,11 +119,14 @@ issue #79; paste what you see there.
   (yaw 0 is taken as south).
 - **The empty-hand form** lists this table's buildings with "Take down" and
   "Carry on", and a visitor is turned away with the panel at its default.
-- **The builder's look**: a tallfolk in the blue builder's outfit, straw
-  hat hidden, pack and tool showing, idle and walk animations on its own
-  rig. If it is invisible, the render controller or the client entity's
-  geometry name is wrong; if it does not swing while placing, the
-  `builder:working` property is not reaching the client.
+- **The builder's look**, seen once: a tallfolk in the blue outfit, hammer
+  showing. Still to judge: the hat hidden, the pack on its back, the swing
+  while placing (`builder:working` reaching the client), and the hammer now
+  held upright.
+- **The outline**: sparks round the box just above the footing and up its
+  corners, every second while the builder works, and the chat line naming
+  the corner and extent. If they cannot be seen in daylight, `PARTICLE` in
+  `engine/outline.ts` is the one name to change.
 - **The walk reads as building**: the builder arrives at the cell before
   or as the block appears at four seconds a block, and does not end up
   inside the wall it is building. If it lags, `PATIENCE` in `engine/jobs.ts`

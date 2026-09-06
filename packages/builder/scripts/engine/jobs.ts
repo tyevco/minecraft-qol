@@ -20,8 +20,9 @@ import { BlockPermutation, system, world, type Dimension, type Entity, type Vect
 import { catalogueEntry, plainName, type Cell } from "../core/blueprint";
 import { nextPlacement, nextRemoval, stillOurs, ticksPerBlock, withinReach, type Step } from "../core/job";
 import { removalOrder, worldCells } from "../core/order";
-import type { BuildingRecord, Position } from "../core/record";
+import { boxOfRecord, type BuildingRecord, type Position } from "../core/record";
 import * as chest from "./chest";
+import * as outline from "./outline";
 import * as settings from "./settings";
 import * as storage from "./storage";
 import * as structures from "./structures";
@@ -38,6 +39,8 @@ interface Job {
   cells: Cell[];
   removal: Cell[];
   timer: number;
+  /** The outline's own beat, a second, whatever the block pace. */
+  outline: number;
   ticks: number;
   waited: number;
   builderId?: string;
@@ -112,8 +115,10 @@ export function start(record: BuildingRecord, ticks?: number): boolean {
     return false;
   }
   const cells = worldCells(b.cells, b.size, record.rotation, record);
-  const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0 };
+  const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, outline: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0 };
   job.timer = system.runInterval(() => tick(job), job.ticks);
+  const dim = dimensionOf(record);
+  if (dim) job.outline = system.runInterval(() => outline.pulse(dim, boxOfRecord(job.record)), 20);
   jobs.set(key, job);
   log(`${record.phase} the ${record.key} at ${record.x},${record.y},${record.z}: ${record.done}/${cells.length} done, a block every ${job.ticks} ticks`);
   return true;
@@ -135,6 +140,7 @@ export function forget(record: BuildingRecord): void {
   const job = jobs.get(keyOf(record));
   if (job) {
     system.clearRun(job.timer);
+    system.clearRun(job.outline);
     jobs.delete(keyOf(record));
     walk.halt(builderOf(job));
   }
@@ -150,6 +156,7 @@ export function resume(): number {
 
 function stop(job: Job, why: string): void {
   system.clearRun(job.timer);
+  system.clearRun(job.outline);
   jobs.delete(keyOf(job.record));
   const b = builderOf(job);
   walk.halt(b);
@@ -165,6 +172,7 @@ function stop(job: Job, why: string): void {
 
 function finish(job: Job): void {
   system.clearRun(job.timer);
+  system.clearRun(job.outline);
   jobs.delete(keyOf(job.record));
   const b = builderOf(job);
   walk.halt(b);
@@ -219,8 +227,10 @@ function tick(job: Job): void {
 
 /** Take the item, then set the block; if the block cannot be set, the item goes back. Returns whether the step counts. */
 function place(job: Job, dim: Dimension, step: Extract<Step, { kind: "place" }>): boolean {
-  const c = chest.chestBeside(dim, job.record.table);
-  if (!c) {
+  // A free building costs nothing and needs no chest.
+  const item = job.record.free ? undefined : step.item;
+  const c = item ? chest.chestBeside(dim, job.record.table) : undefined;
+  if (item && !c) {
     stop(job, "the chest beside the table is gone");
     return false;
   }
@@ -229,15 +239,15 @@ function place(job: Job, dim: Dimension, step: Extract<Step, { kind: "place" }>)
     stop(job, `${step.cell.x},${step.cell.y},${step.cell.z} is not loaded`);
     return false;
   }
-  if (step.item && !chest.takeOne(c, step.item)) {
-    stop(job, `the chest is out of ${plainName(step.item)}`);
+  if (item && c && !chest.takeOne(c, item)) {
+    stop(job, `the chest is out of ${plainName(item)}`);
     return false;
   }
   try {
     block.setPermutation(BlockPermutation.resolve(step.cell.name, step.cell.states));
     if (step.cell.waterlogged) block.setWaterlogged(true);
   } catch (e) {
-    if (step.item) chest.giveOne(c, step.item);
+    if (item && c) chest.giveOne(c, item);
     stop(job, `${plainName(step.cell.name)} could not be placed at ${step.cell.x},${step.cell.y},${step.cell.z} (${e})`);
     return false;
   }
@@ -252,7 +262,8 @@ function take(job: Job, dim: Dimension, step: Extract<Step, { kind: "take" }>): 
     return false;
   }
   if (!stillOurs(step.cell, block.typeId)) return true; // somebody else's now: skip, count the step
-  if (step.item) {
+  // A building raised free gives nothing back: nothing was taken for it.
+  if (step.item && !job.record.free) {
     const c = chest.chestBeside(dim, job.record.table);
     if (!c) {
       stop(job, "the chest beside the table is gone");

@@ -24,7 +24,9 @@ head rotation as a player sees it, mob caps — is still the probe protocol in
 
 What Phase 2 covers, per the design's phasing: block, paired entity,
 reconciliation, vanilla ranged AI, ammo via adjacent hopper, one tier. No
-upgrades, no config form, no ownership. Player targeting is not possible at all
+upgrades, no config form, no ownership. Phase 3 (ammo types, tiers) is
+researched, not built: [`docs/design/bulwark-ammo-and-upgrades.md`](../../docs/design/bulwark-ammo-and-upgrades.md),
+with what was measured in [`docs/bulwark-ammo-results.md`](../../docs/bulwark-ammo-results.md). Player targeting is not possible at all
 yet — the acquisition filter is `is_family: monster`, nothing else.
 
 ## How it works

@@ -5,7 +5,7 @@
  * command, and writes its verdict to a world property a test can read.
  *
  *   /scriptevent builder:debug
- *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock] [free]
+ *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock] [free] [palette]
  *   /scriptevent builder:remove x y z [ticksPerBlock]
  *   /scriptevent builder:resume x y z [ticksPerBlock]
  *   /scriptevent builder:repair x y z [ticksPerBlock]
@@ -20,6 +20,7 @@
  */
 import { BlockVolume, CommandPermissionLevel, Player, system, world, type Dimension, type Vector3 } from "@minecraft/server";
 import { catalogueEntry, CATALOGUE } from "../core/blueprint";
+import { paletteByKey } from "../core/palette";
 import { contains } from "../core/record";
 import { parseRotation } from "../core/rotate";
 import * as jobs from "./jobs";
@@ -103,12 +104,15 @@ export function install(): void {
     }
 
     if (ev.id === "builder:place") {
-      const [key, xs, ys, zs, rs, ts, freeText] = parts;
-      const free = freeText === "free" || settings.policy().freeBuild;
+      const [key, xs, ys, zs, rs, ...rest] = parts;
+      // The rest in any order: a tick count, "free", a people's palette.
+      const ts = rest.find((t) => /^\d+$/.test(t));
+      const free = rest.includes("free") || settings.policy().freeBuild;
+      const palette = rest.find((t) => paletteByKey(t)) ?? "";
       const [x, y, z] = [xs, ys, zs].map(Number);
       const rotation = parseRotation(rs ?? "0");
       if (!key || [x, y, z].some((n) => n === undefined || !Number.isInteger(n)) || rotation === undefined) {
-        verdict("builder:place wants <key> x y z <rotation> [ticksPerBlock] [free]");
+        verdict("builder:place wants <key> x y z <rotation> [ticksPerBlock] [free] [palette]");
         return;
       }
       const origin = { x: x!, y: y!, z: z! };
@@ -117,7 +121,7 @@ export function install(): void {
         verdict(`builder:place refused: no blueprint table within sixteen blocks of ${x},${y},${z}`, dim, origin);
         return;
       }
-      const p = placing.plan(dim, key, origin, rotation, table, free);
+      const p = placing.plan(dim, key, origin, rotation, table, free, palette);
       if (!("record" in p)) {
         verdict(`builder:place refused: ${p.refused}`, dim, origin);
         return;
@@ -130,7 +134,7 @@ export function install(): void {
       storage.put(p.record);
       const ticks = ts ? Number(ts) : undefined;
       const started = jobs.start(p.record, ticks && Number.isInteger(ticks) && ticks > 0 ? ticks : undefined);
-      verdict(started ? `builder:place ok: ${catalogueEntry(key)?.title ?? key} at ${x},${y},${z} rot ${rotation}, ${p.cells.length} cells${free ? ", free" : ""}` : `builder:place refused: the job did not start`, dim, origin);
+      verdict(started ? `builder:place ok: ${catalogueEntry(key)?.title ?? key} at ${x},${y},${z} rot ${rotation}, ${p.cells.length} cells${free ? ", free" : ""}${palette ? `, as ${palette}` : ""}` : `builder:place refused: the job did not start`, dim, origin);
       return;
     }
 

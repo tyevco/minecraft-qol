@@ -234,6 +234,36 @@ arena, and the larder was built and taken down whole. Three things measured:
   of a pair in one tick, the pair's one item banked first, and the other
   half's own step later finds air and skips.
 
+## Palette swaps (§4)
+
+The §4 table is in the pack as `core/palette.ts`, a row per people and one
+for the shared buildings, and a swap is a block-for-block table computed
+from the source row (the people in the building's key) to the target row:
+role blocks to role blocks, and the source materials' stairs and slabs to the
+target material's through a families table the generator also holds (a unit
+test keeps the two equal). Applied to the cells before rotation and
+ordering, so the materials list, the checks, the placement, repair and
+removal all see the swapped building; the record carries the palette.
+
+Measured with the well as the stonefolk build it, from a chest holding only
+stone bricks, deepslate tile stairs, tiles and slab, fences and a lantern:
+
+- The placement was accepted, so the materials list is the swapped one (the
+  chest had no cobblestone or dark oak to pay for the authored well).
+- All 77 cells matched the shipped well through the swap table, 67 of them
+  swapped (32 footing, 24 stairs, 10 roof planks, one slab), and every
+  swapped stair kept its `weirdo_direction` and `upside_down_bit`. So a
+  permutation resolved from the new block name and the shape states alone
+  is what the game places, and dropping the aliases (`wood_type`,
+  `stone_brick_type`) is right: `BlockPermutation.resolve` refuses a state
+  the block does not have, which is why a swapped cell never carries them.
+- The chest was empty when the well stood, and held exactly the 76
+  stonefolk items again when it came down, none of the tallfolk's.
+
+Not measured: how the swapped buildings look, which needs a client (pack
+README, "To confirm in game"). The design's awning row is not in the table
+because no shipped blueprint has an awning; it joins with the stalls.
+
 ## The walk (§8.4)
 
 Not measured for its own sake. The builder is a `builder:builder` biped

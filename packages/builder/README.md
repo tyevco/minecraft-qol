@@ -74,10 +74,28 @@ job in the villages pack takes it over. Measurements:
   item that carries the key on the stack. That item places like any other:
   the copy is checked, paid for and raised block by block, and comes down
   into the chest.
-- **Records** in the shared position index (`bd:buildings`, schema 2),
+- **Palette swaps** (§4): the blueprint form offers the building "As the
+  Stonefolk build it", and so for each other people, then the same form
+  again with that palette's materials against the chest and "As authored"
+  to go back. A swap is a table over the building's blocks
+  (`scripts/core/palette.ts`, pure): every block the source people's
+  palette names in a role (footing, wall, corner, roof, ridge, window)
+  becomes the target's block for that role, and the source materials'
+  stairs and slabs become the target material's (a target with no shaped
+  blocks, the reedfolk's logs and the drover's clay, takes its roof's).
+  Fences, chests, lanterns, doors, beds and hay are nobody's and stay as
+  authored. A swapped cell keeps only the shape states its new kind has
+  (a stair's direction and flip, a slab's half, a log's axis); the engine's
+  alias states belong to the old block and would fail to resolve. The
+  record remembers the palette, so the building is repaired and taken down
+  in the blocks it stands in. Buildings are authored in their people's
+  palette by key (`tallfolk_well`, `shared_larder`); a survey has no
+  people, so it offers no swaps.
+- **Records** in the shared position index (`bd:buildings`, schema 3),
   keyed by the building's origin: key, rotation, box, phase (building,
-  built, removing), how far it got, and the table it was raised from. Jobs
-  saved mid-way resume a few seconds after the world loads.
+  built, removing, repairing), how far it got, the table it was raised
+  from, whether it was free, and its palette. Jobs saved mid-way resume a
+  few seconds after the world loads.
 - **The settings panel**: seconds between blocks (1–30, default 4); who
   may use the table (operators; members and operators, the default;
   everyone); and **buildings are free** (off by default): the table takes
@@ -86,10 +104,12 @@ job in the villages pack takes it over. Measurements:
   which it was, so turning the toggle off again cannot turn a free building
   into a chest of materials. The hatch's `free` word builds the same way.
 - **Script events**, console or operator only: `builder:debug`;
-  `builder:place <key> x y z <rotation> [ticksPerBlock]`, the form's path
-  from a command (the origin is the footing corner, the table the nearest
-  within sixteen blocks, the rotation 0–3, degrees, a `StructureRotation`
-  name or the way the door should face); `builder:remove x y z
+  `builder:place <key> x y z <rotation> [ticksPerBlock] [free] [palette]`,
+  the form's path from a command (the origin is the footing corner, the
+  table the nearest within sixteen blocks, the rotation 0–3, degrees, a
+  `StructureRotation` name or the way the door should face; the last three
+  words in any order, the palette a people's key such as `stonefolk`);
+  `builder:remove x y z
   [ticksPerBlock]`; `builder:repair x y z [ticksPerBlock]`; `builder:resume
   x y z`; `builder:forget x y z [radius]`; `builder:survey x1 y1 z1 x2 y2
   z2`, which saves the box and names the key in its verdict.
@@ -99,7 +119,8 @@ job in the villages pack takes it over. Measurements:
 
 Not built, filed as issues: the hand-over into the villages pack, where the
 builder job does this work and the trader sells the blueprints (#80, #73).
-The rest of the catalogue and the palette swaps wait on that.
+The rest of the catalogue waits on that, and the design's awning row (wool
+stalls) with it: no shipped blueprint has one yet.
 
 ## Measured
 
@@ -142,7 +163,11 @@ The rest of the catalogue and the palette swaps wait on that.
   chest one cobblestone short is refused naming it; remove puts exactly the
   76 items back; the well turned once by the pack equals the game's
   `Rotate90` placement cell for cell; a free well goes up from an empty
-  chest and comes down leaving it empty.
+  chest and comes down leaving it empty; the well raised as the stonefolk
+  build it goes up from a chest of stone bricks and deepslate tiles alone,
+  matches the shipped well through the swap table cell for cell (67 cells
+  swapped, the 24 stairs keeping their direction) and comes down into the
+  stonefolk blocks, none of the tallfolk's.
 
 ## To confirm in game
 
@@ -159,6 +184,12 @@ issue #79; paste what you see there.
   (yaw 0 is taken as south).
 - **The empty-hand form** lists this table's buildings with "Take down" and
   "Carry on", and a visitor is turned away with the panel at its default.
+- **The palette buttons** on the blueprint form: "As the Stonefolk build
+  it" reopens the form with stone bricks and deepslate in the materials
+  list, and the well raised from it looks stonefolk. Whether the swapped
+  buildings *read* as their people's (the tinker larder in brick and copper,
+  the reedfolk well on mangrove) is a matter of taste for a client; the
+  rows are in `core/palette.ts`, one line each.
 - **The builder's look**, seen once: a tallfolk in the blue outfit, hammer
   showing. Still to judge: the hat hidden, the pack on its back, the swing
   while placing (`builder:working` reaching the client), and the hammer now

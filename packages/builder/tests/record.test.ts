@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { boxOfRecord, contains, packRecord, sameTable, unpackRecord, type BuildingRecord } from "../scripts/core/record";
 
-const record: BuildingRecord = { dimId: "minecraft:overworld", x: 10, y: 64, z: -3, key: "tallfolk_well", rotation: 1, sx: 5, sy: 7, sz: 5, phase: "building", done: 12, table: { x: 20, y: 64, z: 0 }, free: false };
+const record: BuildingRecord = { dimId: "minecraft:overworld", x: 10, y: 64, z: -3, key: "tallfolk_well", rotation: 1, sx: 5, sy: 7, sz: 5, phase: "building", done: 12, table: { x: 20, y: 64, z: 0 }, free: false, palette: "" };
 
 describe("records", () => {
   it("round-trip through the packed row", () => {
@@ -10,8 +10,10 @@ describe("records", () => {
     expect(unpackRecord(packRecord({ ...record, free: true }))?.free).toBe(true);
     expect(unpackRecord(packRecord({ ...record, phase: "repairing" }))?.phase).toBe("repairing");
   });
-  it("read a schema-1 row, which has no free column, as paid for", () => {
+  it("read a schema-1 row, which has no free column, as paid for in its own palette; a schema-2 row as its own palette", () => {
     expect(unpackRecord(packRecord(record).slice(0, 14))).toEqual(record);
+    expect(unpackRecord(packRecord(record).slice(0, 15))).toEqual(record);
+    expect(unpackRecord(packRecord({ ...record, palette: "stonefolk" }))?.palette).toBe("stonefolk");
   });
   it("reject a row of the wrong shape rather than guessing", () => {
     expect(unpackRecord(undefined)).toBeUndefined();

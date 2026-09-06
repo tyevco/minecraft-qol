@@ -25,9 +25,10 @@
  * - a test that reports nothing at all fails the run. That is what a crashed
  *   test, or a suite that never registered, looks like.
  *
- * Script errors are counted and printed but do not by themselves fail the run:
- * a simulated player makes Graves and Lens throw on every spawn, which is
- * documented behaviour of the harness rather than of those packs.
+ * Script errors are counted and printed but do not by themselves fail the run.
+ * There used to be hundreds a run (a simulated player marshals as undefined
+ * into every pack, and the sweeps dereferenced it); since issue #31 the packs
+ * skip it, so a run's count should sit near zero and any line is worth reading.
  */
 import { spawn } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync, readdirSync } from "node:fs";

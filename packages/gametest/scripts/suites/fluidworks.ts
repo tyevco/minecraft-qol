@@ -13,6 +13,8 @@ import {
   item,
   put,
   STRUCTURE,
+  blockIs,
+  until,
 } from "./rig";
 
 /**
@@ -254,9 +256,10 @@ registerAsync("qol", "funnel_places_into_clicked_tank", async (test) => {
   await test.idle(2);
   const used = player.useItemOnBlock(item("fluidworks:funnel"), tank, Direction.West);
   test.assert(used, "useItemOnBlock refused the funnel against the source");
-  await test.idle(5);
 
   const at = { x: 3, y: 1, z: 3 };
+  // Wait for the funnel to land, not for a number of ticks (issue #29).
+  test.assert(await until(test, blockIs(test, at, "fluidworks:funnel")), `no funnel at ${at.x},${at.y},${at.z} within 200 ticks of the click`);
   test.assert(
     spoutOf(test, at) === "east",
     `funnel placed on the tank's west face has spout ${spoutOf(test, at)}, expected east`,
@@ -279,9 +282,9 @@ registerAsync("qol", "funnel_placed_on_floor_stays_level", async (test) => {
   );
   await test.idle(5);
   player.useItemOnBlock(item("fluidworks:funnel"), { x: 4, y: 0, z: 3 }, Direction.Up);
-  await test.idle(5);
 
   const at = { x: 4, y: 1, z: 3 };
+  test.assert(await until(test, blockIs(test, at, "fluidworks:funnel")), `no funnel at ${at.x},${at.y},${at.z} within 200 ticks of the click`);
   const spout = spoutOf(test, at);
   test.assert(
     spout !== "down" && spout !== "up" && !spout.startsWith("none"),
@@ -316,7 +319,10 @@ registerAsync("qol", "pipes_join_when_placed", async (test) => {
     await test.idle(3);
     const ok = player.useItemOnBlock(item("fluidworks:pipe"), on, Direction.Up);
     test.assert(ok, `useItemOnBlock refused a pipe on ${on.x},${on.y},${on.z}`);
-    // A second interaction too soon after the first is refused.
+    // Wait for the pipe to land (issue #29), then the engine's own gap: a
+    // second interaction too soon after the first is refused (measured).
+    const above = { x: on.x, y: on.y + 1, z: on.z };
+    test.assert(await until(test, blockIs(test, above, "fluidworks:pipe")), `no pipe at ${above.x},${above.y},${above.z} within 200 ticks of the click`);
     await test.idle(20);
   };
   // East first: placing west first puts a pipe between the player and the
@@ -324,7 +330,8 @@ registerAsync("qol", "pipes_join_when_placed", async (test) => {
   // sight.
   await place({ x: 4, y: 0, z: 3 });
   await place({ x: 3, y: 0, z: 3 });
-  await test.idle(5);
+  // The join is the pack's placement hook's doing; give it until it shows.
+  await until(test, () => test.getBlock({ x: 4, y: 1, z: 3 }).permutation.getState("fluidworks:west" as never) === true, 100);
 
   const arms = (pos: { x: number; y: number; z: number }) => {
     const b = test.getBlock(pos);

@@ -1,5 +1,6 @@
 import { system, world, type Player } from "@minecraft/server";
 import { createGroundTracker, type Vec3 } from "@qol/shared/engine/groundTracker";
+import { players } from "@qol/shared/engine/players";
 import { roleOf } from "@qol/shared/engine/roles";
 import { belowWorld, chooseRescue } from "../core/rescue";
 import { isProtectedRole } from "../core/rules";
@@ -77,7 +78,7 @@ export function check(player: Player, tick: number, log: Log): boolean {
 
 export function sweep(log: Log): void {
   const tick = system.currentTick;
-  for (const player of world.getAllPlayers()) {
+  for (const player of players()) {
     try {
       check(player, tick, log);
     } catch (e) {

@@ -46,6 +46,17 @@ unloaded chunks with no player online), and judges the run:
 - a test in `known-failures.json` may fail — that file carries the reason. One of
   them **passing** fails the run, since the reason has expired;
 - a test that reports nothing at all fails the run;
+- script errors are counted, and the count should sit near zero: the packs
+  skip the `undefined` a simulated player marshals as (issue #31), so a line
+  in the count is a real error somewhere.
+
+A test that needs a simulated player's action to have landed waits on the
+world with `until(test, ready)` from `rig.ts`, not on a fixed number of ticks
+(issue #29): `funnel_places_into_clicked_tank` and `pipes_join_when_placed`
+failed four times each in a slow container on a fixed `idle` and passed on CI.
+The engine's own gap between two of a simulated player's interactions (about
+twenty ticks; a second one too soon is refused) is the one fixed wait left,
+since nothing in the world says when it has passed.
 - script errors are printed but do not fail the run on their own: a simulated
   player makes Graves, Lens, Guardian and Hearthstone throw on every spawn, which
   is the harness, not those packs.

@@ -161,9 +161,14 @@ Reading a headless run:
   run — the reason has expired and the entry should go. A test that fails
   because a pack does not do what it says belongs in an issue, failing, not in
   that file.
-- Script errors are printed but do not fail a run. A simulated player makes
-  Graves, Lens, Guardian and Hearthstone throw on every sweep, hundreds of
-  lines a run, and that is the harness rather than those packs.
+- Script errors are printed but do not fail a run. A run should have close
+  to none: every pack reads players through `packages/shared/engine/players.ts`,
+  which skips the `undefined` a simulated player marshals as (issue #31), so
+  a script error in a run is now worth reading.
+- A test never waits a fixed number of ticks for something a simulated
+  player did; it waits on the world with `until()` from the rig (issue #29).
+  A fixed `idle` is a guess about the host's speed, and the same tests have
+  failed on a slow container and passed on CI.
 
 **A SimulatedPlayer is not a player**, and this has cost several days of wrong
 diagnosis. It marshals as `undefined` into any pack that does not itself bind

@@ -66,7 +66,7 @@ export function install(logger: (...parts: unknown[]) => void): void {
   }
   system.runInterval(tick, POLL_TICKS);
   world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
-    if (!ev.target.isValid || !ev.target.hasTag(VISITOR_TAG)) return;
+    if (!ev.target || !ev.target.isValid || !ev.target.hasTag(VISITOR_TAG)) return;
     if (!(ev.player instanceof Player)) return;
     void showForm(ev.player, ev.target);
   });

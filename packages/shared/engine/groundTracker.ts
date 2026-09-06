@@ -1,4 +1,5 @@
 import { world, type Player } from "@minecraft/server";
+import { players } from "./players";
 import type { GroundSample } from "../core/ground";
 
 export type { GroundSample, Vec3 } from "../core/ground";
@@ -35,7 +36,7 @@ export function createGroundTracker(): GroundTracker {
       }
     },
     sampleAll(tick) {
-      for (const player of world.getAllPlayers()) this.sample(player, tick);
+      for (const player of players()) this.sample(player, tick);
     },
     get: (playerId) => last.get(playerId),
     forget: (playerId) => {

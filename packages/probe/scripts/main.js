@@ -363,6 +363,9 @@ world.afterEvents.worldLoad.subscribe(() => {
     if (!watched && spawnLogBudget <= 0) return;
     if (!watched) spawnLogBudget--;
 
+    // The harness kills every item between tests; one killed in the tick it
+    // spawned is gone before this runs, and reading it throws.
+    if (!e.isValid) return;
     let vel = "ERR";
     try { vel = v3(e.getVelocity()); } catch (err) { /* ignore */ }
 

@@ -1,6 +1,8 @@
-import { GameMode } from "@minecraft/server";
+import { EntityComponentTypes, GameMode, type Player } from "@minecraft/server";
+
+const health = (p: Player): number => p.getComponent(EntityComponentTypes.Health)?.currentValue ?? 0;
 import { registerAsync } from "@minecraft/server-gametest";
-import { carried, floor, item, STRUCTURE } from "./rig";
+import { carried, floor, item, STRUCTURE, until } from "./rig";
 
 /**
  * Graves: a player who dies with items either keeps them or finds them in a
@@ -22,15 +24,21 @@ registerAsync("qol", "death_keeps_items", async (test) => {
   test.print(
     `permission level ${player.playerPermissionLevel}; waiting for the keep sweep`,
   );
-  // Two sweeps' worth, so the stacks are flagged before the death.
-  await test.idle(45);
+  // Wait for the keep sweep to flag the stack, not for a number of ticks
+  // (issue #29); the flag is readable on the stack itself.
+  const flagged = (): boolean => {
+    const c = player.getComponent("minecraft:inventory")?.container;
+    const stack = c?.getItem(0);
+    return stack !== undefined && stack.keepOnDeath;
+  };
+  const wasFlagged = await until(test, flagged, 200);
   test.print(
-    `carrying ${carried(player, "minecraft:diamond")} diamonds; dying`,
+    `carrying ${carried(player, "minecraft:diamond")} diamonds, keepOnDeath ${wasFlagged}; dying`,
   );
   player.kill();
-  await test.idle(20);
+  await until(test, () => !player.isValid || health(player) <= 0, 100);
   player.respawn();
-  await test.idle(20);
+  await until(test, () => player.isValid && health(player) > 0, 100);
 
   test.succeedWhen(() => {
     const kept = carried(player, "minecraft:diamond");

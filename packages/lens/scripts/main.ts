@@ -24,6 +24,7 @@ import {
   type CustomCommandResult,
   type ItemStack,
 } from "@minecraft/server";
+import { players } from "@qol/shared/engine/players";
 import { fromIndex, toIndex } from "./core/grid";
 import { solve } from "./core/solver";
 import {
@@ -375,7 +376,7 @@ function* solveAndRender(
 
 function scanTick(): void {
   if (active.size === 0) return;
-  for (const player of world.getAllPlayers()) {
+  for (const player of players()) {
     const session = active.get(player.id);
     if (!session || session.busy) continue;
 
@@ -457,7 +458,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   system.runInterval(scanTick, REFRESH_TICKS);
   installUpgradeRitual();
   system.runInterval(() => {
-    for (const player of world.getAllPlayers()) syncWorn(player);
+    for (const player of players()) syncWorn(player);
   }, EQUIP_CHECK_TICKS);
 
   // Fallback that works immediately after /reload, unlike a custom command.

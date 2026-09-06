@@ -99,3 +99,26 @@ export function carried(player: SimulatedPlayer, typeId: string): number {
 
 export const item = (typeId: string, amount = 1): ItemStack =>
   new ItemStack(typeId, amount);
+
+/**
+ * Wait on the world, not on the clock (issue #29). A fixed `idle(N)` after a
+ * SimulatedPlayer's action is a guess about how fast the host is: the same
+ * tests failed four times in a slow container and passed first time on CI.
+ * Polls `ready` every `step` ticks until it holds or `maxTicks` have passed,
+ * and returns whether it held, so the caller can assert with its own
+ * message. `succeedWhen` does the same for a test's end; this is for the
+ * steps in between.
+ */
+export async function until(test: Test, ready: () => boolean, maxTicks = 200, step = 2): Promise<boolean> {
+  for (let t = 0; t < maxTicks; t += step) {
+    if (ready()) return true;
+    await test.idle(step);
+  }
+  return ready();
+}
+
+/** The block at `pos` is `typeId`. */
+export const blockIs = (test: Test, pos: Vector3, typeId: string) => (): boolean => {
+  const b = test.getBlock(pos);
+  return b.isValid && b.typeId === typeId;
+};

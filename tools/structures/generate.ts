@@ -39,6 +39,34 @@ for (const bp of BUILDINGS) {
   console.log(`concepts/structures/${bp.key}  ${bp.size.join("x")}  ${blocks} blocks`);
 }
 
+// The builder prototype (docs/design/settlements.md §5, §9 step 2): the
+// three blueprints a builder raises from the table, shipped in the builder
+// pack as `builder:<key>`. Small, and no stand-ins; the rest of the
+// catalogue follows once the placer is measured against these.
+export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall"] as const;
+const BUILDER = resolve(ROOT, "packages/builder/behavior_pack/structures/builder");
+mkdirSync(BUILDER, { recursive: true });
+for (const key of BUILDER_KEYS) {
+  const bp = builderBlueprint(key);
+  writeFileSync(resolve(BUILDER, `${key}.mcstructure`), bp.toMcstructure());
+  console.log(`packages/builder/behavior_pack/structures/builder/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
+}
+
+/**
+ * A catalogue building as the builder pack ships it: the job post left out,
+ * since the post is the villages pack's block and the builder stands alone
+ * for now (a block the world does not know is dropped from a structure on
+ * load, silently). The post comes back when the builder moves into villages.
+ */
+export function builderBlueprint(key: string): Blueprint {
+  const src = BUILDINGS.find((b) => b.key === key);
+  if (!src) throw new Error(`no building ${key} for the builder pack`);
+  const out = new Blueprint(src.key, src.title, src.size, src.people, src.notes);
+  for (const b of src.blocks()) if (b.name !== "villages:post") out.set(b.x, b.y, b.z, b.name, b.states);
+  for (const [x, y, z] of src.waterloggedCells()) out.waterlog(x, y, z);
+  return out;
+}
+
 
 // The jigsaw probe (docs/design/villages.md §7.1, issue #38): the tallfolk
 // well on a pad, with one emerald block in the pad so a scan can find every
@@ -57,6 +85,22 @@ mkdirSync(PROBE, { recursive: true });
   const well = bp.trimmed();
   writeFileSync(resolve(PROBE, "well.mcstructure"), well.toMcstructure());
   console.log(`packages/probe/structures/qolprobe/well.mcstructure  ${well.size.join("x")}`);
+}
+
+// The water probe (settlements.md §8.5): a pond three wide with a fence post
+// standing in the middle cell, waterlogged in the structure's second layer,
+// and a stair on the bank over water. Placed by `qolprobe:blueprint` to see
+// whether `place` honours the waterlogged layer and whether a block set over
+// water by script keeps the water beside it.
+{
+  const bp = new Blueprint("pool", "Probe Pool", [5, 3, 5], "probe", "");
+  bp.fill(0, 0, 0, 5, 1, 5, "stone_bricks");
+  bp.fill(1, 1, 1, 3, 1, 3, "water");
+  bp.set(2, 1, 2, "oak_fence").waterlog(2, 1, 2);
+  bp.stairs(1, 1, 1, "cobblestone", "south").waterlog(1, 1, 1);
+  bp.set(0, 1, 0, "emerald_block");
+  writeFileSync(resolve(PROBE, "pool.mcstructure"), bp.toMcstructure());
+  console.log(`packages/probe/structures/qolprobe/pool.mcstructure  ${bp.size.join("x")}  ${bp.waterlogged.size} waterlogged`);
 }
 
 // The marker probe (villages.md §7.2): a pad with a jigsaw on its east edge

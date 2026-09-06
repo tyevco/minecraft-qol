@@ -22,5 +22,6 @@ import "./suites/hearthstone";
 import "./suites/bulwark";
 import "./suites/hatchling";
 import "./suites/villages";
+import "./suites/builder";
 
 console.warn("[QOL GameTests] registered suite qol");

@@ -37,6 +37,17 @@ Three kinds of document live here, and they carry very different authority.
   per-world structure template cache, and how a plain-world server is set
   up beside the test one.
 
+- [`settlements-results.md`](settlements-results.md) — the builder
+  prototype (`packages/builder`): every cell of a shipped `.mcstructure`
+  reads back with its states in the stable API; a building placed block by
+  block matches `structureManager.place` cell for cell at every rotation,
+  with the generator's rotation tables confirmed against the game (the
+  turned copy keeps its minimum corner on the origin); blocks set over water
+  waterlog themselves and the structure's second layer is honoured. Also:
+  a world dynamic property is readable only by the pack that set it,
+  `createFromWorld` saves air as a block, and a block removed by script pops
+  what hangs from it while one set by script does not.
+
 **Awaiting measurement:**
 
 - [`bulwark-turret-probe.md`](bulwark-turret-probe.md) — the protocol for the
@@ -93,6 +104,10 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | Block identifiers `minecraft:bricks`, `grass_block`, `cobblestone_stairs`, `oak_door`, `oak_fence_gate` (first drafts of the settlement blueprints) | **Java names.** Bedrock's are `brick_block`, `grass`, `stone_stairs`, `wooden_door` and `fence_gate`; a structure palette naming the Java ones would not load. Every blueprint block is checked against the vanilla `blocks.json`, and every state against Mojang's block metadata, when the viewer builds (`tools/viewer/vanilla.ts`); that is how these were caught. Doors take `minecraft:cardinal_direction`, not `direction`. |
 | A person can be walked to a spot with a `move_to_block` group or a target the script sets (villages design §7 item 6, and the first build's `nearest_attackable_target` + `move_towards_target`) | **Neither moves a mob to a passive beacon.** Measured in one arena: the target pair never left random strolling; a target set by `applyDamage` walked there and wandered off; `minecraft:behavior.follow_mob`, which vanilla only gives parrots, walked there and stayed, and takes a `filters` clause so it follows only the pack's waypoint entity. `villages-jigsaw-results.md`. |
 | A food item can be recognised by `ItemStack.getComponent(ItemComponentTypes.Food)` (the Villages wage, first draft) | **Only data-driven foods carry it.** On BDS 1.26.45 bread has only `minecraft:compostable` and cooked beef has no components at all; an apple has `minecraft:food`. Every food has the `minecraft:is_food` item tag (`ItemStack.hasTag`), which is what the wage checks. Measured in `villages-jigsaw-results.md`. |
+| A world dynamic property is world state any pack's script can read (implicit in the first builder GameTests, which read the builder's verdict off `world.getDynamicProperty`) | **It belongs to the pack that set it.** The GameTest pack read the builder's `bd:last` and `bd:buildings` as `undefined` in the tick the builder logged writing them, while the builder read both back across a restart. Cross-pack signals go through the world instead: the builder's hatches leave their verdict as the name tag of a tagged entity at the spot, and the tests ask the pack to forget its records by script event rather than reading them. `settlements-results.md`. |
+| The settlement catalogue's sizes and counts (`settlements.md` §3: the well 5×6×5 and 51 blocks, the larder 161, the wall segment 103) | **Stale.** The generator's well is 5×7×5 and 76 blocks; the larder is 163 as the builder pack ships it (its job post left out, since the builder stands alone) and the wall segment 102. `tools/structures/buildings.ts` is the authority; read counts off `Blueprint.materials()`, not the table. |
+| A building placed block by block can be taken down in reverse order (`settlements.md` §5.4) | **Not quite: an attached block must come down before its support.** A hanging lantern set by script under open air stays, but the roof block above it removed by script pops it onto the ground, and the builder found no lantern to return to the chest. Removal takes attached blocks first (`removalOrder` in the builder's `core/order.ts`); a door's two halves and a bed are the same kind of thing and are not yet in a tested building. `settlements-results.md`. |
+| A structure saved from the world reads like a generated one (implicit in the builder's rotation test, which compared against `createFromWorld`) | **Air is a block in a saved structure**, `minecraft:air`, where a generated file has nothing (`getBlockPermutation` undefined). Treat air as empty when comparing, or 98 empty cells of a 5×7×5 count as matches. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -171,7 +186,10 @@ prototype” list. In suggested order:
   materials, roles), palette swaps, and how a builder raises one from a
   blueprint table on the stable structure API. Every blueprint is generated
   under `concepts/structures/` as a `.mcstructure` plus a preview the viewer
-  draws in the game's block textures; nothing placed in a world.
+  draws in the game's block textures. **§5 is built as a prototype** in
+  `packages/builder` (the table, the blueprints, the checks, a builder that
+  places and removes; the well, the larder and the wall segment) and its
+  §8 list is measured in `settlements-results.md`, walking aside.
 - [`design/villages.md`](design/villages.md) — found villages of the nine
   peoples (the first four, then hobbits and three kinds of elf, §3.3, and
   the drovers of the desert), generated by Bedrock's data-driven jigsaw system from the

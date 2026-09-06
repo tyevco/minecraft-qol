@@ -1,0 +1,20 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "builder:builder",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/builder" },
+      "geometry": { "default": "geometry.builder_person" },
+      "animations": {
+        "look_at_target": "animation.common.look_at_target",
+        "idle": "animation.builder_person.idle",
+        "walk": "animation.builder_person.walk",
+        "work": "animation.builder_person.work",
+        "general": "controller.animation.builder_person.general"
+      },
+      "scripts": { "animate": ["look_at_target", "general"] },
+      "render_controllers": ["controller.render.builder_person"]
+    }
+  }
+}

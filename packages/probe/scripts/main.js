@@ -74,6 +74,11 @@
  *                                         stage, every 2 s for 20 s (H1: tame_event, H2:
  *                                         stage swap without a pop)
  *   /scriptevent qolprobe:hatch-cleanup   remove every egg and hatchling within 16 blocks
+ *   /scriptevent qolprobe:blueprint <id> [x y z [delayTicks]]
+ *                                         read a shipped .mcstructure cell by cell (B1); with
+ *                                         coordinates, place it at four rotations and read the
+ *                                         world back (B2, B3), then set blocks over water (B4).
+ *                                         The builder prototype, settlements.md §8.
  */
 import { world, system, BlockPermutation, BlockVolume, LocationWaypoint } from "@minecraft/server";
 
@@ -1341,3 +1346,186 @@ world.afterEvents.worldLoad.subscribe(() => {
     system.runTimeout(() => system.runJob(scan()), delay);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Blueprints (docs/design/settlements.md §8; the builder prototype).
+//
+//   /scriptevent qolprobe:blueprint <id> [x y z [delayTicks]]
+//
+// B1 reads the structure cell by cell in the stable API: how many cells
+//    getBlockPermutation returns against the box, the block types, every
+//    state name and value seen, the item each distinct block gives back
+//    (getItemStack), and how many cells read waterlogged.
+// B2 (with coordinates; mutates) clears a box, places the structure at x,y,z
+//    with structureManager.place and reads the world back cell for cell.
+// B3 places it three more times, turned 90, 180 and 270, spaced out east of
+//    the first, and logs the extents of what appeared and one line per block
+//    with a direction-style state, for the offline diff against the
+//    generator's own rotation (tools/structures/probe-rotation.ts).
+// B4 water (§8.5): a pond; a cobblestone, a fence and a stair set over water
+//    by script, read at once and forty ticks later (is the water beside them
+//    still water, do they read waterlogged, does setWaterlogged take); then
+//    qolprobe:pool placed, whose second layer waterlogs a fence and a stair.
+// ---------------------------------------------------------------------------
+{
+  const DIRECTIONAL = ["weirdo_direction", "direction", "facing_direction", "minecraft:cardinal_direction", "pillar_axis", "wall_connection_type_north", "minecraft:block_face", "minecraft:facing_direction"];
+  const ROTATIONS = ["None", "Rotate90", "Rotate180", "Rotate270"];
+  const states = (perm) => JSON.stringify(Object.fromEntries(Object.entries(perm.getAllStates()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))));
+  const short = (id) => id.replace("minecraft:", "");
+
+  function* clearBox(dim, x0, y0, z0, w, h, d) {
+    for (let i = x0; i < x0 + w; i++) {
+      for (let k = z0; k < z0 + d; k++)
+        for (let j = y0; j < y0 + h; j++) {
+          try {
+            const b = dim.getBlock({ x: i, y: j, z: k });
+            if (b && !b.isAir) b.setType("minecraft:air");
+          } catch (e) {
+            /* unloaded */
+          }
+        }
+      yield;
+    }
+  }
+
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "qolprobe:blueprint") return;
+    const overworld = world.getDimension("minecraft:overworld");
+    const parts = (ev.message || "").split(/\s+/).filter(Boolean);
+    const id = parts.shift();
+    if (!id) { log("blueprint: wants <id> [x y z [delayTicks]]"); return; }
+    const coords = parts.map(Number);
+    const armed = coords.length >= 3 && coords.slice(0, 3).every(Number.isFinite);
+    const [x = 0, y = 0, z = 0, delay = 40] = coords;
+
+    system.runTimeout(() => {
+      let s;
+      try { s = world.structureManager.get(id); } catch (e) { log(`B1 get(${id}) THREW: ${e}`); return; }
+      if (!s) { log(`B1 get(${id}): undefined (not found)`); return; }
+      const size = s.size;
+      // ---- B1: the read -----------------------------------------------------
+      const cells = [];
+      const counts = {};
+      const seen = {};
+      const items = {};
+      let empty = 0, threw = 0, waterlogged = 0;
+      for (let i = 0; i < size.x; i++) for (let j = 0; j < size.y; j++) for (let k = 0; k < size.z; k++) {
+        let perm;
+        try { perm = s.getBlockPermutation({ x: i, y: j, z: k }); } catch (e) { threw++; continue; }
+        try { if (s.getIsWaterlogged({ x: i, y: j, z: k })) waterlogged++; } catch (e) { /* counted as not */ }
+        if (!perm) { empty++; continue; }
+        const st = perm.getAllStates();
+        cells.push({ x: i, y: j, z: k, id: perm.type.id, st });
+        counts[perm.type.id] = (counts[perm.type.id] || 0) + 1;
+        for (const [k2, v] of Object.entries(st)) (seen[k2] = seen[k2] || new Set()).add(String(v));
+        if (!(perm.type.id in items)) {
+          try {
+            const stack = perm.getItemStack(1);
+            items[perm.type.id] = stack ? `${short(stack.typeId)}x${stack.amount}` : "undefined";
+          } catch (e) { items[perm.type.id] = `THREW ${e}`; }
+        }
+      }
+      log(`B1 ${id}: size ${size.x}x${size.y}x${size.z} = ${size.x * size.y * size.z} cells; ${cells.length} blocks, ${empty} undefined (air), ${threw} threw, ${waterlogged} waterlogged`);
+      log(`B1 ${id} types: ` + Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${short(t)}=${n}`).join(" "));
+      log(`B1 ${id} states: ` + Object.entries(seen).map(([k2, v]) => `${k2}={${[...v].sort().join(",")}}`).join(" "));
+      log(`B1 ${id} items: ` + Object.entries(items).map(([t, it]) => `${short(t)}->${it}`).join(" "));
+      if (!armed) { log("B2-B4 need x y z (they place blocks)"); return; }
+
+      const span = Math.max(size.x, size.z);
+      const stride = 2 * span + 6;
+      const byKey = new Map(cells.map((c) => [`${c.x},${c.y},${c.z}`, c]));
+
+      function* run() {
+        // ---- B2: place unrotated, read back cell for cell ---------------------
+        for (let t = 0; t < 4; t++) {
+          const bx = x + t * stride;
+          yield* clearBox(overworld, bx - span - 2, y, z - span - 2, 3 * span + 4, size.y + 1, 3 * span + 4);
+          try {
+            world.structureManager.place(s, overworld, { x: bx, y, z }, { rotation: ROTATIONS[t] });
+          } catch (e) { log(`B${t ? 3 : 2} place ${id} ${ROTATIONS[t]} THREW: ${e}`); continue; }
+          yield;
+          if (t === 0) {
+            let mismatches = 0, extra = 0;
+            const first = [];
+            for (let i = 0; i < size.x; i++) for (let j = 0; j < size.y; j++) for (let k = 0; k < size.z; k++) {
+              const c = byKey.get(`${i},${j},${k}`);
+              const b = overworld.getBlock({ x: bx + i, y: y + j, z: z + k });
+              if (!b) { mismatches++; continue; }
+              if (!c) { if (!b.isAir) extra++; continue; }
+              const same = b.typeId === c.id && states(b.permutation) === JSON.stringify(Object.fromEntries(Object.entries(c.st).sort(([a], [b2]) => (a < b2 ? -1 : a > b2 ? 1 : 0))));
+              if (!same) { mismatches++; if (first.length < 12) first.push(`${i},${j},${k} want ${short(c.id)}${JSON.stringify(c.st)} got ${short(b.typeId)}${states(b.permutation)}`); }
+            }
+            log(`B2 ${id} placed at ${bx},${y},${z}: ${cells.length - mismatches}/${cells.length} cells match the structure, ${mismatches} differ, ${extra} non-air where the structure has none` + (first.length ? "\n  " + first.join("\n  ") : ""));
+            continue;
+          }
+          // ---- B3: where did the turned copy land, and what do its states read?
+          let n = 0;
+          const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+          const lines = [];
+          for (let i = bx - span - 2; i < bx + 2 * span + 2; i++) for (let j = y; j < y + size.y; j++) for (let k = z - span - 2; k < z + 2 * span + 2; k++) {
+            const b = overworld.getBlock({ x: i, y: j, z: k });
+            if (!b || b.isAir) continue;
+            n++;
+            min[0] = Math.min(min[0], i); min[1] = Math.min(min[1], j); min[2] = Math.min(min[2], k);
+            max[0] = Math.max(max[0], i); max[1] = Math.max(max[1], j); max[2] = Math.max(max[2], k);
+            const st = b.permutation.getAllStates();
+            if (DIRECTIONAL.some((d) => d in st)) lines.push(`B3 ${id} rot=${t} ${i},${j},${k} ${short(b.typeId)} ${states(b.permutation)}`);
+          }
+          log(`B3 ${id} ${ROTATIONS[t]} placed with origin ${bx},${y},${z}: ${n} blocks, extents ${min.join(",")}..${max.join(",")} (origin offset ${min[0] - bx},${min[1] - y},${min[2] - z})`);
+          for (const l of lines) log(l);
+          yield;
+        }
+        // ---- B4: water ---------------------------------------------------------
+        const px = x, pz = z + span + 6;
+        yield* clearBox(overworld, px - 1, y - 1, pz - 1, 14, 4, 8);
+        const set = (ox, oy, oz, name, st) => {
+          const b = overworld.getBlock({ x: px + ox, y: y + oy, z: pz + oz });
+          b.setPermutation(BlockPermutation.resolve(name, st || {}));
+          return b;
+        };
+        const read = (label) => {
+          const rows = [];
+          for (const [ox, oz, what] of [[2, 2, "cobblestone"], [1, 2, "west of it"], [3, 2, "east of it"], [2, 1, "north of it"], [2, 3, "south of it"], [1, 1, "fence"], [3, 3, "stairs"], [4, 4, "pond corner"]]) {
+            const b = overworld.getBlock({ x: px + ox, y, z: pz + oz });
+            rows.push(`${what}=${short(b.typeId)}${b.isLiquid ? "(liquid)" : ""}${b.isWaterlogged ? "(waterlogged)" : ""}`);
+          }
+          log(`B4 ${label}: ${rows.join(" ")}`);
+        };
+        try {
+          for (let i = 0; i < 5; i++) for (let k = 0; k < 5; k++) set(i, -1, k, "minecraft:stone_bricks");
+          for (let i = 0; i < 5; i++) for (let k = 0; k < 5; k++) set(i, 0, k, "minecraft:water");
+          yield;
+          read("pond before");
+          set(2, 0, 2, "minecraft:cobblestone");
+          const fence = set(1, 0, 1, "minecraft:oak_fence");
+          set(3, 0, 3, "minecraft:stone_stairs", { weirdo_direction: 2, upside_down_bit: false });
+          read("at once after setPermutation over water");
+          let took = "?";
+          try { fence.setWaterlogged(true); took = `now ${fence.typeId} waterlogged=${fence.isWaterlogged}`; } catch (e) { took = `THREW ${e}`; }
+          log(`B4 fence.setWaterlogged(true): ${took}`);
+        } catch (e) { log(`B4 pond THREW: ${e}`); }
+        for (let i = 0; i < 40; i++) yield;
+        read("40 ticks later");
+        // The structure's own waterlogged layer.
+        try {
+          const pool = world.structureManager.get("qolprobe:pool");
+          if (!pool) { log("B4 qolprobe:pool not found"); return; }
+          const w = [];
+          for (const [i, j, k] of [[2, 1, 2], [1, 1, 1], [1, 1, 2], [3, 1, 3]]) w.push(`${i},${j},${k}=${pool.getBlockPermutation({ x: i, y: j, z: k })?.type.id.replace("minecraft:", "") ?? "air"}/${pool.getIsWaterlogged({ x: i, y: j, z: k })}`);
+          log(`B4 pool structure reads: ${w.join(" ")}`);
+          const ox = px + 8;
+          world.structureManager.place(pool, overworld, { x: ox, y: y - 1, z: pz });
+          yield;
+          const rows = [];
+          for (const [i, j, k, what] of [[2, 1, 2, "fence"], [1, 1, 1, "stairs"], [1, 1, 2, "water beside"], [2, 1, 1, "water beside"], [3, 1, 3, "water corner"]]) {
+            const b = overworld.getBlock({ x: ox + i, y: y - 1 + j, z: pz + k });
+            rows.push(`${what}=${short(b.typeId)}${b.isLiquid ? "(liquid)" : ""}${b.isWaterlogged ? "(waterlogged)" : ""}`);
+          }
+          log(`B4 pool placed at ${ox},${y - 1},${pz}: ${rows.join(" ")}`);
+        } catch (e) { log(`B4 pool THREW: ${e}`); }
+        log(`blueprint probe done for ${id}`);
+      }
+      system.runJob(run());
+    }, delay);
+  });
+}

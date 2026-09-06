@@ -661,10 +661,14 @@ emit(HATCHLING_RP, "egg", {
 
 function bipedSet(dir: string, file: string, name: string, geometries: string[], working: string): void {
   const bones = [...new Set(geometries.flatMap((g) => bonesOf(g)))];
+  // The ear and tail channels are for the furfolk; a set emitted for a rig
+  // without those bones (the builder's) drops them rather than failing.
+  const known = new Set(bones);
+  const prune = <T extends { bones: Record<string, unknown> }>(a: T): T => ({ ...a, bones: Object.fromEntries(Object.entries(a.bones).filter(([b]) => known.has(b))) });
   emit(dir, file, {
     name,
     bones,
-    animations: [
+    animations: ([
       {
         key: "idle",
         loop: true,
@@ -724,7 +728,7 @@ function bipedSet(dir: string, file: string, name: string, geometries: string[],
           },
         },
       },
-    ],
+    ] as const).map(prune),
     controllers: [
       {
         key: "general",
@@ -751,3 +755,6 @@ const PEOPLE_GEOMETRIES = [
   "foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk",
 ].map((k) => `packages/villages/resource_pack/models/entity/${k}.geo.json`);
 bipedSet("packages/villages/resource_pack", "person", "villages_person", PEOPLE_GEOMETRIES, "villages:working");
+
+// The builder prototype (packages/builder): the same set on its one biped.
+bipedSet("packages/builder/resource_pack", "builder", "builder_person", ["packages/builder/resource_pack/models/entity/builder.geo.json"], "builder:working");

@@ -1,0 +1,23 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Builder Resources",
+    "description": "Models, textures, animations and names for the blueprint table, the blueprints and the builder. Enabled automatically with the Builder behavior pack.",
+    "uuid": "724b6661-ba32-416b-8e2b-853babb5053b",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 40]
+  },
+  "modules": [
+    {
+      "description": "Builder resources",
+      "type": "resources",
+      "uuid": "b5c56e9c-ea06-4cae-b1a2-43b9f41046db",
+      "version": [0, 1, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Sweetpotato Games"],
+    "url": "https://sweetpotato.games",
+    "product_type": "addon"
+  }
+}

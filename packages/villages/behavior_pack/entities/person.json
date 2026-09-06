@@ -169,6 +169,18 @@
         "minecraft:scale": {
           "value": 1.1
         }
+      },
+      "villages:visitor": {
+        "minecraft:damage_sensor": {
+          "triggers": {
+            "cause": "all",
+            "deals_damage": "no"
+          }
+        },
+        "minecraft:home": {
+          "restriction_type": "random_movement",
+          "restriction_radius": 6
+        }
       }
     },
     "components": {
@@ -478,6 +490,13 @@
         "add": {
           "component_groups": [
             "villages:people_18"
+          ]
+        }
+      },
+      "villages:visitor": {
+        "add": {
+          "component_groups": [
+            "villages:visitor"
           ]
         }
       }

@@ -91,7 +91,7 @@ const PACKS: Pack[] = [
   {
     name: "villages",
     dir: "packages/villages",
-    external: ["@minecraft/server"],
+    external: ["@minecraft/server", "@minecraft/server-ui"],
     hasResourcePack: true,
   },
   // In-game tests. Beta-only module, throwaway world, never shipped.

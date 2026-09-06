@@ -12,7 +12,7 @@ import {
   nearestTree, pickSeed, pickWage, roofed, shearPlan, shearYield, standingSpot, surveyDue, veinAllowance, veinEnclosed, woolOf, type LogBlock, type Sheep, type Slot, type Survey, type Vec,
 } from "../scripts/core/trades";
 import { DEFAULT_POLICY, parsePolicy } from "../scripts/core/settings";
-import { FRESH, SCHEMA, TRADES, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
+import { FRESH, PLACED_BY_PLAYER, PLACED_BY_WORLD, SCHEMA, TRADES, afterRestart, clockRestarted, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
 import { decide } from "../scripts/core/peopling";
 
 const survey = (s: Partial<Survey>): Survey => ({ ...EMPTY_SURVEY, ...s });
@@ -376,14 +376,26 @@ describe("settings", () => {
 });
 
 describe("record schema", () => {
-  const rec: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: "-42", spawnedAt: 10, trade: 1, surveyedAt: 11, cycleAt: 12, veinAt: 13, veinCycles: 2 };
+  const rec: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: "-42", spawnedAt: 10, trade: 1, surveyedAt: 11, cycleAt: 12, veinAt: 13, veinCycles: 2, placedBy: PLACED_BY_PLAYER };
   it("round-trips, and reads older rows with the newer fields defaulted", () => {
-    expect(SCHEMA).toBe(3);
+    expect(SCHEMA).toBe(4);
     expect(unpackRecord(packRecord(rec))).toEqual(rec);
     const old = ["minecraft:overworld", 1, 64, 2, 0, 1, "", 10];
     expect(unpackRecord(old)).toEqual({ dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 0, job: 1, entityId: undefined, ...FRESH, spawnedAt: 10 });
     expect(unpackRecord([...old, 2, 5, 6])).toMatchObject({ trade: 2, surveyedAt: 5, cycleAt: 6, veinAt: 0, veinCycles: 0 });
     expect(unpackRecord([...old, TRADES.length - 1, 0, 0])).toMatchObject({ trade: TRADES.length - 1 });
     expect(unpackRecord([...old, TRADES.length, 0, 0])).toBeUndefined();
+    expect(unpackRecord([...old, 2, 5, 6, 0, 0])).toMatchObject({ placedBy: PLACED_BY_WORLD }); // a schema-3 row: the world's
+    expect(unpackRecord([...old, 2, 5, 6, 0, 0, 7])).toMatchObject({ placedBy: PLACED_BY_WORLD }); // anything but 1 is the world's
+  });
+  it("a restart ends every wait and keeps the trade, the person and who placed the post (issue #71)", () => {
+    expect(clockRestarted(5000, 100)).toBe(true);
+    expect(clockRestarted(100, 5000)).toBe(false); // a /reload keeps the clock running
+    expect(clockRestarted(undefined, 5000)).toBe(false); // a world from before the marker
+    const r = { ...rec };
+    afterRestart(r);
+    expect(r).toEqual({ ...rec, spawnedAt: 0, surveyedAt: 0, cycleAt: 0, veinAt: 0, veinCycles: 0 });
+    expect(cycleDue(r, 1, 12000)).toBe(true);
+    expect(surveyDue(r, 1)).toBe(true);
   });
 });

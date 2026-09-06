@@ -4,7 +4,7 @@
     "name": "Villages",
     "description": "Nineteen peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains, hobbits, elves and drow in their woods, drovers in the desert, and ten furfolk - foxes, cats, wolves, rabbits, bears, fennecs, mice, squirrels, otters and deer - each in its own biome. Every person is anchored to a job post in their village, and every worker takes a trade from what stands round its post.",
     "uuid": "c3c3f8ed-ae70-4d6f-9f17-6d845624cac4",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "min_engine_version": "1.26.40"
   },
   "modules": [
@@ -12,14 +12,14 @@
       "description": "Villages: peoples, job posts, structures and worldgen",
       "type": "data",
       "uuid": "ec7fe108-4ebb-4863-a752-1415042d24b3",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "description": "Villages scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "a86a813f-1d58-49c3-b388-212fb81c59e7",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "entry": "scripts/main.js"
     }
   ],
@@ -29,8 +29,12 @@
       "version": "2.9.0"
     },
     {
+      "module_name": "@minecraft/server-ui",
+      "version": "2.1.0"
+    },
+    {
       "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ],
   "metadata": {

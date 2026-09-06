@@ -1,5 +1,5 @@
-import { BlockPermutation, GameMode, ItemStack, type Vector3 } from "@minecraft/server";
-import { registerAsync, type Test } from "@minecraft/server-gametest";
+import { BlockPermutation, Direction, GameMode, ItemStack, type Vector3 } from "@minecraft/server";
+import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
 import { count, floor, put } from "./rig";
 
 /**
@@ -399,3 +399,91 @@ registerAsync("qol", "villages_gleaner_gathers_apples", async (test) => {
     for (let y = 1; y <= 4; y++) test.assertBlockPresent("minecraft:oak_log", { x: 2, y, z: 5 }, true);
   });
 }).maxTicks(800).structureName("qol:arena");
+
+// ---------------------------------------------------------------------------
+// The kids' posts and the visitors (docs/design/villages.md §6.1). A post a
+// player places is told from a village's by `playerPlaceBlock`; a
+// SimulatedPlayer marshals as undefined into the villages pack, so whether
+// the event fires for one at all is what the first test measures.
+// ---------------------------------------------------------------------------
+
+const VISITOR = "villages:visitor";
+const KIN = "villages:kin";
+const POST_ITEM = "villages:post";
+
+/** A SimulatedPlayer places a post on the floor block `on`; the post stands one above it. */
+async function placeByHand(test: Test, player: SimulatedPlayer, on: Vector3): Promise<Vector3> {
+  player.lookAtBlock(on);
+  await test.idle(5);
+  const ok = player.useItemOnBlock(new ItemStack(POST_ITEM, 1), on, Direction.Up);
+  test.assert(ok, `useItemOnBlock refused a post on ${on.x},${on.y},${on.z}`);
+  await test.idle(25); // two placements too close together are refused (docs/README.md corrections)
+  const at = { x: on.x, y: on.y + 1, z: on.z };
+  test.assertBlockPresent(POST, at, true);
+  return at;
+}
+
+const tagged = (test: Test, tag: string, near: Vector3, r: number) =>
+  test.getDimension().getEntities({ type: PERSON, tags: [tag], location: test.worldBlockLocation(near), maxDistance: r });
+
+// A post the kids placed spawns nobody: it waits for a settler. The control
+// is every other test here, whose structure-style posts spawn at once.
+registerAsync("qol", "villages_player_post_waits_for_settler", async (test) => {
+  floor(test);
+  for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 8 })) e.remove();
+  const player = test.spawnSimulatedPlayer({ x: 2, y: 1, z: 2 }, "vl_placer", GameMode.Survival);
+  const at = await placeByHand(test, player, { x: AT.x, y: 0, z: AT.z });
+  await test.idle(300);
+  test.assertBlockPresent(POST, at, true);
+  const n = people(test).length;
+  test.assert(n === 0, `expected no person at a post the player placed, found ${n}`);
+  test.succeed();
+}).maxTicks(600).structureName("qol:arena");
+
+// Two posts by hand make a settlement; the hatch brings the next visitor
+// now, and settles it: the visitor is gone and a settler with the kids' tag
+// stands at one of the posts, of the visitor's people.
+registerAsync("qol", "villages_visitor_settles", async (test) => {
+  floor(test);
+  for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 48 })) e.remove();
+  const player = test.spawnSimulatedPlayer({ x: 6, y: 1, z: 6 }, "vl_host", GameMode.Survival);
+  const a = await placeByHand(test, player, { x: 4, y: 0, z: 3 });
+  const b = await placeByHand(test, player, { x: 2, y: 0, z: 5 });
+  test.getDimension().runCommand("scriptevent villages:visitor arrive");
+  for (let t = 0; t < 200 && tagged(test, VISITOR, AT, 40).length === 0; t += 5) await test.idle(5);
+  const visitors = tagged(test, VISITOR, AT, 40);
+  test.assert(visitors.length === 1, `expected one visitor at the settlement's edge, found ${visitors.length}`);
+  const visitor = visitors[0]!;
+  const people = visitor.getProperty("villages:people");
+  test.assert(typeof people === "number", `expected the visitor to have a people, got ${String(people)}`);
+  test.assert(visitor.nameTag.includes(" the "), `expected the visitor named "<name> the <People>", got "${visitor.nameTag}"`);
+  test.getDimension().runCommand("scriptevent villages:visitor settle");
+  // The walk from the edge may fail (the arena stands above the flat world's surface) and end in a teleport after its timeout.
+  test.succeedWhen(() => {
+    const left = tagged(test, VISITOR, AT, 48).length;
+    test.assert(left === 0, `expected the visitor gone once settled, found ${left}`);
+    const kin = [...tagged(test, KIN, a, 3), ...tagged(test, KIN, b, 3)];
+    test.assert(kin.length === 1, `expected one settler at a post, found ${kin.length}`);
+    const settled = kin[0]!.getProperty("villages:people");
+    test.assert(settled === people, `expected the settler to be the visitor's people ${String(people)}, got ${String(settled)}`);
+  });
+}).maxTicks(1800).structureName("qol:arena");
+
+// A visitor stays a day: at the next dawn (the clock pushed across midnight) it is gone.
+registerAsync("qol", "villages_visitor_leaves_at_dawn", async (test) => {
+  floor(test);
+  for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 48 })) e.remove();
+  const player = test.spawnSimulatedPlayer({ x: 6, y: 1, z: 6 }, "vl_host2", GameMode.Survival);
+  await placeByHand(test, player, { x: 4, y: 0, z: 3 });
+  await placeByHand(test, player, { x: 2, y: 0, z: 5 });
+  test.getDimension().runCommand("time set 6000");
+  await test.idle(40);
+  test.getDimension().runCommand("scriptevent villages:visitor arrive");
+  for (let t = 0; t < 200 && tagged(test, VISITOR, AT, 40).length === 0; t += 5) await test.idle(5);
+  test.assert(tagged(test, VISITOR, AT, 40).length === 1, "expected a visitor before dawn");
+  test.getDimension().runCommand("time add 18000"); // 6000 + 18000 = the next day's 0: dawn
+  test.succeedWhen(() => {
+    const n = tagged(test, VISITOR, AT, 48).length;
+    test.assert(n === 0, `expected the visitor gone at dawn, found ${n}`);
+  });
+}).maxTicks(600).structureName("qol:arena");

@@ -1,5 +1,5 @@
 import { createPositionIndex } from "@qol/shared/engine/positionIndex";
-import { SCHEMA, packRecord, unpackRecord, type Position, type PostRecord, type Row } from "../core/record";
+import { SCHEMA, afterRestart, packRecord, unpackRecord, type Position, type PostRecord, type Row } from "../core/record";
 
 /**
  * Where post records live: the shared position index (CLAUDE.md rule 6).
@@ -26,6 +26,12 @@ export const count = (): number => index.count();
 export const put = (record: PostRecord): void => index.put(record);
 export function update(pos: Position, fn: (row: PostRecord) => void): boolean {
   return index.update(pos, fn);
+}
+/** After a restart: every record's waits are over (core/record.ts `afterRestart`). Returns how many rows were touched. */
+export function resetAfterRestart(): number {
+  let n = 0;
+  for (const r of [...index.all()]) if (index.update(r, afterRestart)) n++;
+  return n;
 }
 export function remove(pos: Position): PostRecord | undefined {
   const record = index.find(pos);

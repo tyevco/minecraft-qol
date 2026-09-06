@@ -3,6 +3,8 @@ import {
   Direction,
   EntityComponentTypes,
   GameMode,
+  world,
+  type Entity,
   type Vector3,
 } from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
@@ -29,11 +31,14 @@ const ARROW = "minecraft:arrow";
 const TURRET: Vector3 = { x: 5, y: 1, z: 5 };
 const UNDER: Vector3 = { x: 5, y: 0, z: 5 };
 
-function heads(test: Test): number {
+function headList(test: Test): Entity[] {
   return test
     .getDimension()
-    .getEntities({ type: HEAD, location: test.worldBlockLocation(TURRET), maxDistance: 2 })
-    .length;
+    .getEntities({ type: HEAD, location: test.worldBlockLocation(TURRET), maxDistance: 2 });
+}
+
+function heads(test: Test): number {
+  return headList(test).length;
 }
 
 function placeTurret(test: Test): void {
@@ -136,3 +141,87 @@ registerAsync("qol", "turret_break_returns_arrows", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(500);
+
+/**
+ * Where a shot leaves the head, relative to the head's origin.
+ *
+ * The engine picks the spawn point: `ranged_attack` puts `minecraft:arrow` at
+ * the shooter's eye (the arrow's `minecraft:projectile` says `anchor: 1`,
+ * `offset: [0, -0.1, 0]`) and the eye is derived from the collision box. The
+ * barrel is drawn 5.5/16 above the origin, so a head whose eye sits higher
+ * than that fires from above its own barrel. This pins the two together; the
+ * failure message is the measurement.
+ */
+const BARREL_Y = 5.5 / 16;
+const SHOT_TOLERANCE = 2 / 16;
+
+registerAsync("qol", "turret_shot_origin", async (test) => {
+  placeTurret(test);
+  const hopper: Vector3 = { x: 6, y: 1, z: 5 };
+  test.setBlockPermutation(
+    BlockPermutation.resolve("minecraft:hopper", { facing_direction: 4 }),
+    hopper,
+  );
+  put(test, hopper, item(ARROW, 10));
+  const drained = await waitFor(test, () => count(test, hopper, ARROW) === 0, 150);
+  test.assert(drained, `hopper still holds ${count(test, hopper, ARROW)} arrow(s)`);
+  test.assert(heads(test) === 1, `expected 1 head, found ${heads(test)}`);
+
+  // The test server runs on peaceful, where a hostile cannot be spawned at
+  // all, so raise the difficulty for the shot and put it back afterwards. A
+  // husk: family monster, and it does not burn in the arena's daylight.
+  const dim = test.getDimension();
+  dim.runCommand("difficulty easy");
+  try {
+    test.spawn("minecraft:husk", { x: 5, y: 1, z: 1 });
+  } catch (e) {
+    dim.runCommand("difficulty peaceful");
+    throw e;
+  }
+
+  let shot: { arrow: Vector3; velocity: Vector3; head: Vector3; eye: Vector3 } | undefined;
+  const sub = world.afterEvents.entitySpawn.subscribe((ev) => {
+    if (shot) return;
+    let arrow: Entity;
+    try {
+      arrow = ev.entity;
+      if (arrow.typeId !== ARROW) return;
+    } catch {
+      return;
+    }
+    const head = headList(test)[0];
+    if (!head) return;
+    shot = {
+      arrow: arrow.location,
+      velocity: arrow.getVelocity(),
+      head: head.location,
+      eye: head.getHeadLocation(),
+    };
+  });
+  try {
+    const fired = await waitFor(test, () => shot !== undefined, 300);
+    test.assert(fired, "the turret never fired at the husk");
+  } finally {
+    world.afterEvents.entitySpawn.unsubscribe(sub);
+    dim.runCommand("difficulty peaceful");
+  }
+  if (!shot) return;
+
+  const f = (v: Vector3) => `(${v.x.toFixed(3)}, ${v.y.toFixed(3)}, ${v.z.toFixed(3)})`;
+  const dx = shot.arrow.x - shot.head.x;
+  const dy = shot.arrow.y - shot.head.y;
+  const dz = shot.arrow.z - shot.head.z;
+  const eyeDy = shot.eye.y - shot.head.y;
+  const summary =
+    `arrow spawned at ${f(shot.arrow)}, head origin ${f(shot.head)}, ` +
+    `offset (${dx.toFixed(3)}, ${dy.toFixed(3)}, ${dz.toFixed(3)}), ` +
+    `eye at +${eyeDy.toFixed(3)}, velocity ${f(shot.velocity)}, barrel at +${BARREL_Y.toFixed(3)}`;
+  console.warn(`[gametest] turret_shot_origin: ${summary}`);
+  test.assert(
+    Math.abs(dy - BARREL_Y) <= SHOT_TOLERANCE,
+    `arrow left ${(dy - BARREL_Y).toFixed(3)} above the barrel axis: ${summary}`,
+  );
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(600);

@@ -231,6 +231,44 @@ Range tiers are not measured: the arena is eight blocks and a mob cannot be
 stood 24 blocks off. That row is in the pack README under "To confirm in
 game".
 
+---
+
+# Targeting priority (#91), measured
+
+**What was measured.** Four `rig_target_*` GameTests on `qol:shooter_rig`:
+a healthy husk two blocks out and a husk at 4 health five blocks out, and
+which the rig hurts first (by `entityHurt`, cause projectile). Selector
+groups: the plain one (`is_family: monster`); one with two `entity_types`
+entries, a wounded-filter entry (`actor_health <= 5`) first and the plain
+entry second; one with only the wounded-filter entry. Each line is the
+test's own log message.
+
+| Test | Selector | Reading |
+| --- | --- | --- |
+| `rig_target_nearest_by_default` | plain | **near** healthy husk hurt first |
+| `rig_target_order_is_not_priority` | wounded entry first, plain second | **near** healthy husk hurt first, three runs of three |
+| `rig_target_filter_only` | wounded entry only | **far** wounded husk hurt first, near healthy **never** |
+| `rig_target_filter_on_top` | plain group on the head, wounded-only group added on top by a second event | **far** wounded husk hurt first, near healthy never |
+
+**What it means.**
+
+- **The order of `entity_types` entries is not a priority.** The nearest
+  candidate matching any entry wins. A "weakest first" cannot be written as
+  an ordered list.
+- **An `actor_health` filter on an entry holds**, so a selector can be told
+  to see only wounded (or only healthy) monsters.
+- **A second component group's `nearest_attackable_target` replaces the
+  first's**, so the selector can be an additive group on the head and swapped
+  with `triggerEvent` like the aim and ammo groups.
+- So the pack ranks in script and lets the engine select: every block tick a
+  turret set to "weakest first" counts the monsters in range and, while any is
+  at three hearts or under, wears the wounded-only selector; otherwise the
+  plain one. "Strongest first" the same at seven and a half hearts or over.
+  The selectors were moved out of the nine aim groups into nine target groups
+  (`bulwark:target_<any|wounded|healthy>_g<range>`) so a rate change can never
+  put a plain selector back on top. The whole turret suite passes on that
+  head (run 6).
+
 **Also measured on the way.** At entity format `1.26.40`,
 `ranged_attack.attack_interval` as a bare number is rejected
 (`attack_interval: expected an object`) and the entity does not load at

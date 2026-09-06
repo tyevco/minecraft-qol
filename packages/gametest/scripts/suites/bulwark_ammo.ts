@@ -454,3 +454,104 @@ registerAsync("qol", "rig_splash_potion_applies", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(800);
+
+// ---------------------------------------------------------------------------
+// #91: targeting priority. Two questions before a per-turret choice can be
+// built on `nearest_attackable_target`:
+//  - is the order of `entity_types` entries a priority, so an entry filtered
+//    on low health placed first makes the turret pick a weak far mob over a
+//    healthy near one?
+//  - does a second component group's `nearest_attackable_target` replace the
+//    first group's (so priority can be an additive group on the head), or
+//    does the first keep winning?
+// Two husks: a healthy one two blocks out, a wounded one five blocks out.
+// ---------------------------------------------------------------------------
+
+const NEAR_POS: Vector3 = { x: 5, y: 1, z: 3 };
+const FAR_POS: Vector3 = { x: 2, y: 1, z: 1 };
+
+/** Which of two husks the rig hurts first, by projectile. */
+async function firstHurt(test: Test, rig: Entity): Promise<{ first: string; near: number; far: number }> {
+  const dim = test.getDimension();
+  dim.runCommand("difficulty easy");
+  let near: Entity | undefined;
+  let far: Entity | undefined;
+  const hurt = { near: 0, far: 0 };
+  let first = "none";
+  const sub = world.afterEvents.entityHurt.subscribe(
+    (ev) => {
+      if (ev.damageSource.cause !== "projectile") return;
+      const id = ev.hurtEntity.id;
+      const which = id === near?.id ? "near" : id === far?.id ? "far" : undefined;
+      if (!which) return;
+      hurt[which]++;
+      if (first === "none") first = which;
+    },
+    { entityTypes: [HUSK] },
+  );
+  try {
+    near = test.spawn(HUSK, NEAR_POS);
+    far = test.spawn(HUSK, FAR_POS);
+    far.getComponent(EntityComponentTypes.Health)?.setCurrentValue(4);
+    const shot = await until(test, () => first !== "none", 400);
+    test.assert(shot, `the rig hit neither husk in 400 ticks (rig ${rig.id})`);
+  } finally {
+    world.afterEvents.entityHurt.unsubscribe(sub);
+    dim.runCommand("difficulty peaceful");
+  }
+  return { first, near: hurt.near, far: hurt.far };
+}
+
+// Measured, three runs: entry order is NOT a priority. With the wounded
+// entry first and a plain entry second, the nearest healthy husk was shot
+// every time. Pinned as the fact it is, so a build that assumes ordering
+// fails here rather than in the field.
+registerAsync("qol", "rig_target_order_is_not_priority", async (test) => {
+  const rig = await arm(test, "qol:shoot_arrow", "qol:target_weak_first");
+  const r = await firstHurt(test, rig);
+  const summary = `first hurt: ${r.first} (near healthy husk hit ${r.near}, far wounded husk hit ${r.far})`;
+  console.warn(`[gametest] rig_target_order_is_not_priority: ${summary}`);
+  test.assert(r.first === "near", `entry order has become a priority; the pack could use it: ${summary}`);
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(800);
+
+registerAsync("qol", "rig_target_nearest_by_default", async (test) => {
+  // The control: with the plain selector the near healthy husk is shot first.
+  const rig = await arm(test, "qol:shoot_arrow");
+  const r = await firstHurt(test, rig);
+  const summary = `first hurt: ${r.first} (near ${r.near}, far ${r.far})`;
+  console.warn(`[gametest] rig_target_nearest_by_default: ${summary}`);
+  test.assert(r.first === "near", `the plain selector did not pick the nearest: ${summary}`);
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(800);
+
+// Sharper: a selector with ONLY the wounded-filter entry. Alone, it says
+// whether the health filter works at all (the far wounded husk is the only
+// legal target). On top of the plain selector, it says whether the second
+// group's selector replaces the first's (only the far husk is shot) or the
+// first keeps winning (the near one is).
+registerAsync("qol", "rig_target_filter_only", async (test) => {
+  const rig = await arm(test, "qol:shoot_arrow", "qol:target_weak_only");
+  const r = await firstHurt(test, rig);
+  const summary = `first hurt: ${r.first} (near healthy ${r.near}, far wounded ${r.far})`;
+  console.warn(`[gametest] rig_target_filter_only: ${summary}`);
+  test.assert(r.first === "far", `the actor_health filter did not hold: ${summary}`);
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(800);
+
+registerAsync("qol", "rig_target_filter_on_top", async (test) => {
+  const rig = await arm(test, "qol:shoot_arrow", "qol:target_weak_only_on_top");
+  const r = await firstHurt(test, rig);
+  const summary = `first hurt: ${r.first} (near healthy ${r.near}, far wounded ${r.far})`;
+  console.warn(`[gametest] rig_target_filter_on_top: ${summary}`);
+  test.assert(r.first === "far", `the first group's selector kept winning: ${summary}`);
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(800);

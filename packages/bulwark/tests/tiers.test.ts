@@ -145,6 +145,22 @@ describe("the head entity", () => {
     }
   });
 
+  it("has a target selector group and event per selector and range, and none in the aim groups", () => {
+    for (const sel of ["any", "wounded", "healthy"]) {
+      for (const range of [1, 2, 3] as Tier[]) {
+        const name = `bulwark:target_${sel}_g${range}`;
+        const group = entity.component_groups[name];
+        expect(group, name).toBeDefined();
+        const nat = group?.["minecraft:behavior.nearest_attackable_target"] as { entity_types: { max_dist: number }[] };
+        expect(nat.entity_types[0]!.max_dist).toBe(RANGE_BLOCKS[range]);
+        expect(entity.events[name], `event ${name}`).toBeDefined();
+      }
+    }
+    for (const rate of [1, 2, 3] as Tier[])
+      for (const range of [1, 2, 3] as Tier[])
+        expect(entity.component_groups[aimEvent(rate, range)]?.["minecraft:behavior.nearest_attackable_target"]).toBeUndefined();
+  });
+
   it("has an ammo group and event per kind, and a tier event per damage tier", () => {
     for (const kind of KINDS) {
       const event = KIND_EVENT[kind];

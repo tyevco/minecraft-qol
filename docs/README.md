@@ -39,7 +39,10 @@ Three kinds of document live here, and they carry very different authority.
   be attributed from a spawn-time map, and `Potions.resolve` makes a splash
   potion. Then Phase 3a on the shipped turret: tipped arrows, snowballs and
   splash potions fired straight from a hopper, one charged per shot; and a
-  dynamic property is private to the pack that wrote it.
+  dynamic property is private to the pack that wrote it. Then targeting:
+  the order of `nearest_attackable_target.entity_types` entries is **not** a
+  priority, an `actor_health` filter holds, and a second group's selector
+  replaces the first's.
 - [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
   pack's jigsaw structure loads, places and generates in a world with **no
   experiments** (25 wells in 400 fresh chunks, one per cell). The files live
@@ -122,6 +125,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | A building placed block by block can be taken down in reverse order (`settlements.md` §5.4) | **Not quite: an attached block must come down before its support.** A hanging lantern set by script under open air stays, but the roof block above it removed by script pops it onto the ground, and the builder found no lantern to return to the chest. Removal takes attached blocks first (`removalOrder` in the builder's `core/order.ts`); a door's two halves and a bed are the same kind of thing and are not yet in a tested building. `settlements-results.md`. |
 | A structure saved from the world reads like a generated one (implicit in the builder's rotation test, which compared against `createFromWorld`) | **Air is a block in a saved structure**, `minecraft:air`, where a generated file has nothing (`getBlockPermutation` undefined). Treat air as empty when comparing, or 98 empty cells of a 5×7×5 count as matches. |
 | A GameTest can read another pack's dynamic properties (implicit in the first Bulwark ammo tests, which read the turret's record and the head's flags) | **No. A dynamic property is private to the pack that wrote it.** Entity and world properties Bulwark had just written read `undefined` from the GameTest pack, in the tick the turret was acting on them (`bulwark-ammo-results.md`). A test observes a pack through the world: containers, effects, health, what gets spawned. |
+| Targeting priority "expressible through `nearest_attackable_target` priority entries and filter ordering" (Bulwark §4.3) | **Half right.** The filters hold, but **entry order is not a priority**: with a wounded-filter entry first and a plain entry second, the nearest healthy mob was shot three runs of three. A priority is script choosing between filtered selector groups per tick (`bulwark-ammo-results.md`). |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -149,7 +153,9 @@ as a world setting. Carries its own "must prototype" list, every item of which i
 `rig_*` GameTest; 3a (ammo from the hopper) and 3b (four upgrade axes, one
 item per tier, damage in script) ship in the pack with nine `turret_*`
 tests of their own, and 3c is the settings panel (range cap and two
-switches). Targeting priority waits on a per-turret form, #91.
+switches). Targeting priority (#91) is built on a measured surprise: the
+order of a selector's entries is not a priority, so the pack ranks in
+script and swaps filtered selector groups.
 
 **[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
 (funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times

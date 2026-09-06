@@ -61,6 +61,9 @@ import {
   writeLink,
 } from "./head";
 import { effectiveRange } from "../core/policy";
+import { PRIORITY_LABEL, chooseSelector, tally, targetEvent, type Priority } from "../core/targeting";
+import { RANGE_BLOCKS } from "../core/tiers";
+import { openTurretForm } from "./form";
 import * as settings from "./settings";
 import * as storage from "./storage";
 
@@ -115,7 +118,7 @@ export function positionOf(block: Block): Position {
 }
 
 function fresh(pos: Position): TurretRecord {
-  return { ...pos, ammo: 0, kills: 0, tiers: { ...BASE_TIERS } };
+  return { ...pos, ammo: 0, kills: 0, tiers: { ...BASE_TIERS }, priority: "nearest" };
 }
 
 /** A friendly item name for a message: `minecraft:redstone_block` -> `redstone block`. */
@@ -282,14 +285,47 @@ export function chargeSpecial(dim: Dimension, pos: Position, kind: Kind): boolea
   return false;
 }
 
+/** The range tier a record aims at, with the panel's cap applied. */
+function rangeFor(record: TurretRecord): Tier {
+  return effectiveRange(record.tiers.range, settings.policy().rangeCap);
+}
+
 /** The aim group for a record's tiers, with the panel's range cap applied. */
 function aimFor(record: TurretRecord): string {
-  return aimEvent(record.tiers.rate, effectiveRange(record.tiers.range, settings.policy().rangeCap));
+  return aimEvent(record.tiers.rate, rangeFor(record));
+}
+
+/**
+ * The target selector group for a record's priority and what is in range
+ * right now. Nearest needs no look; the other two count the monsters the
+ * head could see and prefer the wounded or the healthy while any are there
+ * (core/targeting.ts, measured on the rig). One filtered query per block
+ * tick per turret that asked for it.
+ */
+function targetFor(dim: Dimension, record: TurretRecord): string {
+  const range = rangeFor(record);
+  if (record.priority === "nearest") return targetEvent("any", range);
+  const healths: number[] = [];
+  try {
+    const at = { x: record.x + 0.5, y: record.y + 1, z: record.z + 0.5 };
+    for (const e of dim.getEntities({ location: at, maxDistance: RANGE_BLOCKS[range], families: ["monster"] })) {
+      const h = e.getComponent(EntityComponentTypes.Health)?.currentValue;
+      if (typeof h === "number") healths.push(h);
+    }
+  } catch {
+    // An unloaded edge or a vanished mob: prefer nothing this tick.
+  }
+  return targetEvent(chooseSelector(record.priority, tally(healths)), range);
 }
 
 /** The head's arming for a record and its hoppers, without touching either. */
 export function armingFor(dim: Dimension, record: TurretRecord): ReturnType<typeof arming> {
-  return arming(record.ammo, specialOffered(feeders(dim, record), record.tiers.gate), aimFor(record));
+  return arming(
+    record.ammo,
+    specialOffered(feeders(dim, record), record.tiers.gate),
+    aimFor(record),
+    targetFor(dim, record),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -397,7 +433,7 @@ export function tick(block: Block): void {
   if (head) {
     const link = readLink(head);
     if (!link || !samePosition(link, pos)) writeLink(head, pos);
-    syncArming(head, arming(record.ammo, special, aimFor(record)), record.tiers.damage);
+    syncArming(head, arming(record.ammo, special, aimFor(record), targetFor(dim, record)), record.tiers.damage);
   }
 
   if (dirty) storage.put(record);
@@ -460,7 +496,7 @@ function statusLine(dim: Dimension, record: TurretRecord, head: Entity | undefin
   const firing = armed && kind && kind !== "arrow" ? ` §7firing §f${KIND_LABEL[kind]}§7 from a hopper.` : "";
   const base =
     `§6Bulwark Turret §7ammo §f${record.ammo}/${AMMO_CAP}§7, kills §f${record.kills}§7, ` +
-    `head ${headState}§7.${firing} §7Tiers: §f${describeTiers(record.tiers)}§7.`;
+    `head ${headState}§7.${firing} §7Tiers: §f${describeTiers(record.tiers)}§7. Target: §f${PRIORITY_LABEL[record.priority]}§7.`;
   const pol = settings.policy();
   const capped = effectiveRange(record.tiers.range, pol.rangeCap) < record.tiers.range;
   const notes: string[] = [];
@@ -492,7 +528,27 @@ function takeOne(equippable: EntityEquippableComponent, held: ItemStack): void {
   }
 }
 
-/** Right-click: feed plain arrows from the hand, otherwise report status. */
+/** Set a turret's targeting priority, from the form. */
+export function setPriority(pos: Position, priority: Priority, player?: Player): void {
+  const record = storage.get(pos);
+  if (!record) return;
+  record.priority = priority;
+  storage.put(record);
+  let dim: Dimension | undefined;
+  try {
+    dim = world.getDimension(pos.dimId);
+  } catch {
+    dim = undefined;
+  }
+  const head = linkedEntity(record.entityId, pos.dimId);
+  if (dim && head) syncArming(head, armingFor(dim, record), record.tiers.damage);
+  player?.sendMessage(`§7Target: §f${PRIORITY_LABEL[priority]}§7.`);
+}
+
+/**
+ * Right-click: sneaking with an empty hand opens the turret's form; an
+ * upgrade material or plain arrows are fed; anything else reports status.
+ */
 export function interact(player: Player, block: Block): void {
   const pos = positionOf(block);
   const record = storage.get(pos) ?? fresh(pos);
@@ -501,6 +557,12 @@ export function interact(player: Player, block: Block): void {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
     const held = equippable?.getEquipment(EquipmentSlot.Mainhand);
+
+    if (player.isSneaking && !held) {
+      if (!storage.get(pos)) storage.put(record);
+      openTurretForm(player, record, (priority) => setPriority(pos, priority, player));
+      return;
+    }
 
     // An upgrade material first: one item raises one axis one tier.
     const upgrade = held ? feedUpgrade(record.tiers, held.typeId) : { kind: "not_material" as const };

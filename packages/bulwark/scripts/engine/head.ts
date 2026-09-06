@@ -19,6 +19,7 @@ const PROP_LINK = "bw:link";
 const PROP_ARMED = "bw:armed";
 const PROP_KIND = "bw:kind";
 const PROP_AIM = "bw:aim";
+const PROP_TARGET = "bw:target";
 /** The entity's own int property, drawn by the render controller. */
 const PROPERTY_TIER = "bulwark:tier";
 const TAG = "[Bulwark]";
@@ -71,6 +72,16 @@ export function readKind(entity: Entity): Kind | undefined {
 export function readAim(entity: Entity): string | undefined {
   try {
     const raw = entity.getDynamicProperty(PROP_AIM);
+    return typeof raw === "string" ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The target selector event the head was last set to; undefined when disarmed or unknown. */
+export function readTarget(entity: Entity): string | undefined {
+  try {
+    const raw = entity.getDynamicProperty(PROP_TARGET);
     return typeof raw === "string" ? raw : undefined;
   } catch {
     return undefined;
@@ -159,7 +170,12 @@ export function seat(entity: Entity, block: Position): void {
  * ammo changes the turret within a block tick.
  */
 export function syncArming(entity: Entity, want: Arming, damage?: Tier): void {
-  const events = groupEvents(want, { armed: readArmed(entity), kind: readKind(entity), aim: readAim(entity) });
+  const events = groupEvents(want, {
+    armed: readArmed(entity),
+    kind: readKind(entity),
+    aim: readAim(entity),
+    target: readTarget(entity),
+  });
   // The texture follows the damage tier; the property lands next tick, so a
   // same-tick read is stale, and a tier event fires at most once per change.
   if (damage !== undefined && readTier(entity) !== damage) events.push(tierEvent(damage));
@@ -169,6 +185,7 @@ export function syncArming(entity: Entity, want: Arming, damage?: Tier): void {
     entity.setDynamicProperty(PROP_ARMED, want.armed);
     entity.setDynamicProperty(PROP_KIND, want.armed ? want.kind : undefined);
     entity.setDynamicProperty(PROP_AIM, want.armed ? want.aim : undefined);
+    entity.setDynamicProperty(PROP_TARGET, want.armed ? want.target : undefined);
   } catch (e) {
     console.warn(`${TAG} could not ${events.join("+")} head ${entity.id}: ${e}`);
   }

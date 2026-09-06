@@ -9,15 +9,17 @@
  * what changes.
  */
 
+import { priorityFromIndex, priorityIndex, type Priority } from "./targeting";
 import { BASE_TIERS, isTier, type Tiers } from "./tiers";
 
 /**
  * Bump when the packed row changes shape. The index refuses newer schemas
  * and reads older ones through `unpackRecord`, so a reader that accepts the
  * previous shape is the whole migration. Schema 2 added the four tiers;
- * a schema-1 row reads as tier 1 on every axis.
+ * a schema-1 row reads as tier 1 on every axis. Schema 3 added the targeting
+ * priority; an older row reads as nearest.
  */
-export const SCHEMA = 2;
+export const SCHEMA = 3;
 
 export interface Position {
   dimId: string;
@@ -35,6 +37,8 @@ export interface TurretRecord extends Position {
   kills: number;
   /** Upgrade tiers, one per axis (core/tiers.ts). */
   tiers: Tiers;
+  /** Targeting priority, chosen on the turret's form (core/targeting.ts). */
+  priority: Priority;
 }
 
 /** Compact row form. Short: one property holds every turret. */
@@ -50,10 +54,24 @@ export type Row = [
   rate: number,
   range: number,
   gate: number,
+  priority: number,
 ];
 
 export function packRecord(r: TurretRecord): Row {
-  return [r.dimId, r.x, r.y, r.z, r.entityId ?? "", r.ammo, r.kills, r.tiers.damage, r.tiers.rate, r.tiers.range, r.tiers.gate];
+  return [
+    r.dimId,
+    r.x,
+    r.y,
+    r.z,
+    r.entityId ?? "",
+    r.ammo,
+    r.kills,
+    r.tiers.damage,
+    r.tiers.rate,
+    r.tiers.range,
+    r.tiers.gate,
+    priorityIndex(r.priority),
+  ];
 }
 
 /**
@@ -62,7 +80,7 @@ export function packRecord(r: TurretRecord): Row {
  */
 export function unpackRecord(packed: unknown): TurretRecord | undefined {
   if (!Array.isArray(packed) || packed.length < 7) return undefined;
-  const [dimId, x, y, z, entityId, ammo, kills, damage, rate, range, gate] = packed as unknown[];
+  const [dimId, x, y, z, entityId, ammo, kills, damage, rate, range, gate, priority] = packed as unknown[];
   if (typeof dimId !== "string" || dimId === "") return undefined;
   if (![x, y, z].every((n) => typeof n === "number" && Number.isInteger(n))) return undefined;
   if (typeof entityId !== "string" || typeof ammo !== "number" || typeof kills !== "number") {
@@ -83,6 +101,7 @@ export function unpackRecord(packed: unknown): TurretRecord | undefined {
       range: isTier(range) ? range : BASE_TIERS.range,
       gate: isTier(gate) ? gate : BASE_TIERS.gate,
     },
+    priority: priorityFromIndex(priority),
   };
 }
 

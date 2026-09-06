@@ -79,7 +79,7 @@ const PACKS: Pack[] = [
   {
     name: "bulwark",
     dir: "packages/bulwark",
-    external: ["@minecraft/server"],
+    external: ["@minecraft/server", "@minecraft/server-ui"],
     hasResourcePack: true,
   },
   {

@@ -277,10 +277,16 @@ that a `ranged_attack` swap keeps firing.
 
 ### 4.6 Targeting priority
 
-The design's fifth axis (nearest / weakest / strongest) is expressible with
-ordered `nearest_attackable_target.entity_types` and filters. It needs a
-config form, which is server-ui and a per-turret setting rather than a world
-one. Leave it for after the form exists.
+The design's fifth axis (nearest / weakest / strongest). The research
+assumed it was expressible with ordered `nearest_attackable_target.entity_types`
+entries; **measured, it is not** (`rig_target_order_is_not_priority`): the
+nearest match across every entry wins. What does hold is an `actor_health`
+filter on an entry, and that a second group's selector replaces the first's.
+**Built** (#91) as script ranking over engine selecting: nine target groups
+on the head, one per selector (any, wounded, healthy) and range; each block
+tick a turret set to weakest or strongest counts the monsters in range and
+wears the filtered selector while any qualify. Chosen on the turret's form
+(sneak, right-click, empty hand), the one per-turret setting. Schema 3.
 
 ## 5. Feeding with more than one ammo
 

@@ -358,9 +358,15 @@ damage as an `entityHurt` multiplier of 1 / 1.5 / 2, the projectile gate in
 `turret_gate_holds_tipped_until_upgraded` and `turret_break_returns_upgrades`;
 range tiers need a person (the arena is eight blocks).
 
-**3c — the panel and the form.** A `bulwark:debug` line per turret reporting
-kinds, tiers and source; the per-turret config form (server-ui) for targeting
-priority, once there is something to configure.
+**3c — the panel. Built.** A format-3 manifest with three Realm-wide
+switches: a range cap (16 / 24 / 32, default 32; a tier above the cap aims
+at the cap's tier and keeps its material), special ammo on or off, and
+upgrades on or off. Polled every five seconds through the shared settings
+poller. `bulwark:debug` prints the policy and a line per turret within 64
+blocks: ammo, kills, tiers, and what its head is set to fire. No GameTest
+can flip a setting (`getPackSettings` has no setter), so the panel is an
+in-game check in the pack README. The per-turret config form for targeting
+priority is deferred to #91.
 
 Each phase gets its GameTests before the next starts: a hopper of poison
 arrows leaves the husk with the poison effect; a hopper of snowballs leaves

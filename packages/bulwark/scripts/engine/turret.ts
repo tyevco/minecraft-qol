@@ -60,6 +60,8 @@ import {
   toHead,
   writeLink,
 } from "./head";
+import { effectiveRange } from "../core/policy";
+import * as settings from "./settings";
 import * as storage from "./storage";
 
 /**
@@ -198,6 +200,7 @@ function pullFromHoppers(hoppers: Feeder[], ammo: number): number {
 
 /** The special kind the turret should be firing, if any hopper offers one its gate allows. */
 function specialOffered(hoppers: Feeder[], gate: Tier): Kind | undefined {
+  if (!settings.policy().specialAmmo) return undefined;
   const allowed = (k: Kind) => gateAllows(gate, k);
   for (const { slots } of hoppers) {
     const found = findSpecial(slots, allowed);
@@ -223,6 +226,7 @@ function specialGated(hoppers: Feeder[], gate: Tier): Kind | undefined {
  * item the tier cost.
  */
 function upgradeFromHoppers(hoppers: Feeder[], tiers: Tiers): Tiers | undefined {
+  if (!settings.policy().upgrades) return undefined;
   for (const { container, slots } of hoppers) {
     for (let i = 0; i < slots.length; i++) {
       const s = slots[i];
@@ -278,10 +282,14 @@ export function chargeSpecial(dim: Dimension, pos: Position, kind: Kind): boolea
   return false;
 }
 
+/** The aim group for a record's tiers, with the panel's range cap applied. */
+function aimFor(record: TurretRecord): string {
+  return aimEvent(record.tiers.rate, effectiveRange(record.tiers.range, settings.policy().rangeCap));
+}
+
 /** The head's arming for a record and its hoppers, without touching either. */
 export function armingFor(dim: Dimension, record: TurretRecord): ReturnType<typeof arming> {
-  const t = record.tiers;
-  return arming(record.ammo, specialOffered(feeders(dim, record), t.gate), aimEvent(t.rate, t.range));
+  return arming(record.ammo, specialOffered(feeders(dim, record), record.tiers.gate), aimFor(record));
 }
 
 // ---------------------------------------------------------------------------
@@ -389,7 +397,7 @@ export function tick(block: Block): void {
   if (head) {
     const link = readLink(head);
     if (!link || !samePosition(link, pos)) writeLink(head, pos);
-    syncArming(head, arming(record.ammo, special, aimEvent(record.tiers.rate, record.tiers.range)), record.tiers.damage);
+    syncArming(head, arming(record.ammo, special, aimFor(record)), record.tiers.damage);
   }
 
   if (dirty) storage.put(record);
@@ -453,7 +461,14 @@ function statusLine(dim: Dimension, record: TurretRecord, head: Entity | undefin
   const base =
     `§6Bulwark Turret §7ammo §f${record.ammo}/${AMMO_CAP}§7, kills §f${record.kills}§7, ` +
     `head ${headState}§7.${firing} §7Tiers: §f${describeTiers(record.tiers)}§7.`;
-  const gated = specialGated(feeders(dim, record), record.tiers.gate);
+  const pol = settings.policy();
+  const capped = effectiveRange(record.tiers.range, pol.rangeCap) < record.tiers.range;
+  const notes: string[] = [];
+  if (capped) notes.push(`§7Range is capped at §f${pol.rangeCap}§7 blocks by the pack settings.`);
+  if (!pol.specialAmmo) notes.push("§7Special ammo is switched off in the pack settings.");
+  if (!pol.upgrades) notes.push("§7Upgrades are switched off in the pack settings.");
+  const gated = pol.specialAmmo ? specialGated(feeders(dim, record), record.tiers.gate) : undefined;
+  if (notes.length > 0) return `${base} ${notes.join(" ")}`;
   if (gated) {
     const need = gateFor(gated);
     return (
@@ -489,6 +504,10 @@ export function interact(player: Player, block: Block): void {
 
     // An upgrade material first: one item raises one axis one tier.
     const upgrade = held ? feedUpgrade(record.tiers, held.typeId) : { kind: "not_material" as const };
+    if (upgrade.kind !== "not_material" && !settings.policy().upgrades) {
+      player.sendMessage("§7Upgrades are switched off in the pack settings.");
+      return;
+    }
     if (upgrade.kind === "upgrade" && equippable && held) {
       takeOne(equippable, held);
       record.tiers = withTier(record.tiers, upgrade.axis, upgrade.tier);

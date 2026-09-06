@@ -1,37 +1,47 @@
 import { EntityComponentTypes, system, world, type Entity } from "@minecraft/server";
 import { withBlock } from "@qol/shared/engine/safeBlock";
-import { consumeShot } from "../core/ammo";
+import { PROJECTILES, consumeShot } from "../core/ammo";
+import { type Position } from "../core/record";
 import { isAtBlock, reconcileEntity, type EntityVerdict, type Head } from "../core/reconcile";
-import { TURRET_ENTITY, isTurretEntity, readLink, removeHead, syncArming } from "./head";
+import { TURRET_ENTITY, isTurretEntity, readKind, readLink, removeHead, syncArming } from "./head";
 import * as storage from "./storage";
-import { TURRET_BLOCK, retire } from "./turret";
+import { TURRET_BLOCK, armingFor, chargeSpecial, retire } from "./turret";
 
 /**
  * World-level hooks: the parts of the design the engine cannot do for us.
  *
  *  - Shot accounting. `minecraft:behavior.ranged_attack` fires whenever it has
- *    a target; nothing in the AI knows about ammo. Every arrow the world spawns
- *    is attributed through its projectile owner, and a turret's arrow costs one
- *    from the buffer. Zero ammo disarms the head by swapping its component
- *    group out, which is the only way to stop engine AI from firing.
+ *    a target; nothing in the AI knows about ammo. Every projectile the world
+ *    spawns is attributed through its projectile owner, and a turret's shot
+ *    costs one: from the buffer for a plain arrow, from the feeding hopper's
+ *    stack for anything special (core/ammo.ts). Zero ammo disarms the head by
+ *    swapping its component group out, which is the only way to stop engine
+ *    AI from firing.
  *  - Kill counting. `on_kill` was fixed for melee goals only (docs/README.md);
- *    a ranged turret gets nothing, so kills come from `entityDie` and the
- *    damaging entity, which for an arrow is its shooter.
+ *    a ranged turret gets nothing, so kills come from `entityDie`. For a
+ *    vanilla arrow the damaging entity is expected to be the shooter; for a
+ *    custom projectile it is measured to be the projectile itself, with its
+ *    owner unreadable by then (`rig_custom_bolt_has_owner`). So every
+ *    attributed projectile is remembered by id until it is gone, and a kill
+ *    is looked up either way.
  *  - The entity side of reconciliation. A head that loads with no block under
  *    it, or whose block's record names a different head, removes itself.
  */
 
 const TAG = "[Bulwark]";
-const ARROW = "minecraft:arrow";
 /** Ticks between sweeps over loaded heads. Native-filtered, so it is cheap. */
 const SWEEP_TICKS = 200;
 const DIMENSIONS = ["minecraft:overworld", "minecraft:nether", "minecraft:the_end"];
+/** Projectiles remembered for kill attribution; an arrow in the ground lives a minute. */
+const SHOT_MEMORY = 512;
 
 export const stats = {
   shots: 0,
-  /** Arrows whose owner was unknown even a tick after spawning. */
+  /** Projectiles whose owner was unknown even a tick after spawning. */
   unattributed: 0,
   kills: 0,
+  /** Kills found through the projectile map rather than the damaging entity. */
+  killsByProjectile: 0,
   orphansRemoved: 0,
   /** Records whose block was found loaded and not a turret. */
   staleRetired: 0,
@@ -44,31 +54,44 @@ export const stats = {
 // Shots
 // ---------------------------------------------------------------------------
 
-function ownerOf(arrow: Entity): Entity | undefined {
+/** Projectile id -> the block of the turret that fired it, newest last. */
+const shotBy = new Map<string, Position>();
+
+function remember(projectileId: string, link: Position): void {
+  shotBy.set(projectileId, link);
+  if (shotBy.size > SHOT_MEMORY) {
+    const oldest = shotBy.keys().next().value;
+    if (oldest !== undefined) shotBy.delete(oldest);
+  }
+}
+
+function ownerOf(projectile: Entity): Entity | undefined {
   try {
-    return arrow.getComponent(EntityComponentTypes.Projectile)?.owner;
+    return projectile.getComponent(EntityComponentTypes.Projectile)?.owner;
   } catch {
     return undefined;
   }
 }
 
 /**
- * Charge a turret for an arrow it fired.
+ * Charge a turret for a projectile it fired.
  *
  * The owner is read at spawn and, if missing, once more a tick later - the
- * probe protocol measures which of those is needed. An arrow with no owner by
- * then is a player's or a dispenser's and costs nobody anything.
+ * probe protocol measures which of those is needed. A projectile with no
+ * owner by then is a player's or a dispenser's and costs nobody anything.
  */
-function attributeShot(arrow: Entity, retry: boolean): void {
+function attributeShot(projectile: Entity, retry: boolean): void {
   let owner: Entity | undefined;
+  let projectileId: string;
   try {
-    if (!arrow.isValid) return;
-    owner = ownerOf(arrow);
+    if (!projectile.isValid) return;
+    projectileId = projectile.id;
+    owner = ownerOf(projectile);
   } catch {
     return;
   }
   if (!owner) {
-    if (retry) system.run(() => attributeShot(arrow, false));
+    if (retry) system.run(() => attributeShot(projectile, false));
     else stats.unattributed++;
     return;
   }
@@ -76,12 +99,48 @@ function attributeShot(arrow: Entity, retry: boolean): void {
 
   const link = readLink(owner);
   const record = link ? storage.get(link) : undefined;
-  if (!record) return;
+  if (!link || !record) return;
 
-  record.ammo = consumeShot(record.ammo);
-  storage.put(record);
+  remember(projectileId, link);
   stats.shots++;
-  syncArming(owner, record.ammo);
+
+  let dim;
+  try {
+    dim = owner.dimension;
+  } catch {
+    return;
+  }
+  const kind = readKind(owner) ?? "arrow";
+  if (kind === "arrow") {
+    record.ammo = consumeShot(record.ammo);
+    storage.put(record);
+  } else if (!chargeSpecial(dim, link, kind)) {
+    // The hopper emptied between the block's tick and this shot. Nothing to
+    // charge; re-arm now rather than fire free until the next tick.
+    syncArming(owner, armingFor(dim, record));
+    return;
+  }
+  syncArming(owner, armingFor(dim, record));
+}
+
+/** The turret that fired the projectile or entity a kill names, if any. */
+function killerOf(damagingEntity: Entity | undefined, damagingProjectile: Entity | undefined): Position | undefined {
+  if (isTurretEntity(damagingEntity)) return readLink(damagingEntity);
+  for (const e of [damagingProjectile, damagingEntity]) {
+    let id: string | undefined;
+    try {
+      id = e?.id;
+    } catch {
+      continue;
+    }
+    if (id === undefined) continue;
+    const link = shotBy.get(id);
+    if (link) {
+      stats.killsByProjectile++;
+      return link;
+    }
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +240,8 @@ export function headCensus(): Record<string, number> {
 // ---------------------------------------------------------------------------
 
 export function install(): void {
+  shotBy.clear();
+
   world.afterEvents.entitySpawn.subscribe((ev) => {
     let entity: Entity;
     let typeId: string;
@@ -191,7 +252,7 @@ export function install(): void {
       return;
     }
     // Cheapest test first: nearly every spawn in the world exits here.
-    if (typeId === ARROW) attributeShot(entity, true);
+    if (PROJECTILES.has(typeId)) attributeShot(entity, true);
     else if (typeId === TURRET_ENTITY) checkHead(entity);
   });
 
@@ -204,10 +265,9 @@ export function install(): void {
   });
 
   world.afterEvents.entityDie.subscribe((ev) => {
-    const shooter = ev.damageSource.damagingEntity;
-    if (!isTurretEntity(shooter)) return;
-    const link = readLink(shooter);
-    const record = link ? storage.get(link) : undefined;
+    const link = killerOf(ev.damageSource.damagingEntity, ev.damageSource.damagingProjectile);
+    if (!link) return;
+    const record = storage.get(link);
     if (!record) return;
     record.kills++;
     storage.put(record);

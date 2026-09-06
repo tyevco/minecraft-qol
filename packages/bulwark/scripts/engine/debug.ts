@@ -2,7 +2,7 @@ import { Player, system, world, type Entity } from "@minecraft/server";
 import { withBlock } from "@qol/shared/engine/safeBlock";
 import { AMMO_CAP } from "../core/ammo";
 import { linkKey } from "../core/record";
-import { isTurretEntity, readArmed } from "./head";
+import { isTurretEntity, readArmed, readKind } from "./head";
 import * as hooks from "./hooks";
 import * as storage from "./storage";
 import * as turret from "./turret";
@@ -38,7 +38,8 @@ function debug(player: Player): void {
   );
   player.sendMessage(
     `§7shots §f${h.shots}§7 (unattributed §f${h.unattributed}§7) kills §f${h.kills}§7 ` +
-      `pulled §f${t.pulled}§7 fed §f${t.fed}§7 sweeps §f${h.sweeps}§7 ` +
+      `(by projectile §f${h.killsByProjectile}§7) pulled §f${t.pulled}§7 fed §f${t.fed}§7 ` +
+      `charged §f${t.charged}§7 (uncharged §f${t.uncharged}§7) sweeps §f${h.sweeps}§7 ` +
       `last §f${h.lastSweep.keep}k/${h.lastSweep.remove}r/${h.lastSweep.inert}i`,
   );
 
@@ -69,7 +70,7 @@ function debug(player: Player): void {
     ? "§cnever spawned"
     : !isTurretEntity(head)
       ? `§cid ${best.entityId} not loaded`
-      : `§f${head.id}§7 armed=§f${readArmed(head)}§7 at §f${v3(head.location)}`;
+      : `§f${head.id}§7 armed=§f${readArmed(head)}§7 kind=§f${readKind(head) ?? "-"}§7 at §f${v3(head.location)}`;
   player.sendMessage(
     `§7nearest §f${best.key}§7 ammo §f${best.ammo}/${AMMO_CAP}§7 kills §f${best.kills}§7 head ${headState}`,
   );

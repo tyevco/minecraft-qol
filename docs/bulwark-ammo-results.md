@@ -20,6 +20,22 @@ newest vanilla behaviour pack on it is `vanilla_1.26.45`), `@minecraft/server`
 | `splash_potion 1 21` | `minecraft:splash_potion` | `%potion.heal.splash.name` | effect `minecraft:healing`, delivery `ThrownSplash` | false |
 | `potion 1 25` | `minecraft:potion` | `%potion.poison.name` | effect `minecraft:poison`, delivery `Consume` | false |
 | `fire_charge 1` | `minecraft:fire_charge` | `item.fireball.name` | none | false |
+| `arrow 1 35` | `minecraft:arrow` | `tipped_arrow.effect.weakness` | none | false |
+| `arrow 1 36` | `minecraft:arrow` | `tipped_arrow.effect.weakness` | none | false |
+| `arrow 1 37` | `minecraft:arrow` | `tipped_arrow.effect.wither` | none | false |
+| `arrow 1 19` | `minecraft:arrow` | `tipped_arrow.effect.moveSlowdown` | none | false |
+| `arrow 1 22` | `minecraft:arrow` | `tipped_arrow.effect.heal` | none | false |
+| `arrow 1 24` | `minecraft:arrow` | `tipped_arrow.effect.harm` | none | false |
+| `splash_potion 1 17` | `minecraft:splash_potion` | `%potion.moveSlowdown.splash.name` | `minecraft:slowness`, `ThrownSplash` | false |
+| `splash_potion 1 18` | `minecraft:splash_potion` | `%potion.moveSlowdown.splash.name` | `minecraft:long_slowness`, `ThrownSplash` | false |
+| `splash_potion 1 42` | `minecraft:splash_potion` | `%potion.moveSlowdown.splash.name` | `minecraft:strong_slowness`, `ThrownSplash` | false |
+| `splash_potion 1 34` | `minecraft:splash_potion` | `%potion.weakness.splash.name` | `minecraft:weakness`, `ThrownSplash` | false |
+| `splash_potion 1 36` | `minecraft:splash_potion` | `%potion.wither.splash.name` | `minecraft:wither`, `ThrownSplash` | false |
+| `lingering_potion 1 34` | `minecraft:lingering_potion` | `%potion.weakness.linger.name` | `minecraft:weakness`, `ThrownLingering` | false |
+| `snowball 3` | `minecraft:snowball` | `item.snowball.name` | none | false |
+
+(The second block of rows is a second run, made when the pack needed the
+keys for the tints it fires.)
 
 Every stack reported `getComponents()` empty; the arrows carried the one tag
 `minecraft:arrow`, nothing else did.
@@ -48,7 +64,9 @@ Every stack reported `getComponents()` empty; the arrows carried the one tag
   `tipped_arrow.effect.<effect>` against `item.arrow.name` for a plain arrow.
   So a turret *can* tell what it was fed, by that key. The key does not
   distinguish strength or duration: aux 18 (slowness) and aux 43 (strong
-  slowness) both read `moveSlowdown`.
+  slowness) both read `moveSlowdown`, 35 and 36 both `weakness`. The keys the
+  pack matches on are `moveSlowdown`, `weakness` and `wither`; `heal`, `harm`,
+  `poison` and `nightVision` are read and refused (`core/ammo.ts`).
 - **`isStackableWith` a plain arrow is the cheap tipped-or-not test**: true
   only for the plain one. It says nothing about which tint.
 - **An arrow's aux value is its potion's registry index plus one.** 6 →
@@ -77,9 +95,9 @@ Every stack reported `getComponents()` empty; the arrows carried the one tag
   predates it.
 
 **Confidence.** One reading per stack. The localization keys are engine
-strings with no documentation behind them, so treat the four key-to-effect
+strings with no documentation behind them, so treat the nine key-to-effect
 pairs above as measured and any other tip as expected until read. The
-plus-one rule is four readings that agree with three vanilla definitions.
+plus-one rule is ten readings that agree with three vanilla definitions.
 
 **What it changes.** Nothing shipped. `qolprobe:item-at` stays in the probe
 pack for the next tint. The design that follows from this is in
@@ -152,6 +170,40 @@ Each line is the test's own log message.
   (`1 arrows fired, 0 hit the husk, effects [slowness]`), while it reported
   both snowball hits. One reading; do not count arrow hits with that event
   until it has been read again.
+
+---
+
+# Phase 3a in the pack, measured
+
+**What was measured.** Five `turret_*` GameTests on the shipped turret,
+each a placed turret with a hopper pointing into it, filled through the
+console's `/replaceitem` where a tint is needed, and a husk in front. Every
+line is the test's own log message.
+
+| Test | Reading |
+| --- | --- |
+| `turret_fires_tipped_from_hopper` | 8 arrows of slowness in the hopper: the husk had slowness after **3 shots, hopper holds 5 tipped of 8**, no plain arrow ever appeared in it. One per shot, nothing pulled into the buffer |
+| `turret_leaves_healing_tint_alone` | 4 arrows of healing: **0 shots in 120 ticks, hopper holds 4 of 4** |
+| `turret_throws_snowballs_from_hopper` | 8 snowballs: **2 thrown, 2 hit, husk health 20/20, hopper holds 6 of 8** |
+| `turret_throws_splash_from_hopper` | 4 splash potions of weakness, one per slot: the husk weakened after **2 thrown, hopper holds 2 of 4** |
+| `turret_prefers_special_over_buffer` | 8 plain arrows and 4 of slowness in one hopper: the plain ones left for the buffer, the tipped stayed; the first shots were the tint (**husk slowed, 2 shots, hopper tipped 2 of 4**) |
+
+**What it means.**
+
+- Hopper-direct ammo works end to end on the shipped turret: the head's
+  shooter group follows the hopper, the shot is charged to the stack, and
+  the buffer never sees a tipped arrow.
+- **Splash potions do not stack.** `/replaceitem … splash_potion 4 34` left
+  one potion in the slot, so a hopper feeds them one slot at a time; five
+  slots is five throws.
+- **A dynamic property is private to the pack that wrote it.** The
+  GameTest pack read `undefined` for the head's `bw:link`, `bw:armed` and
+  `bw:kind` and for the world's `bw:turrets`, in the same tick the turret was
+  plainly acting on them. So a test cannot read another pack's record or
+  flags; it infers them from what the world shows, which is why the kill
+  counter has no GameTest (its mechanism is pinned by
+  `rig_custom_bolt_has_owner`, and the pack's `bulwark:debug` line is the
+  in-game check). Row added to the corrections table.
 
 **Also measured on the way.** At entity format `1.26.40`,
 `ranged_attack.attack_interval` as a bare number is rejected

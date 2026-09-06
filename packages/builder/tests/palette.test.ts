@@ -4,7 +4,12 @@ import { BUILDINGS } from "../../../tools/structures/buildings";
 import { materials, type Cell } from "../scripts/core/blueprint";
 import { applyPalette, FAMILIES, PALETTES, paletteByKey, paletteTable, shapeStates, sourcePaletteOf, swapTable } from "../scripts/core/palette";
 
-const cells = (key: string): Cell[] => BUILDINGS.find((b) => b.key === key)!.blocks().map((b) => ({ x: b.x, y: b.y, z: b.z, name: b.name, states: b.states }));
+/** A catalogue building's cells as the builder pack ships them: the villages' job post left out (`builderBlueprint` in tools/structures/generate.ts). */
+const cells = (key: string): Cell[] =>
+  BUILDINGS.find((b) => b.key === key)!
+    .blocks()
+    .filter((b) => b.name !== "villages:post")
+    .map((b) => ({ x: b.x, y: b.y, z: b.z, name: b.name, states: b.states }));
 
 describe("palettes", () => {
   it("know their families as the generator does", () => {
@@ -53,6 +58,27 @@ describe("palettes", () => {
     const stair = out.find((c) => c.name === "minecraft:deepslate_tile_stairs")!;
     expect(Object.keys(stair.states).sort()).toEqual(["upside_down_bit", "weirdo_direction"]);
     expect(out.filter((c) => c.name === "minecraft:water")).toHaveLength(1);
+  });
+  it("swap an awning stripe for stripe: the colour to the people's, white to white, and none for the shared row", () => {
+    const reed = swapTable(paletteByKey("tinker")!, paletteByKey("reedfolk")!);
+    expect(reed["minecraft:red_wool"]).toBe("minecraft:green_wool");
+    expect(reed["minecraft:white_wool"]).toBeUndefined();
+    expect(swapTable(paletteByKey("tinker")!, paletteByKey("tallfolk")!)["minecraft:red_wool"]).toBe("minecraft:yellow_wool");
+    expect(swapTable(paletteByKey("tinker")!, paletteByKey("stonefolk")!)["minecraft:red_wool"]).toBeUndefined(); // red already
+    expect(swapTable(paletteByKey("tinker")!, paletteByKey("shared")!)["minecraft:red_wool"]).toBeUndefined(); // no awning to take
+    // The stall as the reedfolk build it: mangrove footing, green and white stripes, the counters and posts as authored.
+    expect(materials(applyPalette(cells("tinker_stall"), paletteTable("tinker_stall", "reedfolk")))).toEqual({
+      "minecraft:mangrove_log": 49,
+      "minecraft:green_wool": 28,
+      "minecraft:white_wool": 21,
+      "minecraft:spruce_fence": 10,
+      "minecraft:barrel": 7,
+      "minecraft:chest": 1,
+      "minecraft:lantern": 1,
+    });
+    const shared = applyPalette(cells("tinker_stall"), paletteTable("tinker_stall", "shared"));
+    expect(materials(shared)["minecraft:red_wool"]).toBe(28);
+    expect(materials(shared)["minecraft:stone_bricks"]).toBe(49);
   });
   it("raise the larder as tinker: brick footing and walls, copper corners, a copper roof", () => {
     const m = materials(applyPalette(cells("shared_larder"), paletteTable("shared_larder", "tinker")));

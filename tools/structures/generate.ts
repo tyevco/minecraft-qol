@@ -45,7 +45,7 @@ for (const bp of BUILDINGS) {
 // three blueprints a builder raises from the table, shipped in the builder
 // pack as `builder:<key>`. Small, and no stand-ins; the rest of the
 // catalogue follows once the placer is measured against these.
-export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn"] as const;
+export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall"] as const;
 const BUILDER = resolve(ROOT, "packages/builder/behavior_pack/structures/builder");
 mkdirSync(BUILDER, { recursive: true });
 for (const key of BUILDER_KEYS) {

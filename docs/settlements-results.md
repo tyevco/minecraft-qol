@@ -260,9 +260,21 @@ stone bricks, deepslate tile stairs, tiles and slab, fences and a lantern:
 - The chest was empty when the well stood, and held exactly the 76
   stonefolk items again when it came down, none of the tallfolk's.
 
+The awning row joined with the market stall, the eighth blueprint (authored
+under tinker, §2.5: "the trader's block for every people, with the awning
+colours swapped"). An awning role names two blocks, the colour and white,
+and a swap goes stripe for stripe rather than every source block to the
+target's first, so white stays white; the shared row has no awning and
+leaves one as authored. Measured with the stall as the reedfolk build it in
+the sixteen-block arena, from a chest of mangrove logs, green and white wool,
+fences, barrels, a chest and a lantern: accepted, all 117 cells matched the
+shipped stall through the table with 77 swapped (49 footing, 28 red stripes
+to green), the awning layer read 28 green, 21 white and no red, the chest
+was empty when it stood and held exactly the 117 reedfolk items when it came
+down, no brick or red wool among them.
+
 Not measured: how the swapped buildings look, which needs a client (pack
-README, "To confirm in game"). The design's awning row is not in the table
-because no shipped blueprint has an awning; it joins with the stalls.
+README, "To confirm in game").
 
 ## The walk (§8.4)
 

@@ -9,11 +9,13 @@ job in the villages pack takes it over. Measurements:
 
 ## What is built
 
-- **Seven blueprints**, written by the structure generator into
+- **Eight blueprints**, written by the structure generator into
   `behavior_pack/structures/builder/` as `builder:<key>` from the same
   source as the catalogue (`tools/structures/buildings.ts`,
   `builderBlueprint` in `generate.ts`): the tallfolk well, gatehouse,
-  farmhouse and barn, and the shared larder, wall segment and inn. Each
+  farmhouse and barn, the shared larder, wall segment and inn, and the
+  tinker market stall, the trader's stall for every people once its
+  stripes take their colour (below). Each
   building's job post is left out: it is the villages pack's block, and a
   block the world does not know is dropped from a structure on load. One
   **blueprint item** per building (`builder:blueprint_<key>`, a plain item
@@ -79,8 +81,10 @@ job in the villages pack takes it over. Measurements:
   again with that palette's materials against the chest and "As authored"
   to go back. A swap is a table over the building's blocks
   (`scripts/core/palette.ts`, pure): every block the source people's
-  palette names in a role (footing, wall, corner, roof, ridge, window)
-  becomes the target's block for that role, and the source materials'
+  palette names in a role (footing, wall, corner, roof, ridge, window,
+  awning) becomes the target's block for that role, stripe for stripe for
+  an awning (the colour to the people's, white staying white; the shared
+  row has no awning and leaves one as authored), and the source materials'
   stairs and slabs become the target material's (a target with no shaped
   blocks, the reedfolk's logs and the drover's clay, takes its roof's).
   Fences, chests, lanterns, doors, beds and hay are nobody's and stay as
@@ -90,7 +94,8 @@ job in the villages pack takes it over. Measurements:
   record remembers the palette, so the building is repaired and taken down
   in the blocks it stands in. Buildings are authored in their people's
   palette by key (`tallfolk_well`, `shared_larder`); a survey has no
-  people, so it offers no swaps.
+  people, so it offers no swaps. Raised as the reedfolk build it, the
+  stall stands on mangrove logs under green and white stripes.
 - **Records** in the shared position index (`bd:buildings`, schema 3),
   keyed by the building's origin: key, rotation, box, phase (building,
   built, removing, repairing), how far it got, the table it was raised
@@ -119,8 +124,7 @@ job in the villages pack takes it over. Measurements:
 
 Not built, filed as issues: the hand-over into the villages pack, where the
 builder job does this work and the trader sells the blueprints (#80, #73).
-The rest of the catalogue waits on that, and the design's awning row (wool
-stalls) with it: no shipped blueprint has one yet.
+The rest of the catalogue waits on that.
 
 ## Measured
 
@@ -167,7 +171,9 @@ stalls) with it: no shipped blueprint has one yet.
   build it goes up from a chest of stone bricks and deepslate tiles alone,
   matches the shipped well through the swap table cell for cell (67 cells
   swapped, the 24 stairs keeping their direction) and comes down into the
-  stonefolk blocks, none of the tallfolk's.
+  stonefolk blocks, none of the tallfolk's; the stall raised as the reedfolk
+  build it goes up from mangrove logs and green and white wool, its awning
+  28 green and 21 white and no red, and comes down into those.
 
 ## To confirm in game
 
@@ -188,8 +194,9 @@ issue #79; paste what you see there.
   it" reopens the form with stone bricks and deepslate in the materials
   list, and the well raised from it looks stonefolk. Whether the swapped
   buildings *read* as their people's (the tinker larder in brick and copper,
-  the reedfolk well on mangrove) is a matter of taste for a client; the
-  rows are in `core/palette.ts`, one line each.
+  the reedfolk well on mangrove, the stall's stripes in each people's
+  colour) is a matter of taste for a client; the rows are in
+  `core/palette.ts`, one line each.
 - **The builder's look**, seen once: a tallfolk in the blue outfit, hammer
   showing. Still to judge: the hat hidden, the pack on its back, the swing
   while placing (`builder:working` reaching the client), and the hammer now

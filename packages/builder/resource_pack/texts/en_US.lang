@@ -8,5 +8,6 @@ item.builder:blueprint_tallfolk_gatehouse=Blueprint: Gatehouse
 item.builder:blueprint_tallfolk_farmhouse=Blueprint: Farmhouse
 item.builder:blueprint_tallfolk_barn=Blueprint: Barn
 item.builder:blueprint_shared_inn=Blueprint: Inn
+item.builder:blueprint_tinker_stall=Blueprint: Market Stall
 entity.builder:builder.name=Builder
 entity.builder:waypoint.name=Waypoint

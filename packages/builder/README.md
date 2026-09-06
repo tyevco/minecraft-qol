@@ -53,6 +53,21 @@ job in the villages pack takes it over. Measurements:
   block that is no longer the building's (a different type stands there) is
   left alone and skipped. If the chest is gone, short or full the job stops
   where it is and says so; the record keeps its progress.
+- **Repair** (§5.4): "Repair" beside "Take down" on the empty-hand form.
+  The builder goes over the building in placement order and fills every
+  cell that is air, a plant or missing water, one item from the chest each;
+  a cell that holds a block of another kind is somebody else's now and is
+  left, and the finishing line says how many were. The same step decides
+  as building does, so a free building repairs free.
+- **Survey** (§5.4): two **survey stakes** (`builder:survey_stake`, a post
+  with a blue flag) mark a box, at most sixteen each way. Tap the table
+  empty-handed with exactly two stakes near it and "Survey the box between
+  the stakes" saves what stands between them, stakes left out, as a new
+  structure in the world (`builder:survey_<n>`, a fresh name every time
+  since a world caches a structure at first use) and hands you a blueprint
+  item that carries the key on the stack. That item places like any other:
+  the copy is checked, paid for and raised block by block, and comes down
+  into the chest.
 - **Records** in the shared position index (`bd:buildings`, schema 2),
   keyed by the building's origin: key, rotation, box, phase (building,
   built, removing), how far it got, and the table it was raised from. Jobs
@@ -69,15 +84,16 @@ job in the villages pack takes it over. Measurements:
   from a command (the origin is the footing corner, the table the nearest
   within sixteen blocks, the rotation 0–3, degrees, a `StructureRotation`
   name or the way the door should face); `builder:remove x y z
-  [ticksPerBlock]`; `builder:resume x y z`; `builder:forget x y z [radius]`.
+  [ticksPerBlock]`; `builder:repair x y z [ticksPerBlock]`; `builder:resume
+  x y z`; `builder:forget x y z [radius]`; `builder:survey x1 y1 z1 x2 y2
+  z2`, which saves the box and names the key in its verdict.
   Each leaves its verdict as the name tag of a `builder:verdict`-tagged
   waypoint at the spot for sixty ticks, because a world dynamic property
   cannot be read from another pack (measured).
 
-Not built, filed as issues: **repair** and **survey** (§5.4, #78); the
-hand-over into the villages pack, where the builder job does this work and
-the trader sells the blueprints (#80, #73). The rest of the catalogue and the
-palette swaps wait on that.
+Not built, filed as issues: the hand-over into the villages pack, where the
+builder job does this work and the trader sells the blueprints (#80, #73).
+The rest of the catalogue and the palette swaps wait on that.
 
 ## Measured
 
@@ -96,7 +112,15 @@ palette swaps wait on that.
   hammer hung head-down along the forearm, so the rig gained an upright
   grip (`toolUp` in `tools/models/generate.ts`), used by the builder only
   until the villages' people are looked at the same way.
-- Five GameTests pass headlessly (`suites/builder.ts`): the well goes up
+- **Repair and survey, pinned** (`builder_repair_fills_the_gaps`,
+  `builder_survey_makes_a_blueprint`): four blocks knocked out of a finished
+  well come back from the chest, exactly four items leave it, and a stone put
+  in a fifth cell stays; a 3x3x3 box between two stakes surveys to eight
+  cells (the stakes and the air left out) and raises again elsewhere cell
+  for cell, states included. `createFromWorld` saves air as a block and the
+  reader drops it; `Structure.setBlockPermutation(at, undefined)` clears a
+  cell, and `saveToWorld` keeps the change.
+- Eight GameTests pass headlessly (`suites/builder.ts`): the well goes up
   block by block and matches the structure cell for cell, materials gone
   from the chest; a stone in the way is refused by name and position; a
   chest one cobblestone short is refused naming it; remove puts exactly the
@@ -136,6 +160,13 @@ issue #79; paste what you see there.
 - **The verdict marker** is a waypoint entity with a name tag, so for sixty
   ticks after a hatch the builder may walk toward it; it is only spawned by
   the script events, never by the form.
+- **A survey on a real build**: two stakes at opposite corners of your
+  own house, the table's "Survey" button, a blueprint item named "Survey n"
+  in your hand, and a copy raised where you stand. The stakes' own cells are
+  air in the copy. If the copy carries blocks you did not build (a stray
+  torch, grass), that is what stood in the box; if it is missing blocks,
+  see whether they were block entities (chests keep their block, not their
+  contents; signs and banners may not survive `createFromWorld`).
 - **A door comes down whole**: the larder's door is two cells and one item;
   taking the upper half first may pop the lower as a drop the way the roof
   popped the lantern. Not in a GameTest because the larder is 7×8×7 and the

@@ -162,6 +162,30 @@ What was learned on the way:
   the well at two ticks a block finished inside the test's budget with the
   builder walking behind.
 
+## Repair and survey (§5.4)
+
+Built after the placer was measured, pinned by two more GameTests:
+
+- **Repair**: a finished well with four cells knocked out (two footing
+  cobblestone, a fence post, the hanging lantern) and a stone put in a
+  fifth; `builder:repair` put the four back from a chest holding five items,
+  left exactly one, and left the stone where it was. Repair decides per cell
+  with `repairStatus` (core/job.ts): the building's own block by type is
+  "ours", air, a plant or missing water is "missing", anything else is
+  "other" and is never overwritten.
+- **Survey**: a 3×3×3 box between two `builder:survey_stake` blocks at
+  opposite corners, one high and one low, holding six cobblestone, a fence post and a stair;
+  `createFromWorld` with `saveMode: World` under `builder:survey_<n>`,
+  `Structure.setBlockPermutation(cell, undefined)` on the two stake cells,
+  `saveToWorld()`. The structure read back **8 cells**: the saved air
+  (measured before: a saved structure holds air as `minecraft:air` blocks)
+  and the cleared stakes are nothing to the reader. `builder:place
+  survey_<n>` raised the copy four blocks away: **27 of 27 cells** equal
+  to the original, the stair's states included, the stakes' cells air.
+- The survey counter is a world dynamic property (`bd:surveys`), so the key
+  in the verdict is whatever number the world is up to; the test reads it
+  off the verdict rather than assuming 1.
+
 ## The walk (§8.4)
 
 Not measured for its own sake. The builder is a `builder:builder` biped

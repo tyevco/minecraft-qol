@@ -1,4 +1,4 @@
-import { ItemStack, StructureRotation, StructureSaveMode, world, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, ItemStack, StructureRotation, StructureSaveMode, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
 import { container, count, floor, put } from "./rig";
 
@@ -237,3 +237,76 @@ registerAsync("qol", "builder_turned_well_matches_the_games_rotation", async (te
     test.assert(r.right === WELL_CELLS, `expected all ${WELL_CELLS} cells as the game turns them, found ${r.right}`);
   });
 }).maxTicks(800).structureName("qol:arena");
+
+// Repair (settlements.md §5.4): four blocks knocked out of a finished well and
+// a stone put where a fifth should be. The gaps are filled from the chest,
+// one item each and nothing more; the stone is somebody else's and stays.
+registerAsync("qol", "builder_repair_fills_the_gaps", async (test) => {
+  rig(test);
+  place(test, 0, 1);
+  for (let t = 0; t < 600 && compare(test).right < WELL_CELLS; t += 10) await test.idle(10);
+  test.assert(compare(test).right === WELL_CELLS, `expected the well finished before the damage, ${compare(test).right} of ${WELL_CELLS} cells stand`);
+  // Two cobblestone of the footing, a fence post and the hanging lantern, then a stone in a third footing cell.
+  const gaps: Vector3[] = [{ x: 0, y: 0, z: 0 }, { x: 4, y: 0, z: 4 }, { x: 1, y: 2, z: 1 }, { x: 2, y: 3, z: 2 }];
+  for (const g of gaps) test.setBlockType("minecraft:air", { x: ORIGIN.x + g.x, y: ORIGIN.y + g.y, z: ORIGIN.z + g.z });
+  const stoneAt = { x: ORIGIN.x + 4, y: ORIGIN.y, z: ORIGIN.z };
+  test.setBlockType("minecraft:stone", stoneAt);
+  // The chest: what the gaps need, plus one cobblestone that must stay.
+  put(test, CHEST, new ItemStack("minecraft:cobblestone", 3), 0);
+  put(test, CHEST, new ItemStack("minecraft:oak_fence", 1), 1);
+  put(test, CHEST, new ItemStack("minecraft:lantern", 1), 2);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:repair ${o.x + 2} ${o.y + 2} ${o.z + 2} 1`);
+  await test.idle(5);
+  test.assert(last(test).startsWith("builder:repair ok"), `expected the repair to start, got "${last(test)}"`);
+  test.succeedWhen(() => {
+    const r = compare(test);
+    test.assert(r.right === WELL_CELLS - 1, `expected every cell but the stone's back as the structure has it, ${r.right} of ${WELL_CELLS} match`);
+    test.assertBlockPresent("minecraft:stone", stoneAt, true);
+    test.assert(chestTotal(test) === 1, `expected one cobblestone left in the chest after four gaps were filled, found ${chestTotal(test)} item(s)`);
+  });
+}).maxTicks(1600).structureName("qol:arena");
+
+// Survey (settlements.md §5.4): a little thing between two stakes is saved as
+// a new blueprint and raised again elsewhere, cell for cell, without the
+// stakes and without the air a saved structure carries as blocks.
+registerAsync("qol", "builder_survey_makes_a_blueprint", async (test) => {
+  rig(test, {});
+  const dim = test.getDimension();
+  // A 3x2 cobblestone pad at y = 1 with a fence post and a stair on it; the
+  // stakes at two opposite corners of the 3x3x3 box, one high and one low.
+  for (let x = 1; x <= 3; x++) for (let z = 1; z <= 2; z++) test.setBlockType("minecraft:cobblestone", { x, y: 1, z });
+  test.setBlockType("minecraft:oak_fence", { x: 2, y: 2, z: 2 });
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:stone_stairs", { weirdo_direction: 1, upside_down_bit: false }), { x: 3, y: 2, z: 1 });
+  test.setBlockType("builder:survey_stake", { x: 1, y: 3, z: 1 });
+  test.setBlockType("builder:survey_stake", { x: 3, y: 1, z: 3 });
+  const a = test.worldBlockLocation({ x: 1, y: 3, z: 1 });
+  const b = test.worldBlockLocation({ x: 3, y: 1, z: 3 });
+  dim.runCommand(`scriptevent builder:survey ${a.x} ${a.y} ${a.z} ${b.x} ${b.y} ${b.z}`);
+  await test.idle(5);
+  const verdict = last(test, { x: 1, y: 3, z: 1 });
+  const m = /builder:survey ok: (survey_\d+) (\d+)x(\d+)x(\d+), (\d+) cells/.exec(verdict);
+  test.assert(m !== null, `expected the survey to be taken, got "${verdict}"`);
+  test.assert(m![2] === "3" && m![3] === "3" && m![4] === "3", `expected a 3x3x3 box, got ${m![2]}x${m![3]}x${m![4]}`);
+  test.assert(m![5] === "8", `expected 8 cells (6 cobblestone, a fence, a stair; no stakes, no air), got ${m![5]}`);
+  // Raise the copy four blocks south, free, and compare it with the original cell for cell.
+  const o = test.worldBlockLocation({ x: 1, y: 1, z: 5 });
+  dim.runCommand(`scriptevent builder:place ${m![1]} ${o.x} ${o.y} ${o.z} 0 1 free`);
+  await test.idle(5);
+  test.assert(last(test, { x: 1, y: 1, z: 5 }).startsWith("builder:place ok"), `expected the copy to start, got "${last(test, { x: 1, y: 1, z: 5 })}"`);
+  test.succeedWhen(() => {
+    let same = 0;
+    const wrong: string[] = [];
+    for (let x = 0; x < 3; x++)
+      for (let y = 0; y < 3; y++)
+        for (let z = 0; z < 3; z++) {
+          const src = test.getBlock({ x: 1 + x, y: 1 + y, z: 1 + z });
+          const dst = test.getBlock({ x: 1 + x, y: 1 + y, z: 5 + z });
+          const want = src.typeId === "builder:survey_stake" ? "minecraft:air" : src.typeId;
+          if (dst.typeId === want && (want === "minecraft:air" || JSON.stringify(dst.permutation.getAllStates()) === JSON.stringify(src.permutation.getAllStates()))) same++;
+          else wrong.push(`${x},${y},${z} wants ${want}, is ${dst.typeId}`);
+        }
+    test.assert(wrong.length === 0, `${wrong.length} cell(s) of the copy differ: ${wrong.slice(0, 3).join("; ")}`);
+    test.assert(same === 27, `expected all 27 cells of the copy to match (the stakes' cells as air), ${same} do`);
+  });
+}).maxTicks(600).structureName("qol:arena");

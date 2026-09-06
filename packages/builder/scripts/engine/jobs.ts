@@ -18,11 +18,12 @@
  */
 import { BlockPermutation, system, world, type Dimension, type Entity, type Vector3 } from "@minecraft/server";
 import { catalogueEntry, plainName, type Cell } from "../core/blueprint";
-import { nextPlacement, nextRemoval, stillOurs, ticksPerBlock, withinReach, type Step } from "../core/job";
+import { nextPlacement, nextRemoval, nextRepair, stillOurs, ticksPerBlock, withinReach, type Step } from "../core/job";
 import { removalOrder, worldCells } from "../core/order";
 import { boxOfRecord, type BuildingRecord, type Position } from "../core/record";
 import * as chest from "./chest";
 import * as outline from "./outline";
+import { lookupIn } from "./placing";
 import * as settings from "./settings";
 import * as storage from "./storage";
 import * as structures from "./structures";
@@ -44,6 +45,9 @@ interface Job {
   ticks: number;
   waited: number;
   builderId?: string;
+  /** While repairing: blocks placed, and the cells left because another block holds them (by position, since the list is scanned more than once). */
+  placed: number;
+  blocked: Set<string>;
 }
 
 const jobs = new Map<string, Job>();
@@ -115,7 +119,7 @@ export function start(record: BuildingRecord, ticks?: number): boolean {
     return false;
   }
   const cells = worldCells(b.cells, b.size, record.rotation, record);
-  const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, outline: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0 };
+  const job: Job = { record, cells, removal: removalOrder(cells), timer: 0, outline: 0, ticks: ticks ?? ticksPerBlock(settings.policy().secondsPerBlock), waited: 0, placed: 0, blocked: new Set() };
   job.timer = system.runInterval(() => tick(job), job.ticks);
   const dim = dimensionOf(record);
   if (dim) job.outline = system.runInterval(() => outline.pulse(dim, boxOfRecord(job.record)), 20);
@@ -129,6 +133,17 @@ export function startRemoval(record: BuildingRecord, ticks?: number): boolean {
   if (running(record)) return false;
   storage.update(record, (row) => {
     row.phase = "removing";
+    row.done = 0;
+  });
+  const fresh = storage.get(record);
+  return fresh ? start(fresh, ticks) : false;
+}
+
+/** Turn a built record into a repair job: the gaps filled from the chest, in placement order. */
+export function startRepair(record: BuildingRecord, ticks?: number): boolean {
+  if (running(record)) return false;
+  storage.update(record, (row) => {
+    row.phase = "repairing";
     row.done = 0;
   });
   const fresh = storage.get(record);
@@ -186,6 +201,9 @@ function finish(job: Job): void {
   if (job.record.phase === "removing") {
     storage.remove(job.record);
     if (dim) announce(dim, job.record, `The ${title} at ${job.record.x},${job.record.y},${job.record.z} is down; everything is back in the chest.`);
+  } else if (job.record.phase === "repairing") {
+    storage.update(job.record, (row) => void (row.phase = "built"));
+    if (dim) announce(dim, job.record, `The ${title} at ${job.record.x},${job.record.y},${job.record.z} is repaired: ${job.placed} block(s) put back${job.blocked.size ? `, ${job.blocked.size} cell(s) left as they are because something else stands there` : ""}.`);
   } else {
     storage.update(job.record, (row) => void (row.phase = "built"));
     if (dim) announce(dim, job.record, `The ${title} at ${job.record.x},${job.record.y},${job.record.z} is finished.`);
@@ -198,7 +216,7 @@ function tick(job: Job): void {
   job.record = record;
   const dim = dimensionOf(record);
   if (!dim) return stop(job, "its dimension cannot be found");
-  const step: Step = record.phase === "removing" ? nextRemoval(job.removal, record.done) : nextPlacement(job.cells, record.done);
+  const step = nextStep(job, record.done, dim);
   if (step.kind === "done") return finish(job);
 
   const builder = ensureBuilder(job, dim);
@@ -213,16 +231,33 @@ function tick(job: Job): void {
   job.waited = 0;
   const done = step.kind === "place" ? place(job, dim, step) : take(job, dim, step);
   if (!done) return;
-  // `done` counts steps in the phase's own order: cells placed, or cells taken.
-  storage.update(record, (row) => void (row.done = record.done + 1));
+  if (record.phase === "repairing") job.placed++;
+  // `done` is how far the phase's list has got: the step's own index, passed.
+  storage.update(record, (row) => void (row.done = step.index + 1));
   try {
     builder?.triggerEvent("builder:work_on");
   } catch {
     /* gone */
   }
   // A step is a cell placed or taken: the next beat sends the builder on.
-  const next = record.phase === "removing" ? nextRemoval(job.removal, record.done + 1) : nextPlacement(job.cells, record.done + 1);
+  const next = nextStep(job, step.index + 1, dim);
   if (next.kind !== "done" && builder) walk.sendTo(builder, next.cell);
+}
+
+/** The phase's next step from `from`: the next cell to place, take, or fill. */
+function nextStep(job: Job, from: number, dim: Dimension): Step {
+  switch (job.record.phase) {
+    case "removing":
+      return nextRemoval(job.removal, from);
+    case "repairing": {
+      const lookup = lookupIn(dim);
+      const r = nextRepair(job.cells, from, (c) => lookup(c.x, c.y, c.z));
+      for (const c of r.blocked) job.blocked.add(`${c.x},${c.y},${c.z}`);
+      return r.step;
+    }
+    default:
+      return nextPlacement(job.cells, from);
+  }
 }
 
 /** Take the item, then set the block; if the block cannot be set, the item goes back. Returns whether the step counts. */

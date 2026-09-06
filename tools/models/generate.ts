@@ -1569,6 +1569,24 @@ write(`${BUILDER_MODELS}/blocks/blueprint_table.geo.json`, {
   ],
 });
 
+// A survey stake: a post with a blue flag, two of which mark the box a
+// survey saves (settlements.md §5.4). Drawn off the table's own atlas.
+write(`${BUILDER_MODELS}/blocks/survey_stake.geo.json`, {
+  identifier: "geometry.builder_survey_stake",
+  atlas: A.BLUEPRINT_TABLE,
+  visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "stake",
+      pivot: [0, 0, 0],
+      cubes: [
+        { origin: [-1, 0, -1], size: [2, 14, 2], faces: { sides: "leg", up: "leg", down: "dark" } } as Cube<BT>,
+        { origin: [1, 9, -0.5], size: [6, 4, 1], faces: { all: "sheet" } } as Cube<BT>,
+      ],
+    },
+  ],
+});
+
 biped({ file: "builder", identifier: "geometry.builder_person", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw", toolUp: true }, `${BUILDER_MODELS}/entity`);
 
 write(`${BUILDER_MODELS}/entity/waypoint.geo.json`, {

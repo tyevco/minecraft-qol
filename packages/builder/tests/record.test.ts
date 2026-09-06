@@ -8,6 +8,7 @@ describe("records", () => {
     expect(unpackRecord(packRecord(record))).toEqual(record);
     expect(unpackRecord(packRecord({ ...record, phase: "removing", done: 0 }))).toMatchObject({ phase: "removing", done: 0 });
     expect(unpackRecord(packRecord({ ...record, free: true }))?.free).toBe(true);
+    expect(unpackRecord(packRecord({ ...record, phase: "repairing" }))?.phase).toBe("repairing");
   });
   it("read a schema-1 row, which has no free column, as paid for", () => {
     expect(unpackRecord(packRecord(record).slice(0, 14))).toEqual(record);
@@ -16,7 +17,7 @@ describe("records", () => {
     expect(unpackRecord(undefined)).toBeUndefined();
     expect(unpackRecord(["minecraft:overworld", 1, 2, 3])).toBeUndefined();
     expect(unpackRecord(packRecord(record).map((v, i) => (i === 5 ? 7 : v)))).toBeUndefined();
-    expect(unpackRecord(packRecord(record).map((v, i) => (i === 9 ? 3 : v)))).toBeUndefined();
+    expect(unpackRecord(packRecord(record).map((v, i) => (i === 9 ? 4 : v)))).toBeUndefined();
     expect(unpackRecord(packRecord(record).map((v, i) => (i === 1 ? 1.5 : v)))).toBeUndefined();
   });
   it("knows its box and whether a point is inside it", () => {

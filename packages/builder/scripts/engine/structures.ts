@@ -38,7 +38,9 @@ export function building(key: string): Building | undefined {
     for (let y = 0; y < size.y; y++)
       for (let z = 0; z < size.z; z++) {
         const perm = s.getBlockPermutation({ x, y, z });
-        if (!perm) continue;
+        // A structure saved from the world (a survey) holds air as a block
+        // where a generated one holds nothing (measured); both are nothing.
+        if (!perm || perm.type.id === "minecraft:air" || perm.type.id === "minecraft:structure_void") continue;
         const cell: Cell = { x, y, z, name: perm.type.id, states: perm.getAllStates() };
         if (s.getIsWaterlogged({ x, y, z })) cell.waterlogged = true;
         cells.push(cell);

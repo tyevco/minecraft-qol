@@ -8,7 +8,9 @@
  *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock] [free]
  *   /scriptevent builder:remove x y z [ticksPerBlock]
  *   /scriptevent builder:resume x y z [ticksPerBlock]
+ *   /scriptevent builder:repair x y z [ticksPerBlock]
  *   /scriptevent builder:forget x y z [radius]
+ *   /scriptevent builder:survey x1 y1 z1 x2 y2 z2
  *
  * Console and operators only; `x y z` is the building's origin (its
  * minimum corner, the footing layer), and the table is the nearest blueprint
@@ -24,6 +26,7 @@ import * as jobs from "./jobs";
 import * as placing from "./placing";
 import * as settings from "./settings";
 import * as storage from "./storage";
+import * as survey from "./survey";
 import { TABLE } from "./table";
 import { log } from "./tell";
 
@@ -145,7 +148,16 @@ export function install(): void {
       return;
     }
 
-    if (ev.id === "builder:remove" || ev.id === "builder:resume") {
+    if (ev.id === "builder:survey") {
+      const [x1, y1, z1, x2, y2, z2] = parts.slice(0, 6).map(Number);
+      if ([x1, y1, z1, x2, y2, z2].some((n) => n === undefined || !Number.isInteger(n))) return verdict("builder:survey wants x1 y1 z1 x2 y2 z2");
+      const a = { x: x1!, y: y1!, z: z1! };
+      const s = survey.survey(dim, a, { x: x2!, y: y2!, z: z2! });
+      verdict("refused" in s ? `builder:survey refused: ${s.refused}` : `builder:survey ok: ${s.key} ${s.size.x}x${s.size.y}x${s.size.z}, ${s.cells} cells`, dim, a);
+      return;
+    }
+
+    if (ev.id === "builder:remove" || ev.id === "builder:resume" || ev.id === "builder:repair") {
       const [x, y, z] = parts.slice(0, 3).map(Number);
       const ticks = parts[3] ? Number(parts[3]) : undefined;
       if ([x, y, z].some((n) => n === undefined || !Number.isInteger(n))) {
@@ -159,7 +171,7 @@ export function install(): void {
         return;
       }
       const pace = ticks && Number.isInteger(ticks) && ticks > 0 ? ticks : undefined;
-      const ok = ev.id === "builder:remove" ? jobs.startRemoval(record, pace) : jobs.start(record, pace);
+      const ok = ev.id === "builder:remove" ? jobs.startRemoval(record, pace) : ev.id === "builder:repair" ? jobs.startRepair(record, pace) : jobs.start(record, pace);
       verdict(ok ? `${ev.id} ok: ${record.key} at ${record.x},${record.y},${record.z}` : `${ev.id} refused: a job is already running there`, dim, record);
     }
   });

@@ -90,11 +90,12 @@ block where the generator's turned value equals the game's):
 | `direction` alias on a door | — | — | the game keeps it in step: 0 south, 1 west, 2 north, 3 east (read 1 at Rotate90, 2 at Rotate180) |
 | `facing_direction` alias on a chest | — | — | the game keeps it in step with the cardinal direction: 2 north, 3 south, 4 west, 5 east (read 5 at Rotate90, 3 at Rotate180, 4 at Rotate270 for a north chest) |
 | `wall_connection_type_*` | 12 | 0 | but every value in these three buildings is `none`: the battlements are lone posts, so a real join is **unmeasured** |
-| `pillar_axis` | — | — | only `y` occurs in these three; the x↔z swap is the design's assumption still |
+| `pillar_axis` | — | — | only `y` in the first three; the x↔z swap measured later on the turned inn's lying logs (688 of 688 cells) |
 | `upside_down_bit`, `hanging`, `minecraft:vertical_half`, `open_bit`, `upper_block_bit`, `door_hinge_bit` | — | — | not directional; unchanged, as expected |
 
-The bed's `direction`, the ladder's `facing_direction` and a lying log are in
-no shipped building yet; `core/rotate.ts` turns them by the same tables,
+The bed's `direction`, the ladder's `facing_direction` and a lying log were
+in no shipped building at first; the inn brought all three and measured them
+(below). `core/rotate.ts` turns them by the same tables,
 and a unit test (`packages/builder/tests/rotate.test.ts`) holds core equal
 to the generator cell for cell on all three buildings, so the table lives in
 one place and the game has agreed with that place wherever it was asked.
@@ -220,6 +221,13 @@ arena, and the larder was built and taken down whole. Three things measured:
   the catalogue to a full block behind it. (The villages' tallfolk and
   catfolk inn pieces regenerate with the moved ladder; a world that has
   already loaded them keeps the old piece, as the structure cache note says.)
+  On a fresh world, with the ladder moved and both pair rules in, **the
+  turned inn matched the game's `Rotate90` placement 688 of 688 cells**:
+  the four beds' `direction`, the ladder's `facing_direction`, the lying
+  logs' `pillar_axis` and the door halves included, so the rotation table's
+  last assumed rows are measured. The larder came down whole (door and
+  paired chests, nothing on the ground) and the surveyed bed and door came
+  back as one bed and one door.
 - **Taking a door's upper half first pops the lower as a drop.** The
   bed-and-door copy came down with one bed and **no door** in the chest. A
   bed's halves did not pop each other. The removal step now takes both halves

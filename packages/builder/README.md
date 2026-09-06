@@ -127,7 +127,16 @@ The rest of the catalogue and the palette swaps wait on that.
   for cell, states included. `createFromWorld` saves air as a block and the
   reader drops it; `Structure.setBlockPermutation(at, undefined)` clears a
   cell, and `saveToWorld` keeps the change.
-- Eight GameTests pass headlessly (`suites/builder.ts`): the well goes up
+- **The four more blueprints, pinned**: the turned inn equals the game's
+  `Rotate90` placement 688 of 688 cells, beds, ladder, lying logs and doors
+  included; the larder comes down whole, door and paired chests into the
+  chest and nothing on the ground; a surveyed bed and door come back as one
+  bed and one door. Three faults were measured and fixed on the way: a
+  ladder set against air pops, a lone door half in a wall is taken off by
+  the next neighbour update, taking a door's upper half first drops the
+  door; and a ladder on a window pane, which `place` tolerates, pops under
+  the builder, so a generator test now holds every ladder to a full block.
+- Eleven GameTests pass headlessly (`suites/builder.ts`): the well goes up
   block by block and matches the structure cell for cell, materials gone
   from the chest; a stone in the way is refused by name and position; a
   chest one cobblestone short is refused naming it; remove puts exactly the

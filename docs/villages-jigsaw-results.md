@@ -411,6 +411,41 @@ headless GameTest server (BDS 1.26.45.1):
   `villages:page` 1, so the page state survives the `.mcstructure` and the
   jigsaw placement as `villages:people` did.
 
+## Visitors and the kids' posts (design §6.1, `packages/villages`)
+
+Measured on the headless GameTest server (BDS 1.26.45.1) with the
+villages suite:
+
+- **`playerPlaceBlock` fires for a SimulatedPlayer's placement, after the
+  block's own `onPlace`.** A SimulatedPlayer holding a `villages:post` item
+  used it on the floor; the pack logged `a player placed a post at
+  4,-51,6; its record already existed (onPlace first)` on every placement,
+  in three tests. So the custom component's hook runs first and the
+  player event second in the same tick, and the event reaches a pack that
+  does not bind `@minecraft/server-gametest` even though the player in it
+  would not. The post therefore only registers in `onPlace` and leaves the
+  first spawn to the block's own tick, and the mark is always down before
+  anyone is spawned. `villages_player_post_waits_for_settler` pins that a
+  post placed by hand has no person after 300 ticks while a post set by
+  `setBlockPermutation` (every other test) spawns at once.
+- **A visitor arrives, settles and leaves.** Two posts by hand within
+  three blocks made a settlement of two; `scriptevent villages:visitor
+  arrive` spawned `Dune the Fennecfolk` fourteen blocks off on the flat
+  world's surface (y = −60, nine below the arena), with the trader's job
+  and the visitor group; `settle` walked it toward the nearest empty post,
+  the walk timed out at the arena's cliff after 600 ticks, and the
+  fallback put the settler there: one person with the `villages:kin` tag
+  of people 14 at the post, no visitor left, and the face dropped so the
+  next fennecfolk is new. `villages_visitor_leaves_at_dawn` set the time
+  to 6000, brought `Sable the Catfolk`, and `time add 18000` crossed
+  midnight: the poll read the time of day entering 0–1000 on a later day
+  and removed the visitor within a second, logging the next visit for
+  day 3.
+- **Not measured**: the form. A SimulatedPlayer's interaction marshals no
+  player into the pack, so `showForm` never runs headlessly; the errand's
+  delivery, the standing property and the gift are in the villages README
+  to confirm in game.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment

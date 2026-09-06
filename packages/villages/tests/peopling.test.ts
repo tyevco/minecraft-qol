@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DAY, decide, spawnSpot } from "../scripts/core/peopling";
-import { FRESH, JOBS, PEOPLE_PER_PAGE, PEOPLES, packRecord, peopleIndex, peopleStates, unpackRecord, type PostRecord } from "../scripts/core/record";
+import { FRESH, JOBS, PEOPLE_PER_PAGE, PEOPLES, PLACED_BY_PLAYER, packRecord, peopleIndex, peopleStates, unpackRecord, type PostRecord } from "../scripts/core/record";
 
 const post: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 3, job: 1, ...FRESH };
 
@@ -15,6 +15,12 @@ describe("decide", () => {
     const r = { ...post, spawnedAt: 1000, entityId: "gone" };
     expect(decide(r, false, 1000 + DAY - 1)).toEqual({ kind: "wait", ticksLeft: 1 });
     expect(decide(r, false, 1000 + DAY)).toEqual({ kind: "spawn" });
+  });
+  it("a post the kids placed spawns nobody and waits for a settler", () => {
+    const kids = { ...post, placedBy: PLACED_BY_PLAYER };
+    expect(decide(kids, false, 12)).toEqual({ kind: "settler" });
+    expect(decide({ ...kids, spawnedAt: 1000, entityId: "gone" }, false, 1000 + DAY)).toEqual({ kind: "settler" });
+    expect(decide({ ...kids, spawnedAt: 1000, entityId: "e" }, true, 5000)).toEqual({ kind: "keep" });
   });
   it("puts the person in front of the post", () => {
     expect(spawnSpot({ x: 3, y: 64, z: 7 })).toEqual({ x: 3.5, y: 64, z: 8.5 });

@@ -13,7 +13,7 @@
  * older rows are read with their missing fields defaulted (schema 1 rows
  * had no trade, and a worker with no trade surveys on its next tick).
  */
-export const SCHEMA = 3;
+export const SCHEMA = 4;
 
 /**
  * Append-only (docs/design/furfolk.md §4): the index is in every post's row,
@@ -84,7 +84,14 @@ export interface PostRecord extends Position {
   /** A miner's vein allowance: tick the current day's window opened, and cycles worked in it. */
   veinAt: number;
   veinCycles: number;
+  /**
+   * Who placed the post: the world generator (or /setblock, a structure
+   * load) or a player. A player's post is the kids' own (docs/design/
+   * villages.md §6.1): it spawns nobody and waits for a visitor to settle.
+   */
+  placedBy: number;
 }
+export const PLACED_BY_WORLD = 0, PLACED_BY_PLAYER = 1;
 
 export type Row = [
   dimId: string,
@@ -100,22 +107,44 @@ export type Row = [
   cycleAt: number,
   veinAt: number,
   veinCycles: number,
+  placedBy: number,
 ];
 
 export function packRecord(r: PostRecord): Row {
-  return [r.dimId, r.x, r.y, r.z, r.people, r.job, r.entityId ?? "", r.spawnedAt, r.trade, r.surveyedAt, r.cycleAt, r.veinAt, r.veinCycles];
+  return [r.dimId, r.x, r.y, r.z, r.people, r.job, r.entityId ?? "", r.spawnedAt, r.trade, r.surveyedAt, r.cycleAt, r.veinAt, r.veinCycles, r.placedBy];
 }
 
 /** A record's non-position fields as a new post has them. */
-export const FRESH = { spawnedAt: 0, trade: 0, surveyedAt: 0, cycleAt: 0, veinAt: 0, veinCycles: 0 } as const;
+export const FRESH = { spawnedAt: 0, trade: 0, surveyedAt: 0, cycleAt: 0, veinAt: 0, veinCycles: 0, placedBy: PLACED_BY_WORLD } as const;
+
+/**
+ * Every stamp is a `system.currentTick`, which counts from the server's
+ * boot, so after a restart a stamp from the last boot is meaningless. The
+ * old heuristic read a stamp *ahead* of the clock as a restart, which only
+ * holds until the new clock passes it: a stamp written seconds into one boot
+ * is behind the next boot's clock within seconds, and the record then waits
+ * its whole interval (measured, issue #71). So the engine keeps the last
+ * tick it saw in a world property; a stored tick ahead of the clock at load
+ * is a restart, and every record's waits are treated as over.
+ */
+export const clockRestarted = (lastTick: unknown, now: number): boolean => typeof lastTick === "number" && lastTick > now;
+
+/** The record as a restart leaves it: every wait over, the trade and the person kept. */
+export function afterRestart(r: PostRecord): void {
+  r.spawnedAt = 0;
+  r.surveyedAt = 0;
+  r.cycleAt = 0;
+  r.veinAt = 0;
+  r.veinCycles = 0;
+}
 
 /** Decode one packed row. A malformed row is dropped: a misread post would spawn a stranger. */
 export function unpackRecord(packed: unknown): PostRecord | undefined {
   if (!Array.isArray(packed) || packed.length < 8) return undefined;
-  const [dimId, x, y, z, people, job, entityId, spawnedAt, trade = 0, surveyedAt = 0, cycleAt = 0, veinAt = 0, veinCycles = 0] = packed as unknown[];
+  const [dimId, x, y, z, people, job, entityId, spawnedAt, trade = 0, surveyedAt = 0, cycleAt = 0, veinAt = 0, veinCycles = 0, placedBy = PLACED_BY_WORLD] = packed as unknown[];
   if (typeof dimId !== "string" || dimId === "") return undefined;
   const int = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n);
-  if (![x, y, z, people, job, spawnedAt, trade, surveyedAt, cycleAt, veinAt, veinCycles].every(int)) return undefined;
+  if (![x, y, z, people, job, spawnedAt, trade, surveyedAt, cycleAt, veinAt, veinCycles, placedBy].every(int)) return undefined;
   if (typeof entityId !== "string") return undefined;
   const p = people as number, j = job as number, t = trade as number;
   if (p < 0 || p >= PEOPLES.length || j < 0 || j >= JOBS.length || t < 0 || t >= TRADES.length) return undefined;
@@ -124,5 +153,6 @@ export function unpackRecord(packed: unknown): PostRecord | undefined {
     entityId: entityId || undefined, spawnedAt: spawnedAt as number,
     trade: t, surveyedAt: surveyedAt as number, cycleAt: cycleAt as number,
     veinAt: veinAt as number, veinCycles: veinCycles as number,
+    placedBy: placedBy === PLACED_BY_PLAYER ? PLACED_BY_PLAYER : PLACED_BY_WORLD,
   };
 }

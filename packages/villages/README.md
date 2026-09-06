@@ -152,6 +152,54 @@ measurements: `docs/villages-jigsaw-results.md`.
   whatever is on it - which is why a player secures the way between a
   worker's post and its work. One walk at a time within 64 blocks of
   another, since the behaviour follows the nearest waypoint.
+- **The kids' posts** (design §6.1): a post a **player** places spawns
+  nobody. It is the kids' own, marked in its record (`placedBy`, schema
+  4) by the stable `playerPlaceBlock` event, which the engine fires after
+  the block's own `onPlace` (measured; `onPlace` fires for a structure load
+  and `/setblock` too, so it cannot tell them apart). Registration happens
+  in `onPlace` and the first spawn waits for the block's own tick, so the
+  mark always lands before anyone is spawned. Such a post is peopled only
+  by a visitor who chooses to stay (below) or, later, an invited villager
+  (design §6, not built); its person carries the `villages:kin` tag and
+  works its trade like any other.
+- **Visitors** (design §6.1, `scripts/core/visitors.ts` decides,
+  `scripts/engine/visitors.ts` acts). A **settlement** is two or more of
+  the kids' posts within 48 blocks of each other (clusters chain). Every
+  two to three days, at **dawn** (the time of day entering 0–1000, read
+  every second), a visitor comes to the settlement whose turn it is: a
+  person of a people drawn from the settlement's trades (a mine draws
+  stonefolk, tinkers or drow; berry bushes foxfolk; a hedge deerfolk; and
+  so on, else any of the nineteen), spawned fourteen blocks from the
+  settlement's middle on the ground, in a trader's coat, named
+  `<name> the <People>`, with the `villages:visitor` tag and component
+  group (nothing can hurt it; it strolls within six blocks). Each people
+  keeps sending the **same face** (its name, its open errand and how many
+  it has been paid for live in the world property `vl:visitors`) until
+  that face settles. The visitor carries one **errand** from its people's
+  table ("bring 16 sweet berries"), drawn from the gifts it likes; interact
+  and a form shows it, with "Here it is" when the player carries enough,
+  "Stay with us" once three errands have been paid, and "Not now". Paying
+  takes the items out of the player's inventory first, then adds five to
+  the player's **standing** with that people (`villages:standing.<people>`,
+  a player dynamic property; design §5's tiers are not built) and hands
+  over the people's gift (a stack of what it sells); the next errand is
+  drawn at once. The visitor **leaves at the next dawn** whether paid or
+  not (an unpaid errand waits for its next visit). **Staying**: the visitor
+  walks to the nearest empty post the kids placed in its settlement and
+  settles there, becoming that post's person with its name; `minecraft:home`
+  cannot be moved from script, so the settler is spawned fresh at the post
+  and the visitor removed. A walk that fails ends in the settler being put
+  there. That people's next visitor is a new face.
+  `/scriptevent villages:visitor <status|arrive|leave|settle>` is the
+  diagnostic hatch (console or operator): `arrive` brings the next visitor
+  now, `leave` and `settle` do what they say without the form, which a
+  SimulatedPlayer cannot be shown.
+- **A restart** (issue #71): every stamp is a `system.currentTick`, which
+  counts from boot. The last tick seen is kept in `vl:tick` every ten
+  seconds; at load, a stored tick ahead of the clock is a restart and every
+  record's waits are ended (`afterRestart`), so a worker re-surveys and a
+  lost person is replaced at once rather than a day later. A `/reload`
+  keeps the clock running and is not a restart.
 - **Settings panel** (manifest format 3): minutes between a worker's cycles
   (1–60, default 10) and whether workers are paid.
 - **Pieces that carry the trades**: the tallfolk field has the farmer's
@@ -243,6 +291,18 @@ measurements: `docs/villages-jigsaw-results.md`.
   put ten drover posts in the world (traders, guards, builders; that draw
   had no corral), and forty seconds later every one had its drover present
   (`/scriptevent villages:debug`). No content-log error for any piece.
+- **The kids' posts and the visitors** (`docs/villages-jigsaw-results.md`,
+  "Visitors"): `villages_player_post_waits_for_settler` has a
+  SimulatedPlayer place a post and sees nobody spawn in 300 ticks, with
+  the log reading `a player placed a post ...; its record already existed
+  (onPlace first)`, so the event fires for a simulated placement and after
+  the block's own hook. `villages_visitor_settles` places two posts by
+  hand, brings a visitor with the hatch (a fennecfolk, since the arena
+  offers no trade), settles it, and finds a settler of the same people
+  with the `villages:kin` tag at one of the posts and no visitor left; the
+  walk from the flat ground up to the arena timed out and the fallback put
+  the settler there. `villages_visitor_leaves_at_dawn` pushes the clock
+  across midnight with `time add` and the visitor is gone within a second.
 - **The furfolk end to end** (`docs/villages-jigsaw-results.md`, "The
   furfolk"): `villages_post_spawns_deerfolk` spawns people 18 from a post
   at `villages:people` 2, `villages:page` 1, named `Deerfolk`; the drow and
@@ -319,6 +379,23 @@ measurements: `docs/villages-jigsaw-results.md`.
   a person wanders off, lower `restriction_radius` in `entities/person.json`.
 - **A village that generated naturally** (not placed by hand) is peopled
   the same way as chunks first load.
+- **The visitor's form** on a real client: it opens on interact, "Here it
+  is" appears only with the errand's items carried, paying takes exactly
+  the amount and gives the gift, and "Stay with us" appears after the
+  third errand. A SimulatedPlayer cannot be shown a form, so only the
+  hatch's `settle` has run headlessly. If the form does not open, the
+  interact event may be arriving as the before-event only; switch to
+  `world.beforeEvents.playerInteractWithEntity` and show the form from
+  `system.run`.
+- **A visitor at a real settlement's edge**: the spot is fourteen blocks
+  from the posts' middle on `getTopmostBlock`, which is a roof or a tree
+  top as readily as the ground; if visitors keep appearing on roofs, drop
+  the spot to the first air block with solid footing below the topmost.
+- **Dawn on a Realm**: the visitor logic reads the time of day every
+  second and acts when it enters 0–1000; a Realm with the daylight cycle
+  locked (`dodaylightcycle false`) never has a dawn, so visitors never
+  come or leave. If that is how the Realm runs, dawn needs a fallback on
+  elapsed absolute time.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
 - **The furfolk on a real client** (`docs/design/furfolk.md` §7 items 3–5,
@@ -415,5 +492,6 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): visitors and their errands, the elder and
-standing, inviting a person home.
+Not yet built (design §5–6): standing's tiers and what they open, the
+elder and errands from the village itself, inviting a person home (issue
+#73). Visitors carry the first errand tables and the standing counter.

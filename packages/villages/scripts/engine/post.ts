@@ -15,14 +15,38 @@
  */
 import { system, world, type Block, type BlockCustomComponent, type Dimension, type Entity } from "@minecraft/server";
 import { decide, spawnSpot } from "../core/peopling";
-import { FRESH, JOBS, PAGE_STATE, PEOPLE_STATE, PEOPLES, peopleIndex, peopleName, type Position, type PostRecord } from "../core/record";
+import { FRESH, JOBS, PAGE_STATE, PEOPLE_STATE, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, peopleIndex, peopleName, type Position, type PostRecord } from "../core/record";
 import * as storage from "./storage";
 import * as trades from "./trades";
 
 export const COMPONENT_ID = "villages:post";
 export const PERSON = "villages:person";
+/** The tag a person carries when it lives on a post the kids placed: a settler, not a villager. */
+export const KIN_TAG = "villages:kin";
 const TAG = "[Villages]";
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
+
+/**
+ * Posts a player placed, by position key, noted by `playerPlaceBlock` in
+ * main.ts. The block's own `onPlace` fires for a player's placement, for
+ * /setblock and for a structure load alike, so the player event is what
+ * tells the kids' posts from a village's. Whichever of the two arrives
+ * first: the event marks a record that exists, or leaves the key here for
+ * the registration to read.
+ */
+const placedByPlayer = new Set<string>();
+const keyOf = (pos: Position): string => `${pos.dimId}:${pos.x},${pos.y},${pos.z}`;
+
+/** A player placed a post here (main.ts). Returns whether a record already existed, for the measurement of which event comes first. */
+export function markPlacedByPlayer(pos: Position): boolean {
+  const record = storage.get(pos);
+  if (record) {
+    storage.update(pos, (row) => void (row.placedBy = PLACED_BY_PLAYER));
+    return true;
+  }
+  placedByPlayer.add(keyOf(pos));
+  return false;
+}
 
 function positionOf(block: Block): Position {
   return { dimId: block.dimension.id, x: block.location.x, y: block.location.y, z: block.location.z };
@@ -64,21 +88,44 @@ function personOf(dim: Dimension, record: PostRecord): Entity | undefined {
   }
 }
 
-function spawn(dim: Dimension, record: PostRecord): Entity | undefined {
+function spawn(dim: Dimension, record: PostRecord, name = peopleName(record.people)): Entity | undefined {
   try {
     const entity = dim.spawnEntity(PERSON, spawnSpot(record), { initialPersistence: true });
     entity.triggerEvent(`villages:people_${record.people}`);
     entity.triggerEvent(`villages:job_${record.job}`);
     entity.addTag(postTag(record));
+    if (record.placedBy === PLACED_BY_PLAYER) entity.addTag(KIN_TAG);
     // Named for its people. `minecraft:nameable` with no `always_show`
     // draws the name only while a player looks at the person, as a
     // name-tagged villager's is; a player's own name tag replaces it.
-    entity.nameTag = peopleName(record.people);
+    entity.nameTag = name;
     return entity;
   } catch (e) {
     log(`could not spawn a ${PEOPLES[record.people]} ${JOBS[record.job]} at ${record.x},${record.y},${record.z}: ${e}`);
     return undefined;
   }
+}
+
+/** Whether the post's person is about (by id, then by tag). */
+export const hasPerson = (dim: Dimension, record: PostRecord): boolean => personOf(dim, record) !== undefined;
+
+/**
+ * A visitor settles on a post the kids placed (villages.md §6.1): the post
+ * takes the visitor's people and name. `minecraft:home` is fixed at spawn
+ * and the stable API cannot move it, so the settler is spawned fresh at the
+ * post (the same face: people and name) and the visitor is the caller's to
+ * remove. Returns the settler, or undefined if the post is not free.
+ */
+export function settle(dim: Dimension, record: PostRecord, people: number, name: string): Entity | undefined {
+  if (record.placedBy !== PLACED_BY_PLAYER || personOf(dim, record)) return undefined;
+  storage.update(record, (row) => void (row.people = people));
+  const entity = spawn(dim, { ...record, people }, name);
+  if (!entity) return undefined;
+  storage.update(record, (row) => {
+    row.entityId = entity.id;
+    row.spawnedAt = system.currentTick;
+  });
+  return entity;
 }
 
 /**
@@ -95,8 +142,13 @@ function tick(block: Block, placed = false): void {
     record = undefined;
   }
   if (!record) {
-    record = { ...pos, people: peopleIndex(stateOf(block, PEOPLE_STATE), stateOf(block, PAGE_STATE)), job: stateOf(block, "villages:job"), ...FRESH };
+    const byPlayer = placedByPlayer.delete(keyOf(pos));
+    record = { ...pos, people: peopleIndex(stateOf(block, PEOPLE_STATE), stateOf(block, PAGE_STATE)), job: stateOf(block, "villages:job"), ...FRESH, placedBy: byPlayer ? PLACED_BY_PLAYER : PLACED_BY_WORLD };
     storage.put(record);
+    // Registration only: the first spawn waits for the block's own tick, so
+    // a `playerPlaceBlock` that follows this `onPlace` in the same tick can
+    // still mark the post the kids' before anyone is spawned at it.
+    if (placed) return;
   }
   const person = personOf(block.dimension, record);
   const verdict = decide(record, person !== undefined, system.currentTick);

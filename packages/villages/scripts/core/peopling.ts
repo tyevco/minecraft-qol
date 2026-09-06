@@ -8,15 +8,17 @@
  * the last spawn is the earliest a replacement comes; a post that has never
  * spawned spawns on its first tick.
  */
-import type { PostRecord } from "./record";
+import { PLACED_BY_PLAYER, type PostRecord } from "./record";
 
-export type Verdict = { kind: "keep" } | { kind: "wait"; ticksLeft: number } | { kind: "spawn" };
+/** `settler`: a post the kids placed spawns nobody; it waits for a visitor to settle on it (villages.md §6.1). */
+export type Verdict = { kind: "keep" } | { kind: "wait"; ticksLeft: number } | { kind: "spawn" } | { kind: "settler" };
 
 /** A Minecraft day, in ticks. */
 export const DAY = 24000;
 
 export function decide(record: PostRecord, personAlive: boolean, now: number, respawnAfter = DAY): Verdict {
   if (personAlive) return { kind: "keep" };
+  if (record.placedBy === PLACED_BY_PLAYER) return { kind: "settler" };
   // A stamp ahead of the clock means the clock restarted (system.currentTick
   // counts from the server's boot, not the world's): a day has not passed,
   // but nor will one until the clock catches up, so treat it as passed.

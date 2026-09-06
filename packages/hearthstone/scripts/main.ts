@@ -31,6 +31,7 @@ import {
   type Vector3,
 } from "@minecraft/server";
 import { createSettingsPoller } from "@qol/shared/engine/packSettings";
+import { isPlayer, players } from "@qol/shared/engine/players";
 import { withBlock } from "@qol/shared/engine/safeBlock";
 import * as waypoints from "@qol/shared/engine/waypoints";
 import { chooseRespawn, nearestAnchor, type Point } from "./core/anchors";
@@ -233,10 +234,10 @@ function assignSpawn(player: Player): void {
  * players, not by anchors.
  */
 function embers(): void {
-  const players = world.getAllPlayers();
-  if (players.length === 0) return;
+  const present = players();
+  if (present.length === 0) return;
   for (const anchor of registry.all()) {
-    const near = players.some(
+    const near = present.some(
       (p) =>
         p.dimension.id === anchor.dimId &&
         Math.abs(p.location.x - anchor.x) < EMBER_RANGE &&
@@ -282,7 +283,7 @@ function syncWaypoints(player: Player): void {
 }
 
 function sweep(): void {
-  for (const player of world.getAllPlayers()) {
+  for (const player of players()) {
     try {
       evaluate(player);
     } catch (e) {
@@ -301,7 +302,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 
   // A /reload discards our waypoint handles but not, necessarily, the waypoints.
   // Sweep whatever this pack left on each bar before the first sync rebuilds it.
-  for (const player of world.getAllPlayers()) waypoints.reset(player, log);
+  for (const player of players()) waypoints.reset(player, log);
 
   system.runInterval(sweep, EVALUATE_TICKS);
   system.runInterval(embers, EMBER_TICKS);
@@ -319,6 +320,7 @@ world.afterEvents.worldLoad.subscribe(() => {
       ev.block.z,
       DEFAULT_RADIUS,
     );
+    if (!isPlayer(ev.player)) return; // a SimulatedPlayer's placement registers, and nobody is told (issue #31)
     ev.player.sendMessage(
       `§6Hearthstone bound.§7 Players nearby without a spawn point will wake here. ` +
         `§8(radius ${anchor.radius})`,
@@ -332,12 +334,13 @@ world.afterEvents.worldLoad.subscribe(() => {
     if (
       registry.remove(ev.block.dimension.id, ev.block.x, ev.block.y, ev.block.z)
     ) {
-      ev.player.sendMessage("§7Hearthstone unbound.");
+      if (isPlayer(ev.player)) ev.player.sendMessage("§7Hearthstone unbound.");
     }
   });
 
   // Cover a player the moment they arrive rather than up to a sweep later.
   world.afterEvents.playerSpawn.subscribe((ev) => {
+    if (!isPlayer(ev.player)) return; // a SimulatedPlayer marshals as undefined (issue #31)
     system.run(() => {
       try {
         // A joining player's handles went with their last session, and the
@@ -353,6 +356,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   world.afterEvents.playerLeave.subscribe((ev) => waypoints.forget(ev.playerId));
 
   world.afterEvents.playerDimensionChange.subscribe((ev) => {
+    if (!isPlayer(ev.player)) return;
     system.run(() => {
       try {
         evaluate(ev.player);

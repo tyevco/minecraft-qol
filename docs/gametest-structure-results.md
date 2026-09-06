@@ -157,8 +157,10 @@ misleading message for a machine that simply has IPv6 compiled out.
   reason has expired and the entry should go;
 - a test that reports nothing at all fails the run;
 - script errors are printed but do not by themselves fail it. A simulated player
-  makes Graves, Lens, Guardian and Hearthstone throw on every spawn — 184 error
-  lines in a clean run — which is the harness, not those packs (below).
+  made Graves, Lens, Guardian and Hearthstone throw on every spawn — 184 error
+  lines in a clean run, over 500 by the time the villages suite existed —
+  which was the harness, not those packs (below); since issue #31 the packs
+  skip it and the count sits near zero.
 
 ## What the first full headless runs found
 
@@ -239,6 +241,14 @@ The evidence is in `dist/bds/seq3.log`: `cannot read property 'id' of undefined`
 from Graves, Hearthstone and Lens begins at the first `Player Spawned: gv_tester`
 and never stops. It is the same hole as the `sourceEntity=undefined` finding
 above — a simulated player is not a player to anyone but its own test.
+
+**What was done about the noise (issue #31).** Every pack now reads players
+through `packages/shared/engine/players.ts`: `players()` is
+`world.getAllPlayers()` with anything that is not a valid `Player` dropped,
+and `isPlayer(ev.player)` guards each player after-event before it is used.
+A real player marshals correctly, so nothing changes in play; a simulated
+one is skipped instead of aborting the sweep. The finding below stands: the
+packs still cannot see a simulated player, they just no longer throw about it.
 
 This makes `anchor_sets_spawn` a harness artefact, not a Hearthstone bug.
 Hearthstone never saw the player, so it never assigned anything; the spawn point

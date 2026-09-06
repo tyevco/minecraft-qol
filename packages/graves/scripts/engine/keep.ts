@@ -4,6 +4,7 @@ import {
   world,
   type Player,
 } from "@minecraft/server";
+import { players } from "@qol/shared/engine/players";
 import { keepsItems } from "../core/prefs";
 import { modeFor } from "./settings";
 
@@ -61,7 +62,7 @@ export function reconcile(player: Player): number {
 }
 
 export function sweep(log: (...parts: unknown[]) => void): void {
-  for (const player of world.getAllPlayers()) {
+  for (const player of players()) {
     try {
       reconcile(player);
     } catch (e) {

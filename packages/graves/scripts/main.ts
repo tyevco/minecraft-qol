@@ -23,6 +23,7 @@
  */
 import { Player, WaypointTexture, system, world } from "@minecraft/server";
 import { createGroundTracker } from "@qol/shared/engine/groundTracker";
+import { isPlayer, players } from "@qol/shared/engine/players";
 import * as waypoints from "@qol/shared/engine/waypoints";
 import { graveMarkers, isGraveKey } from "./core/markers";
 import { describeMode } from "./core/prefs";
@@ -81,7 +82,7 @@ function syncWaypoints(player: Player): void {
 }
 
 function syncAllWaypoints(): void {
-  for (const player of world.getAllPlayers()) {
+  for (const player of players()) {
     try {
       syncWaypoints(player);
     } catch (e) {
@@ -96,7 +97,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 
   // A /reload discards our waypoint handles but not, necessarily, the waypoints.
   // Sweep whatever this pack left on each bar before the first sync rebuilds it.
-  for (const player of world.getAllPlayers()) waypoints.reset(player, log);
+  for (const player of players()) waypoints.reset(player, log);
 
   system.runInterval(() => {
     // A changed panel takes effect on the very next sweep, not the one after.
@@ -166,6 +167,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   // Newly arrived players get their carried stacks flagged straight away rather
   // than up to a sweep later; a death in that first second would otherwise drop.
   world.afterEvents.playerSpawn.subscribe((ev) => {
+    if (!isPlayer(ev.player)) return; // a SimulatedPlayer marshals as undefined (issue #31)
     system.run(() => {
       try {
         reconcile(ev.player);
@@ -185,6 +187,7 @@ world.afterEvents.worldLoad.subscribe(() => {
   });
 
   world.afterEvents.playerDimensionChange.subscribe((ev) => {
+    if (!isPlayer(ev.player)) return;
     system.run(() => {
       try {
         syncWaypoints(ev.player);

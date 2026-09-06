@@ -122,7 +122,7 @@ export function install(logger: (...parts: unknown[]) => void): void {
   log = logger;
   world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
     const person = ev.target;
-    if (!person.isValid || person.typeId !== PERSON || person.hasTag(VISITOR_TAG)) return;
+    if (!person || !person.isValid || person.typeId !== PERSON || person.hasTag(VISITOR_TAG)) return;
     if (!(ev.player instanceof Player)) return;
     if (gift(ev.player, person, ev.itemStack)) return;
     if (jobOf(person) === TRADER_JOB) void showElder(ev.player, person);
@@ -130,9 +130,10 @@ export function install(logger: (...parts: unknown[]) => void): void {
 
   // A blow on a person: standing falls, and the guards come to where it landed.
   world.afterEvents.entityHurt.subscribe((ev) => {
+    // A SimulatedPlayer marshals as undefined here too, as the hurt entity (measured, issue #31).
     const person = ev.hurtEntity;
     const player = ev.damageSource.damagingEntity;
-    if (!person.isValid || person.typeId !== PERSON || !(player instanceof Player)) return;
+    if (!person || !person.isValid || person.typeId !== PERSON || !(player instanceof Player)) return;
     const people = peopleOf(person);
     const standing = addStanding(player, people, core.STANDING_HIT);
     player.sendMessage(`${core.standingWords(people, standing)}`);
@@ -148,7 +149,7 @@ export function install(logger: (...parts: unknown[]) => void): void {
   world.afterEvents.entityDie.subscribe((ev) => {
     const player = ev.damageSource.damagingEntity;
     const dead = ev.deadEntity;
-    if (!(player instanceof Player) || !dead.matches({ families: ["monster"] })) return;
+    if (!dead || !(player instanceof Player) || !dead.matches({ families: ["monster"] })) return;
     let guard: Entity | undefined;
     try {
       guard = dead.dimension.getEntities({ type: PERSON, location: dead.location, maxDistance: core.DEFENCE_RANGE, closest: 1 }).find((g) => jobOf(g) === GUARD_JOB && !g.hasTag(VISITOR_TAG));

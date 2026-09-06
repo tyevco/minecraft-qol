@@ -5,7 +5,7 @@ import {
   PlayerPermissionLevel,
 } from "@minecraft/server";
 import { registerAsync } from "@minecraft/server-gametest";
-import { floor, STRUCTURE } from "./rig";
+import { floor, STRUCTURE, until } from "./rig";
 
 /**
  * Guardian: a hit on a player lands as at most what the engine proposed, and
@@ -40,7 +40,8 @@ registerAsync("qol", "guardian_never_adds_damage", async (test) => {
   for (const hit of hits) {
     const before = health(player);
     const applied = player.applyDamage(hit.amount, { cause: hit.cause });
-    await test.idle(5);
+    // The hit lands within a tick or two; wait for it rather than guess (issue #29).
+    await until(test, () => health(player) < before, 20);
     const lost = before - health(player);
     seen.push(`${hit.cause}: proposed ${hit.amount}, lost ${lost.toFixed(2)}${applied ? "" : " (applyDamage returned false)"}`);
     test.assert(

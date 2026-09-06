@@ -259,6 +259,23 @@ measurements: `docs/villages-jigsaw-results.md`.
   happen, so a trade table could neither move standing nor be gated per
   player (a component group is per entity; standing is per player).
   Every ware is an item the server knows (`villages_wares_are_items`).
+- **The storehouse** (design §5.1: "what a village produces goes into its
+  own storehouse, which is what the trader sells"; `engine/storehouse.ts`):
+  the workers' chests are the storehouse. The trader's wares form also
+  lists what the worker posts of its own village (same people, within
+  sixty-four blocks of its post) have in their chests, at a price per
+  kind of produce (`core/standing.ts` `stockPrice`: eight logs, four
+  saplings, sixteen wheat, six fish, four wool, two raw iron for two, and
+  so on), each line saying how many the storehouse has. Only produce is
+  priced, so a tool or a wage the kids left in a chest is never sold; a
+  kind the fixed wares already offer is offered once, from the
+  storehouse; a kind the chests hold less than a sale's worth of is not
+  listed. A sale takes the emeralds, then the goods out of the chests
+  (across chests and slots), and if the chests came up short in between
+  the goods go back and so do the emeralds. `/scriptevent villages:stock
+  x y z [item]` lists a trader post's storehouse, or takes one sale's
+  worth of an item out of it and drops it at the post: the GameTest's
+  hatch.
 - **A guard walks with you** (design §5's table, at friend;
   `scripts/engine/follow.ts`): "Would a guard walk with me?" on the
   trader's form names the nearest present guard of its own village (as
@@ -425,6 +442,12 @@ measurements: `docs/villages-jigsaw-results.md`.
   it inside four seconds; sent home, the tag is gone, the one guard
   within four blocks of the post is the post's own, and no second guard
   was spawned in its absence.
+- **The trader sells from the storehouse**
+  (`villages_trader_sells_from_the_storehouse`): a trader post and a
+  worker post of the same people with a chest beside it holding twenty
+  wheat and a pickaxe; the hatch's sale of wheat left four in the chest
+  and the pickaxe untouched, and dropped the sixteen at the trader's
+  post.
 - **The wares are items** (`villages_wares_are_items`): an `ItemStack` of
   each of the nineteen peoples' seventy-six wares at its amount, on the
   headless server; every identifier held.
@@ -663,8 +686,6 @@ measurements: `docs/villages-jigsaw-results.md`.
   lower the mound or move the piece to the square's pool.
 
 Not yet built (design §5–6): building for a people, and the trader's
-blueprints, which wait for the builder (`docs/design/settlements.md`);
-the wares are a fixed table per people rather than the village's own
-storehouse (issue #85).
+blueprints, which wait for the builder (`docs/design/settlements.md`).
 A kid's own house within twenty blocks of a village's plaques is inside
 the hull, so build a little further off or expect the village to mind.

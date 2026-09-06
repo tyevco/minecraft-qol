@@ -566,6 +566,18 @@ guard's `move_towards_home_restriction` at priority 5) may pull against
 the walking group's `follow_mob` at priority 1; the arena is eight
 blocks wide. The README's confirm list has the fix if it does.
 
+## The storehouse (design §5.1, `packages/villages`)
+
+`villages_trader_sells_from_the_storehouse`, on the headless server: a
+trader post and a worker post of the same people, a chest beside the
+worker's holding twenty wheat and a pickaxe. The trader's storehouse is
+the worker posts of its own village within sixty-four blocks, each
+post's chest found as the worker finds it (`nearestChest`, the same
+twelve-block reach); the hatch's sale of sixteen wheat left four in the
+chest, the pickaxe untouched (not produce, so unpriced), and dropped
+the sixteen at the trader's post. The form, the emeralds and the
+put-back on a chest that emptied in between need a real player (#84).
+
 ## The gap at a deck joint (design §3)
 
 "Blocks missing where the jigsaw blocks were", seen in game, chased on

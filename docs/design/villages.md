@@ -295,7 +295,9 @@ reedfolk's dock, the drovers' corral and ranch, and two new pieces, a **grove** 
 trees and a lumberjack's post) for the stonefolk and tallfolk, and a
 **mine** (a short shaft into a hillside face with a vein at the end and a
 miner's post) for the stonefolk and the tinkers. What a village produces
-goes into its own storehouse, which is what the trader sells.
+goes into its own storehouse, which is what the trader sells. (Built:
+the workers' chests are the storehouse, read by the trader's form at
+guest, `packages/villages/README.md`.)
 
 **Built** (`packages/villages/scripts/core/trades.ts`, `engine/trades.ts`;
 measured in `docs/villages-jigsaw-results.md`): the survey and its

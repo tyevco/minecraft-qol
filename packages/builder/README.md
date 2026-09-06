@@ -57,9 +57,13 @@ job in the villages pack takes it over. Measurements:
   keyed by the building's origin: key, rotation, box, phase (building,
   built, removing), how far it got, and the table it was raised from. Jobs
   saved mid-way resume a few seconds after the world loads.
-- **The settings panel**: seconds between blocks (1–30, default 4), and who
+- **The settings panel**: seconds between blocks (1–30, default 4); who
   may use the table (operators; members and operators, the default;
-  everyone).
+  everyone); and **buildings are free** (off by default): the table takes
+  nothing from the chest and needs none, the form says so, and a building
+  raised free returns nothing when it is taken down. The record remembers
+  which it was, so turning the toggle off again cannot turn a free building
+  into a chest of materials. The hatch's `free` word builds the same way.
 - **Script events**, console or operator only: `builder:debug`;
   `builder:place <key> x y z <rotation> [ticksPerBlock]`, the form's path
   from a command (the origin is the footing corner, the table the nearest
@@ -97,7 +101,8 @@ palette swaps wait on that.
   from the chest; a stone in the way is refused by name and position; a
   chest one cobblestone short is refused naming it; remove puts exactly the
   76 items back; the well turned once by the pack equals the game's
-  `Rotate90` placement cell for cell.
+  `Rotate90` placement cell for cell; a free well goes up from an empty
+  chest and comes down leaving it empty.
 
 ## To confirm in game
 

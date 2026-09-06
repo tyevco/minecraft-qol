@@ -5,7 +5,7 @@
  * command, and writes its verdict to a world property a test can read.
  *
  *   /scriptevent builder:debug
- *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock]
+ *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock] [free]
  *   /scriptevent builder:remove x y z [ticksPerBlock]
  *   /scriptevent builder:resume x y z [ticksPerBlock]
  *   /scriptevent builder:forget x y z [radius]
@@ -13,7 +13,8 @@
  * Console and operators only; `x y z` is the building's origin (its
  * minimum corner, the footing layer), and the table is the nearest blueprint
  * table within sixteen blocks of it. `rotation` is 0-3, degrees, a
- * StructureRotation name, or the way the door should face.
+ * StructureRotation name, or the way the door should face; `free` builds
+ * as though the panel's free-build toggle were on.
  */
 import { BlockVolume, CommandPermissionLevel, Player, system, world, type Dimension, type Vector3 } from "@minecraft/server";
 import { catalogueEntry, CATALOGUE } from "../core/blueprint";
@@ -99,11 +100,12 @@ export function install(): void {
     }
 
     if (ev.id === "builder:place") {
-      const [key, xs, ys, zs, rs, ts] = parts;
+      const [key, xs, ys, zs, rs, ts, freeText] = parts;
+      const free = freeText === "free" || settings.policy().freeBuild;
       const [x, y, z] = [xs, ys, zs].map(Number);
       const rotation = parseRotation(rs ?? "0");
       if (!key || [x, y, z].some((n) => n === undefined || !Number.isInteger(n)) || rotation === undefined) {
-        verdict("builder:place wants <key> x y z <rotation> [ticksPerBlock]");
+        verdict("builder:place wants <key> x y z <rotation> [ticksPerBlock] [free]");
         return;
       }
       const origin = { x: x!, y: y!, z: z! };
@@ -112,7 +114,7 @@ export function install(): void {
         verdict(`builder:place refused: no blueprint table within sixteen blocks of ${x},${y},${z}`, dim, origin);
         return;
       }
-      const p = placing.plan(dim, key, origin, rotation, table);
+      const p = placing.plan(dim, key, origin, rotation, table, free);
       if (!("record" in p)) {
         verdict(`builder:place refused: ${p.refused}`, dim, origin);
         return;
@@ -125,7 +127,7 @@ export function install(): void {
       storage.put(p.record);
       const ticks = ts ? Number(ts) : undefined;
       const started = jobs.start(p.record, ticks && Number.isInteger(ticks) && ticks > 0 ? ticks : undefined);
-      verdict(started ? `builder:place ok: ${catalogueEntry(key)?.title ?? key} at ${x},${y},${z} rot ${rotation}, ${p.cells.length} cells` : `builder:place refused: the job did not start`, dim, origin);
+      verdict(started ? `builder:place ok: ${catalogueEntry(key)?.title ?? key} at ${x},${y},${z} rot ${rotation}, ${p.cells.length} cells${free ? ", free" : ""}` : `builder:place refused: the job did not start`, dim, origin);
       return;
     }
 

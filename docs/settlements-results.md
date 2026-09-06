@@ -118,7 +118,7 @@ ground buildings, and stilts will need their own rule.
 
 ## The placer, pinned (`suites/builder.ts`)
 
-Five GameTests, all passing on the headless server, each after the harness's
+Six GameTests, all passing on the headless server, each after the harness's
 sweep:
 
 | Test | What it measured |
@@ -127,6 +127,7 @@ sweep:
 | `builder_refuses_a_block_in_the_way` | a stone inside the box: refused, the verdict `stone is in the way at x,y,z` naming the stone's world position, nothing placed, the chest untouched. |
 | `builder_refuses_a_short_chest` | 31 cobblestone for 32: refused, `the chest is short of 1 cobblestone`, nothing placed. |
 | `builder_remove_puts_every_block_back` | the well built at a tick a block, then `builder:remove`: every cell air, and exactly the 76 items back in the chest, none more. |
+| `builder_free_mode_moves_nothing` | the panel's free-build toggle (the hatch's `free`): the well goes up from an **empty** chest and comes down leaving it empty, so the mode moves nothing either way. |
 | `builder_turned_well_matches_the_games_rotation` | the well built by the pack with rotation 1 against `structureManager.place` with `Rotate90` saved from the world: **77 of 77 cells equal**, states included. |
 
 What was learned on the way:

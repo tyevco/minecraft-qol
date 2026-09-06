@@ -66,9 +66,17 @@ function rig(test: Test, chest: Record<string, number> = MATERIALS): void {
   }
 }
 
-function place(test: Test, rotation = 0, ticks = 2, key = "tallfolk_well"): void {
+function place(test: Test, rotation = 0, ticks = 2, key = "tallfolk_well", free = false): void {
   const o = test.worldBlockLocation(ORIGIN);
-  test.getDimension().runCommand(`scriptevent builder:place ${key} ${o.x} ${o.y} ${o.z} ${rotation} ${ticks}`);
+  test.getDimension().runCommand(`scriptevent builder:place ${key} ${o.x} ${o.y} ${o.z} ${rotation} ${ticks}${free ? " free" : ""}`);
+}
+
+/** Every item in the chest. */
+function chestTotal(test: Test): number {
+  const c = container(test, CHEST);
+  let total = 0;
+  if (c) for (let i = 0; i < c.size; i++) total += c.getItem(i)?.amount ?? 0;
+  return total;
 }
 
 /** How many of the well's cells stand in the world as the structure has them, and how many are wrong. */
@@ -190,11 +198,29 @@ registerAsync("qol", "builder_remove_puts_every_block_back", async (test) => {
       const back = count(test, CHEST, item);
       test.assert(back === n, `expected ${n} ${item} back in the chest, found ${back}`);
     }
-    const c = container(test, CHEST);
-    let total = 0;
-    if (c) for (let i = 0; i < c.size; i++) total += c.getItem(i)?.amount ?? 0;
+    const total = chestTotal(test);
     const want = Object.values(MATERIALS).reduce((a, b) => a + b, 0);
     test.assert(total === want, `expected exactly ${want} items in the chest, found ${total}`);
+  });
+}).maxTicks(1600).structureName("qol:arena");
+
+// The free-build mode (the panel's toggle; the hatch's `free`): the well goes
+// up from an empty chest, and comes down without putting anything in it, so
+// the mode can never mint materials.
+registerAsync("qol", "builder_free_mode_moves_nothing", async (test) => {
+  rig(test, {});
+  place(test, 0, 1, "tallfolk_well", true);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok") && last(test).endsWith("free"), `expected the hatch to accept a free well, got "${last(test)}"`);
+  for (let t = 0; t < 600 && compare(test).right < WELL_CELLS; t += 10) await test.idle(10);
+  test.assert(compare(test).right === WELL_CELLS, `expected the free well finished, ${compare(test).right} of ${WELL_CELLS} cells stand`);
+  test.assert(chestTotal(test) === 0, `expected the chest still empty after a free build, found ${chestTotal(test)} item(s)`);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:remove ${o.x + 2} ${o.y + 2} ${o.z + 2} 1`);
+  test.succeedWhen(() => {
+    const r = compare(test);
+    test.assert(r.placed === 0, `expected the free well gone, ${r.placed} block(s) still stand`);
+    test.assert(chestTotal(test) === 0, `expected nothing back in the chest from a free building, found ${chestTotal(test)} item(s)`);
   });
 }).maxTicks(1600).structureName("qol:arena");
 

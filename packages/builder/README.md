@@ -53,7 +53,7 @@ job in the villages pack takes it over. Measurements:
   block that is no longer the building's (a different type stands there) is
   left alone and skipped. If the chest is gone, short or full the job stops
   where it is and says so; the record keeps its progress.
-- **Records** in the shared position index (`bd:buildings`, schema 1),
+- **Records** in the shared position index (`bd:buildings`, schema 2),
   keyed by the building's origin: key, rotation, box, phase (building,
   built, removing), how far it got, and the table it was raised from. Jobs
   saved mid-way resume a few seconds after the world loads.

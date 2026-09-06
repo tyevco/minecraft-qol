@@ -1,5 +1,6 @@
 import { BlockPermutation, Direction, GameMode, ItemStack, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
+import { WARES } from "../../../villages/scripts/core/standing";
 import { count, floor, put } from "./rig";
 
 /**
@@ -545,3 +546,24 @@ registerAsync("qol", "villages_invited_person_follows_and_settles", async (test)
     test.assert(atVillagePost === 0, `expected the village post empty until its day is up, found ${atVillagePost}`);
   });
 }).maxTicks(1400).structureName("qol:arena");
+
+// Every ware a trader sells (the villages' own table, imported since it is
+// pure) is an item the server knows, at an amount a stack can hold: an
+// ItemStack of each, so a mistyped identifier fails here and not in a
+// kid's hand.
+registerAsync("qol", "villages_wares_are_items", async (test) => {
+  const bad: string[] = [];
+  for (const list of WARES) {
+    for (const w of list) {
+      try {
+        const s = new ItemStack(w.item, w.amount);
+        if (s.typeId !== w.item) bad.push(`${w.item} became ${s.typeId}`);
+        else if (s.amount !== w.amount) bad.push(`${w.item} x${w.amount} held ${s.amount}`);
+      } catch (e) {
+        bad.push(`${w.item} x${w.amount}: ${e}`);
+      }
+    }
+  }
+  test.assert(bad.length === 0, `wares that are not items: ${bad.join("; ")}`);
+  test.succeed();
+}).maxTicks(20).structureName("qol:arena");

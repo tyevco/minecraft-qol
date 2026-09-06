@@ -214,14 +214,31 @@ measurements: `docs/villages-jigsaw-results.md`.
   **monster the player kills** within twenty-four blocks of a guard, +1;
   **hitting a person**, −5, and the guards within sixteen blocks come to
   where the blow landed (they walk there; nobody targets players, design
-  §4). Trading (+1) and building for a people (+10) wait for a trade
-  table and the builder; breaking a village block (−1) waits for a village
-  to know its own blocks (issue #73).
+  §4); a **trade** with the trader, +1 for the first four each day with a
+  people (`villages:trades`, a player property with the day's counts).
+  Building for a people (+10) waits for the builder; breaking a village
+  block (−1) waits for a village to know its own blocks (issue #73).
+  `/scriptevent villages:standing [people [value]]` (operator) reads the
+  caller's standing with every people back in numbers and tiers, or sets
+  one: the testers' hatch, since the game never shows the number.
 - **The village's voice** (design §5–6, `scripts/engine/elder.ts`) is its
   **trader**: interact and a form says where the player stands, offers an
   errand from the people's table (one open per player per people, three
-  days to bring it) and takes its payment, sells a **job post** for six
-  emeralds at friend, and at kin offers to **invite** someone home.
+  days to bring it) and takes its payment, **trades** at guest, sells a
+  **job post** for six emeralds at friend, and at kin offers to **invite**
+  someone home.
+- **Wares** (design §5's "traders trade" at guest; `core/standing.ts`
+  `WARES`): "What do you have to trade?" opens a second form of the
+  people's wares, three at guest and a fourth at friend, each so many of
+  an item for so many emeralds (the foxfolk: eight sweet berries, four
+  spruce saplings or a lantern; four glow berries at friend; the drovers'
+  saddle is eight emeralds, the otterfolk's nautilus shell twelve). A pick
+  takes the emeralds first and hands over the goods, then counts the
+  trade. The trade is the form's rather than a `minecraft:economy_trade_table`
+  on the person: the stable script API cannot see a vanilla trade
+  happen, so a trade table could neither move standing nor be gated per
+  player (a component group is per entity; standing is per player).
+  Every ware is an item the server knows (`villages_wares_are_items`).
 - **Invite** (design §6, `scripts/engine/follow.ts`): the elder names the
   nearest present person of the chosen job among its own people's posts
   within sixty-four blocks (never itself); that person loses its post tag,
@@ -365,6 +382,9 @@ measurements: `docs/villages-jigsaw-results.md`.
   and the block is still a post, and the second tap settles the follower
   there: a foxfolk with the `villages:kin` tag at the kids' post, no
   invited person left, and the village post empty.
+- **The wares are items** (`villages_wares_are_items`): an `ItemStack` of
+  each of the nineteen peoples' seventy-six wares at its amount, on the
+  headless server; every identifier held.
 - **The kids' posts and the visitors** (`docs/villages-jigsaw-results.md`,
   "Visitors"): `villages_player_post_waits_for_settler` has a
   SimulatedPlayer place a post and sees nobody spawn in 300 ticks, with
@@ -458,7 +478,9 @@ measurements: `docs/villages-jigsaw-results.md`.
   `undefined` into the pack's events. To see: a gift (hold sweet berries,
   interact with a foxfolk: one taken, "The Foxfolk do not know you yet",
   a second gift to the same person refused today); the trader's form and
-  its errand, payment and the post for six emeralds; hitting a person
+  its errand, payment and the post for six emeralds; the wares form at
+  guest (the emeralds leave, the goods arrive, the fifth trade of a day
+  with a people says nothing of standing); hitting a person
   (−5, and the guards walk to where you stood); a zombie killed by a
   guard (+1); and at kin the invite's two forms, the follow behind you
   through a real village, and the settle by tapping your own post. If the
@@ -578,7 +600,8 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): trading for standing, building for a people,
-losing standing for a village's broken blocks, and the guest tier's inn
-(a Hearthstone-style respawn point); the trader's blueprints wait for the
-builder (`docs/design/settlements.md`).
+Not yet built (design §5–6): building for a people, losing standing for
+a village's broken blocks, and the guest tier's inn (a Hearthstone-style
+respawn point); the trader's blueprints wait for the builder
+(`docs/design/settlements.md`), and the wares are a fixed table per
+people rather than the village's own storehouse (issue #85).

@@ -471,6 +471,29 @@ server:
 - **Not measured**: the gift, the trader's form, the hit and the defence,
   all of which need a real player in the event.
 
+## Trading (design §5, `packages/villages`)
+
+Design §5 counts a trade for standing (+1, capped per day) and
+`npcs.md` §6 left open whether a custom entity trades through
+`minecraft:economy_trade_table` or a form. Decided without a probe, from
+the typings: the stable `@minecraft/server` 2.9.0 has no trade event, no
+trade component and nothing that reads a trade table, so a vanilla table
+on the person could neither move standing per trade nor be gated per
+player (a component group is per entity, standing is per player), and
+its UI would open on the same interact the elder's form already takes.
+The trader's form trades instead: "What do you have to trade?" at guest
+opens a second `ActionFormData` of the people's wares (`core/standing.ts`
+`WARES`: three at guest, a fourth at friend, each so many of an item for
+so many emeralds); a pick takes the emeralds first, hands over the goods,
+and counts the trade in `villages:trades` (a player property: the day and
+a count per people), the first four a day with a people worth +1.
+
+Measured on the headless server (`villages_wares_are_items`): an
+`ItemStack` of each of the seventy-six wares at its amount, every
+identifier an item the server knows, every amount within a stack. The
+form itself, the emeralds leaving and the goods arriving need a real
+player (issue #84).
+
 ## The gap at a deck joint (design §3)
 
 "Blocks missing where the jigsaw blocks were", seen in game, chased on

@@ -232,7 +232,9 @@ Ways to earn it, each small, so a friendship takes an evening or two:
   people's table ("the forge is short of coal; bring 16"), paid on return.
   One open errand at a time; +5.
 - **Trading**: +1 per trade, capped per day, so trading is a slow steady
-  way and not a farm.
+  way and not a farm. (Built as the trader's form, four counted a day:
+  the stable API cannot see a `minecraft:economy_trade_table` trade
+  happen, `villages-jigsaw-results.md`.)
 - **Gifts**: each people has three liked items (stonefolk: iron, coal,
   bread; reedfolk: fish, dye, glass; tinker: copper, redstone, honey;
   tallfolk: wheat, wool, apples; drovers: leather, hay, cooked beef).
@@ -441,5 +443,7 @@ found, in buildings they raised. That is the whole loop.
    defence and blows, a post sells at friend, and at kin a named person
    follows the player home on the walk's waypoint and settles on a post
    whose plaque has been turned to its job (the post item places a
-   guard's; a tap turns it). Trading and building for standing, and the
-   guest's inn, are still open (issue #73).
+   guard's; a tap turns it). Trading is the trader's form: the people's
+   wares for emeralds at guest, the fourth at friend, +1 for the first
+   four trades a day. Building for standing and the guest's inn are
+   still open (issue #73).

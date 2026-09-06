@@ -19,6 +19,8 @@ Packs: `qol-times` (dispensers use cauldrons), `lens` (spawn-proofing overlay),
 `fluidworks` (funnels and tanks), `bulwark` (turret: block, head, hopper ammo),
 `hatchling` (a pet dragon: egg, warming, hatching, feeding, growth),
 `villages` (nine peoples with generated villages, peopled by job posts),
+`builder` (the blueprint table and a builder who raises buildings from it; a
+prototype, standing alone until the villages' builder job takes it over),
 `probe` (throwaway diagnostics), `gametest` (in-game tests). Shared code is
 under `packages/shared`.
 

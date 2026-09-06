@@ -263,15 +263,22 @@ export interface Arming {
   kind: Kind;
   /** The aim group's entity event; `EVENT_ARM` is the base one. */
   aim: string;
+  /** The target selector group's entity event (core/targeting.ts). */
+  target: string;
 }
 
 /**
  * Special ammo in a hopper takes priority over the buffer, because a tipped
  * arrow in the hopper is a deliberate choice; the buffer is the fallback.
  */
-export function arming(ammo: number, special: Kind | undefined, aim: string = EVENT_ARM): Arming {
-  if (isSpecial(special)) return { armed: true, kind: special, aim };
-  return { armed: isArmed(ammo), kind: "arrow", aim };
+export function arming(
+  ammo: number,
+  special: Kind | undefined,
+  aim: string = EVENT_ARM,
+  target: string = EVENT_TARGET,
+): Arming {
+  if (isSpecial(special)) return { armed: true, kind: special, aim, target };
+  return { armed: isArmed(ammo), kind: "arrow", aim, target };
 }
 
 /**
@@ -279,6 +286,8 @@ export function arming(ammo: number, special: Kind | undefined, aim: string = EV
  * one aim group of nine (`bulwark:aim_r<rate>_g<range>`); this is the base.
  */
 export const EVENT_ARM = "bulwark:aim_r1_g1";
+/** The base target selector: every monster, at the base range. */
+export const EVENT_TARGET = "bulwark:target_any_g1";
 export const EVENT_DISARM = "bulwark:disarm";
 
 /**
@@ -290,7 +299,7 @@ export const EVENT_DISARM = "bulwark:disarm";
  */
 export function groupEvents(
   want: Arming,
-  have: { armed?: boolean; kind?: Kind; aim?: string },
+  have: { armed?: boolean; kind?: Kind; aim?: string; target?: string },
 ): string[] {
   const events: string[] = [];
   if (!want.armed) {
@@ -299,6 +308,7 @@ export function groupEvents(
   }
   const arming = have.armed !== true;
   if (arming || have.aim !== want.aim) events.push(want.aim);
+  if (arming || have.target !== want.target) events.push(want.target);
   if (arming || have.kind !== want.kind) events.push(KIND_EVENT[want.kind]);
   return events;
 }

@@ -84,22 +84,6 @@
         }
       },
       "bulwark:aim_r1_g1": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 16
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -127,22 +111,6 @@
         }
       },
       "bulwark:aim_r1_g2": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 24
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -170,22 +138,6 @@
         }
       },
       "bulwark:aim_r1_g3": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 32
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -213,22 +165,6 @@
         }
       },
       "bulwark:aim_r2_g1": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 16
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -256,22 +192,6 @@
         }
       },
       "bulwark:aim_r2_g2": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 24
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -299,22 +219,6 @@
         }
       },
       "bulwark:aim_r2_g3": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 32
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -342,22 +246,6 @@
         }
       },
       "bulwark:aim_r3_g1": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 16
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -385,22 +273,6 @@
         }
       },
       "bulwark:aim_r3_g2": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 24
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -428,22 +300,6 @@
         }
       },
       "bulwark:aim_r3_g3": {
-        "minecraft:behavior.nearest_attackable_target": {
-          "priority": 1,
-          "must_see": true,
-          "reselect_targets": true,
-          "scan_interval": 10,
-          "entity_types": [
-            {
-              "filters": {
-                "test": "is_family",
-                "subject": "other",
-                "value": "monster"
-              },
-              "max_dist": 32
-            }
-          ]
-        },
         "minecraft:behavior.ranged_attack": {
           "priority": 0,
           "attack_interval": {
@@ -468,6 +324,228 @@
         "minecraft:follow_range": {
           "value": 32,
           "max": 32
+        }
+      },
+      "bulwark:target_any_g1": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "monster"
+              },
+              "max_dist": 16
+            }
+          ]
+        }
+      },
+      "bulwark:target_any_g2": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "monster"
+              },
+              "max_dist": 24
+            }
+          ]
+        }
+      },
+      "bulwark:target_any_g3": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "monster"
+              },
+              "max_dist": 32
+            }
+          ]
+        }
+      },
+      "bulwark:target_wounded_g1": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": "<=",
+                    "value": 6
+                  }
+                ]
+              },
+              "max_dist": 16
+            }
+          ]
+        }
+      },
+      "bulwark:target_wounded_g2": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": "<=",
+                    "value": 6
+                  }
+                ]
+              },
+              "max_dist": 24
+            }
+          ]
+        }
+      },
+      "bulwark:target_wounded_g3": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": "<=",
+                    "value": 6
+                  }
+                ]
+              },
+              "max_dist": 32
+            }
+          ]
+        }
+      },
+      "bulwark:target_healthy_g1": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": ">=",
+                    "value": 15
+                  }
+                ]
+              },
+              "max_dist": 16
+            }
+          ]
+        }
+      },
+      "bulwark:target_healthy_g2": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": ">=",
+                    "value": 15
+                  }
+                ]
+              },
+              "max_dist": 24
+            }
+          ]
+        }
+      },
+      "bulwark:target_healthy_g3": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": ">=",
+                    "value": 15
+                  }
+                ]
+              },
+              "max_dist": 32
+            }
+          ]
         }
       }
     },
@@ -549,6 +627,15 @@
             "bulwark:aim_r3_g1",
             "bulwark:aim_r3_g2",
             "bulwark:aim_r3_g3",
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3",
             "bulwark:ammo_arrow",
             "bulwark:ammo_slowness",
             "bulwark:ammo_weakness",
@@ -886,6 +973,177 @@
         "add": {
           "component_groups": [
             "bulwark:aim_r3_g3"
+          ]
+        }
+      },
+      "bulwark:target_any_g1": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_any_g1"
+          ]
+        }
+      },
+      "bulwark:target_any_g2": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_any_g2"
+          ]
+        }
+      },
+      "bulwark:target_any_g3": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_any_g3"
+          ]
+        }
+      },
+      "bulwark:target_wounded_g1": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_wounded_g1"
+          ]
+        }
+      },
+      "bulwark:target_wounded_g2": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_wounded_g2"
+          ]
+        }
+      },
+      "bulwark:target_wounded_g3": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_wounded_g3"
+          ]
+        }
+      },
+      "bulwark:target_healthy_g1": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g2",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_healthy_g1"
+          ]
+        }
+      },
+      "bulwark:target_healthy_g2": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g3"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_healthy_g2"
+          ]
+        }
+      },
+      "bulwark:target_healthy_g3": {
+        "remove": {
+          "component_groups": [
+            "bulwark:target_any_g1",
+            "bulwark:target_any_g2",
+            "bulwark:target_any_g3",
+            "bulwark:target_wounded_g1",
+            "bulwark:target_wounded_g2",
+            "bulwark:target_wounded_g3",
+            "bulwark:target_healthy_g1",
+            "bulwark:target_healthy_g2"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "bulwark:target_healthy_g3"
           ]
         }
       }

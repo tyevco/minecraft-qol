@@ -139,6 +139,119 @@
             }
           ]
         }
+      },
+      "qol:target_weak_first": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": "<=",
+                    "value": 5
+                  }
+                ]
+              },
+              "max_dist": 16
+            },
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "monster"
+              },
+              "max_dist": 16
+            }
+          ]
+        }
+      },
+      "qol:target_strong_first": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": ">=",
+                    "value": 15
+                  }
+                ]
+              },
+              "max_dist": 16
+            },
+            {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "monster"
+              },
+              "max_dist": 16
+            }
+          ]
+        }
+      },
+      "qol:look": {
+        "minecraft:behavior.look_at_target": {
+          "priority": 2,
+          "look_distance": 16,
+          "probability": 1.0,
+          "look_time": {
+            "min": 1,
+            "max": 5
+          },
+          "angle_of_view_horizontal": 360,
+          "angle_of_view_vertical": 360
+        }
+      },
+      "qol:target_weak_only": {
+        "minecraft:behavior.nearest_attackable_target": {
+          "priority": 1,
+          "must_see": true,
+          "reselect_targets": true,
+          "scan_interval": 10,
+          "entity_types": [
+            {
+              "filters": {
+                "all_of": [
+                  {
+                    "test": "is_family",
+                    "subject": "other",
+                    "value": "monster"
+                  },
+                  {
+                    "test": "actor_health",
+                    "subject": "other",
+                    "operator": "<=",
+                    "value": 5
+                  }
+                ]
+              },
+              "max_dist": 16
+            }
+          ]
+        }
       }
     },
     "components": {
@@ -414,6 +527,63 @@
         "add": {
           "component_groups": [
             "qol:shoot_by_target"
+          ]
+        }
+      },
+      "qol:target_weak_first": {
+        "remove": {
+          "component_groups": [
+            "qol:aim",
+            "qol:target_strong_first"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:target_weak_first",
+            "qol:look"
+          ]
+        }
+      },
+      "qol:target_strong_first": {
+        "remove": {
+          "component_groups": [
+            "qol:aim",
+            "qol:target_weak_first"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:target_strong_first",
+            "qol:look"
+          ]
+        }
+      },
+      "qol:target_weak_on_top": {
+        "add": {
+          "component_groups": [
+            "qol:target_weak_first"
+          ]
+        }
+      },
+      "qol:target_weak_only": {
+        "remove": {
+          "component_groups": [
+            "qol:aim",
+            "qol:target_weak_first",
+            "qol:target_strong_first"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "qol:target_weak_only",
+            "qol:look"
+          ]
+        }
+      },
+      "qol:target_weak_only_on_top": {
+        "add": {
+          "component_groups": [
+            "qol:target_weak_only"
           ]
         }
       }

@@ -4,6 +4,7 @@ import {
   AMMO_ITEM,
   EVENT_ARM,
   EVENT_DISARM,
+  EVENT_TARGET,
   KINDS,
   KIND_EVENT,
   KIND_PROJECTILE,
@@ -187,12 +188,16 @@ describe("shots and arming", () => {
   });
 
   it("prefers a hopper's special ammo over the buffer, and falls back to it", () => {
-    expect(arming(10, "snowball")).toEqual({ armed: true, kind: "snowball", aim: EVENT_ARM });
-    expect(arming(0, "splash_decay")).toEqual({ armed: true, kind: "splash_decay", aim: EVENT_ARM });
-    expect(arming(10, undefined)).toEqual({ armed: true, kind: "arrow", aim: EVENT_ARM });
-    expect(arming(0, undefined)).toEqual({ armed: false, kind: "arrow", aim: EVENT_ARM });
-    expect(arming(0, "arrow")).toEqual({ armed: false, kind: "arrow", aim: EVENT_ARM });
-    expect(arming(3, undefined, "bulwark:aim_r2_g3").aim).toBe("bulwark:aim_r2_g3");
+    const t = EVENT_TARGET;
+    expect(arming(10, "snowball")).toEqual({ armed: true, kind: "snowball", aim: EVENT_ARM, target: t });
+    expect(arming(0, "splash_decay")).toEqual({ armed: true, kind: "splash_decay", aim: EVENT_ARM, target: t });
+    expect(arming(10, undefined)).toEqual({ armed: true, kind: "arrow", aim: EVENT_ARM, target: t });
+    expect(arming(0, undefined)).toEqual({ armed: false, kind: "arrow", aim: EVENT_ARM, target: t });
+    expect(arming(0, "arrow")).toEqual({ armed: false, kind: "arrow", aim: EVENT_ARM, target: t });
+    expect(arming(3, undefined, "bulwark:aim_r2_g3", "bulwark:target_wounded_g3")).toMatchObject({
+      aim: "bulwark:aim_r2_g3",
+      target: "bulwark:target_wounded_g3",
+    });
   });
 
   it("lets a gate keep a special kind out of the search", () => {
@@ -205,35 +210,35 @@ describe("shots and arming", () => {
 describe("groupEvents", () => {
   const base = EVENT_ARM;
   const fast = "bulwark:aim_r3_g1";
+  const any = EVENT_TARGET;
+  const wounded = "bulwark:target_wounded_g1";
+  const on = { armed: true, kind: "arrow" as const, aim: base, target: any };
 
-  it("arms into the aim group and picks the ammo group from an unknown state", () => {
-    expect(groupEvents({ armed: true, kind: "arrow", aim: base }, {})).toEqual([base, KIND_EVENT.arrow]);
-    expect(groupEvents({ armed: true, kind: "arrow", aim: fast }, {})).toEqual([fast, KIND_EVENT.arrow]);
+  it("arms into the aim, target and ammo groups from an unknown state", () => {
+    expect(groupEvents(on, {})).toEqual([base, any, KIND_EVENT.arrow]);
+    expect(groupEvents({ ...on, aim: fast, target: wounded }, {})).toEqual([fast, wounded, KIND_EVENT.arrow]);
   });
 
   it("does nothing when the head already wears the right groups", () => {
-    expect(groupEvents({ armed: true, kind: "slowness", aim: base }, { armed: true, kind: "slowness", aim: base })).toEqual([]);
-    expect(groupEvents({ armed: false, kind: "arrow", aim: base }, { armed: false })).toEqual([]);
+    expect(groupEvents({ ...on, kind: "slowness" }, { ...on, kind: "slowness" })).toEqual([]);
+    expect(groupEvents({ ...on, armed: false }, { armed: false })).toEqual([]);
   });
 
-  it("swaps only the ammo group when the kind changes on an armed head", () => {
-    expect(groupEvents({ armed: true, kind: "snowball", aim: base }, { armed: true, kind: "arrow", aim: base })).toEqual([
-      KIND_EVENT.snowball,
-    ]);
+  it("swaps only the group that changed on an armed head", () => {
+    expect(groupEvents({ ...on, kind: "snowball" }, on)).toEqual([KIND_EVENT.snowball]);
+    expect(groupEvents({ ...on, aim: fast }, on)).toEqual([fast]);
+    expect(groupEvents({ ...on, target: wounded }, on)).toEqual([wounded]);
   });
 
-  it("swaps only the aim group when a tier changes on an armed head", () => {
-    expect(groupEvents({ armed: true, kind: "arrow", aim: fast }, { armed: true, kind: "arrow", aim: base })).toEqual([fast]);
-  });
-
-  it("disarms with one event, whatever the kind and aim were", () => {
-    expect(groupEvents({ armed: false, kind: "arrow", aim: base }, { armed: true, kind: "decay", aim: fast })).toEqual([EVENT_DISARM]);
-    expect(groupEvents({ armed: false, kind: "arrow", aim: base }, {})).toEqual([EVENT_DISARM]);
+  it("disarms with one event, whatever the groups were", () => {
+    expect(groupEvents({ ...on, armed: false }, { ...on, kind: "decay", aim: fast, target: wounded })).toEqual([EVENT_DISARM]);
+    expect(groupEvents({ ...on, armed: false }, {})).toEqual([EVENT_DISARM]);
   });
 
   it("re-fires whatever was last written as unknown on an armed head", () => {
-    expect(groupEvents({ armed: true, kind: "arrow", aim: base }, { armed: true, aim: base })).toEqual([KIND_EVENT.arrow]);
-    expect(groupEvents({ armed: true, kind: "arrow", aim: base }, { armed: true, kind: "arrow" })).toEqual([base]);
+    expect(groupEvents(on, { armed: true, aim: base, target: any })).toEqual([KIND_EVENT.arrow]);
+    expect(groupEvents(on, { armed: true, kind: "arrow", target: any })).toEqual([base]);
+    expect(groupEvents(on, { armed: true, kind: "arrow", aim: base })).toEqual([any]);
   });
 });
 

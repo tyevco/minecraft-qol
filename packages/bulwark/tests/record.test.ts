@@ -38,6 +38,7 @@ describe("row packing", () => {
     ammo: 17,
     kills: 3,
     tiers: { damage: 2, rate: 3, range: 1, gate: 2 },
+    priority: "strongest",
   };
 
   it("round-trips a full record", () => {
@@ -45,7 +46,13 @@ describe("row packing", () => {
   });
 
   it("round-trips an unlinked record with the entity absent, not empty", () => {
-    const unlinked: TurretRecord = { ...pos, ammo: 0, kills: 0, tiers: { damage: 1, rate: 1, range: 1, gate: 1 } };
+    const unlinked: TurretRecord = {
+      ...pos,
+      ammo: 0,
+      kills: 0,
+      tiers: { damage: 1, rate: 1, range: 1, gate: 1 },
+      priority: "nearest",
+    };
     const back = unpackRecord(packRecord(unlinked));
     expect(back).toBeDefined();
     expect(back!.entityId).toBeUndefined();
@@ -57,6 +64,19 @@ describe("row packing", () => {
     expect(back).toBeDefined();
     expect(back!.ammo).toBe(17);
     expect(back!.tiers).toEqual({ damage: 1, rate: 1, range: 1, gate: 1 });
+    expect(back!.priority).toBe("nearest");
+  });
+
+  it("reads a schema-2 row (tiers, no priority) as nearest", () => {
+    const row = ["minecraft:overworld", 1, 2, 3, "", 0, 0, 2, 1, 1, 1];
+    expect(unpackRecord(row)!.priority).toBe("nearest");
+    expect(unpackRecord(row)!.tiers.damage).toBe(2);
+  });
+
+  it("treats a malformed priority as nearest", () => {
+    const row = [...packRecord(full)];
+    row[11] = 7;
+    expect(unpackRecord(row)!.priority).toBe("nearest");
   });
 
   it("treats a malformed tier as the base, never a guess", () => {

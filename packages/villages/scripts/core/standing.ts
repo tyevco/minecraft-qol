@@ -10,7 +10,7 @@
  * words, and the form's buttons change with the tier. Per player on
  * purpose: a sibling's standing is their own.
  */
-import { PEOPLES, PEOPLE_NAMES, WORKER, type PostRecord } from "./record";
+import { PEOPLES, PEOPLE_NAMES, PLACED_BY_WORLD, WORKER, type PostRecord } from "./record";
 import { ERRANDS, type Errand } from "./visitors";
 
 export const TIERS = ["unwelcome", "stranger", "guest", "friend", "kin"] as const;
@@ -137,6 +137,49 @@ export function parseTradeDay(raw: unknown, day: number): TradeDay {
 export function countTrade(trades: TradeDay, people: number): { next: TradeDay; earns: boolean } {
   const before = trades.counts[String(people)] ?? 0;
   return { next: { day: trades.day, counts: { ...trades.counts, [String(people)]: before + 1 } }, earns: before < TRADES_PER_DAY };
+}
+
+/**
+ * Breaking a village's block (§5: −1 a block). Nothing records a generated
+ * village's box, so its bounds are a hull round its posts: a block within
+ * VILLAGE_HULL of a world-placed post on x/z, from VILLAGE_BELOW under the
+ * post's floor to VILLAGE_ABOVE over it, is the village's (issue #73;
+ * the squares are up to 23 wide with the post at the middle, the lots up
+ * to 14, and the streets between them 7 or 11 long, measured from the
+ * structures). The
+ * kids' own posts make no village. Natural blocks are free: the ground,
+ * rock and ore under a village, trees, plants and crops, snow and water,
+ * since the villages are built on and of them and a kid digging past one
+ * is not stripping it; and the vein is meant to be carried home.
+ */
+export const STANDING_BREAK = -1;
+export const VILLAGE_HULL = 20;
+export const VILLAGE_BELOW = 3;
+export const VILLAGE_ABOVE = 12;
+const NATURAL = /^minecraft:(grass_block|dirt|coarse_dirt|rooted_dirt|podzol|mud|clay|mycelium|moss_block|moss_carpet|dirt_path|farmland|stone|cobblestone|mossy_cobblestone|deepslate|cobbled_deepslate|granite|diorite|andesite|tuff|calcite|dripstone_block|pointed_dripstone|gravel|sand|red_sand|sandstone|red_sandstone|terracotta|[a-z]+_terracotta|bedrock|obsidian|magma|netherrack|[a-z_]*_ore|ancient_debris|raw_[a-z]+_block|[a-z_]+_log|[a-z_]+_wood|[a-z_]+_stem|[a-z_]+_hyphae|[a-z_]+_leaves|[a-z_]+_sapling|azalea|flowering_azalea|mangrove_roots|bamboo|bamboo_sapling|cactus|sugar_cane|kelp|seagrass|sea_pickle|lily_pad|vine|cave_vines[a-z_]*|glow_lichen|dead_bush|short_grass|tall_grass|fern|large_fern|[a-z_]+_(flower|tulip|orchid|bluet|poppy|dandelion|allium|daisy|lilac|peony|cornflower|rose_bush|sunflower|torchflower|pitcher_plant)|dandelion|poppy|allium|cornflower|peony|lilac|sunflower|rose_bush|torchflower|pitcher_plant|wheat|carrots|potatoes|beetroot|melon_block|melon_stem|pumpkin|carved_pumpkin|pumpkin_stem|sweet_berry_bush|cocoa|brown_mushroom|red_mushroom|[a-z_]+_mushroom_block|mushroom_stem|water|flowing_water|lava|flowing_lava|snow_layer|snow|powder_snow|ice|packed_ice|blue_ice|frosted_ice|sponge|wet_sponge|coral[a-z_]*|[a-z_]+_coral[a-z_]*|tube_coral|brain_coral|bubble_coral|fire_coral|horn_coral|amethyst_block|budding_amethyst|amethyst_cluster|[a-z]+_amethyst_bud|sculk[a-z_]*|soul_sand|soul_soil|basalt|blackstone|end_stone|prismarine|dark_prismarine|air)$/;
+/** A block a player may break inside a village's hull at no cost. */
+export const isNatural = (typeId: string): boolean => NATURAL.test(typeId) || typeId === "villages:vein";
+
+export interface Spot {
+  dimId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+/** The village a spot lies in: the nearest world-placed post whose hull holds it, or none. */
+export function villageOf(posts: readonly PostRecord[], at: Spot): PostRecord | undefined {
+  let best: PostRecord | undefined;
+  let bestD = Infinity;
+  for (const p of posts) {
+    if (p.placedBy !== PLACED_BY_WORLD || p.dimId !== at.dimId) continue;
+    if (at.y < p.y - VILLAGE_BELOW || at.y > p.y + VILLAGE_ABOVE) continue;
+    const d = (p.x - at.x) ** 2 + (p.z - at.z) ** 2;
+    if (d > VILLAGE_HULL * VILLAGE_HULL || d >= bestD) continue;
+    bestD = d;
+    best = p;
+  }
+  return best;
 }
 
 /** The items a people likes (its errand table's items): a gift of one is +1, once per person per day. */

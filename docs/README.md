@@ -31,7 +31,13 @@ Three kinds of document live here, and they carry very different authority.
   `minecraft:arrow` with **no potion component**; only its `localizationKey`
   (`tipped_arrow.effect.*`) names the tint, and script cannot construct one
   (no arrow delivery type in `Potions`). An arrow's aux value is its potion's
-  registry index plus one. Read off a chest with `qolprobe:item-at`.
+  registry index plus one. Read off a chest with `qolprobe:item-at`. Then
+  the design's must-prototype list, measured with a test-only shooter entity:
+  a `shooter` group swap changes the next shot, `shooter.power` 1.0 → 3.0
+  takes an arrow from 1.9 to 6.9 damage, the undead ignore a poison tint, a
+  custom projectile's kill names the projectile as `damagingEntity` and must
+  be attributed from a spawn-time map, and `Potions.resolve` makes a splash
+  potion.
 - [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
   pack's jigsaw structure loads, places and generates in a world with **no
   experiments** (25 wells in 400 fresh chunks, one per cell). The files live
@@ -81,7 +87,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | `PackSettingsChangeAfterEvent` | Beta-only, and misnamed (`PackSettingChangeAfterEventSignal`). `world.getPackSettings()` itself is stable — poll and diff. |
 | `CustomForm.image` grids | server-ui **2.2.0**, which has no stable release. `CustomForm` itself *is* stable in 2.1.0. |
 | `minecraft:connection` trait is de-experimented (roadmap) | Learn's block-traits page, as of June 2026, says it **still requires the "Upcoming Creator Features" toggle**. The Fluidworks pipe uses its own boolean states instead. |
-| Potion Bottling Line (Fluidworks §4.4) | **Cannot be built on 2.9.0.** Beyond the missing `getPotion`, there is no `ItemStack.createPotion` and `ItemPotionComponent` is read-only, so script cannot produce a potion of a chosen effect at all. |
+| Potion Bottling Line (Fluidworks §4.4) | **Still blocked, but not for the reason first given.** `getPotion` is still missing, so a cauldron's potion cannot be read. But `Potions.resolve("minecraft:weakness", "ThrownSplash")` **does** produce a splash potion of a chosen effect on 2.9.0 (measured, `bulwark-ammo-results.md`; the bare effect name throws `InvalidPotionEffectTypeError`), and `ItemPotionComponent` reads effect and delivery off any potion. Only tipped arrows have no delivery type and cannot be made. |
 | Read the weather from script (Fluidworks Rain Collector) | **No stable read exists.** `Dimension.getWeather` is beta-only; `setWeather` shipped without it. Track the stable `weatherChange` after-event; weather is unknown until it first changes. |
 | Block geometry axes match world axes (implicit in the model generator and the pipe) | **x is mirrored.** Geometry +x renders on the world's west side; -z is still north. The pipe's arm bones are named for the world face they reach, so the east arm is authored on -x. See `block-geometry-results.md`. |
 | `weatherChange` fires for a scripted `setWeather`, so the rain collector is testable headlessly | **It never fires on a headless server at all** — not for `setWeather`, not for the console's `weather rain`, and not with a SimulatedPlayer present. Measured with a module-scope subscription in the probe pack (`qolprobe` W1), which logs every event and needs no player. So `rain_collector` cannot pass headless and is a known failure; whether the collector works in a real session, where real weather cycles do fire the event, is still unconfirmed. The competing theory — that `ev.dimension`'s string did not match `Dimension.id` — is **wrong**, and editing `weather.ts` for it would have changed a shipped pack for nothing. |
@@ -122,7 +128,10 @@ and mob caps still wait on `bulwark-turret-probe.md`. Additional corrections: th
 treats the `on_kill` fix as good news for a turret, but that fix covers **melee
 goals only**; `ranged_attack` is not in the list, so kills come from `entityDie`
 in script. And `ranged_attack.attack_interval` did not replace the min/max pair
-so much as join it — both load. What the doc misses and a turret needs is
+so much as join it — both load, but at entity format `1.26.40` **a bare
+number is rejected** (`attack_interval: expected an object`, and the whole
+entity fails to load); write `{ "min": x, "max": x }`. Vanilla's bogged uses
+the bare form at an older format version. What the doc misses and a turret needs is
 `in_range_movement_mode: hold_position` and raising the default 30° head-rotation
 caps. The lens half of that design shipped separately as `packages/lens`.
 

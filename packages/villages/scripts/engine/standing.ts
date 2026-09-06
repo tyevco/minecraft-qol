@@ -36,7 +36,7 @@ import { standingProperty } from "../core/visitors";
 import { showElder } from "./elder";
 import * as follow from "./follow";
 import { PERSON } from "./post";
-import { VISITOR_TAG } from "./visitors";
+import { VISITOR_TAG, today } from "./visitors";
 import * as storage from "./storage";
 import * as walk from "./walk";
 
@@ -76,7 +76,7 @@ export function setErrand(player: Player, people: number, errand: core.OpenErran
 
 /** Count a trade with a people today; returns the standing after it (moved by STANDING_TRADE while under the day's cap). */
 export function recordTrade(player: Player, people: number): { standing: number; earned: boolean } {
-  const day = world.getDay();
+  const day = today();
   const { next, earns } = core.countTrade(core.parseTradeDay(player.getDynamicProperty(TRADES_PROPERTY), day), people);
   player.setDynamicProperty(TRADES_PROPERTY, JSON.stringify(next));
   return { standing: earns ? addStanding(player, people, core.STANDING_TRADE) : standingOf(player, people), earned: earns };
@@ -133,7 +133,7 @@ function gift(player: Player, person: Entity, held: ItemStack | undefined): bool
   if (!held) return false;
   const people = peopleOf(person);
   if (!core.likes(people).includes(held.typeId)) return false;
-  const day = world.getDay();
+  const day = today();
   const gifts = core.parseGiftDay(player.getDynamicProperty(GIFTS_PROPERTY), day);
   const after = core.acceptGift(gifts, person.id);
   if (!after) {
@@ -187,6 +187,8 @@ export function install(logger: (...parts: unknown[]) => void): void {
     });
   });
   world.afterEvents.playerPlaceBlock.subscribe((ev) => {
+    // A natural block costs nothing to break, so its key would only ever be evicted, never read.
+    if (core.isNatural(ev.block.typeId)) return;
     const at = { dimId: ev.dimension.id, x: ev.block.location.x, y: ev.block.location.y, z: ev.block.location.z };
     if (!core.villageOf(storage.all(), at)) return;
     if (placedInVillage.size >= PLACED_CAP) placedInVillage.delete(placedInVillage.values().next().value!);

@@ -57,6 +57,18 @@ describe("dawn on a locked clock", () => {
     expect(unlocked.state.extraDays).toBe(4);
     expect(dayOf(unlocked.state, 10)).toBe(14); // the world's day never goes back
   });
+  it("the boot marker's restart is a dawn even when the new clock has already passed the stored tick", () => {
+    // Short sessions on a Realm that sleeps: the tick is stored soon after
+    // one boot and the next boot's first poll comes later than it, so the
+    // heuristic alone would never see a restart (the case record.ts names).
+    const locked = { ...empty, lockedTick: 40, extraDays: 1 };
+    expect(lockedDawn(locked, false, 60)).toEqual({ state: locked, dawn: false, changed: false });
+    const restarted = lockedDawn(locked, false, 60, true);
+    expect(restarted).toMatchObject({ dawn: true, changed: true });
+    expect(restarted.state).toMatchObject({ lockedTick: 60, extraDays: 2 });
+    expect(lockedDawn(empty, false, 60, true).state.lockedTick).toBe(60); // a lock first seen is never a dawn
+    expect(lockedDawn(locked, true, 60, true).state.lockedTick).toBeUndefined(); // nor is a cycle that runs
+  });
   it("the state keeps the locked tick and the extra days, and reads an older state as none", () => {
     const s = { ...empty, nextDay: 3, lockedTick: 40, extraDays: 2 };
     expect(parseState(JSON.stringify(s))).toEqual(s);

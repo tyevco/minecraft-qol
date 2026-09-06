@@ -19,7 +19,10 @@
  * it by id, so nobody is spawned in its place while it is away. When the
  * day is up, the player sends it home from its own form, or the clock
  * restarts, it walks back to its post (engine/walk.ts; put there if the
- * walk fails) and is a guard of the village again.
+ * walk fails) and is a guard of the village again. A /reload forgets an
+ * escort as it forgets an invite; a tagged guard nobody remembers goes
+ * home at the next tap on it (its post tag says where), and a follower
+ * that dies is forgotten at once.
  *
  * `/scriptevent villages:invite x y z` invites the person at that post with
  * nobody to follow; `villages:escort x y z` hires the guard there the same
@@ -33,7 +36,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import { spawnSpot } from "../core/peopling";
 import { PEOPLES, PLACED_BY_PLAYER, peopleName, type PostRecord } from "../core/record";
 import * as core from "../core/standing";
-import { KIN_TAG, PERSON, hasPerson, personOf, postTag, settle as settleOnPost } from "./post";
+import { KIN_TAG, PERSON, hasPerson, personOf, postOf, postTag, settle as settleOnPost } from "./post";
 import * as storage from "./storage";
 import * as walk from "./walk";
 
@@ -61,7 +64,11 @@ interface Follower {
 const followers = new Map<string, Follower>();
 let log: (...parts: unknown[]) => void = () => undefined;
 
-export const presentAt = (dim: Dimension, post: PostRecord): boolean => hasPerson(dim, post);
+/** Whether the post's person is about and free: an escort keeps its post's id while it is away, so the id alone would name it. */
+export function presentAt(dim: Dimension, post: PostRecord): boolean {
+  const person = personOf(dim, post);
+  return person !== undefined && !followers.has(person.id);
+}
 
 const jobOf = (e: Entity): number => {
   const j = e.getProperty("villages:job");
@@ -124,16 +131,20 @@ function sendHome(f: Follower, why: string): void {
     person = undefined;
   }
   if (!person || !person.isValid) {
+    // Unloaded, or dead. The tag stays on an unloaded guard; a tap on it once it is about again brings it home (dismissForm).
     log(`${f.name} is not about to be sent home (${why})`);
     return;
   }
+  const dim = person.dimension;
+  const guard = person;
   try {
-    person.removeTag(ESCORT_TAG);
+    guard.removeTag(ESCORT_TAG);
+    // Out of the walking group now: the walk home puts it back, and a guard
+    // put home without one would follow the next waypoint within reach.
+    guard.triggerEvent("villages:halt");
   } catch {
     /* gone */
   }
-  const dim = person.dimension;
-  const guard = person;
   // Somebody else at the post by now (the post lost sight of it in an unloaded chunk and spawned another): the escort goes home by going.
   const there = personOf(dim, post);
   if (there && there.id !== guard.id) {
@@ -166,10 +177,35 @@ function sendHome(f: Follower, why: string): void {
   }
 }
 
+/**
+ * A guard with the escort tag that nobody here remembers hiring: a /reload
+ * or a restart emptied the map, or it was sent home while its chunk was
+ * not loaded. Its post tag says where home is; without a post it is an
+ * ordinary person again.
+ */
+function stray(guard: Entity): Follower | undefined {
+  const post = postOf(guard);
+  if (!post) {
+    try {
+      guard.removeTag(ESCORT_TAG);
+    } catch {
+      /* gone */
+    }
+    log(`${guard.nameTag} wore the escort tag with no post to go home to; the tag is taken off`);
+    return undefined;
+  }
+  return { entityId: guard.id, job: jobOf(guard), people: peopleOf(guard), name: guard.nameTag || peopleName(peopleOf(guard)), waypointBorn: 0, post, since: 0 };
+}
+
 /** The escort's own form (a tap on the guard): keep walking, or go home. */
 export async function dismissForm(player: Player, guard: Entity): Promise<void> {
   const f = followers.get(guard.id);
-  if (!f || !f.post) return;
+  if (!f) {
+    const lost = stray(guard);
+    if (lost) sendHome(lost, "nobody remembers who it walked with");
+    return;
+  }
+  if (!f.post) return;
   if (f.playerId !== player.id) {
     player.sendMessage(`${f.name} walks with someone else today.`);
     return;
@@ -299,6 +335,14 @@ export function settleAt(dim: Dimension, record: PostRecord, player: Player | un
 export function install(logger: (...parts: unknown[]) => void): void {
   log = logger;
   system.runInterval(tick, POLL_TICKS);
+  // A dead follower is forgotten at once, or an escort's player could hire no other guard until its day was up.
+  world.afterEvents.entityDie.subscribe((ev) => {
+    const f = ev.deadEntity ? followers.get(ev.deadEntity.id) : undefined;
+    if (!f) return;
+    removeWaypoint(f);
+    followers.delete(f.entityId);
+    log(`${f.name} died while following`);
+  });
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
     if (ev.id !== "villages:invite" && ev.id !== "villages:follow" && ev.id !== "villages:escort") return;
     const src = ev.sourceEntity;

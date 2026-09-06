@@ -10,7 +10,7 @@
           "type": "int",
           "range": [
             0,
-            8
+            18
           ],
           "default": 0,
           "client_sync": true
@@ -115,6 +115,59 @@
       "villages:people_8": {
         "minecraft:scale": {
           "value": 1.0
+        }
+      },
+      "villages:people_9": {
+        "minecraft:scale": {
+          "value": 0.85
+        }
+      },
+      "villages:people_10": {
+        "minecraft:scale": {
+          "value": 0.85
+        }
+      },
+      "villages:people_11": {
+        "minecraft:scale": {
+          "value": 1.05
+        }
+      },
+      "villages:people_12": {
+        "minecraft:scale": {
+          "value": 0.8
+        }
+      },
+      "villages:people_13": {
+        "minecraft:scale": {
+          "value": 1.15
+        },
+        "minecraft:movement": {
+          "value": 0.22
+        }
+      },
+      "villages:people_14": {
+        "minecraft:scale": {
+          "value": 0.8
+        }
+      },
+      "villages:people_15": {
+        "minecraft:scale": {
+          "value": 0.65
+        }
+      },
+      "villages:people_16": {
+        "minecraft:scale": {
+          "value": 0.85
+        }
+      },
+      "villages:people_17": {
+        "minecraft:scale": {
+          "value": 0.9
+        }
+      },
+      "villages:people_18": {
+        "minecraft:scale": {
+          "value": 1.1
         }
       }
     },
@@ -325,6 +378,106 @@
         "add": {
           "component_groups": [
             "villages:people_8"
+          ]
+        }
+      },
+      "villages:people_9": {
+        "set_property": {
+          "villages:people": 9
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_9"
+          ]
+        }
+      },
+      "villages:people_10": {
+        "set_property": {
+          "villages:people": 10
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_10"
+          ]
+        }
+      },
+      "villages:people_11": {
+        "set_property": {
+          "villages:people": 11
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_11"
+          ]
+        }
+      },
+      "villages:people_12": {
+        "set_property": {
+          "villages:people": 12
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_12"
+          ]
+        }
+      },
+      "villages:people_13": {
+        "set_property": {
+          "villages:people": 13
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_13"
+          ]
+        }
+      },
+      "villages:people_14": {
+        "set_property": {
+          "villages:people": 14
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_14"
+          ]
+        }
+      },
+      "villages:people_15": {
+        "set_property": {
+          "villages:people": 15
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_15"
+          ]
+        }
+      },
+      "villages:people_16": {
+        "set_property": {
+          "villages:people": 16
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_16"
+          ]
+        }
+      },
+      "villages:people_17": {
+        "set_property": {
+          "villages:people": 17
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_17"
+          ]
+        }
+      },
+      "villages:people_18": {
+        "set_property": {
+          "villages:people": 18
+        },
+        "add": {
+          "component_groups": [
+            "villages:people_18"
           ]
         }
       }

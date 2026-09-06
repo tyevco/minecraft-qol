@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DAY, decide, spawnSpot } from "../scripts/core/peopling";
-import { FRESH, packRecord, unpackRecord, type PostRecord } from "../scripts/core/record";
+import { FRESH, JOBS, PEOPLE_PER_PAGE, PEOPLES, packRecord, peopleIndex, peopleStates, unpackRecord, type PostRecord } from "../scripts/core/record";
 
 const post: PostRecord = { dimId: "minecraft:overworld", x: 1, y: 64, z: 2, people: 3, job: 1, ...FRESH };
 
@@ -27,9 +27,20 @@ describe("record", () => {
     expect(unpackRecord(packRecord(r))).toEqual(r);
     expect(unpackRecord(packRecord(post))).toEqual(post);
   });
+  it("splits a people index across the block's two states and reads it back", () => {
+    expect(peopleStates(3)).toEqual({ "villages:people": 3, "villages:page": 0 });
+    expect(peopleStates(18)).toEqual({ "villages:people": 2, "villages:page": 1 });
+    for (let i = 0; i < PEOPLES.length; i++) {
+      const st = peopleStates(i);
+      expect(st["villages:people"]).toBeLessThan(PEOPLE_PER_PAGE);
+      expect(peopleIndex(st["villages:people"], st["villages:page"])).toBe(i);
+    }
+    expect(peopleIndex(7, 0)).toBe(7); // a post from before the page state existed reads its page as 0
+  });
   it("drops a row with an unknown people or job rather than guess", () => {
-    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, 9, 0, "", 0])).toBeUndefined();
-    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, 0, 9, "", 0])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, PEOPLES.length, 0, "", 0])).toBeUndefined();
+    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, PEOPLES.length - 1, 0, "", 0])).toMatchObject({ people: PEOPLES.length - 1 });
+    expect(unpackRecord(["minecraft:overworld", 0, 0, 0, 0, JOBS.length, "", 0])).toBeUndefined();
     expect(unpackRecord(["", 0, 0, 0, 0, 0, "", 0])).toBeUndefined();
   });
 });

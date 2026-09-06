@@ -331,6 +331,86 @@ What was measured on the way:
   `Container.addItem` returned no remainder in either test; the
   remainder-to-drop path is untested in game.
 
+## The furfolk (design `furfolk.md` §4–5, `packages/villages`)
+
+The ten animal peoples went into the pack together, as indices 9–18, with
+their villages and the seven trades of `furfolk.md` §5. Measured on the
+headless GameTest server (BDS 1.26.45.1):
+
+- **A block state lists at most sixteen values.** The first deploy with
+  `villages:people` at `[0, …, 18]` logged `blocks/post.json -> description
+  -> states -> villages:people: too many input elements, expected no more
+  than 16` and the post block did not exist: every `BlockPermutation.resolve`
+  in the suite threw, for people 0 as much as 18. The index is now split
+  across `villages:people` (0–15) and `villages:page` (0–1), a post from
+  before the page existed reads its page as 0, and a village piece writes
+  the page only when it is set, so the nine humans' pieces are byte for
+  byte what they were. Recorded in `docs/README.md`'s corrections; the
+  design's "76 permutations, well within what the engine allows" was
+  wrong about the shape, not the count.
+- **The nineteenth people spawns.** `villages_post_spawns_deerfolk` places
+  a post at people 2, page 1 and the person's `villages:people` reads 18,
+  with its name tag `Deerfolk`; the drow (7) and drover (8) tests still
+  pass, so the widened property range and the appended block state keep
+  the earlier indices (design §7 items 1 and 2, as far as a fresh world can
+  say; a Realm's existing persons are the in-game check).
+- **The seven trades**, one GameTest each, all passing, every survey line
+  in the log naming the fixture it read (`bushes 8`, `ovens 1`, `hives 1`,
+  `cactus 12`, `mushrooms 10`, `pods 8`, `oak leaves 16`):
+  - `villages_forager_picks_berries`: eight bushes at `growth` 3 on grass
+    become eight at `growth` 1, still standing, with at least sixteen
+    berries in the chest and **no berry item on the ground** - so a
+    `setPermutation` back to the unripe state drops nothing (the design's
+    question). `growth` 3 is ripe on Bedrock, as the orchard pieces assumed.
+  - `villages_baker_bakes_bread`: nine wheat become three loaves, the
+    furnace was seen as `lit_furnace` during the bake and is `furnace`
+    facing south after it. The swap to the lit block and back keeps the
+    `minecraft:cardinal_direction` state and, on an empty furnace, has
+    nothing to eject; a furnace with items is not swapped at all.
+  - `villages_beekeeper_bottles_honey`: a beehive placed at `honey_level` 5
+    reads back as 5 (the state's name and range on Bedrock), one glass
+    bottle becomes one honey bottle, and the hive stands at `honey_level`
+    0 afterwards. Whether bees inside a hive anger at a scripted level
+    change is not something a structure-placed hive can show: it has none.
+  - `villages_cutter_cuts_cactus`: four columns of three on sand lose their
+    top two blocks each, eight cactus items reach the chest, the bases
+    stand, **nothing drops as an item** when a cactus block is set to air
+    top down, and a bread is taken as the wage.
+  - `villages_picker_gathers_mushrooms`: ten mushrooms on mycelium become
+    six in the chest and four standing.
+  - `villages_cocoa_picker_picks_pods`: eight pods at `age` 2 with
+    `direction` 0–3 round two jungle trunks (0 south of the log, 1 west, 2
+    north, 3 east, as the squirrels' grove writes them) stay on their logs
+    through a `setBlockPermutation` and a harvest; sixteen beans reach the
+    chest and every pod reads `age` 0 after. Run first without bread it
+    "waits: no wage", which is the rule (beans are not food), so the test
+    supplies four and pins that three are left.
+  - `villages_gleaner_gathers_apples`: sixteen persistent oak leaves give
+    two apples and lose no leaf, with a four-log oak beside them whose
+    crown is not persistent, which stays: a hedge beats a tree.
+- **Two villages placed, and what their surveys said.** `place structure
+  villages:deerfolk_village 60 64 60` and `villages:foxfolk_village 220 64
+  60` inside two hundred-chunk ticking areas both answered `Place command
+  succeeded`, and their posts surveyed within a second of placing. The fox
+  patches read `bushes 30`, `30`, `24` and `12` (two patches overlap in
+  range) and made four foragers; the fox grove made a lumberjack. The four
+  deerfolk hedge workers read `oak leaves 183`, `275`, `71` and `97` beside
+  `logs 17` to `41`: a village has trees within sixteen blocks of every
+  lot, so a rule that counted every oak leaf and ranked the hedge under
+  trees made all four lumberjacks. Leaves placed by hand are `persistent_bit`
+  and a tree's are not (the pieces author their trees that way so a felled
+  crown decays), so the survey now counts persistent oak leaves only and
+  ranks a hedge above trees: a third deerfolk village placed after that
+  change had both its hedge workers survey as gleaners (`hedge 52` beside
+  `logs 12` and `logs 48`). The earlier village's four kept their
+  lumberjack records, since a survey holds for a day and the restart
+  heuristic (a stamp ahead of the clock) does not fire when the stamp is
+  small. The second boot's `villages:debug` listed 21
+  posts in the two villages with 21 persons present (eleven deerfolk, ten
+  foxfolk); every deerfolk post read people 18 back through
+  `villages:page` 1, so the page state survives the `.mcstructure` and the
+  jigsaw placement as `villages:people` did.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment

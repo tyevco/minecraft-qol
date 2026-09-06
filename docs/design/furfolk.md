@@ -4,18 +4,20 @@
 
 Companion to `design/npcs.md` and `design/villages.md` · Draft v0.1
 
-> Concept with models, not a build order. It was prompted by a shelf of
-> flocked animal figures in a toy shop — rabbits on bicycles with race
-> numbers, a bear family at a picnic, a cat at a piano, a hedgehog in
-> glasses — that one of the kids did not want to leave. Everything the four
-> peoples have (one rig, job outfits, posts, generated villages, standing)
-> carries over; what is new is the head, the tail and the village each people
-> builds. The ten peoples have generated rigs, four job atlases and an
-> animation set each under `concepts/entities/`, listed in the viewer as
-> `concept · furfolk` beside the four (`npm run viewer`). The first five
-> came from the shelf; the second five (§3.6–3.10) were picked from the
-> "later" list once the first five could be seen. Nothing here has been
-> run in game. §7 says what to prototype and §8 where to start.
+> **Built**, as peoples 9–18 of `packages/villages`: the rigs, atlases and
+> one animation set for all nineteen, each people's village and worldgen,
+> and the seven trades of §5, every one pinned by a GameTest on the headless
+> server (`docs/villages-jigsaw-results.md`). §4 says what changed, §7 what
+> was measured and what still waits for a real client, §8 where it went.
+>
+> It was prompted by a shelf of flocked animal figures in a toy shop —
+> rabbits on bicycles with race numbers, a bear family at a picnic, a cat at
+> a piano, a hedgehog in glasses — that one of the kids did not want to
+> leave. Everything the four peoples have (one rig, job outfits, posts,
+> generated villages, standing) carries over; what is new is the head, the
+> tail and the village each people builds. The first five came from the
+> shelf; the second five (§3.6–3.10) were picked from the "later" list once
+> the first five could be seen.
 
 ---
 
@@ -447,7 +449,7 @@ follow from 9 in whatever order they are built.
 | Where | Today | Change |
 | --- | --- | --- |
 | `scripts/core/record.ts` `PEOPLES` | nine names | append; `unpackRecord` already bounds-checks against its length, so a row from a newer pack is dropped by an older one rather than misread |
-| `blocks/post.json` `villages:people` state | `[0, …, 8]` | append values. The block's permutation count is peoples × jobs (76 at nineteen peoples), well within what the engine allows |
+| `blocks/post.json` `villages:people` state | `[0, …, 8]` | ~~append values~~ **A state lists at most sixteen values** (measured; `docs/README.md` corrections): the index is split across `villages:people` (0–15) and a second state `villages:page` (0–1), and an existing post with no page state reads as page 0 |
 | `entities/person.json` property `villages:people` | `range: [0, 8]` | widen the range; one `villages:people_N` component group and event per people, each with its scale (and the bear's `movement`) |
 | `render_controllers/person.json` | `Array.people` of nine geometries, `Array.look` of thirty-six textures, index `people * 4 + job` | arrays grow; the clamp bounds and the multiplier come from `JOBS.length`, which is what they always meant. Bone visibility unchanged; `tail` and the ears are always on |
 | `entity/person.entity.json` | nine geometries, thirty-six textures | one geometry and four textures per new people (eight with coats) |
@@ -554,23 +556,28 @@ bakes if there is a furnace near it.
 ## 8. Where this goes next
 
 1. ~~**Rigs in the viewer, first.**~~ Built: the §2 builder change and
-   painters, one call per people, into `concepts/entities/` with the
-   peoples' job atlases and an animation set each, listed as `concept ·
-   furfolk` beside the four. Nothing in a shipped pack changed. Judge them
-   with the kids; let them pick the first people and its name, and change
-   the numbers in the two `FURFOLK` tables until each reads right.
-2. **Probe items 1–5** in the probe pack, in one session, since each is a
-   read.
-3. **One people end to end**: append it to the record, the block, the
-   entity and the render controller; its palette and two signature pieces;
-   its village, pool and set; its trade with a pure test and a GameTest
-   (`villages_forager_picks_berries`, or whichever people came first).
-   Measure it on the plain-world server as the tallfolk village was.
-4. ~~**Villages for every people**~~ built as concepts (§3, `furfolk.ts`):
-   buildings, pieces, pools and worldgen in the probe pack, previews in
-   the viewer, a test that each grows. Judge them beside the four and fix
-   what reads wrong, as `villages.md` §8 item 3 did for the four.
-5. **The rest a people at a time**, each its posts (the lodestone swap),
-   its person and its trade; the baker early, because it closes the wage
-   loop for everyone.
-6. **Coats**, once there are peoples to give them to.
+   painters, one call per people; judged in the viewer.
+2. ~~**Probe items 1–5**~~ — items 1 and 2 are answered by the suite (a
+   drow post and a drover post still spawn their people after the widening
+   to nineteen; the generated villages' posts keep their state); 3, 4 and 5
+   wait for a real client (§7).
+3. ~~**One people end to end**~~ and 5. ~~**the rest a people at a time**~~
+   — all ten at once, in the design's order, as peoples 9–18: the record,
+   the block, the entity and the render controller widened; the pieces and
+   worldgen moved from the probe pack to the villages pack with real posts;
+   the seven trades built, each with a pure test and a GameTest
+   (`villages_forager_picks_berries`, `villages_baker_bakes_bread`,
+   `villages_beekeeper_bottles_honey`, `villages_cutter_cuts_cactus`,
+   `villages_picker_gathers_mushrooms`, `villages_cocoa_picker_picks_pods`,
+   `villages_gleaner_gathers_apples`). The catfolk's shearer is the
+   rancher, the wolves' and otters' fisher the reedfolk's. Each person is
+   named for its people (`PEOPLE_NAMES` in `core/record.ts`, its name tag,
+   shown when looked at); a lang key cannot read an entity property.
+4. ~~**Villages for every people**~~ built (§3, `furfolk.ts`); the
+   deerfolk's orchard became a hedge of persistent oak leaves (§5,
+   gleaner), since an orchard of oaks makes a lumberjack, and a placed
+   village showed trees within sixteen blocks of every lot, so a hedge is
+   told from a tree by `persistent_bit`, not by the absence of logs.
+6. **Coats**, once the kids have seen the ten in game.
+7. **Ask the kids for names.** The `-folk` names are placeholders; a
+   people's name is one line in `PEOPLE_NAMES`.

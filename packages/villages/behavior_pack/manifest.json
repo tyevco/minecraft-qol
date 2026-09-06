@@ -2,9 +2,9 @@
   "format_version": 3,
   "header": {
     "name": "Villages",
-    "description": "Five peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains, drovers in the desert. Every person is anchored to a job post in their village.",
+    "description": "Nineteen peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains, hobbits, elves and drow in their woods, drovers in the desert, and ten furfolk - foxes, cats, wolves, rabbits, bears, fennecs, mice, squirrels, otters and deer - each in its own biome. Every person is anchored to a job post in their village, and every worker takes a trade from what stands round its post.",
     "uuid": "c3c3f8ed-ae70-4d6f-9f17-6d845624cac4",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "min_engine_version": "1.26.40"
   },
   "modules": [
@@ -12,14 +12,14 @@
       "description": "Villages: peoples, job posts, structures and worldgen",
       "type": "data",
       "uuid": "ec7fe108-4ebb-4863-a752-1415042d24b3",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "description": "Villages scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "a86a813f-1d58-49c3-b388-212fb81c59e7",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "entry": "scripts/main.js"
     }
   ],
@@ -30,7 +30,7 @@
     },
     {
       "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ],
   "metadata": {
@@ -43,7 +43,7 @@
   "settings": [
     {
       "type": "label",
-      "text": "A worker takes a trade from the blocks round its post: among trees it is a lumberjack, beside farmland a farmer, at a vein a miner, by open water a fisher. Each cycle it walks to its work, does it, and puts what it made in the nearest chest."
+      "text": "A worker takes a trade from the blocks round its post: among trees it is a lumberjack, beside farmland a farmer, at a vein a miner, by open water a fisher, in a pen of sheep a rancher; among berry bushes a forager, at an oven a baker, by a beehive a beekeeper, in a cactus garden a cactus cutter, on a mushroom bed a mushroom picker, under cocoa pods a cocoa picker, at an oak hedge a gleaner. Each cycle it walks to its work, does it, and puts what it made in the nearest chest."
     },
     {
       "type": "slider",
@@ -56,7 +56,7 @@
     },
     {
       "type": "label",
-      "text": "Wages: a cycle costs the worker one food item from its chest. An unpaid lumberjack or miner waits; a farmer or fisher works regardless, since they are what fill the chest."
+      "text": "Wages: a cycle costs the worker one food item from its chest. An unpaid lumberjack, miner, rancher, cactus cutter or cocoa picker waits; the trades that make food (farmer, fisher, forager, baker, beekeeper, gleaner) and the mushroom picker work regardless, since they are what fill the chest."
     },
     {
       "type": "toggle",

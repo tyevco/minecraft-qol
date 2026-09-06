@@ -26,7 +26,9 @@ function placePost(test: Test, peopleIndex: number, job: number): void {
   // earlier test (or an earlier run, since persons persist) would be counted
   // here. Sweep the spot first.
   for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 8 })) e.remove();
-  test.setBlockPermutation(BlockPermutation.resolve(POST, { "villages:people": peopleIndex, "villages:job": job }), AT);
+  // A block state lists at most sixteen values, so the index is split across
+  // `villages:people` (the low four bits) and `villages:page` (the rest).
+  test.setBlockPermutation(BlockPermutation.resolve(POST, { "villages:people": peopleIndex % 16, "villages:page": Math.floor(peopleIndex / 16), "villages:job": job }), AT);
 }
 
 registerAsync("qol", "villages_post_spawns_person", async (test) => {
@@ -57,6 +59,20 @@ registerAsync("qol", "villages_post_spawns_drover", async (test) => {
     const jobProp = p.getProperty("villages:job");
     test.assert(peopleProp === 8, `expected people 8 (drover), got ${String(peopleProp)}`);
     test.assert(jobProp === 0, `expected job 0 (guard), got ${String(jobProp)}`);
+  });
+}).maxTicks(400).structureName("qol:arena");
+
+// The nineteenth people, the deerfolk: the property range, the block's state
+// list and the people_18 event all reach index 18, the last of the furfolk.
+registerAsync("qol", "villages_post_spawns_deerfolk", async (test) => {
+  placePost(test, 18, 1);
+  test.succeedWhen(() => {
+    const found = people(test);
+    test.assert(found.length === 1, `expected exactly 1 person at the post, found ${found.length}`);
+    const p = found[0]!;
+    const peopleProp = p.getProperty("villages:people");
+    test.assert(peopleProp === 18, `expected people 18 (deerfolk), got ${String(peopleProp)}`);
+    test.assert(p.nameTag === "Deerfolk", `expected the person named for its people, got "${p.nameTag}"`);
   });
 }).maxTicks(400).structureName("qol:arena");
 
@@ -201,3 +217,185 @@ registerAsync("qol", "villages_fisher_catches_fish", async (test) => {
     for (let x = 1; x <= 2; x++) for (let z = 1; z <= 4; z++) test.assertBlockPresent("minecraft:water", { x, y: 0, z }, true);
   });
 }).maxTicks(600).structureName("qol:arena");
+
+// ---------------------------------------------------------------------------
+// The furfolk's trades (docs/design/furfolk.md §5). Each rig is the fixture
+// its village piece carries, a chest, and the post; the assertions are the
+// design table's "to measure first" column, so a failure is a measurement.
+// ---------------------------------------------------------------------------
+
+/** Loose items of a type near the post: what a mutation must never drop. */
+function dropped(test: Test, typeId: string): number {
+  return test.getDimension().getEntities({ type: "minecraft:item", location: test.worldBlockLocation(AT), maxDistance: 12 })
+    .filter((e) => e.getComponent("minecraft:item")?.itemStack.typeId === typeId).length;
+}
+
+// The forager: eight ripe bushes on grass. Each is picked back to growth 1
+// and stays standing; the berries are in the chest and none on the ground.
+registerAsync("qol", "villages_forager_picks_berries", async (test) => {
+  placePost(test, 9, 1);
+  const bushes: Vector3[] = [...Array.from({ length: 7 }, (_, i) => ({ x: i + 1, y: 1, z: 1 })), { x: 7, y: 1, z: 2 }];
+  for (const b of bushes) {
+    test.setBlockType("minecraft:grass", { x: b.x, y: 0, z: b.z });
+    test.setBlockPermutation(BlockPermutation.resolve("minecraft:sweet_berry_bush", { growth: 3 }), b);
+  }
+  test.setBlockType("minecraft:chest", CHEST);
+  test.succeedWhen(() => {
+    const berries = count(test, CHEST, "minecraft:sweet_berries");
+    test.assert(berries >= 16, `expected at least 16 berries from 8 bushes in the chest, found ${berries}`);
+    let standing = 0, picked = 0;
+    for (const b of bushes) {
+      const block = test.getBlock(b);
+      if (block.typeId !== "minecraft:sweet_berry_bush") continue;
+      standing++;
+      if (block.permutation.getState("growth") === 1) picked++;
+    }
+    test.assert(standing === 8, `expected all 8 bushes still standing, found ${standing}`);
+    test.assert(picked === 8, `expected all 8 bushes at growth 1, found ${picked}`);
+    const loose = dropped(test, "minecraft:sweet_berries");
+    test.assert(loose === 0, `expected no berries dropped as items, found ${loose}`);
+  });
+}).maxTicks(800).structureName("qol:arena");
+
+// The baker: a furnace and nine wheat. Three loaves, the wheat gone, and the
+// furnace back to its unlit block facing the way it did, with nothing ejected.
+const OVEN: Vector3 = { x: 2, y: 1, z: 2 };
+registerAsync("qol", "villages_baker_bakes_bread", async (test) => {
+  placePost(test, 12, 1);
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:furnace", { "minecraft:cardinal_direction": "south" }), OVEN);
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:wheat", 9));
+  let lit = false;
+  test.succeedWhen(() => {
+    if (test.getBlock(OVEN).typeId === "minecraft:lit_furnace") lit = true;
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 3, `expected 3 loaves from 9 wheat, found ${bread}`);
+    const wheat = count(test, CHEST, "minecraft:wheat");
+    test.assert(wheat === 0, `expected the wheat used up, found ${wheat}`);
+    const oven = test.getBlock(OVEN);
+    test.assert(oven.typeId === "minecraft:furnace", `expected the furnace unlit again after the bake, found ${oven.typeId}`);
+    test.assert(oven.permutation.getState("minecraft:cardinal_direction") === "south", `expected the furnace still facing south, got ${String(oven.permutation.getState("minecraft:cardinal_direction"))}`);
+    test.assert(lit, "expected to see the furnace lit while the loaves baked");
+  });
+}).maxTicks(800).structureName("qol:arena");
+
+// The beekeeper: a full hive on a fence and two bottles. One bottle becomes
+// honey, the hive reads empty, and the hive is still a hive.
+const HIVE: Vector3 = { x: 2, y: 2, z: 2 };
+registerAsync("qol", "villages_beekeeper_bottles_honey", async (test) => {
+  placePost(test, 13, 1);
+  test.setBlockType("minecraft:oak_fence", { x: 2, y: 1, z: 2 });
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:beehive", { direction: 0, honey_level: 5 }), HIVE);
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:glass_bottle", 2));
+  test.succeedWhen(() => {
+    const honey = count(test, CHEST, "minecraft:honey_bottle");
+    test.assert(honey === 1, `expected 1 honey bottle, found ${honey}`);
+    const bottles = count(test, CHEST, "minecraft:glass_bottle");
+    test.assert(bottles === 1, `expected 1 glass bottle left, found ${bottles}`);
+    const hive = test.getBlock(HIVE);
+    test.assert(hive.typeId === "minecraft:beehive", `expected the hive still there, found ${hive.typeId}`);
+    test.assert(hive.permutation.getState("honey_level") === 0, `expected the hive emptied to honey_level 0, got ${String(hive.permutation.getState("honey_level"))}`);
+  });
+}).maxTicks(800).structureName("qol:arena");
+
+// The cactus cutter: four columns of three on sand, nothing beside them.
+// The eight blocks above the bases go to the chest as cactus, the bases
+// stand, nothing lands on the ground, and one bread is the wage.
+registerAsync("qol", "villages_cutter_cuts_cactus", async (test) => {
+  placePost(test, 14, 1);
+  const bases: Vector3[] = [{ x: 1, y: 1, z: 1 }, { x: 1, y: 1, z: 5 }, { x: 6, y: 1, z: 1 }, { x: 6, y: 1, z: 6 }];
+  for (const b of bases) {
+    test.setBlockType("minecraft:sand", { x: b.x, y: 0, z: b.z });
+    for (let y = 1; y <= 3; y++) test.setBlockPermutation(BlockPermutation.resolve("minecraft:cactus", { age: 0 }), { x: b.x, y, z: b.z });
+  }
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:bread", 4));
+  test.succeedWhen(() => {
+    const cactus = count(test, CHEST, "minecraft:cactus");
+    test.assert(cactus >= 8, `expected the 8 blocks above the bases in the chest, found ${cactus}`);
+    for (const b of bases) {
+      test.assertBlockPresent("minecraft:cactus", b, true);
+      test.assertBlockPresent("minecraft:cactus", { x: b.x, y: 3, z: b.z }, false);
+    }
+    const loose = dropped(test, "minecraft:cactus");
+    test.assert(loose === 0, `expected no cactus dropped as items, found ${loose}`);
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 3, `expected one bread taken as the wage (3 left), found ${bread}`);
+  });
+}).maxTicks(800).structureName("qol:arena");
+
+// The mushroom picker: ten mushrooms on a mycelium bed. Six go to the chest
+// and four are left standing to spread from.
+registerAsync("qol", "villages_picker_gathers_mushrooms", async (test) => {
+  placePost(test, 15, 1);
+  const bed: Vector3[] = [];
+  for (let x = 1; x <= 5; x++) for (const z of [1, 2]) bed.push({ x, y: 1, z });
+  for (const [i, m] of bed.entries()) {
+    test.setBlockType("minecraft:mycelium", { x: m.x, y: 0, z: m.z });
+    test.setBlockType(i % 2 ? "minecraft:red_mushroom" : "minecraft:brown_mushroom", m);
+  }
+  test.setBlockType("minecraft:chest", CHEST);
+  test.succeedWhen(() => {
+    const picked = count(test, CHEST, "minecraft:brown_mushroom") + count(test, CHEST, "minecraft:red_mushroom");
+    test.assert(picked === 6, `expected 6 of 10 mushrooms in the chest, found ${picked}`);
+    const standing = bed.filter((m) => /mushroom$/.test(test.getBlock(m).typeId)).length;
+    test.assert(standing === 4, `expected 4 mushrooms left standing, found ${standing}`);
+  });
+}).maxTicks(800).structureName("qol:arena");
+
+// The cocoa picker: eight ripe pods on two jungle logs (`direction` is the
+// face the pod hangs from, as the squirrels' grove writes it). Two beans per
+// pod reach the chest and every pod is back on its log at age 0. Beans are
+// not food, so this is a paid trade: four bread in, three out.
+registerAsync("qol", "villages_cocoa_picker_picks_pods", async (test) => {
+  placePost(test, 16, 1);
+  const pods: Vector3[] = [];
+  for (const lx of [2, 6]) {
+    for (let y = 1; y <= 3; y++) test.setBlockType("minecraft:jungle_log", { x: lx, y, z: 2 });
+    for (const [dx, dz, dir] of [[0, 1, 0], [-1, 0, 1], [0, -1, 2], [1, 0, 3]] as const) {
+      const at = { x: lx + dx, y: 2, z: 2 + dz };
+      test.setBlockPermutation(BlockPermutation.resolve("minecraft:cocoa", { age: 2, direction: dir }), at);
+      pods.push(at);
+    }
+  }
+  test.setBlockType("minecraft:chest", CHEST);
+  put(test, CHEST, new ItemStack("minecraft:bread", 4));
+  test.succeedWhen(() => {
+    const beans = count(test, CHEST, "minecraft:cocoa_beans");
+    test.assert(beans >= 16, `expected 2 beans from each of 8 pods in the chest, found ${beans}`);
+    let onLog = 0, reset = 0;
+    for (const p of pods) {
+      const b = test.getBlock(p);
+      if (b.typeId !== "minecraft:cocoa") continue;
+      onLog++;
+      if (b.permutation.getState("age") === 0) reset++;
+    }
+    test.assert(onLog === 8, `expected all 8 pods still on their logs, found ${onLog}`);
+    test.assert(reset === 8, `expected all 8 pods back at age 0, found ${reset}`);
+    const bread = count(test, CHEST, "minecraft:bread");
+    test.assert(bread === 3, `expected one bread taken as the wage (3 left), found ${bread}`);
+  });
+}).maxTicks(800).structureName("qol:arena");
+
+// The gleaner: a hedge of sixteen persistent oak leaves beside a small oak
+// (four logs, a crown that is not persistent). The hedge wins over the tree,
+// two apples (one per eight hedge leaves) appear in the chest, and every
+// leaf and log stays.
+registerAsync("qol", "villages_gleaner_gathers_apples", async (test) => {
+  placePost(test, 18, 1);
+  const hedge: Vector3[] = [];
+  for (let x = 1; x <= 7; x++) for (const y of [1, 2]) hedge.push({ x, y, z: 1 });
+  hedge.push({ x: 7, y: 1, z: 2 }, { x: 7, y: 2, z: 2 });
+  for (const l of hedge) test.setBlockPermutation(BlockPermutation.resolve("minecraft:oak_leaves", { persistent_bit: true, update_bit: false }), l);
+  for (let y = 1; y <= 4; y++) test.setBlockType("minecraft:oak_log", { x: 2, y, z: 5 });
+  for (let i = -1; i <= 1; i++) for (let k = -1; k <= 1; k++) if (i !== 0 || k !== 0) test.setBlockPermutation(BlockPermutation.resolve("minecraft:oak_leaves", { persistent_bit: false, update_bit: false }), { x: 2 + i, y: 4, z: 5 + k });
+  test.setBlockType("minecraft:chest", CHEST);
+  test.succeedWhen(() => {
+    const apples = count(test, CHEST, "minecraft:apple");
+    test.assert(apples === 2, `expected 2 apples from 16 hedge leaves, found ${apples}`);
+    const leaves = hedge.filter((l) => test.getBlock(l).typeId === "minecraft:oak_leaves").length;
+    test.assert(leaves === 16, `expected the hedge untouched (16 leaves), found ${leaves}`);
+    for (let y = 1; y <= 4; y++) test.assertBlockPresent("minecraft:oak_log", { x: 2, y, z: 5 }, true);
+  });
+}).maxTicks(800).structureName("qol:arena");

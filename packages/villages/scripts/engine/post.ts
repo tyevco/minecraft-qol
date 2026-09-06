@@ -15,7 +15,7 @@
  */
 import { system, world, type Block, type BlockCustomComponent, type Dimension, type Entity } from "@minecraft/server";
 import { decide, spawnSpot } from "../core/peopling";
-import { FRESH, JOBS, PEOPLES, type Position, type PostRecord } from "../core/record";
+import { FRESH, JOBS, PAGE_STATE, PEOPLE_STATE, PEOPLES, peopleIndex, peopleName, type Position, type PostRecord } from "../core/record";
 import * as storage from "./storage";
 import * as trades from "./trades";
 
@@ -70,6 +70,10 @@ function spawn(dim: Dimension, record: PostRecord): Entity | undefined {
     entity.triggerEvent(`villages:people_${record.people}`);
     entity.triggerEvent(`villages:job_${record.job}`);
     entity.addTag(postTag(record));
+    // Named for its people. `minecraft:nameable` with no `always_show`
+    // draws the name only while a player looks at the person, as a
+    // name-tagged villager's is; a player's own name tag replaces it.
+    entity.nameTag = peopleName(record.people);
     return entity;
   } catch (e) {
     log(`could not spawn a ${PEOPLES[record.people]} ${JOBS[record.job]} at ${record.x},${record.y},${record.z}: ${e}`);
@@ -91,7 +95,7 @@ function tick(block: Block, placed = false): void {
     record = undefined;
   }
   if (!record) {
-    record = { ...pos, people: stateOf(block, "villages:people"), job: stateOf(block, "villages:job"), ...FRESH };
+    record = { ...pos, people: peopleIndex(stateOf(block, PEOPLE_STATE), stateOf(block, PAGE_STATE)), job: stateOf(block, "villages:job"), ...FRESH };
     storage.put(record);
   }
   const person = personOf(block.dimension, record);

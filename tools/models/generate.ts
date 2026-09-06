@@ -1339,9 +1339,9 @@ biped({ file: "drover", identifier: "geometry.villages_drover", head: [8, 8, 8],
 // bones and job accessories, in toy proportions (a head two fifths of the
 // height), plus a muzzle on the head, two ears on their own bones so they
 // can flick, and a tail on the body so it can swish. Ears stand up through
-// the cap, which is what a hat with ear holes looks like. Concepts, under
-// concepts/entities/, until one is picked up; the window sizes here must
-// match the fur painters' arguments in tools/textures/generate.ts.
+// the cap, which is what a hat with ear holes looks like. Shipped in the
+// villages pack as peoples 9-18; the window sizes here must match the fur
+// painters' arguments in tools/textures/generate.ts.
 // ---------------------------------------------------------------------------
 
 type FR = keyof typeof A.FURRED.tiles;
@@ -1472,7 +1472,7 @@ function furred(spec: FurredSpec): void {
       bones.push(tailBone([0, 0, 0], [{ origin: [-1, hip, bd / 2], size: [2, 2, 1], faces: { all: "tail" } }]));
       break;
   }
-  write(`${CONCEPT_MODELS}/${spec.file}.geo.json`, {
+  write(`${VILLAGES_MODELS}/${spec.file}.geo.json`, {
     identifier: spec.identifier,
     atlas: A.FURRED,
     visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
@@ -1480,16 +1480,16 @@ function furred(spec: FurredSpec): void {
   });
 }
 
-furred({ file: "foxfolk", identifier: "geometry.concept_foxfolk", head: [8, 8, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [4, 3, 2], ear: { size: [3, 6, 1], on: "top", splay: 12 }, tail: "bushy" });
-furred({ file: "catfolk", identifier: "geometry.concept_catfolk", head: [8, 7, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 8 }, tail: "thin" });
-furred({ file: "wolffolk", identifier: "geometry.concept_wolffolk", head: [8, 8, 9], body: [8, 10, 4], arm: [4, 10, 4], leg: [4, 8, 4], muzzle: [4, 3, 3], ear: { size: [3, 5, 1], on: "top", splay: 10, pitch: -10 }, tail: "straight" });
-furred({ file: "rabbitfolk", identifier: "geometry.concept_rabbitfolk", head: [8, 8, 8], body: [6, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 7, 1], on: "top", splay: 5 }, tail: "puff" });
-furred({ file: "bearfolk", identifier: "geometry.concept_bearfolk", head: [9, 8, 9], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 7, 4], muzzle: [4, 3, 3], ear: { size: [3, 3, 1], on: "side", splay: 0 }, tail: "stub" });
-furred({ file: "fennecfolk", identifier: "geometry.concept_fennecfolk", head: [8, 7, 8], body: [5, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [4, 7, 1], on: "top", splay: 18 }, tail: "brush" });
-furred({ file: "mousefolk", identifier: "geometry.concept_mousefolk", head: [7, 6, 7], body: [5, 6, 3], arm: [2, 6, 2], leg: [3, 4, 3], muzzle: [3, 2, 3], ear: { size: [4, 4, 1], on: "side", splay: 0, lift: 2 }, tail: "whip" });
-furred({ file: "squirrelfolk", identifier: "geometry.concept_squirrelfolk", head: [8, 7, 8], body: [5, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 6 }, tail: "plume" });
-furred({ file: "otterfolk", identifier: "geometry.concept_otterfolk", head: [8, 7, 9], body: [6, 9, 4], arm: [3, 9, 3], leg: [3, 6, 3], muzzle: [4, 2, 2], ear: { size: [2, 2, 1], on: "side", splay: 0, lift: 0.5 }, tail: "rudder" });
-furred({ file: "deerfolk", identifier: "geometry.concept_deerfolk", head: [8, 8, 8], body: [6, 12, 4], arm: [3, 12, 3], leg: [3, 11, 3], muzzle: [4, 3, 3], ear: { size: [3, 4, 1], on: "top", splay: 30 }, antlers: true, tail: "puff" });
+furred({ file: "foxfolk", identifier: "geometry.villages_foxfolk", head: [8, 8, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [4, 3, 2], ear: { size: [3, 6, 1], on: "top", splay: 12 }, tail: "bushy" });
+furred({ file: "catfolk", identifier: "geometry.villages_catfolk", head: [8, 7, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 8 }, tail: "thin" });
+furred({ file: "wolffolk", identifier: "geometry.villages_wolffolk", head: [8, 8, 9], body: [8, 10, 4], arm: [4, 10, 4], leg: [4, 8, 4], muzzle: [4, 3, 3], ear: { size: [3, 5, 1], on: "top", splay: 10, pitch: -10 }, tail: "straight" });
+furred({ file: "rabbitfolk", identifier: "geometry.villages_rabbitfolk", head: [8, 8, 8], body: [6, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 7, 1], on: "top", splay: 5 }, tail: "puff" });
+furred({ file: "bearfolk", identifier: "geometry.villages_bearfolk", head: [9, 8, 9], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 7, 4], muzzle: [4, 3, 3], ear: { size: [3, 3, 1], on: "side", splay: 0 }, tail: "stub" });
+furred({ file: "fennecfolk", identifier: "geometry.villages_fennecfolk", head: [8, 7, 8], body: [5, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [4, 7, 1], on: "top", splay: 18 }, tail: "brush" });
+furred({ file: "mousefolk", identifier: "geometry.villages_mousefolk", head: [7, 6, 7], body: [5, 6, 3], arm: [2, 6, 2], leg: [3, 4, 3], muzzle: [3, 2, 3], ear: { size: [4, 4, 1], on: "side", splay: 0, lift: 2 }, tail: "whip" });
+furred({ file: "squirrelfolk", identifier: "geometry.villages_squirrelfolk", head: [8, 7, 8], body: [5, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 6 }, tail: "plume" });
+furred({ file: "otterfolk", identifier: "geometry.villages_otterfolk", head: [8, 7, 9], body: [6, 9, 4], arm: [3, 9, 3], leg: [3, 6, 3], muzzle: [4, 2, 2], ear: { size: [2, 2, 1], on: "side", splay: 0, lift: 0.5 }, tail: "rudder" });
+furred({ file: "deerfolk", identifier: "geometry.villages_deerfolk", head: [8, 8, 8], body: [6, 12, 4], arm: [3, 12, 3], leg: [3, 11, 3], muzzle: [4, 3, 3], ear: { size: [3, 4, 1], on: "top", splay: 30 }, antlers: true, tail: "puff" });
 
 // ---------------------------------------------------------------------------
 // Villages job post - the block a person is anchored to. A wooden post with

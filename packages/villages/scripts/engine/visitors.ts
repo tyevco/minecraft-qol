@@ -40,6 +40,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import { spawnSpot } from "../core/peopling";
 import { PEOPLES, peopleName } from "../core/record";
 import * as core from "../core/visitors";
+import * as clock from "./clock";
 import { KIN_TAG, PERSON, hasPerson, settle as settleOnPost } from "./post";
 import * as storage from "./storage";
 import * as walk from "./walk";
@@ -52,6 +53,8 @@ let log: (...parts: unknown[]) => void = () => undefined;
 let state: core.VisitorsState = core.parseState(undefined);
 let lastTimeOfDay = -1;
 let settling = false;
+/** A restart not yet read as a locked day's dawn: the first poll after one is (clock.install runs before ours). */
+let restartPending = false;
 
 function save(): void {
   try {
@@ -68,6 +71,7 @@ export function install(logger: (...parts: unknown[]) => void): void {
   } catch {
     state = core.parseState(undefined);
   }
+  restartPending = clock.restarted();
   system.runInterval(tick, POLL_TICKS);
   world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
     if (!ev.target || !ev.target.isValid || !ev.target.hasTag(VISITOR_TAG)) return;
@@ -101,8 +105,12 @@ function cycleOn(): boolean {
   }
 }
 
-/** The visitors' day: the world's, carried forward by the days counted on a locked clock. */
-const today = (): number => core.dayOf(state, world.getDay());
+/**
+ * The pack's day: the world's, carried forward by the days counted on a
+ * locked clock. Everything "per day" (a visitor due, an errand lapsing,
+ * the day's gifts and trades) reads this, so a locked clock stalls none of it.
+ */
+export const today = (): number => core.dayOf(state, world.getDay());
 
 function tick(): void {
   let now: number;
@@ -113,7 +121,8 @@ function tick(): void {
   }
   const byTime = lastTimeOfDay >= 0 && core.isDawn(lastTimeOfDay, now);
   lastTimeOfDay = now;
-  const locked = core.lockedDawn(state, cycleOn(), system.currentTick);
+  const locked = core.lockedDawn(state, cycleOn(), system.currentTick, restartPending);
+  restartPending = false;
   if (locked.changed) {
     const was = state.lockedTick;
     state = locked.state;

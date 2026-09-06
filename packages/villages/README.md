@@ -213,7 +213,8 @@ measurements: `docs/villages-jigsaw-results.md`.
   below 0, stranger 0–9, guest 10–24, friend 25–49, kin 50 and up; the
   village's voice says which in words. It moves by: a **gift** (interact
   with any person while holding an item its people likes, the items of
-  its errand table: one is taken, +1, once per person per day); an
+  its errand table: one is taken, +1, once per person per day, the day
+  being the pack's, which a locked daylight cycle does not stall); an
   **errand** from the village paid, +5, or lapsed after three days, −2; a
   **monster the player kills** within twenty-four blocks of a guard, +1;
   **hitting a person**, −5, and the guards within sixteen blocks come to
@@ -291,7 +292,11 @@ measurements: `docs/villages-jigsaw-results.md`.
   (`engine/walk.ts`; put there if the walk fails), and if the post has
   somebody else by then (it lost sight of the guard in an unloaded chunk
   and spawned another) the escort goes home by going. One escort per
-  player at a time. `/scriptevent villages:escort x y z` hires the guard
+  player at a time; a guard that dies on the road is forgotten at once,
+  so another can be hired. A `/reload` or a restart forgets who it walks
+  with (as for an invite), and a guard left wearing the tag that way, or
+  sent home while its chunk was not loaded, goes home at the next tap on
+  it. `/scriptevent villages:escort x y z` hires the guard
   at that post with nobody to follow and `villages:escort home` sends
   every escort home: the hatches the GameTest drives.
 - **Invite** (design §6, `scripts/engine/follow.ts`): the elder names the

@@ -461,10 +461,14 @@ fallback counts on the server's clock instead (`core/visitors.ts`
 `lockedDawn`): while the rule is off, a day of ticks from the tick the
 lock was first seen is a dawn, and the days so counted are added to the
 world's frozen day (`dayOf`), so "the next visitor on day N" still comes
-due; a tick behind the stored one is a restart and counts as the day
-elapsed, as every other wait in the pack reads a stamp ahead of the
-clock. When the rule is turned back on the tick is forgotten and the
-days kept, so the day never goes backwards.
+due; a restart (the boot marker, `engine/clock.ts`, issue #71; a tick
+behind the stored one alone would miss a restart whose new clock has
+already passed it, the case `core/record.ts` names) counts as the day
+elapsed, as every other wait in the pack does after one. When the rule
+is turned back on the tick is forgotten and the days kept, so the day
+never goes backwards. The pack's "per day" waits (an errand lapsing, the
+day's gifts and trades) read the same carried-forward day
+(`engine/visitors.ts` `today`), so a locked clock stalls none of them.
 
 **The GameTest framework locks the daylight cycle for the duration of a
 test.** Every test in the run had the pack log "the daylight cycle is

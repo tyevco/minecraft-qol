@@ -229,18 +229,19 @@ export const dayOf = (state: VisitorsState, worldDay: number): number => worldDa
  * cycle runs and the server's tick: while it runs nothing is counted
  * (the time of day brings dawn); while it is locked, a day of ticks from
  * the tick the lock was first seen is a dawn, and the next day starts.
- * A tick behind the stored one is a restart (the clock counts from boot,
- * docs/villages-jigsaw-results.md), read as the day elapsed, as every
- * other wait in the pack reads a stamp ahead of the clock.
+ * A restart (`restarted`: the engine's boot marker, engine/clock.ts, since
+ * the clock counts from boot) is read as the day elapsed, as every other
+ * wait in the pack is after one; a tick behind the stored one is the same
+ * thing seen without the marker.
  */
-export function lockedDawn(state: VisitorsState, cycleOn: boolean, tick: number): { state: VisitorsState; dawn: boolean; changed: boolean } {
+export function lockedDawn(state: VisitorsState, cycleOn: boolean, tick: number, restarted = false): { state: VisitorsState; dawn: boolean; changed: boolean } {
   if (cycleOn) {
     if (state.lockedTick === undefined) return { state, dawn: false, changed: false };
     const { lockedTick: _unlocked, ...rest } = state;
     return { state: rest, dawn: false, changed: true };
   }
   if (state.lockedTick === undefined) return { state: { ...state, lockedTick: tick }, dawn: false, changed: true };
-  if (tick >= state.lockedTick && tick - state.lockedTick < DAY_TICKS) return { state, dawn: false, changed: false };
+  if (!restarted && tick >= state.lockedTick && tick - state.lockedTick < DAY_TICKS) return { state, dawn: false, changed: false };
   return { state: { ...state, lockedTick: tick, extraDays: state.extraDays + 1 }, dawn: true, changed: true };
 }
 

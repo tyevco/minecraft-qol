@@ -10,35 +10,26 @@
  * to come home with the player (engine/follow.ts). The decisions are in
  * core/standing.ts.
  */
-import { Player, world, type Entity } from "@minecraft/server";
+import { Player, type Entity } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
-import { itemName, peopleName, type PostRecord } from "../core/record";
+import { itemName, peopleName } from "../core/record";
 import * as core from "../core/standing";
 import { pickErrand } from "../core/visitors";
 import * as follow from "./follow";
-import { postTag } from "./post";
+import { postOf } from "./post";
 import * as standing from "./standing";
 import * as storage from "./storage";
 import * as storehouse from "./storehouse";
+import { today } from "./visitors";
 
 const INVITE_RANGE = 64;
 const JOBS = ["guard", "worker", "trader", "builder"];
-
-/** The elder's own post, from the tag it carries. */
-function postOf(elder: Entity): PostRecord | undefined {
-  const tag = elder.getTags().find((t) => t.startsWith("villages:post:"));
-  if (!tag) return undefined;
-  const [x, y, z] = tag.slice("villages:post:".length).split(",").map(Number);
-  if (x === undefined || y === undefined || z === undefined) return undefined;
-  const record = storage.get({ dimId: elder.dimension.id, x, y, z });
-  return record && postTag(record) === tag ? record : undefined;
-}
 
 const describe = (e: { item: string; amount: number }): string => `${e.amount} ${itemName(e.item)}`;
 
 export async function showElder(player: Player, elder: Entity): Promise<void> {
   const people = (elder.getProperty("villages:people") as number | undefined) ?? 0;
-  const day = world.getDay();
+  const day = today();
   let errand = standing.openErrand(player, people);
   const lines: string[] = [];
   if (errand && core.lapsed(errand, day)) {

@@ -34,6 +34,7 @@ import { PEOPLES, peopleName } from "../core/record";
 import * as core from "../core/standing";
 import { standingProperty } from "../core/visitors";
 import { showElder } from "./elder";
+import * as follow from "./follow";
 import { PERSON } from "./post";
 import { VISITOR_TAG } from "./visitors";
 import * as storage from "./storage";
@@ -216,6 +217,10 @@ export function install(logger: (...parts: unknown[]) => void): void {
     if (!person || !person.isValid || person.typeId !== PERSON || person.hasTag(VISITOR_TAG)) return;
     if (!(ev.player instanceof Player)) return;
     if (gift(ev.player, person, ev.itemStack)) return;
+    if (person.hasTag(follow.ESCORT_TAG)) {
+      void follow.dismissForm(ev.player, person);
+      return;
+    }
     if (jobOf(person) === TRADER_JOB) void showElder(ev.player, person);
   });
 

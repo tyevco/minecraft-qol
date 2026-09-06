@@ -259,6 +259,22 @@ measurements: `docs/villages-jigsaw-results.md`.
   happen, so a trade table could neither move standing nor be gated per
   player (a component group is per entity; standing is per player).
   Every ware is an item the server knows (`villages_wares_are_items`).
+- **A guard walks with you** (design §5's table, at friend;
+  `scripts/engine/follow.ts`): "Would a guard walk with me?" on the
+  trader's form names the nearest present guard of its own village (as
+  an invite does, `escortCandidate`), which follows the player on the
+  invite's bond for a day with the `villages:escort` tag and **its post
+  kept**: the post still finds it by id, so nobody is spawned in its
+  place. Its guard behaviours come along, so monsters within twelve of
+  it are its business on the road. A tap on the guard opens its own
+  form: stay, or go home. When the day is up (24000 ticks), the player
+  sends it, or the clock restarts, it walks back to its post
+  (`engine/walk.ts`; put there if the walk fails), and if the post has
+  somebody else by then (it lost sight of the guard in an unloaded chunk
+  and spawned another) the escort goes home by going. One escort per
+  player at a time. `/scriptevent villages:escort x y z` hires the guard
+  at that post with nobody to follow and `villages:escort home` sends
+  every escort home: the hatches the GameTest drives.
 - **Invite** (design §6, `scripts/engine/follow.ts`): the elder names the
   nearest present person of the chosen job among its own people's posts
   within sixty-four blocks (never itself); that person loses its post tag,
@@ -402,6 +418,13 @@ measurements: `docs/villages-jigsaw-results.md`.
   and the block is still a post, and the second tap settles the follower
   there: a foxfolk with the `villages:kin` tag at the kids' post, no
   invited person left, and the village post empty.
+- **A guard walks along and goes home**
+  (`villages_guard_escorts_and_goes_home`): the guard's post's person,
+  hired by the hatch, gains `villages:escort` and keeps its post tag;
+  told to go to a spot across the arena it stands within three blocks of
+  it inside four seconds; sent home, the tag is gone, the one guard
+  within four blocks of the post is the post's own, and no second guard
+  was spawned in its absence.
 - **The wares are items** (`villages_wares_are_items`): an `ItemStack` of
   each of the nineteen peoples' seventy-six wares at its amount, on the
   headless server; every identifier held.
@@ -512,7 +535,13 @@ measurements: `docs/villages-jigsaw-results.md`.
   lantern (−1 and a line; the dirt under it, a tree beside it or a torch
   you placed, nothing); a village bed as a stranger (turned away with a
   word, nothing set) and as a guest (the game's own respawn point, and
-  you come back there when you die); hitting a person
+  you come back there when you die); a guard walking with you at friend
+  **over a real distance**: the follow was measured across an arena, and
+  the walking group's `follow_mob` (priority 1) outranks
+  `move_towards_home_restriction` (5), but a guard that turns back
+  towards its village on a long road means `minecraft:home` wins at
+  range and the escort needs the home restriction lifted for its day (a
+  component group without it); hitting a person
   (−5, and the guards walk to where you stood); a zombie killed by a
   guard (+1); and at kin the invite's two forms, the follow behind you
   through a real village, and the settle by tapping your own post. If the

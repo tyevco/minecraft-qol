@@ -13,6 +13,15 @@
             "value": "taiga"
           }
         ]
+      },
+      {
+        "none_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "frozen"
+          }
+        ]
       }
     ],
     "step": "surface_structures",

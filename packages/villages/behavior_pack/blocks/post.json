@@ -55,32 +55,21 @@
           "render_method": "alpha_test"
         }
       },
-      "minecraft:collision_box": {
-        "origin": [
-          -2,
-          0,
-          -2
-        ],
-        "size": [
-          4,
-          12,
-          4
-        ]
-      },
+      "minecraft:collision_box": false,
       "minecraft:selection_box": {
         "origin": [
           -6,
           0,
-          -3
+          -6
         ],
         "size": [
           12,
-          12,
-          6
+          2,
+          12
         ]
       },
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 1.5
+        "seconds_to_destroy": 0.8
       },
       "minecraft:destructible_by_explosion": {
         "explosion_resistance": 3

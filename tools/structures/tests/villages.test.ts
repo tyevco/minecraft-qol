@@ -27,6 +27,17 @@ describe("villages", () => {
         for (const pool of set.pools.values()) if (pool.fallback) expect(set.pools.has(pool.fallback)).toBe(true);
       });
 
+      it("bridges every joint at deck height for a people on a deck (a marker sits at ground level)", () => {
+        if (!p.deck) return;
+        for (const piece of set.pieces.values())
+          for (const m of piece.markers()) {
+            if (piece.key === `${p.key}_lamp`) continue; // a lamp post ends a walkway on its own column
+            const at = piece.at(m.x, p.deck.height, m.z);
+            expect(at, `${piece.key} at ${m.x},${p.deck.height},${m.z} (the ${m.jigsaw.name} joint) has nothing to stand on`).not.toBeUndefined();
+            expect(at, `${piece.key} at ${m.x},${p.deck.height},${m.z}`).not.toBe("minecraft:air");
+          }
+      });
+
       it("emits a jigsaw structure, a structure set and one file per pool", () => {
         const files = Object.keys(villageWorldgen(set));
         expect(files).toContain(`worldgen/structures/villages/${p.key}_village.json`);
@@ -54,6 +65,19 @@ describe("villages", () => {
     expect(postStates(15)).toEqual({ "villages:people": 15 });
     expect(postStates(16)).toEqual({ "villages:people": 0, "villages:page": 1 });
     expect(postStates(18)).toEqual({ "villages:people": 2, "villages:page": 1 });
+  });
+
+  it("names biome tags that exist on the server's own biomes, and rules out the overlaps it measured", () => {
+    // From dist/bds/server/behavior_packs/vanilla*/biomes (docs/villages-jigsaw-results.md): a tag on no biome generates nowhere.
+    const known = new Set(["extreme_hills", "swamp", "mangrove_swamp", "river", "savanna", "plateau", "mesa", "plains", "flower_forest", "hills", "forest", "birch", "taiga", "cherry_grove", "meadow", "roofed", "pale_garden", "desert", "cold", "frozen", "mooshroom_island", "jungle", "beach", "ocean", "mountains"]);
+    for (const p of PEOPLES) for (const tag of [...p.biomes, ...(p.avoid ?? [])]) expect(known.has(tag), `${p.key}: ${tag}`).toBe(true);
+    const by = (k: string) => PEOPLES.find((p) => p.key === k)!;
+    expect(by("wolffolk").biomes).toEqual(["frozen"]); // `cold` is on forest and plains
+    expect(by("mousefolk").biomes).toEqual(["mooshroom_island"]);
+    expect(by("deerfolk").avoid).toContain("taiga");
+    const files = villageWorldgen(villageSet(by("wolffolk")));
+    const structure = files["worldgen/structures/villages/wolffolk_village.json"] as { "minecraft:jigsaw": { biome_filters: unknown[] } };
+    expect(structure["minecraft:jigsaw"].biome_filters).toHaveLength(2);
   });
 
   it("gives every people its own structure-set salt", () => {

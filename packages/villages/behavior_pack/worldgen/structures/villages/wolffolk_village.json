@@ -10,7 +10,26 @@
           {
             "test": "has_biome_tag",
             "operator": "==",
-            "value": "cold"
+            "value": "frozen"
+          }
+        ]
+      },
+      {
+        "none_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "ocean"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "river"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "mountains"
           }
         ]
       }

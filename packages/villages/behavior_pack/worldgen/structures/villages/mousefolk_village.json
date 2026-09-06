@@ -10,7 +10,16 @@
           {
             "test": "has_biome_tag",
             "operator": "==",
-            "value": "mushroom_island"
+            "value": "mooshroom_island"
+          }
+        ]
+      },
+      {
+        "none_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "beach"
           }
         ]
       }

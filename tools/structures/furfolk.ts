@@ -574,7 +574,7 @@ export const FURFOLK: People[] = [
     houses: [["foxfolk_cabin", 3], ["shared_larder", 1]],
     greens: [["berry_patch", 3, berryPatch], ["grove", 1, grove("spruce_log", "spruce_leaves")]],
     tree: { log: "spruce_log", leaves: "spruce_leaves" },
-    watch: "foxfolk_lookout", biomes: ["taiga"], salt: 20260921,
+    watch: "foxfolk_lookout", biomes: ["taiga"], avoid: ["frozen"], salt: 20260921,
   },
   {
     ...CONCEPT, key: "catfolk", title: "Catfolk", paving: "smooth_stone", verge: "grass", post: "cherry_fence", core: "catfolk_loom_house",
@@ -588,7 +588,8 @@ export const FURFOLK: People[] = [
     houses: [["wolffolk_cabin", 3], ["wolffolk_fishing_hut", 2], ["shared_larder", 1]],
     greens: [["snowfield", 3, snowfield]],
     tree: { log: "spruce_log", leaves: "spruce_leaves" },
-    watch: "wolffolk_watchtower", biomes: ["cold"], salt: 20260923,
+    // `cold` is on forest, plains and extreme hills (measured); `frozen` is the snow, less the frozen seas and rivers and the peaks.
+    watch: "wolffolk_watchtower", biomes: ["frozen"], avoid: ["ocean", "river", "mountains"], salt: 20260923,
   },
   {
     ...CONCEPT, key: "rabbitfolk", title: "Rabbitfolk", paving: "packed_mud", verge: "grass", post: "birch_fence", core: "rabbitfolk_bakehouse",
@@ -621,7 +622,8 @@ export const FURFOLK: People[] = [
     houses: [["mousefolk_cap_house", 4]],
     greens: [["mushroom_patch", 3, mushroomPatch]],
     tree: { log: "dark_oak_log", leaves: "dark_oak_leaves" }, plant: giantMushroom,
-    biomes: ["mushroom_island"], salt: 20260927,
+    // The mushroom island's tag is `mooshroom_island`; `mushroom_island` is on no biome (measured), so this village never generated.
+    biomes: ["mooshroom_island"], avoid: ["beach"], salt: 20260927,
   },
   {
     ...CONCEPT, key: "squirrelfolk", title: "Squirrelfolk", paving: "jungle_planks", verge: "grass", post: "jungle_fence", core: "squirrelfolk_nest_hall",
@@ -636,13 +638,14 @@ export const FURFOLK: People[] = [
     houses: [["otterfolk_hut", 3], ["otterfolk_slipway", 2], ["shared_larder", 1]],
     greens: [["shingle", 3, shingle]],
     tree: { log: "oak_log", leaves: "oak_leaves" }, plant: driftwood, flora: DESERT,
-    biomes: ["beach"], salt: 20260929,
+    biomes: ["beach"], avoid: ["frozen", "mooshroom_island"], salt: 20260929,
   },
   {
     ...CONCEPT, key: "deerfolk", title: "Deerfolk", paving: "moss_block", verge: "grass", post: "oak_fence", core: "deerfolk_glade_hall",
     houses: [["deerfolk_cabin", 3], ["shared_larder", 1]],
     greens: [["hedge", 3, gleanersHedge], ["orchard", 1, orchard], ["meadow", 2, meadow("oak_log", "oak_leaves")]],
     tree: { log: "oak_log", leaves: "oak_leaves" },
-    biomes: ["forest"], salt: 20260930,
+    // `forest` is on every taiga, the dark forest and the birch woods too (measured): the deer keep the plain oak forest.
+    biomes: ["forest"], avoid: ["taiga", "roofed", "birch", "frozen", "extreme_hills"], salt: 20260930,
   },
 ];

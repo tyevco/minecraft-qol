@@ -13,6 +13,20 @@
             "value": "beach"
           }
         ]
+      },
+      {
+        "none_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "frozen"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "mooshroom_island"
+          }
+        ]
       }
     ],
     "step": "surface_structures",

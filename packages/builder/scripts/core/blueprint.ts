@@ -48,6 +48,7 @@ export const CATALOGUE: readonly CatalogueEntry[] = [
   { key: "tallfolk_farmhouse", title: "Farmhouse", description: "Oak and cobblestone under a dark oak gable: two beds, a table, a chest and a barrel." },
   { key: "tallfolk_barn", title: "Barn", description: "A dark oak barn on coarse dirt, gates on the south wall, hay in the loft." },
   { key: "shared_inn", title: "Inn", description: "Two floors, four beds up a ladder, a table by the door. Where a settlement's respawn point goes." },
+  { key: "tinker_stall", title: "Market Stall", description: "Barrel counters under a striped wool awning on fence posts. The trader's stall for every people; the stripes take the people's colour." },
 ];
 
 /** A surveyed building's key: `survey_<n>`, the n-th survey taken in this world. */

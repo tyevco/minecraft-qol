@@ -21,17 +21,22 @@
  */
 import type { Cell } from "./blueprint";
 
-export type Role = "footing" | "wall" | "corner" | "roof" | "ridge" | "window";
-export const ROLES: readonly Role[] = ["footing", "wall", "corner", "roof", "ridge", "window"];
+export type Role = "footing" | "wall" | "corner" | "roof" | "ridge" | "window" | "awning";
+export const ROLES: readonly Role[] = ["footing", "wall", "corner", "roof", "ridge", "window", "awning"];
 
 export interface Palette {
   key: string;
   title: string;
-  /** The blocks of each role; a role may name several source blocks (the shared row's two footings). */
+  /**
+   * The blocks of each role. A role may name several: the shared row's two
+   * footings both become a target's one footing, and an awning's two stripes
+   * swap stripe for stripe (the coloured one to the people's colour, white to
+   * white). A people with no block for a role leaves it as authored.
+   */
   roles: Record<Role, readonly string[]>;
 }
 
-const p = (key: string, title: string, footing: string[], wall: string[], corner: string[], roof: string[], ridge: string[], window: string[]): Palette => ({
+const p = (key: string, title: string, footing: string[], wall: string[], corner: string[], roof: string[], ridge: string[], window: string[], awning: string[]): Palette => ({
   key,
   title,
   roles: {
@@ -41,22 +46,23 @@ const p = (key: string, title: string, footing: string[], wall: string[], corner
     roof: roof.map(full),
     ridge: ridge.map(full),
     window: window.map(full),
+    awning: awning.map(full),
   },
 });
 function full(name: string): string {
   return name.includes(":") ? name : `minecraft:${name}`;
 }
 
-/** The §4 table, the first block of each cell being what a target takes. */
+/** The §4 table, the first block of each cell being what a target takes; the awning's two stripes, coloured then white. */
 export const PALETTES: readonly Palette[] = [
-  p("stonefolk", "Stonefolk", ["stone_bricks"], ["stone_bricks"], ["polished_deepslate"], ["deepslate_tiles"], ["polished_deepslate"], ["glass_pane"]),
-  p("reedfolk", "Reedfolk", ["mangrove_log"], ["mangrove_planks"], ["mangrove_log"], ["bamboo_mosaic"], ["mangrove_log"], ["glass_pane"]),
-  p("tinker", "Tinker", ["brick_block"], ["brick_block"], ["copper_block"], ["cut_copper"], ["oxidized_copper"], ["glass"]),
-  p("tallfolk", "Tallfolk", ["cobblestone"], ["oak_planks"], ["oak_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"]),
-  p("drover", "Drover", ["smooth_sandstone"], ["hardened_clay"], ["stripped_spruce_log"], ["spruce_planks"], ["dark_oak_planks"], ["glass_pane"]),
+  p("stonefolk", "Stonefolk", ["stone_bricks"], ["stone_bricks"], ["polished_deepslate"], ["deepslate_tiles"], ["polished_deepslate"], ["glass_pane"], ["red_wool", "white_wool"]),
+  p("reedfolk", "Reedfolk", ["mangrove_log"], ["mangrove_planks"], ["mangrove_log"], ["bamboo_mosaic"], ["mangrove_log"], ["glass_pane"], ["green_wool", "white_wool"]),
+  p("tinker", "Tinker", ["brick_block"], ["brick_block"], ["copper_block"], ["cut_copper"], ["oxidized_copper"], ["glass"], ["red_wool", "white_wool"]),
+  p("tallfolk", "Tallfolk", ["cobblestone"], ["oak_planks"], ["oak_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"], ["yellow_wool", "white_wool"]),
+  p("drover", "Drover", ["smooth_sandstone"], ["hardened_clay"], ["stripped_spruce_log"], ["spruce_planks"], ["dark_oak_planks"], ["glass_pane"], ["red_wool", "white_wool"]),
   // The shared buildings: stone brick or cobblestone footings, spruce walls,
-  // dark oak roofs. The larder's roof is spruce too and swaps as wall.
-  p("shared", "Shared", ["stone_bricks", "cobblestone"], ["spruce_planks"], ["spruce_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"]),
+  // dark oak roofs, no awning. The larder's roof is spruce too and swaps as wall.
+  p("shared", "Shared", ["stone_bricks", "cobblestone"], ["spruce_planks"], ["spruce_log"], ["dark_oak_planks"], ["dark_oak_log"], ["glass_pane"], []),
 ];
 
 export const paletteByKey = (key: string): Palette | undefined => PALETTES.find((x) => x.key === key);
@@ -91,16 +97,19 @@ export const FAMILIES: Readonly<Record<string, { stairs: string; slab: string }>
 
 /**
  * The block-for-block table that turns a building authored in `from` into
- * `to`: every source role block to the target's, and the source materials'
+ * `to`: every source role block to the target's block in the same position
+ * (or its last, when the target names fewer), and the source materials'
  * stairs and slabs to the target material's (or, for a target with no shaped
- * blocks, to the target roof's, or left alone).
+ * blocks, to the target roof's, or left alone). A role the target has no
+ * block for is left as authored.
  */
 export function swapTable(from: Palette, to: Palette): Record<string, string> {
   const table: Record<string, string> = {};
   for (const role of ROLES) {
-    const target = to.roles[role][0];
-    if (!target) continue;
-    for (const source of from.roles[role]) {
+    const targets = to.roles[role];
+    if (!targets.length) continue;
+    for (const [i, source] of from.roles[role].entries()) {
+      const target = targets[Math.min(i, targets.length - 1)]!;
       if (source in table) continue; // the first role a block plays wins
       if (source !== target) table[source] = target;
       const sf = FAMILIES[source];

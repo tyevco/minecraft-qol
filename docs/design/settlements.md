@@ -268,10 +268,10 @@ is built, palette swap is a substitution over the structure's block palette
 before placement, not a second file.
 
 *Built in the builder pack (`packages/builder/scripts/core/palette.ts`) and
-measured (`docs/settlements-results.md`, "Palette swaps"): the table below
-less the awning row, the first block of a cell being what a target takes,
-with stairs and slabs following their material. The awning row waits on a
-blueprint with an awning.*
+measured (`docs/settlements-results.md`, "Palette swaps"): the table below,
+the first block of a cell being what a target takes, an awning's two stripes
+swapping stripe for stripe, with stairs and slabs following their material.
+The tallfolk and drover cells with two walls or corners take the first.*
 
 | Role | Stonefolk | Reedfolk | Tinker | Tallfolk | Drover | Shared |
 | --- | --- | --- | --- | --- | --- | --- |

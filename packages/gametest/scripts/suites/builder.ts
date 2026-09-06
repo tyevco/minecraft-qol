@@ -263,19 +263,19 @@ const STONEFOLK_WELL: Record<string, number> = {
   "minecraft:lantern": 1,
 };
 
-/** The world at the origin against the shipped well with a palette's swap table applied, unturned. */
-function compareSwapped(test: Test, palette: string): { right: number; swapped: number; wrong: string[]; missing: string[]; placed: number } {
-  const s = world.structureManager.get(WELL);
-  test.assert(s !== undefined, `the structure ${WELL} is not in the world's packs`);
-  const table = paletteTable("tallfolk_well", palette);
+/** The world at the origin against a shipped building with a palette's swap table applied, unturned. */
+function compareSwapped(test: Test, palette: string, key = "tallfolk_well", size = WELL_SIZE): { right: number; swapped: number; wrong: string[]; missing: string[]; placed: number } {
+  const s = world.structureManager.get(`builder:${key}`);
+  test.assert(s !== undefined, `the structure builder:${key} is not in the world's packs`);
+  const table = paletteTable(key, palette);
   const dim = test.getDimension();
   const o = test.worldBlockLocation(ORIGIN);
   let right = 0, swapped = 0, placed = 0;
   const wrong: string[] = [];
   const missing: string[] = [];
-  for (let x = 0; x < WELL_SIZE.x; x++)
-    for (let y = 0; y < WELL_SIZE.y; y++)
-      for (let z = 0; z < WELL_SIZE.z; z++) {
+  for (let x = 0; x < size.x; x++)
+    for (let y = 0; y < size.y; y++)
+      for (let z = 0; z < size.z; z++) {
         const want = s!.getBlockPermutation({ x, y, z });
         const b = dim.getBlock({ x: o.x + x, y: o.y + y, z: o.z + z });
         if (!b) continue;
@@ -459,6 +459,59 @@ registerAsync("qol", "builder_turned_inn_matches_the_games_rotation", async (tes
     const r = compareAt(test, "builder:shared_inn", INN, ORIGIN, StructureRotation.Rotate90);
     test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the game's Rotate90 inn: ${r.wrong.slice(0, 4).join("; ")}`);
     test.assert(r.right === 688, `expected all 688 cells as the game turns them, found ${r.right}; missing: ${r.missing.slice(0, 4).join("; ")}`);
+  });
+}).maxTicks(3000).structureName(ARENA16);
+
+// The market stall as the reedfolk build it (settlements.md §2.5, §4): the
+// awning row of the palette table. Authored under tinker in brick with red
+// and white stripes, it goes up from a chest of mangrove logs and green and
+// white wool, stripe for stripe, the counters and posts as authored.
+const STALL_SIZE = { x: 7, y: 5, z: 7 };
+const STALL_CELLS = 117;
+const REEDFOLK_STALL: Record<string, number> = {
+  "minecraft:mangrove_log": 49,
+  "minecraft:green_wool": 28,
+  "minecraft:white_wool": 21,
+  "minecraft:spruce_fence": 10,
+  "minecraft:barrel": 7,
+  "minecraft:chest": 1,
+  "minecraft:lantern": 1,
+};
+registerAsync("qol", "builder_stall_as_the_reedfolk_build_it", async (test) => {
+  rig16(test, REEDFOLK_STALL);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:place tinker_stall ${o.x} ${o.y} ${o.z} 0 1 reedfolk`);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok") && last(test).endsWith("as reedfolk"), `expected the hatch to accept the stall as the reedfolk build it from a chest of their materials, got "${last(test)}"`);
+  for (let t = 0; t < 1000 && compareSwapped(test, "reedfolk", "tinker_stall", STALL_SIZE).right < STALL_CELLS; t += 10) await test.idle(10);
+  const r = compareSwapped(test, "reedfolk", "tinker_stall", STALL_SIZE);
+  test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the swapped stall: ${r.wrong.slice(0, 3).join("; ")}`);
+  test.assert(r.right === STALL_CELLS, `expected all ${STALL_CELLS} cells of the swapped stall, found ${r.right} (${r.missing.length} missing: ${r.missing.slice(0, 3).join("; ")})`);
+  test.assert(r.swapped === 77, `expected 77 cells swapped to reedfolk blocks (49 footing, 28 green stripes), found ${r.swapped}`);
+  const dim = test.getDimension();
+  let green = 0, white = 0, red = 0;
+  for (let x = 0; x < STALL_SIZE.x; x++)
+    for (let z = 0; z < STALL_SIZE.z; z++) {
+      const id = dim.getBlock({ x: o.x + x, y: o.y + 4, z: o.z + z })?.typeId;
+      if (id === "minecraft:green_wool") green++;
+      else if (id === "minecraft:white_wool") white++;
+      else if (id === "minecraft:red_wool") red++;
+    }
+  test.assert(green === 28 && white === 21 && red === 0, `expected an awning of 28 green and 21 white wool, found ${green} green, ${white} white, ${red} red`);
+  test.assert(chestTotal16(test) === 0, `expected the reedfolk materials all taken from the chest, ${chestTotal16(test)} item(s) left`);
+  test.getDimension().runCommand(`scriptevent builder:remove ${o.x + 3} ${o.y + 1} ${o.z + 3} 1`);
+  await test.idle(5);
+  test.assert(last(test).startsWith("builder:remove ok"), `expected the removal to start, got "${last(test)}"`);
+  test.succeedWhen(() => {
+    const after = compareSwapped(test, "reedfolk", "tinker_stall", STALL_SIZE);
+    test.assert(after.placed === 0, `expected the swapped stall gone, ${after.placed} block(s) still stand`);
+    for (const [item, n] of Object.entries(REEDFOLK_STALL)) {
+      const back = count(test, CHEST16, item);
+      test.assert(back === n, `expected ${n} ${item} back in the chest, found ${back}`);
+    }
+    test.assert(count(test, CHEST16, "minecraft:red_wool") === 0 && count(test, CHEST16, "minecraft:brick_block") === 0, `expected no tinker blocks back from a reedfolk stall`);
+    const want = Object.values(REEDFOLK_STALL).reduce((a, b) => a + b, 0);
+    test.assert(chestTotal16(test) === want, `expected exactly ${want} items in the chest, found ${chestTotal16(test)}`);
   });
 }).maxTicks(3000).structureName(ARENA16);
 

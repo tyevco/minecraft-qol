@@ -36,9 +36,9 @@ function mainhand(player: Player): ItemStack | undefined {
 }
 
 /**
- * The blueprint's form: the building as authored, "Place here", and one
- * button per other people's palette (settlements.md §4), which opens the
- * same form again with that palette's materials against the chest.
+ * The blueprint's form: the building, "Place here", and "As another people
+ * build it", which asks whose way (settlements.md §4) and opens the same
+ * form again with that palette's materials against the chest.
  */
 async function blueprintForm(player: Player, table: Block, key: string, palette = ""): Promise<void> {
   const origin = { x: Math.floor(player.location.x), y: Math.floor(player.location.y) - 1, z: Math.floor(player.location.z) };
@@ -55,11 +55,9 @@ async function blueprintForm(player: Player, table: Block, key: string, palette 
     form.button("Place here");
     actions.push(() => start(player, table, key, origin, rotation, palette, title));
   }
-  const own = sourcePaletteOf(key)?.key;
-  for (const pal of PALETTES) {
-    if (pal.key === own || pal.key === "shared" || pal.key === palette) continue;
-    form.button(`As the ${pal.title} build it`);
-    actions.push(() => blueprintForm(player, table, key, pal.key));
+  if (sourcePaletteOf(key)) {
+    form.button("As another people build it");
+    actions.push(() => whoseWay(player, table, key, palette));
   }
   if (palette) {
     form.button("As authored");
@@ -69,6 +67,19 @@ async function blueprintForm(player: Player, table: Block, key: string, palette 
   const r = await form.show(player);
   if (r.canceled || r.selection === undefined) return;
   await actions[r.selection]?.();
+}
+
+/** The peoples' palettes but the building's own, the shared row and the one showing; back to the blueprint's form with the choice. */
+async function whoseWay(player: Player, table: Block, key: string, palette: string): Promise<void> {
+  const own = sourcePaletteOf(key)?.key;
+  const form = new ActionFormData().title("Whose way?").body("The same building in another people's blocks: their footing, walls, corners, roof and awning for its own. The chest pays in theirs.");
+  const choices = PALETTES.filter((pal) => pal.key !== own && pal.key !== "shared" && pal.key !== palette);
+  for (const pal of choices) form.button(`As the ${pal.title} build it`);
+  form.button("Back");
+  const r = await form.show(player);
+  if (r.canceled || r.selection === undefined) return;
+  const pick = choices[r.selection];
+  await blueprintForm(player, table, key, pick ? pick.key : palette);
 }
 
 async function start(player: Player, table: Block, key: string, origin: { x: number; y: number; z: number }, rotation: ReturnType<typeof rotationFromYaw>, palette: string, title: string): Promise<void> {

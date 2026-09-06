@@ -273,6 +273,21 @@ to green), the awning layer read 28 green, 21 white and no red, the chest
 was empty when it stood and held exactly the 117 reedfolk items when it came
 down, no brick or red wool among them.
 
+Every people of the villages pack then got a row: the second four from the
+generator's cottage records (`tools/structures/buildings.ts`) and the ten
+furfolk from theirs (`tools/structures/furfolk.ts`, awnings from
+`furfolk.md` §3), so a blueprint can be raised any of nineteen ways. A
+unit test holds every role block to a building that people has generated,
+so a row cannot drift from the buildings. Two kinds need more than their
+shape to stand and get it from the swap: leaves arrive persistent (the wood
+elves' roof), and a mushroom stem or block arrives solid on every face (the
+mice's walls; the default state is pores all round). Measured with the well
+as the high elves build it, whose roof stairs go by the legacy name
+`prismarine_bricks_stairs` and slab `prismarine_brick_slab`: the chest took
+items by those names, the placement was accepted, all 77 cells matched with
+67 swapped, and the 76 items came back. The wood elves' and mice's blocks
+are not measured in game.
+
 Not measured: how the swapped buildings look, which needs a client (pack
 README, "To confirm in game").
 

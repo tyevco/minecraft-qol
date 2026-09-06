@@ -76,8 +76,9 @@ job in the villages pack takes it over. Measurements:
   item that carries the key on the stack. That item places like any other:
   the copy is checked, paid for and raised block by block, and comes down
   into the chest.
-- **Palette swaps** (§4): the blueprint form offers the building "As the
-  Stonefolk build it", and so for each other people, then the same form
+- **Palette swaps** (§4): the blueprint form offers "As another people
+  build it", which asks whose way (every people of the villages pack, the
+  nine and the ten furfolk, but the building's own), then the same form
   again with that palette's materials against the chest and "As authored"
   to go back. A swap is a table over the building's blocks
   (`scripts/core/palette.ts`, pure): every block the source people's
@@ -89,8 +90,12 @@ job in the villages pack takes it over. Measurements:
   blocks, the reedfolk's logs and the drover's clay, takes its roof's).
   Fences, chests, lanterns, doors, beds and hay are nobody's and stay as
   authored. A swapped cell keeps only the shape states its new kind has
-  (a stair's direction and flip, a slab's half, a log's axis); the engine's
-  alias states belong to the old block and would fail to resolve. The
+  (a stair's direction and flip, a slab's half, a log's axis), and what
+  its kind needs to stand (leaves persistent, a mushroom block solid on
+  every face); the engine's alias states belong to the old block and would
+  fail to resolve. Each people's row is the blocks its buildings are built
+  of, and a unit test holds every role block to a generated building of
+  that people. The
   record remembers the palette, so the building is repaired and taken down
   in the blocks it stands in. Buildings are authored in their people's
   palette by key (`tallfolk_well`, `shared_larder`); a survey has no
@@ -171,7 +176,9 @@ The rest of the catalogue waits on that.
   build it goes up from a chest of stone bricks and deepslate tiles alone,
   matches the shipped well through the swap table cell for cell (67 cells
   swapped, the 24 stairs keeping their direction) and comes down into the
-  stonefolk blocks, none of the tallfolk's; the stall raised as the reedfolk
+  stonefolk blocks, none of the tallfolk's; the same as the high elves
+  build it, whose roof stairs go by a legacy name (`prismarine_bricks_stairs`),
+  from polished diorite and prismarine; the stall raised as the reedfolk
   build it goes up from mangrove logs and green and white wool, its awning
   28 green and 21 white and no red, and comes down into those.
 
@@ -195,8 +202,10 @@ issue #79; paste what you see there.
   list, and the well raised from it looks stonefolk. Whether the swapped
   buildings *read* as their people's (the tinker larder in brick and copper,
   the reedfolk well on mangrove, the stall's stripes in each people's
-  colour) is a matter of taste for a client; the rows are in
-  `core/palette.ts`, one line each.
+  colour, a mousefolk larder in mushroom blocks) is a matter of taste for a
+  client; the rows are in `core/palette.ts`, one line each. The wood
+  elves' leaf roof leaves the roof's stairs as authored beneath it, since
+  leaves have none.
 - **The builder's look**, seen once: a tallfolk in the blue outfit, hammer
   showing. Still to judge: the hat hidden, the pack on its back, the swing
   while placing (`builder:working` reaching the client), and the hammer now

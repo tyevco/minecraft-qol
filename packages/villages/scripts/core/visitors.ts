@@ -25,6 +25,14 @@ export const SETTLEMENT_MIN_POSTS = 2;
 export const EDGE_DISTANCE = 14;
 export const DAWN_FROM = 0;
 export const DAWN_TO = 1000;
+/**
+ * A day, in ticks, for a world whose daylight cycle is locked (a Realm
+ * might: `dodaylightcycle false`). The time of day then never enters the
+ * dawn window, so dawn is counted on the server's clock instead: one
+ * every DAY_TICKS of `system.currentTick` while the cycle is off, and the
+ * world's day (frozen with it) is carried forward by the days so counted.
+ */
+export const DAY_TICKS = 24000;
 /** Errands paid before the visitor offers to stay, and the standing each is worth. */
 export const ERRANDS_TO_SETTLE = 3;
 export const STANDING_PER_ERRAND = 5;
@@ -181,6 +189,10 @@ export interface VisitorsState {
   version: 1;
   /** The day the next visitor may come; 0 means as soon as there is a settlement. */
   nextDay: number;
+  /** Days counted on the server's clock while the daylight cycle was locked; added to the world's day. */
+  extraDays: number;
+  /** The tick the current locked day began; absent while the cycle runs. */
+  lockedTick?: number;
   /** The settlement visited last, so settlements take turns. */
   lastSettlement?: string;
   /** Faces by people index (a string key, since it is JSON). */
@@ -188,18 +200,52 @@ export interface VisitorsState {
   visit?: Visit;
 }
 
-export const EMPTY_STATE: VisitorsState = { version: 1, nextDay: 0, faces: {} };
+export const EMPTY_STATE: VisitorsState = { version: 1, nextDay: 0, extraDays: 0, faces: {} };
 
 export function parseState(raw: unknown): VisitorsState {
   if (typeof raw !== "string") return { ...EMPTY_STATE, faces: {} };
   try {
     const s = JSON.parse(raw) as Partial<VisitorsState>;
     if (!s || s.version !== 1 || typeof s.nextDay !== "number") return { ...EMPTY_STATE, faces: {} };
-    return { version: 1, nextDay: s.nextDay, lastSettlement: s.lastSettlement, faces: s.faces ?? {}, visit: s.visit };
+    return {
+      version: 1,
+      nextDay: s.nextDay,
+      extraDays: typeof s.extraDays === "number" ? s.extraDays : 0,
+      ...(typeof s.lockedTick === "number" ? { lockedTick: s.lockedTick } : {}),
+      lastSettlement: s.lastSettlement,
+      faces: s.faces ?? {},
+      visit: s.visit,
+    };
   } catch {
     return { ...EMPTY_STATE, faces: {} };
   }
 }
+
+/** The day the visitors count in: the world's, plus the days counted while its clock was locked. */
+export const dayOf = (state: VisitorsState, worldDay: number): number => worldDay + state.extraDays;
+
+/**
+ * Dawn on a locked clock. Called every poll with whether the daylight
+ * cycle runs and the server's tick: while it runs nothing is counted
+ * (the time of day brings dawn); while it is locked, a day of ticks from
+ * the tick the lock was first seen is a dawn, and the next day starts.
+ * A tick behind the stored one is a restart (the clock counts from boot,
+ * docs/villages-jigsaw-results.md), read as the day elapsed, as every
+ * other wait in the pack reads a stamp ahead of the clock.
+ */
+export function lockedDawn(state: VisitorsState, cycleOn: boolean, tick: number): { state: VisitorsState; dawn: boolean; changed: boolean } {
+  if (cycleOn) {
+    if (state.lockedTick === undefined) return { state, dawn: false, changed: false };
+    const { lockedTick: _unlocked, ...rest } = state;
+    return { state: rest, dawn: false, changed: true };
+  }
+  if (state.lockedTick === undefined) return { state: { ...state, lockedTick: tick }, dawn: false, changed: true };
+  if (tick >= state.lockedTick && tick - state.lockedTick < DAY_TICKS) return { state, dawn: false, changed: false };
+  return { state: { ...state, lockedTick: tick, extraDays: state.extraDays + 1 }, dawn: true, changed: true };
+}
+
+/** Ticks until the next dawn on a locked clock, for the status line. */
+export const ticksToLockedDawn = (state: VisitorsState, tick: number): number => (state.lockedTick === undefined ? DAY_TICKS : Math.max(0, state.lockedTick + DAY_TICKS - tick));
 
 /** A new face for a people: its first name and its first errand. */
 export function newFace(people: number, rand: () => number): Face {

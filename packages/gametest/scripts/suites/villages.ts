@@ -1,4 +1,4 @@
-import { BlockPermutation, Direction, GameMode, ItemStack, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, Direction, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
 import { WARES } from "../../../villages/scripts/core/standing";
 import { count, floor, put } from "./rig";
@@ -567,3 +567,28 @@ registerAsync("qol", "villages_wares_are_items", async (test) => {
   test.assert(bad.length === 0, `wares that are not items: ${bad.join("; ")}`);
   test.succeed();
 }).maxTicks(20).structureName("qol:arena");
+
+// A locked daylight cycle is what the visitors' fallback keys on: the
+// gamerule is readable from script on the stable API, and the time of day
+// and the absolute time stand still while it is off, so nothing on the
+// world's clock would ever bring a dawn. Measured, and the rule put back.
+registerAsync("qol", "villages_locked_clock_is_readable", async (test) => {
+  const dim = test.getDimension();
+  try {
+    dim.runCommand("gamerule dodaylightcycle false");
+    await test.idle(2);
+    test.assert(world.gameRules.doDayLightCycle === false, `expected world.gameRules.doDayLightCycle false after the command, got ${String(world.gameRules.doDayLightCycle)}`);
+    const t0 = world.getTimeOfDay();
+    const a0 = world.getAbsoluteTime();
+    await test.idle(40);
+    const t1 = world.getTimeOfDay();
+    const a1 = world.getAbsoluteTime();
+    test.assert(t1 === t0, `expected the time of day to stand still with the cycle locked, went ${t0} -> ${t1}`);
+    test.assert(a1 === a0, `expected the absolute time to stand still with the cycle locked, went ${a0} -> ${a1}`);
+  } finally {
+    dim.runCommand("gamerule dodaylightcycle true");
+  }
+  await test.idle(2);
+  test.assert(world.gameRules.doDayLightCycle === true, "expected the cycle back on after the test");
+  test.succeed();
+}).maxTicks(200).structureName("qol:arena");

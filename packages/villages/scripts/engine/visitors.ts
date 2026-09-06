@@ -11,7 +11,11 @@
  * the settler there (engine/post.ts `settle`).
  *
  * The state (the next day, the familiar faces, the visit in progress) is
- * one world property, `vl:visitors`. A visitor is a `villages:person` with
+ * one world property, `vl:visitors`. A world whose daylight cycle is
+ * locked (`world.gameRules.doDayLightCycle` false) has no dawn on its
+ * clock, so one is counted every day of ticks on the server's instead
+ * (core.lockedDawn), and the world's frozen day is carried forward by
+ * the days so counted (core.dayOf). A visitor is a `villages:person` with
  * the `villages:visitor` tag and component group (nothing can hurt it); it
  * is never looked up by a post, since it has no post tag.
  *
@@ -89,6 +93,17 @@ const visitor = (): Entity | undefined => {
   }
 };
 
+function cycleOn(): boolean {
+  try {
+    return world.gameRules.doDayLightCycle;
+  } catch {
+    return true;
+  }
+}
+
+/** The visitors' day: the world's, carried forward by the days counted on a locked clock. */
+const today = (): number => core.dayOf(state, world.getDay());
+
 function tick(): void {
   let now: number;
   try {
@@ -96,10 +111,19 @@ function tick(): void {
   } catch {
     return;
   }
-  const dawn = lastTimeOfDay >= 0 && core.isDawn(lastTimeOfDay, now);
+  const byTime = lastTimeOfDay >= 0 && core.isDawn(lastTimeOfDay, now);
   lastTimeOfDay = now;
-  if (!dawn) return;
-  const day = world.getDay();
+  const locked = core.lockedDawn(state, cycleOn(), system.currentTick);
+  if (locked.changed) {
+    const was = state.lockedTick;
+    state = locked.state;
+    save();
+    if (was === undefined && state.lockedTick !== undefined) log(`the daylight cycle is locked; dawn is counted every ${core.DAY_TICKS} ticks from now`);
+    else if (was !== undefined && state.lockedTick === undefined) log("the daylight cycle runs again; dawn is the time of day");
+    else if (locked.dawn) log(`dawn on the locked clock: day ${today()}`);
+  }
+  if (!byTime && !locked.dawn) return;
+  const day = today();
   if (core.leavesAt(state, day)) leave(day);
   arrive(day);
 }
@@ -287,7 +311,7 @@ function settle(player?: Player): void {
       /* gone */
     }
     delete state.faces[String(people)];
-    state = core.left(state, world.getDay(), Math.random);
+    state = core.left(state, today(), Math.random);
     save();
     player?.sendMessage(`${name} settles at the post at ${target.x},${target.y},${target.z}.`);
     log(`${name} the ${peopleName(people)} settled at ${target.x},${target.y},${target.z}${walked ? "" : " (the walk failed; put there)"}; the next ${PEOPLES[people]} visitor will be a new face`);
@@ -301,7 +325,7 @@ function settle(player?: Player): void {
 // ---------------------------------------------------------------------------
 
 function hatch(command: string): void {
-  const day = world.getDay();
+  const day = today();
   switch (command) {
     case "arrive":
       arrive(day, true);
@@ -318,7 +342,7 @@ function hatch(command: string): void {
       const all = core.settlements(storage.all());
       const e = visitor();
       log(
-        `visitors: day ${day}, next on day ${state.nextDay}; ${all.length} settlement(s): ${all.map((s) => `${s.key} (${s.posts.length} posts)`).join(", ") || "none"}; ` +
+        `visitors: day ${day}${state.lockedTick !== undefined ? ` (the daylight cycle is locked: ${state.extraDays} day(s) counted on the clock, the next dawn in ${core.ticksToLockedDawn(state, system.currentTick)} ticks)` : ""}, next on day ${state.nextDay}; ${all.length} settlement(s): ${all.map((s) => `${s.key} (${s.posts.length} posts)`).join(", ") || "none"}; ` +
           (state.visit ? `${e?.nameTag ?? "a visitor (entity not found)"} here since day ${state.visit.day} in ${state.visit.settlement}` : "nobody visiting") +
           `; faces: ${Object.entries(state.faces).map(([p, f]) => `${PEOPLES[Number(p)]} ${f.name} (${f.paid} paid, wants ${f.errand.amount} ${f.errand.item})`).join(", ") || "none"}`,
       );

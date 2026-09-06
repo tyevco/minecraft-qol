@@ -438,7 +438,9 @@ found, in buildings they raised. That is the whole loop.
    larder wage.~~ Built.
 6. ~~**Visitors** (§6.1) with the first errand table~~ built
    (`packages/villages`, `core/visitors.ts`): the kids' posts wait for a
-   settler, a visitor comes at dawn every two or three days, its errand and
+   settler, a visitor comes at dawn every two or three days (a dawn
+   counted on the server's clock where the daylight cycle is locked,
+   `villages-jigsaw-results.md`), its errand and
    gift tables cover all nineteen peoples, and paying raises the standing
    counter; measured headlessly in `villages-jigsaw-results.md`. Then the
    ~~elder, standing tiers and invite in the villages (§5, §6)~~ built:

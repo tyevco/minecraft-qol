@@ -167,7 +167,11 @@ measurements: `docs/villages-jigsaw-results.md`.
   `scripts/engine/visitors.ts` acts). A **settlement** is two or more of
   the kids' posts within 48 blocks of each other (clusters chain). Every
   two to three days, at **dawn** (the time of day entering 0–1000, read
-  every second), a visitor comes to the settlement whose turn it is: a
+  every second; on a world whose daylight cycle is locked, which has no
+  dawn on its clock, one is counted every 24000 ticks of the server's
+  instead, and the world's frozen day carried forward by the days so
+  counted, `core/visitors.ts` `lockedDawn`), a visitor comes to the
+  settlement whose turn it is: a
   person of a people drawn from the settlement's trades (a mine draws
   stonefolk, tinkers or drow; berry bushes foxfolk; a hedge deerfolk; and
   so on, else any of the nineteen), spawned fourteen blocks from the
@@ -509,11 +513,12 @@ measurements: `docs/villages-jigsaw-results.md`.
   from the posts' middle on `getTopmostBlock`, which is a roof or a tree
   top as readily as the ground; if visitors keep appearing on roofs, drop
   the spot to the first air block with solid footing below the topmost.
-- **Dawn on a Realm**: the visitor logic reads the time of day every
-  second and acts when it enters 0–1000; a Realm with the daylight cycle
-  locked (`dodaylightcycle false`) never has a dawn, so visitors never
-  come or leave. If that is how the Realm runs, dawn needs a fallback on
-  elapsed absolute time.
+- **Dawn on a Realm with the daylight cycle locked**: a dawn is counted
+  every 24000 ticks (twenty minutes of play) on the server's clock, and
+  `/scriptevent villages:visitor status` says so and how long to the next.
+  If visitors still never come with `dodaylightcycle false`, the status
+  line is the first thing to read: it names the locked clock only if the
+  pack saw `world.gameRules.doDayLightCycle` false.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
 - **The furfolk on a real client** (`docs/design/furfolk.md` §7 items 3–5,

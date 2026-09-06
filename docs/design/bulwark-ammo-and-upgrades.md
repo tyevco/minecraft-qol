@@ -23,7 +23,17 @@ where they differ:**
 3. **Keep the original design's four upgrade axes** (damage, fire rate,
    range, projectile) rather than collapsing to one tier. §4.5 is rewritten
    for that; the group-count cost it carries is stated there so it is chosen
-   with eyes open. Phase 3b, not yet built.
+   with eyes open. **Built as Phase 3b**: damage as a script multiplier
+   (not `shooter.power`), one item per tier, on the same branch.
+
+Two choices made while building 3b, not put as questions, and worth a
+second look: the **ammo gate's materials** are a fire charge for tier II and
+dragon's breath for tier III (the design's projectile axis named a fire
+charge, and dragon's breath is what brews the potions the top tier
+unlocks); and **materials are accepted from a feeding hopper as well as by
+right-click**, one per block tick, because a simulated player's right-click
+never reaches a pack and the hopper path is the only one a GameTest can
+drive. It is also a real path a player can automate.
 
 ---
 
@@ -337,10 +347,16 @@ change.** Pinned by `turret_fires_tipped_from_hopper`,
 `turret_leaves_healing_tint_alone`, `turret_throws_snowballs_from_hopper`,
 `turret_throws_splash_from_hopper` and `turret_prefers_special_over_buffer`.
 
-**3b — the four axes.** Schema 2 with four tier columns and the materials
-fed. Nine aim groups, damage in script, the projectile gate in `core/`.
-Right-click feeding per the original table; materials returned on break.
-`bulwark:tier` follows the damage axis.
+**3b — the four axes. Built.** Schema 2 with four tier columns; the
+materials fed are the tiers themselves (tier N on an axis is N−1 items) and
+come back on break. Nine aim groups (`bulwark:aim_r<rate>_g<range>`, each
+with its `ranged_attack`, target range, look distance and `follow_range`),
+damage as an `entityHurt` multiplier of 1 / 1.5 / 2, the projectile gate in
+`core/tiers.ts`. One item per tier by right-click or from a feeding hopper.
+`bulwark:tier` follows the damage axis. Pinned by
+`turret_rate_upgrade_fires_faster`, `turret_damage_upgrade_hits_harder`,
+`turret_gate_holds_tipped_until_upgraded` and `turret_break_returns_upgrades`;
+range tiers need a person (the arena is eight blocks).
 
 **3c — the panel and the form.** A `bulwark:debug` line per turret reporting
 kinds, tiers and source; the per-turret config form (server-ui) for targeting

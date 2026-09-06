@@ -139,15 +139,16 @@ the bare form at an older format version. What the doc misses and a turret needs
 caps. The lens half of that design shipped separately as `packages/lens`.
 
 **[`design/bulwark-ammo-and-upgrades.md`](design/bulwark-ammo-and-upgrades.md)** —
-**Phase 3a built, 3b designed.** What the vanilla `minecraft:shooter`,
+**Phases 3a and 3b built.** What the vanilla `minecraft:shooter`,
 `ranged_attack` and `minecraft:projectile` definitions offer a turret beyond a
 plain arrow, rated against the stable API and rule 4. Recommends tipped
 arrows, snowballs and a custom non-griefing ember drawn straight from the
 hopper (special ammo is never buffered, because it cannot be given back), one
 tier axis on the `bulwark:tier` property the head already carries, and range
 as a world setting. Carries its own "must prototype" list, every item of which is a passing
-`rig_*` GameTest, and 3a (ammo from the hopper) ships in the pack with five
-`turret_*` tests of its own.
+`rig_*` GameTest; 3a (ammo from the hopper) and 3b (four upgrade axes, one
+item per tier, damage in script) ship in the pack with nine `turret_*`
+tests of their own.
 
 **[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
 (funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times

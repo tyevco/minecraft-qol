@@ -187,37 +187,53 @@ describe("shots and arming", () => {
   });
 
   it("prefers a hopper's special ammo over the buffer, and falls back to it", () => {
-    expect(arming(10, "snowball")).toEqual({ armed: true, kind: "snowball" });
-    expect(arming(0, "splash_decay")).toEqual({ armed: true, kind: "splash_decay" });
-    expect(arming(10, undefined)).toEqual({ armed: true, kind: "arrow" });
-    expect(arming(0, undefined)).toEqual({ armed: false, kind: "arrow" });
-    expect(arming(0, "arrow")).toEqual({ armed: false, kind: "arrow" });
+    expect(arming(10, "snowball")).toEqual({ armed: true, kind: "snowball", aim: EVENT_ARM });
+    expect(arming(0, "splash_decay")).toEqual({ armed: true, kind: "splash_decay", aim: EVENT_ARM });
+    expect(arming(10, undefined)).toEqual({ armed: true, kind: "arrow", aim: EVENT_ARM });
+    expect(arming(0, undefined)).toEqual({ armed: false, kind: "arrow", aim: EVENT_ARM });
+    expect(arming(0, "arrow")).toEqual({ armed: false, kind: "arrow", aim: EVENT_ARM });
+    expect(arming(3, undefined, "bulwark:aim_r2_g3").aim).toBe("bulwark:aim_r2_g3");
+  });
+
+  it("lets a gate keep a special kind out of the search", () => {
+    const slots: Slot[] = [snowballs(4), tipped("moveSlowdown", 2)];
+    expect(findSpecial(slots, (k) => k !== "snowball")).toEqual({ slot: 1, kind: "slowness" });
+    expect(findSpecial(slots, () => false)).toBeUndefined();
   });
 });
 
 describe("groupEvents", () => {
-  it("arms and picks the ammo group from an unknown state", () => {
-    expect(groupEvents({ armed: true, kind: "arrow" }, {})).toEqual([EVENT_ARM, KIND_EVENT.arrow]);
+  const base = EVENT_ARM;
+  const fast = "bulwark:aim_r3_g1";
+
+  it("arms into the aim group and picks the ammo group from an unknown state", () => {
+    expect(groupEvents({ armed: true, kind: "arrow", aim: base }, {})).toEqual([base, KIND_EVENT.arrow]);
+    expect(groupEvents({ armed: true, kind: "arrow", aim: fast }, {})).toEqual([fast, KIND_EVENT.arrow]);
   });
 
   it("does nothing when the head already wears the right groups", () => {
-    expect(groupEvents({ armed: true, kind: "slowness" }, { armed: true, kind: "slowness" })).toEqual([]);
-    expect(groupEvents({ armed: false, kind: "arrow" }, { armed: false })).toEqual([]);
+    expect(groupEvents({ armed: true, kind: "slowness", aim: base }, { armed: true, kind: "slowness", aim: base })).toEqual([]);
+    expect(groupEvents({ armed: false, kind: "arrow", aim: base }, { armed: false })).toEqual([]);
   });
 
   it("swaps only the ammo group when the kind changes on an armed head", () => {
-    expect(groupEvents({ armed: true, kind: "snowball" }, { armed: true, kind: "arrow" })).toEqual([
+    expect(groupEvents({ armed: true, kind: "snowball", aim: base }, { armed: true, kind: "arrow", aim: base })).toEqual([
       KIND_EVENT.snowball,
     ]);
   });
 
-  it("disarms with one event, whatever the kind was", () => {
-    expect(groupEvents({ armed: false, kind: "arrow" }, { armed: true, kind: "decay" })).toEqual([EVENT_DISARM]);
-    expect(groupEvents({ armed: false, kind: "arrow" }, {})).toEqual([EVENT_DISARM]);
+  it("swaps only the aim group when a tier changes on an armed head", () => {
+    expect(groupEvents({ armed: true, kind: "arrow", aim: fast }, { armed: true, kind: "arrow", aim: base })).toEqual([fast]);
   });
 
-  it("re-fires the ammo group when the kind last written is unknown", () => {
-    expect(groupEvents({ armed: true, kind: "arrow" }, { armed: true })).toEqual([KIND_EVENT.arrow]);
+  it("disarms with one event, whatever the kind and aim were", () => {
+    expect(groupEvents({ armed: false, kind: "arrow", aim: base }, { armed: true, kind: "decay", aim: fast })).toEqual([EVENT_DISARM]);
+    expect(groupEvents({ armed: false, kind: "arrow", aim: base }, {})).toEqual([EVENT_DISARM]);
+  });
+
+  it("re-fires whatever was last written as unknown on an armed head", () => {
+    expect(groupEvents({ armed: true, kind: "arrow", aim: base }, { armed: true, aim: base })).toEqual([KIND_EVENT.arrow]);
+    expect(groupEvents({ armed: true, kind: "arrow", aim: base }, { armed: true, kind: "arrow" })).toEqual([base]);
   });
 });
 

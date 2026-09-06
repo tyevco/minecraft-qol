@@ -1,6 +1,7 @@
 import { world, type Dimension, type Entity } from "@minecraft/server";
 import { groupEvents, isKind, type Arming, type Kind } from "../core/ammo";
 import { linkKey, parseLinkKey, type Position } from "../core/record";
+import { isTier, tierEvent, type Tier } from "../core/tiers";
 import { headSpawnLocation, isAtBlock, type Head } from "../core/reconcile";
 
 /**
@@ -17,6 +18,9 @@ export const TURRET_ENTITY = "bulwark:turret_head";
 const PROP_LINK = "bw:link";
 const PROP_ARMED = "bw:armed";
 const PROP_KIND = "bw:kind";
+const PROP_AIM = "bw:aim";
+/** The entity's own int property, drawn by the render controller. */
+const PROPERTY_TIER = "bulwark:tier";
 const TAG = "[Bulwark]";
 
 export function isTurretEntity(entity: Entity | undefined): entity is Entity {
@@ -58,6 +62,26 @@ export function readKind(entity: Entity): Kind | undefined {
   try {
     const raw = entity.getDynamicProperty(PROP_KIND);
     return isKind(raw) ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The aim group event the head was last set to; undefined when disarmed or unknown. */
+export function readAim(entity: Entity): string | undefined {
+  try {
+    const raw = entity.getDynamicProperty(PROP_AIM);
+    return typeof raw === "string" ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The damage tier the head is drawn at, off its own entity property. */
+export function readTier(entity: Entity): Tier | undefined {
+  try {
+    const raw = entity.getProperty(PROPERTY_TIER);
+    return isTier(raw) ? raw : undefined;
   } catch {
     return undefined;
   }
@@ -134,13 +158,17 @@ export function seat(entity: Entity, block: Position): void {
  * shot (measured, `rig_swap_changes_next_shot`), so a hopper that changes
  * ammo changes the turret within a block tick.
  */
-export function syncArming(entity: Entity, want: Arming): void {
-  const events = groupEvents(want, { armed: readArmed(entity), kind: readKind(entity) });
+export function syncArming(entity: Entity, want: Arming, damage?: Tier): void {
+  const events = groupEvents(want, { armed: readArmed(entity), kind: readKind(entity), aim: readAim(entity) });
+  // The texture follows the damage tier; the property lands next tick, so a
+  // same-tick read is stale, and a tier event fires at most once per change.
+  if (damage !== undefined && readTier(entity) !== damage) events.push(tierEvent(damage));
   if (events.length === 0) return;
   try {
     for (const event of events) entity.triggerEvent(event);
     entity.setDynamicProperty(PROP_ARMED, want.armed);
     entity.setDynamicProperty(PROP_KIND, want.armed ? want.kind : undefined);
+    entity.setDynamicProperty(PROP_AIM, want.armed ? want.aim : undefined);
   } catch (e) {
     console.warn(`${TAG} could not ${events.join("+")} head ${entity.id}: ${e}`);
   }

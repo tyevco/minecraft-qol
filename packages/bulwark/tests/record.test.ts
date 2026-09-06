@@ -32,17 +32,40 @@ describe("link keys", () => {
 });
 
 describe("row packing", () => {
-  const full: TurretRecord = { ...pos, entityId: "-4294967295", ammo: 17, kills: 3 };
+  const full: TurretRecord = {
+    ...pos,
+    entityId: "-4294967295",
+    ammo: 17,
+    kills: 3,
+    tiers: { damage: 2, rate: 3, range: 1, gate: 2 },
+  };
 
   it("round-trips a full record", () => {
     expect(unpackRecord(packRecord(full))).toEqual(full);
   });
 
   it("round-trips an unlinked record with the entity absent, not empty", () => {
-    const unlinked: TurretRecord = { ...pos, ammo: 0, kills: 0 };
+    const unlinked: TurretRecord = { ...pos, ammo: 0, kills: 0, tiers: { damage: 1, rate: 1, range: 1, gate: 1 } };
     const back = unpackRecord(packRecord(unlinked));
     expect(back).toBeDefined();
     expect(back!.entityId).toBeUndefined();
+  });
+
+  it("reads a schema-1 row (no tiers) as the base tier on every axis", () => {
+    const old = ["minecraft:overworld", 1, 2, 3, "-4294967295", 17, 3];
+    const back = unpackRecord(old);
+    expect(back).toBeDefined();
+    expect(back!.ammo).toBe(17);
+    expect(back!.tiers).toEqual({ damage: 1, rate: 1, range: 1, gate: 1 });
+  });
+
+  it("treats a malformed tier as the base, never a guess", () => {
+    const row = [...packRecord(full)];
+    row[7] = 9;
+    row[8] = "3";
+    row[9] = 2.5;
+    const back = unpackRecord(row);
+    expect(back!.tiers).toEqual({ damage: 1, rate: 1, range: 1, gate: 2 });
   });
 
   it("packs to plain JSON values only", () => {

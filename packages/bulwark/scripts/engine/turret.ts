@@ -9,6 +9,7 @@ import {
   type Container,
   type Dimension,
   type Entity,
+  type EntityEquippableComponent,
   type Player,
 } from "@minecraft/server";
 import { NEIGHBOURS } from "@qol/shared/core/facing";
@@ -19,6 +20,7 @@ import {
   KIND_LABEL,
   acceptFeed,
   arming,
+  findGated,
   findKind,
   findSpecial,
   planPull,
@@ -26,6 +28,21 @@ import {
   type Slot,
   type StackView,
 } from "../core/ammo";
+import {
+  AXIS_LABEL,
+  BASE_TIERS,
+  MATERIALS,
+  TIER_NAME,
+  aimEvent,
+  describeTiers,
+  feedUpgrade,
+  gateAllows,
+  gateFor,
+  materialsToReturn,
+  withTier,
+  type Tier,
+  type Tiers,
+} from "../core/tiers";
 import { hopperFeeds } from "../core/hopper";
 import { linkKey, samePosition, type Position, type TurretRecord } from "../core/record";
 import { reconcileBlock, spawnAllowed } from "../core/reconcile";
@@ -83,6 +100,8 @@ export const stats = {
   charged: 0,
   /** Special shots that found no stack to charge: the hopper emptied mid-tick. */
   uncharged: 0,
+  /** Upgrade materials accepted, by hand or from a hopper. */
+  upgraded: 0,
 };
 
 /** Consecutive ticks a block has failed to find the head it remembers. */
@@ -94,7 +113,12 @@ export function positionOf(block: Block): Position {
 }
 
 function fresh(pos: Position): TurretRecord {
-  return { ...pos, ammo: 0, kills: 0 };
+  return { ...pos, ammo: 0, kills: 0, tiers: { ...BASE_TIERS } };
+}
+
+/** A friendly item name for a message: `minecraft:redstone_block` -> `redstone block`. */
+function itemName(typeId: string): string {
+  return typeId.replace(/^minecraft:/, "").replace(/_/g, " ");
 }
 
 // ---------------------------------------------------------------------------
@@ -172,11 +196,55 @@ function pullFromHoppers(hoppers: Feeder[], ammo: number): number {
   return ammo;
 }
 
-/** The special kind the turret should be firing, if any hopper offers one. */
-function specialOffered(hoppers: Feeder[]): Kind | undefined {
+/** The special kind the turret should be firing, if any hopper offers one its gate allows. */
+function specialOffered(hoppers: Feeder[], gate: Tier): Kind | undefined {
+  const allowed = (k: Kind) => gateAllows(gate, k);
   for (const { slots } of hoppers) {
-    const found = findSpecial(slots);
+    const found = findSpecial(slots, allowed);
     if (found) return found.kind;
+  }
+  return undefined;
+}
+
+/** The first special kind a hopper offers that the gate refuses, for the status text. */
+function specialGated(hoppers: Feeder[], gate: Tier): Kind | undefined {
+  const allowed = (k: Kind) => gateAllows(gate, k);
+  for (const { slots } of hoppers) {
+    const found = findGated(slots, allowed);
+    if (found) return found.kind;
+  }
+  return undefined;
+}
+
+/**
+ * Take one upgrade material from a feeding hopper, if one is there and it is
+ * the next step on its axis. One per tick, so a chest of diamonds upgrades
+ * visibly rather than instantly, and a hopper never loses more than the one
+ * item the tier cost.
+ */
+function upgradeFromHoppers(hoppers: Feeder[], tiers: Tiers): Tiers | undefined {
+  for (const { container, slots } of hoppers) {
+    for (let i = 0; i < slots.length; i++) {
+      const s = slots[i];
+      if (!s) continue;
+      const verdict = feedUpgrade(tiers, s.typeId);
+      if (verdict.kind !== "upgrade") continue;
+      try {
+        const item = container.getItem(i);
+        if (!item || item.typeId !== s.typeId) continue;
+        if (item.amount > 1) {
+          item.amount -= 1;
+          container.setItem(i, item);
+        } else {
+          container.setItem(i, undefined);
+        }
+      } catch (e) {
+        console.warn(`${TAG} could not take an upgrade from a hopper: ${e}`);
+        continue;
+      }
+      stats.upgraded++;
+      return withTier(tiers, verdict.axis, verdict.tier);
+    }
   }
   return undefined;
 }
@@ -212,7 +280,8 @@ export function chargeSpecial(dim: Dimension, pos: Position, kind: Kind): boolea
 
 /** The head's arming for a record and its hoppers, without touching either. */
 export function armingFor(dim: Dimension, record: TurretRecord): ReturnType<typeof arming> {
-  return arming(record.ammo, specialOffered(feeders(dim, record)));
+  const t = record.tiers;
+  return arming(record.ammo, specialOffered(feeders(dim, record), t.gate), aimEvent(t.rate, t.range));
 }
 
 // ---------------------------------------------------------------------------
@@ -247,9 +316,17 @@ export function tick(block: Block): void {
       dirty = true;
     }
   }
-  // Read after the pull: a hopper's first special stack is unchanged by it,
-  // but its slots may have shifted.
-  const special = specialOffered(hoppers.map((h) => ({ container: h.container, slots: snapshot(h.container) })));
+  const upgraded = upgradeFromHoppers(hoppers, record.tiers);
+  if (upgraded) {
+    record.tiers = upgraded;
+    dirty = true;
+  }
+  // Read after the pull and the upgrade: a hopper's first special stack is
+  // unchanged by them, but its slots may have shifted.
+  const special = specialOffered(
+    hoppers.map((h) => ({ container: h.container, slots: snapshot(h.container) })),
+    record.tiers.gate,
+  );
 
   const linked = linkedEntity(record.entityId, pos.dimId);
   const nearby = headsAt(dim, pos).map((e) => toHead(e, pos));
@@ -312,7 +389,7 @@ export function tick(block: Block): void {
   if (head) {
     const link = readLink(head);
     if (!link || !samePosition(link, pos)) writeLink(head, pos);
-    syncArming(head, arming(record.ammo, special));
+    syncArming(head, arming(record.ammo, special, aimEvent(record.tiers.rate, record.tiers.range)), record.tiers.damage);
   }
 
   if (dirty) storage.put(record);
@@ -322,16 +399,16 @@ export function tick(block: Block): void {
 // Placement, removal, interaction
 // ---------------------------------------------------------------------------
 
-function dropArrows(dim: Dimension, pos: Position, count: number): void {
+function dropItems(dim: Dimension, pos: Position, typeId: string, count: number): void {
   const at = { x: pos.x + 0.5, y: pos.y + 0.5, z: pos.z + 0.5 };
   let left = count;
   while (left > 0) {
     const n = Math.min(64, left);
     left -= n;
     try {
-      dim.spawnItem(new ItemStack(AMMO_ITEM, n), at);
+      dim.spawnItem(new ItemStack(typeId, n), at);
     } catch (e) {
-      console.warn(`${TAG} could not drop ${n} arrows at ${linkKey(pos)}: ${e}`);
+      console.warn(`${TAG} could not drop ${n} ${typeId} at ${linkKey(pos)}: ${e}`);
     }
   }
 }
@@ -355,27 +432,49 @@ export function retire(dim: Dimension, pos: Position, player?: Player): void {
 
   if (!record) return;
   stats.retired++;
-  // Buffered ammo is the player's; a broken turret gives it back.
-  if (record.ammo > 0) dropArrows(dim, pos, record.ammo);
+  // Buffered ammo and fed upgrades are the player's; a broken turret gives
+  // them back. Special ammo was never taken from its hopper.
+  if (record.ammo > 0) dropItems(dim, pos, AMMO_ITEM, record.ammo);
+  const materials = materialsToReturn(record.tiers);
+  for (const typeId of materials) dropItems(dim, pos, typeId, 1);
+  const returned: string[] = [];
+  if (record.ammo > 0) returned.push(`§f${record.ammo}§7 arrow(s)`);
+  if (materials.length > 0) returned.push(materials.map((m) => `§f${itemName(m)}§7`).join(", "));
   player?.sendMessage(
-    record.ammo > 0
-      ? `§7Turret dismantled. §f${record.ammo}§7 arrow(s) returned.`
-      : "§7Turret dismantled.",
+    returned.length > 0 ? `§7Turret dismantled. ${returned.join(" and ")} returned.` : "§7Turret dismantled.",
   );
 }
 
-function statusLine(record: TurretRecord, head: Entity | undefined): string {
+function statusLine(dim: Dimension, record: TurretRecord, head: Entity | undefined): string {
   const armed = head ? readArmed(head) : undefined;
   const kind = head ? readKind(head) : undefined;
   const headState = !head ? "§cmissing" : armed ? "§aarmed" : "§eidle";
   const firing = armed && kind && kind !== "arrow" ? ` §7firing §f${KIND_LABEL[kind]}§7 from a hopper.` : "";
   const base =
     `§6Bulwark Turret §7ammo §f${record.ammo}/${AMMO_CAP}§7, kills §f${record.kills}§7, ` +
-    `head ${headState}§7.${firing}`;
+    `head ${headState}§7.${firing} §7Tiers: §f${describeTiers(record.tiers)}§7.`;
+  const gated = specialGated(feeders(dim, record), record.tiers.gate);
+  if (gated) {
+    const need = gateFor(gated);
+    return (
+      `${base} §eA hopper offers ${KIND_LABEL[gated]}§7, which needs ammo tier §f${TIER_NAME[need]}§7 ` +
+      `(feed it a ${itemName(record.tiers.gate === 1 ? MATERIALS.gate[0] : MATERIALS.gate[1])}).`
+    );
+  }
   if (record.ammo === 0 && !firing) {
     return `${base} §cNo ammo§7 - use arrows on it, or point a hopper into it.`;
   }
   return base;
+}
+
+/** One from the hand. */
+function takeOne(equippable: EntityEquippableComponent, held: ItemStack): void {
+  if (held.amount > 1) {
+    held.amount -= 1;
+    equippable.setEquipment(EquipmentSlot.Mainhand, held);
+  } else {
+    equippable.setEquipment(EquipmentSlot.Mainhand, undefined);
+  }
 }
 
 /** Right-click: feed plain arrows from the hand, otherwise report status. */
@@ -387,6 +486,30 @@ export function interact(player: Player, block: Block): void {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
     const held = equippable?.getEquipment(EquipmentSlot.Mainhand);
+
+    // An upgrade material first: one item raises one axis one tier.
+    const upgrade = held ? feedUpgrade(record.tiers, held.typeId) : { kind: "not_material" as const };
+    if (upgrade.kind === "upgrade" && equippable && held) {
+      takeOne(equippable, held);
+      record.tiers = withTier(record.tiers, upgrade.axis, upgrade.tier);
+      storage.put(record);
+      stats.upgraded++;
+      if (head) syncArming(head, armingFor(block.dimension, record), record.tiers.damage);
+      player.sendMessage(
+        `§7${AXIS_LABEL[upgrade.axis]} raised to tier §f${TIER_NAME[upgrade.tier]}§7. ` +
+          `Tiers: §f${describeTiers(record.tiers)}§7.`,
+      );
+      return;
+    }
+    if (upgrade.kind === "maxed") {
+      player.sendMessage(`§7${AXIS_LABEL[upgrade.axis]} is already tier §f${TIER_NAME[record.tiers[upgrade.axis]]}§7.`);
+      return;
+    }
+    if (upgrade.kind === "order") {
+      player.sendMessage(`§7${AXIS_LABEL[upgrade.axis]} needs a ${itemName(upgrade.needs)} first.`);
+      return;
+    }
+
     const feed = acceptFeed(record.ammo, viewOf(held));
 
     if (feed.refused) {
@@ -408,7 +531,7 @@ export function interact(player: Player, block: Block): void {
       storage.put(record);
       stats.fed += feed.accepted;
       const want = armingFor(block.dimension, record);
-      if (head) syncArming(head, want);
+      if (head) syncArming(head, want, record.tiers.damage);
       player.sendMessage(
         `§7Loaded §f${feed.accepted}§7 arrow(s). Ammo §f${record.ammo}/${AMMO_CAP}§7` +
           (want.armed && head ? " §a- armed." : "."),
@@ -419,7 +542,7 @@ export function interact(player: Player, block: Block): void {
     console.warn(`${TAG} feed failed at ${linkKey(pos)}: ${e}`);
   }
 
-  player.sendMessage(statusLine(record, head));
+  player.sendMessage(statusLine(block.dimension, record, head));
 }
 
 // ---------------------------------------------------------------------------

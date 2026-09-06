@@ -1,4 +1,4 @@
-# Bulwark — the turret (Phase 2: core; Phase 3a: ammo kinds)
+# Bulwark — the turret (Phase 2: core; Phase 3: ammo kinds and upgrades)
 
 Automated base defense: a placeable turret that acquires and shoots hostile
 mobs using the engine's own AI, fed arrows by an adjacent hopper or by hand,
@@ -32,8 +32,9 @@ upgrades, no config form, no ownership.
 and the measurements in [`docs/bulwark-ammo-results.md`](../../docs/bulwark-ammo-results.md):
 a hopper of arrows of slowness, weakness or decay, of snowballs, or of splash
 potions of those three effects makes the turret fire those, straight from the
-hopper. Six more `turret_*` GameTests pin it. Phase 3b, the four upgrade
-axes, is designed there and not built. Player targeting is not possible at all
+hopper. **Phase 3b, the four upgrade axes, is built too**: damage, fire rate,
+range and ammo, three tiers each, raised one tier at a time by feeding the
+turret one item. Nine `turret_*` GameTests pin the two phases. Player targeting is not possible at all
 yet — the acquisition filter is `is_family: monster`, nothing else.
 
 ## How it works
@@ -82,6 +83,25 @@ harming and healing tints are read and refused: poison and harming do nothing
 to (or heal) the undead, and healing heals everything else. Special ammo
 takes priority over the buffer, because a tipped arrow in the hopper is a
 deliberate choice.
+
+**Four upgrade axes, one item per tier.** Every axis starts at tier I and
+is raised to II and then III by one item, by right-click or from a feeding
+hopper (a hopper takes one material per block tick, and only the next step
+on its axis, so a chest of diamonds is never eaten):
+
+| Axis | Tier II | Tier III | What it does |
+| --- | --- | --- | --- |
+| damage | diamond | netherite ingot | the hit is scaled 1.5× then 2× in script (`entityHurt`), whatever the ammo; the head's texture follows |
+| fire rate | redstone block | quartz | 1–2 s between shots, then 0.6–1.2 s, then 0.3–0.6 s |
+| range | eye of ender | ender chest | 16 blocks, then 24, then 32: acquisition, aim and follow range together |
+| ammo | fire charge | dragon's breath | which kinds a hopper may feed: plain arrows only, then tipped arrows, then snowballs and splash potions |
+
+Rate and range share one engine component, so the head carries nine aim
+groups (`bulwark:aim_r<rate>_g<range>`) and wears exactly one when armed;
+damage is script, so it costs no groups; the ammo gate is a rule in
+`core/tiers.ts`. Tiers live in the record (schema 2; an old row reads as
+tier I everywhere) and every material fed comes back when the block breaks.
+The third material is refused before the second, with the reason.
 
 **Ammo gates the AI.** `ranged_attack` fires whenever it has a target and
 knows nothing about ammo. So the entity has two component groups —
@@ -140,6 +160,11 @@ height in `tools/models/generate.ts` and this number moves with it;
 - **Kills by any projectile are counted.** Every shot the turret fires is
   remembered by id, because a kill by a custom projectile names the
   projectile, not the shooter (measured).
+- **Right-click with an upgrade material spends it**, or says why not
+  (already that tier; needs the previous material first). A material in the
+  feeding hopper does the same, one per block tick. The status line lists
+  the tiers, and says when a hopper offers ammo the turret's ammo tier does
+  not yet allow, and what to feed it.
 - **Breaking the block returns its arrows** as items and removes the head.
 - **Range is 16 blocks, line of sight required**, 1.5 s between shots. Line
   of sight is judged from the eye, which sits at barrel height.
@@ -161,6 +186,15 @@ failure.
 | script | `/reload`, then `/scriptevent bulwark:reconcile`; the content log says whether the block component registration took |
 | block, entity or recipe JSON | exit to the main menu and re-enter |
 | resource pack | exit and re-enter; **restart** for the RP manifest |
+
+Phase 3b adds two. **Range tiers beyond 16 blocks**: the arena is eight
+blocks, so a test cannot stand a mob 24 blocks away. Feed a turret an eye of
+ender, then an ender chest, and check that a monster at 20 and then 30
+blocks with line of sight is shot; if not, `follow_range` inside a component
+group is not being applied and belongs in the base components with the
+largest value. **Hand feeding of materials**: a simulated player's
+right-click never reaches the pack, so only the hopper path is measured;
+right-click a turret with a diamond and expect "damage raised to tier II".
 
 Phase 3a adds one row a simulated player cannot check, because a pack's
 dynamic properties are invisible to the test pack: **the kill counter
@@ -185,7 +219,7 @@ behavior_pack/blocks/turret.json          the block: generated model + minecraft
 behavior_pack/entities/turret_head.json   the head, format 1.26.40: armed/disarmed groups, one ammo group per kind
 behavior_pack/recipes/turret.json         iron, dispenser, stone, redstone
 resource_pack/                            generated by tools/ - never hand-edited
-scripts/core/                             pure: record codec, ammo kinds and rules, hopper rule, reconcile
+scripts/core/                             pure: record codec, ammo kinds and rules, upgrade tiers, hopper rule, reconcile
 scripts/engine/storage.ts                 the storage seam over the shared position index
 scripts/engine/head.ts                    entity link helpers
 scripts/engine/turret.ts                  the block component: tick, feed, retire

@@ -2,6 +2,7 @@ import { EntityComponentTypes, system, world, type Entity } from "@minecraft/ser
 import { withBlock } from "@qol/shared/engine/safeBlock";
 import { PROJECTILES, consumeShot } from "../core/ammo";
 import { type Position } from "../core/record";
+import { damageMultiplier } from "../core/tiers";
 import { isAtBlock, reconcileEntity, type EntityVerdict, type Head } from "../core/reconcile";
 import { TURRET_ENTITY, isTurretEntity, readKind, readLink, removeHead, syncArming } from "./head";
 import * as storage from "./storage";
@@ -24,6 +25,10 @@ import { TURRET_BLOCK, armingFor, chargeSpecial, retire } from "./turret";
  *    owner unreadable by then (`rig_custom_bolt_has_owner`). So every
  *    attributed projectile is remembered by id until it is gone, and a kill
  *    is looked up either way.
+ *  - Damage tiers. The hit a turret's projectile lands is scaled in the
+ *    `entityHurt` before-event by the record's damage tier (Guardian's
+ *    pattern: `damage` is writable there). The turret is found the same two
+ *    ways a kill is.
  *  - The entity side of reconciliation. A head that loads with no block under
  *    it, or whose block's record names a different head, removes itself.
  */
@@ -42,6 +47,8 @@ export const stats = {
   kills: 0,
   /** Kills found through the projectile map rather than the damaging entity. */
   killsByProjectile: 0,
+  /** Hits scaled by a damage tier above the base. */
+  scaledHits: 0,
   orphansRemoved: 0,
   /** Records whose block was found loaded and not a turret. */
   staleRetired: 0,
@@ -123,9 +130,19 @@ function attributeShot(projectile: Entity, retry: boolean): void {
   syncArming(owner, armingFor(dim, record));
 }
 
-/** The turret that fired the projectile or entity a kill names, if any. */
-function killerOf(damagingEntity: Entity | undefined, damagingProjectile: Entity | undefined): Position | undefined {
-  if (isTurretEntity(damagingEntity)) return readLink(damagingEntity);
+/**
+ * The turret behind a damage source, if any: the damaging entity when it is
+ * a head, else whichever of the projectile or the entity was remembered at
+ * spawn. `viaProjectile` says which route held.
+ */
+function turretBehind(
+  damagingEntity: Entity | undefined,
+  damagingProjectile: Entity | undefined,
+): { link: Position; viaProjectile: boolean } | undefined {
+  if (isTurretEntity(damagingEntity)) {
+    const link = readLink(damagingEntity);
+    return link ? { link, viaProjectile: false } : undefined;
+  }
   for (const e of [damagingProjectile, damagingEntity]) {
     let id: string | undefined;
     try {
@@ -135,10 +152,7 @@ function killerOf(damagingEntity: Entity | undefined, damagingProjectile: Entity
     }
     if (id === undefined) continue;
     const link = shotBy.get(id);
-    if (link) {
-      stats.killsByProjectile++;
-      return link;
-    }
+    if (link) return { link, viaProjectile: true };
   }
   return undefined;
 }
@@ -265,13 +279,31 @@ export function install(): void {
   });
 
   world.afterEvents.entityDie.subscribe((ev) => {
-    const link = killerOf(ev.damageSource.damagingEntity, ev.damageSource.damagingProjectile);
-    if (!link) return;
-    const record = storage.get(link);
+    const hit = turretBehind(ev.damageSource.damagingEntity, ev.damageSource.damagingProjectile);
+    if (!hit) return;
+    const record = storage.get(hit.link);
     if (!record) return;
     record.kills++;
     storage.put(record);
     stats.kills++;
+    if (hit.viaProjectile) stats.killsByProjectile++;
+  });
+
+  world.beforeEvents.entityHurt.subscribe((ev) => {
+    try {
+      const hit = turretBehind(ev.damageSource.damagingEntity, ev.damageSource.damagingProjectile);
+      if (!hit) return;
+      const record = storage.get(hit.link);
+      if (!record) return;
+      const m = damageMultiplier(record.tiers.damage);
+      if (m === 1) return;
+      ev.damage = ev.damage * m;
+      stats.scaledHits++;
+    } catch (e) {
+      // A throw leaves the hit as the engine proposed it, which is the base
+      // tier - the safe failure. Log so it is not silent.
+      console.warn(`${TAG} damage tier handler failed: ${e}`);
+    }
   });
 
   system.runInterval(sweep, SWEEP_TICKS);

@@ -178,7 +178,10 @@ Each line is the test's own log message.
 **What was measured.** Five `turret_*` GameTests on the shipped turret,
 each a placed turret with a hopper pointing into it, filled through the
 console's `/replaceitem` where a tint is needed, and a husk in front. Every
-line is the test's own log message.
+line is the test's own log message. (Since Phase 3b the same tests first
+feed the ammo gate through the hopper, a fire charge and for the tier III
+kinds dragon's breath; the readings below were repeated that way and
+agreed.)
 
 | Test | Reading |
 | --- | --- |
@@ -204,6 +207,29 @@ line is the test's own log message.
   counter has no GameTest (its mechanism is pinned by
   `rig_custom_bolt_has_owner`, and the pack's `bulwark:debug` line is the
   in-game check). Row added to the corrections table.
+
+---
+
+# Phase 3b in the pack, measured
+
+**What was measured.** Four `turret_*` GameTests on the shipped turret,
+feeding the upgrade materials through the hopper (a simulated player's
+right-click never reaches a pack). Each line is the test's own log message.
+
+| Test | Reading |
+| --- | --- |
+| `turret_rate_upgrade_fires_faster` | **3 shots in 100 ticks at tier I, 10 at tier III**, the redstone block and quartz taken from the hopper in between |
+| `turret_damage_upgrade_hits_harder` | tier I hits **2.94, 2.94**; after a diamond and a netherite ingot, tier III hits **5.88, 5.88**: exactly 2× |
+| `turret_gate_holds_tipped_until_upgraded` | 8 arrows of slowness at tier I: **0 shots in 100 ticks, hopper untouched**; a fire charge fed, then **2 shots and the husk slowed** |
+| `turret_break_returns_upgrades` | an eye of ender and a redstone block fed through the hopper, block broken: **both dropped**, one each |
+
+**What it means.** A tier is a `triggerEvent` into one of nine aim groups
+plus an `entityHurt` multiplier, and both take on the shipped head: the
+rate tier more than tripled the shots, the damage tier doubled the hit to
+the decimal, the gate held and then opened, and the materials came back.
+Range tiers are not measured: the arena is eight blocks and a mob cannot be
+stood 24 blocks off. That row is in the pack README under "To confirm in
+game".
 
 **Also measured on the way.** At entity format `1.26.40`,
 `ranged_attack.attack_interval` as a bare number is rejected

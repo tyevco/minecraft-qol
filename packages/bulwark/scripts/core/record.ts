@@ -9,8 +9,15 @@
  * what changes.
  */
 
-/** Bump when the packed row changes shape. The index refuses newer schemas. */
-export const SCHEMA = 1;
+import { BASE_TIERS, isTier, type Tiers } from "./tiers";
+
+/**
+ * Bump when the packed row changes shape. The index refuses newer schemas
+ * and reads older ones through `unpackRecord`, so a reader that accepts the
+ * previous shape is the whole migration. Schema 2 added the four tiers;
+ * a schema-1 row reads as tier 1 on every axis.
+ */
+export const SCHEMA = 2;
 
 export interface Position {
   dimId: string;
@@ -26,6 +33,8 @@ export interface TurretRecord extends Position {
   ammo: number;
   /** Kills attributed to this turret by the script-side hook. */
   kills: number;
+  /** Upgrade tiers, one per axis (core/tiers.ts). */
+  tiers: Tiers;
 }
 
 /** Compact row form. Short: one property holds every turret. */
@@ -37,10 +46,14 @@ export type Row = [
   entityId: string,
   ammo: number,
   kills: number,
+  damage: number,
+  rate: number,
+  range: number,
+  gate: number,
 ];
 
 export function packRecord(r: TurretRecord): Row {
-  return [r.dimId, r.x, r.y, r.z, r.entityId ?? "", r.ammo, r.kills];
+  return [r.dimId, r.x, r.y, r.z, r.entityId ?? "", r.ammo, r.kills, r.tiers.damage, r.tiers.rate, r.tiers.range, r.tiers.gate];
 }
 
 /**
@@ -49,7 +62,7 @@ export function packRecord(r: TurretRecord): Row {
  */
 export function unpackRecord(packed: unknown): TurretRecord | undefined {
   if (!Array.isArray(packed) || packed.length < 7) return undefined;
-  const [dimId, x, y, z, entityId, ammo, kills] = packed as unknown[];
+  const [dimId, x, y, z, entityId, ammo, kills, damage, rate, range, gate] = packed as unknown[];
   if (typeof dimId !== "string" || dimId === "") return undefined;
   if (![x, y, z].every((n) => typeof n === "number" && Number.isInteger(n))) return undefined;
   if (typeof entityId !== "string" || typeof ammo !== "number" || typeof kills !== "number") {
@@ -63,6 +76,13 @@ export function unpackRecord(packed: unknown): TurretRecord | undefined {
     entityId: entityId === "" ? undefined : entityId,
     ammo: Math.max(0, Math.floor(ammo)),
     kills: Math.max(0, Math.floor(kills)),
+    // A schema-1 row has no tiers; a malformed tier is the base, not a guess.
+    tiers: {
+      damage: isTier(damage) ? damage : BASE_TIERS.damage,
+      rate: isTier(rate) ? rate : BASE_TIERS.rate,
+      range: isTier(range) ? range : BASE_TIERS.range,
+      gate: isTier(gate) ? gate : BASE_TIERS.gate,
+    },
   };
 }
 

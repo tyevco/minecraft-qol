@@ -197,11 +197,26 @@ export interface Special {
   kind: Exclude<Kind, "arrow">;
 }
 
-/** The first special stack in a container, lowest slot first. */
-export function findSpecial(slots: readonly Slot[]): Special | undefined {
+/**
+ * The first special stack in a container that `allowed` lets through (the
+ * upgrade gate, core/tiers.ts), lowest slot first.
+ */
+export function findSpecial(
+  slots: readonly Slot[],
+  allowed: (kind: Kind) => boolean = () => true,
+): Special | undefined {
   for (let i = 0; i < slots.length; i++) {
     const kind = classify(slots[i] ?? undefined);
-    if (isSpecial(kind)) return { slot: i, kind };
+    if (isSpecial(kind) && allowed(kind)) return { slot: i, kind };
+  }
+  return undefined;
+}
+
+/** The first special stack a gate refuses, for the status text. */
+export function findGated(slots: readonly Slot[], allowed: (kind: Kind) => boolean): Special | undefined {
+  for (let i = 0; i < slots.length; i++) {
+    const kind = classify(slots[i] ?? undefined);
+    if (isSpecial(kind) && !allowed(kind)) return { slot: i, kind };
   }
   return undefined;
 }
@@ -239,39 +254,52 @@ export function isArmed(ammo: number): boolean {
   return ammo > 0;
 }
 
-/** What the head should be wearing: armed or not, and firing what. */
+/**
+ * What the head should be wearing: armed or not, in which aim group (the
+ * rate/range pair, core/tiers.ts), and firing what.
+ */
 export interface Arming {
   armed: boolean;
   kind: Kind;
+  /** The aim group's entity event; `EVENT_ARM` is the base one. */
+  aim: string;
 }
 
 /**
  * Special ammo in a hopper takes priority over the buffer, because a tipped
  * arrow in the hopper is a deliberate choice; the buffer is the fallback.
  */
-export function arming(ammo: number, special: Kind | undefined): Arming {
-  if (isSpecial(special)) return { armed: true, kind: special };
-  return { armed: isArmed(ammo), kind: "arrow" };
+export function arming(ammo: number, special: Kind | undefined, aim: string = EVENT_ARM): Arming {
+  if (isSpecial(special)) return { armed: true, kind: special, aim };
+  return { armed: isArmed(ammo), kind: "arrow", aim };
 }
 
-/** Entity events that swap the attack component group in or out. */
-export const EVENT_ARM = "bulwark:arm";
+/**
+ * Entity events that swap the attack component group in or out. Arming is
+ * one aim group of nine (`bulwark:aim_r<rate>_g<range>`); this is the base.
+ */
+export const EVENT_ARM = "bulwark:aim_r1_g1";
 export const EVENT_DISARM = "bulwark:disarm";
 
 /**
  * Which entity events, in order, bring the entity's groups in line with
  * `want`. `have` is the state last written to the entity; unknown means fire
- * whichever is right rather than assume. Disarming drops every ammo group
- * with it, so a disarmed head's kind is not tracked.
+ * whichever is right rather than assume. Every aim event removes the other
+ * aim groups and the disarmed group; disarming drops every aim and ammo
+ * group, so a disarmed head's kind and aim are not tracked.
  */
-export function groupEvents(want: Arming, have: { armed?: boolean; kind?: Kind }): string[] {
+export function groupEvents(
+  want: Arming,
+  have: { armed?: boolean; kind?: Kind; aim?: string },
+): string[] {
   const events: string[] = [];
   if (!want.armed) {
     if (have.armed !== false) events.push(EVENT_DISARM);
     return events;
   }
-  if (have.armed !== true) events.push(EVENT_ARM);
-  if (have.armed !== true || have.kind !== want.kind) events.push(KIND_EVENT[want.kind]);
+  const arming = have.armed !== true;
+  if (arming || have.aim !== want.aim) events.push(want.aim);
+  if (arming || have.kind !== want.kind) events.push(KIND_EVENT[want.kind]);
   return events;
 }
 

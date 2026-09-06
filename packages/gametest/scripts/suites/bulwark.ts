@@ -256,6 +256,18 @@ function fillHopper(test: Test, slot: number, item: string, amount: number, aux 
   test.getDimension().runCommand(`replaceitem block ${w.x} ${w.y} ${w.z} slot.container ${slot} ${item} ${amount} ${aux}`);
 }
 
+/** Feed the ammo gate up to `tier` through the hopper, and wait for it to take. */
+async function openGate(test: Test, tier: 2 | 3): Promise<void> {
+  put(test, HOPPER_POS, item("minecraft:fire_charge", 1), 3);
+  if (tier === 3) put(test, HOPPER_POS, item("minecraft:dragon_breath", 1), 4);
+  const taken = await waitFor(
+    test,
+    () => count(test, HOPPER_POS, "minecraft:fire_charge") === 0 && count(test, HOPPER_POS, "minecraft:dragon_breath") === 0,
+    200,
+  );
+  test.assert(taken, `the ammo gate materials were not taken (tier ${tier})`);
+}
+
 async function headReady(test: Test): Promise<Entity> {
   const grew = await waitFor(test, () => heads(test) === 1, 150);
   test.assert(grew, `head never appeared (found ${heads(test)})`);
@@ -318,6 +330,7 @@ registerAsync("qol", "turret_fires_tipped_from_hopper", async (test) => {
   feedingHopper(test);
   fillHopper(test, 0, "arrow", 8, 18); // slowness
   const head = await headReady(test);
+  await openGate(test, 2);
   const shots = shotCounter(head, ARROW);
   try {
     await withHusk(test, async (husk) => {
@@ -366,6 +379,7 @@ registerAsync("qol", "turret_throws_snowballs_from_hopper", async (test) => {
   feedingHopper(test);
   put(test, HOPPER_POS, item("minecraft:snowball", 8));
   const head = await headReady(test);
+  await openGate(test, 3);
   const shots = shotCounter(head, "minecraft:snowball");
   try {
     await withHusk(test, async (husk) => {
@@ -403,8 +417,10 @@ registerAsync("qol", "turret_throws_splash_from_hopper", async (test) => {
   placeTurret(test);
   feedingHopper(test);
   // Splash potions do not stack: one per slot.
-  for (let slot = 0; slot < 4; slot++) fillHopper(test, slot, "splash_potion", 1, 34); // weakness
+  // Splash potions do not stack: one per slot. Slots 3-4 carry the gate.
+  for (let slot = 0; slot < 3; slot++) fillHopper(test, slot, "splash_potion", 1, 34); // weakness
   const head = await headReady(test);
+  await openGate(test, 3);
   const shots = shotCounter(head, "minecraft:splash_potion");
   try {
     await withHusk(test, async (husk) => {
@@ -413,9 +429,9 @@ registerAsync("qol", "turret_throws_splash_from_hopper", async (test) => {
     });
     await test.idle(10);
     const left = count(test, HOPPER_POS, "minecraft:splash_potion");
-    const summary = `${shots.shots()} thrown, hopper holds ${left} of 4`;
+    const summary = `${shots.shots()} thrown, hopper holds ${left} of 3`;
     console.warn(`[gametest] turret_throws_splash_from_hopper: ${summary}`);
-    test.assert(left === 4 - shots.shots(), `hopper not charged one per throw: ${summary}`);
+    test.assert(left === 3 - shots.shots(), `hopper not charged one per throw: ${summary}`);
   } finally {
     shots.unsub();
   }
@@ -430,6 +446,7 @@ registerAsync("qol", "turret_prefers_special_over_buffer", async (test) => {
   put(test, HOPPER_POS, item(ARROW, 8), 0);
   fillHopper(test, 1, "arrow", 4, 18);
   const head = await headReady(test);
+  await openGate(test, 2);
   // The plain arrows leave for the buffer; the tipped ones stay.
   const buffered = await waitFor(test, () => arrowsByTint(test).plain === 0, 150);
   const before = arrowsByTint(test);
@@ -450,6 +467,165 @@ registerAsync("qol", "turret_prefers_special_over_buffer", async (test) => {
     shots.unsub();
   }
   test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(500);
+
+// ---------------------------------------------------------------------------
+// Phase 3b: the four upgrade axes. A material in the feeding hopper raises
+// its axis one tier (a simulated player cannot right-click the block into
+// the pack - it marshals as undefined - so the hopper path is what a test can
+// drive, and it is a real path a player can use too).
+// ---------------------------------------------------------------------------
+
+/** Shots the head fires in `ticks`, with a husk to shoot at. */
+async function shotsIn(test: Test, head: Entity, ticks: number): Promise<number> {
+  const shots = shotCounter(head, ARROW);
+  try {
+    await withHusk(test, async () => {
+      await test.idle(ticks);
+    });
+  } finally {
+    shots.unsub();
+  }
+  // Clear the husk and any arrows between rounds.
+  for (const e of test.getDimension().getEntities({ type: "minecraft:husk" })) e.remove();
+  for (const e of test.getDimension().getEntities({ type: ARROW })) e.remove();
+  return shots.shots();
+}
+
+registerAsync("qol", "turret_rate_upgrade_fires_faster", async (test) => {
+  placeTurret(test);
+  feedingHopper(test);
+  put(test, HOPPER_POS, item(ARROW, 64), 0);
+  const head = await headReady(test);
+  await waitFor(test, () => count(test, HOPPER_POS, ARROW) === 0, 150);
+  const slow = await shotsIn(test, head, 100);
+  // Two materials, one per tick: tier 3 fires every 0.3-0.6 s.
+  put(test, HOPPER_POS, item("minecraft:redstone_block", 1), 1);
+  put(test, HOPPER_POS, item("minecraft:quartz", 1), 2);
+  const taken = await waitFor(
+    test,
+    () => count(test, HOPPER_POS, "minecraft:redstone_block") === 0 && count(test, HOPPER_POS, "minecraft:quartz") === 0,
+    150,
+  );
+  test.assert(taken, "the hopper's redstone block and quartz were not taken as upgrades");
+  const fast = await shotsIn(test, head, 100);
+  const summary = `${slow} shots in 100 ticks at tier I, ${fast} at tier III`;
+  console.warn(`[gametest] turret_rate_upgrade_fires_faster: ${summary}`);
+  test.assert(fast > slow, `the rate tiers did not take: ${summary}`);
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(900);
+
+registerAsync("qol", "turret_damage_upgrade_hits_harder", async (test) => {
+  placeTurret(test);
+  feedingHopper(test);
+  put(test, HOPPER_POS, item(ARROW, 64), 0);
+  const head = await headReady(test);
+  await waitFor(test, () => count(test, HOPPER_POS, ARROW) === 0, 150);
+  const sample = async (): Promise<number[]> => {
+    const hits: number[] = [];
+    let target: Entity | undefined;
+    const sub = world.afterEvents.entityHurt.subscribe(
+      (ev) => {
+        if (target && ev.hurtEntity.id === target.id && ev.damageSource.cause === "projectile") hits.push(ev.damage);
+      },
+      { entityTypes: ["minecraft:husk"] },
+    );
+    try {
+      await withHusk(test, async (husk) => {
+        target = husk;
+        await waitFor(test, () => hits.length >= 2, 400);
+        try {
+          husk.remove();
+        } catch {
+          // dead already
+        }
+      });
+    } finally {
+      world.afterEvents.entityHurt.unsubscribe(sub);
+    }
+    for (const e of test.getDimension().getEntities({ type: ARROW })) e.remove();
+    return hits;
+  };
+  const base = await sample();
+  test.assert(base.length >= 2, `only ${base.length} hit(s) at tier I`);
+  put(test, HOPPER_POS, item("minecraft:diamond", 1), 1);
+  put(test, HOPPER_POS, item("minecraft:netherite_ingot", 1), 2);
+  const taken = await waitFor(
+    test,
+    () => count(test, HOPPER_POS, "minecraft:diamond") === 0 && count(test, HOPPER_POS, "minecraft:netherite_ingot") === 0,
+    150,
+  );
+  test.assert(taken, "the hopper's diamond and netherite ingot were not taken as upgrades");
+  const upgraded = await sample();
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+  const summary = `tier I hits [${base.map((h) => h.toFixed(2)).join(",")}] mean ${mean(base).toFixed(2)}; tier III hits [${upgraded.map((h) => h.toFixed(2)).join(",")}] mean ${mean(upgraded).toFixed(2)}`;
+  console.warn(`[gametest] turret_damage_upgrade_hits_harder: ${summary}`);
+  test.assert(upgraded.length >= 2, `only ${upgraded.length} hit(s) at tier III: ${summary}`);
+  test.assert(mean(upgraded) > mean(base) * 1.5, `the damage tier did not double the hit: ${summary}`);
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(1400);
+
+registerAsync("qol", "turret_gate_holds_tipped_until_upgraded", async (test) => {
+  placeTurret(test);
+  feedingHopper(test);
+  fillHopper(test, 0, "arrow", 8, 18); // slowness, which tier I may not fire
+  const head = await headReady(test);
+  const before = await shotsIn(test, head, 100);
+  const held = arrowsByTint(test).tipped;
+  test.assert(before === 0 && held === 8, `tier I fired the tint: ${before} shots, hopper holds ${held} of 8`);
+  put(test, HOPPER_POS, item("minecraft:fire_charge", 1), 1);
+  const taken = await waitFor(test, () => count(test, HOPPER_POS, "minecraft:fire_charge") === 0, 150);
+  test.assert(taken, "the fire charge was not taken as the ammo upgrade");
+  const shots = shotCounter(head, ARROW);
+  try {
+    await withHusk(test, async (husk) => {
+      const slowed = await waitFor(test, () => hasEffect(husk, "slowness"), 400);
+      const summary = `${before} shots before the upgrade; after: ${shots.shots()} shots, husk slowed=${slowed}, hopper holds ${arrowsByTint(test).tipped} tipped`;
+      console.warn(`[gametest] turret_gate_holds_tipped_until_upgraded: ${summary}`);
+      test.assert(slowed, `the gate did not open at tier II: ${summary}`);
+    });
+  } finally {
+    shots.unsub();
+  }
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(900);
+
+registerAsync("qol", "turret_break_returns_upgrades", async (test) => {
+  placeTurret(test);
+  feedingHopper(test);
+  put(test, HOPPER_POS, item("minecraft:ender_eye", 1), 0);
+  put(test, HOPPER_POS, item("minecraft:redstone_block", 1), 1);
+  await headReady(test);
+  const taken = await waitFor(
+    test,
+    () => count(test, HOPPER_POS, "minecraft:ender_eye") === 0 && count(test, HOPPER_POS, "minecraft:redstone_block") === 0,
+    150,
+  );
+  test.assert(taken, "the hopper's eye of ender and redstone block were not taken as upgrades");
+  test.destroyBlock(TURRET, false);
+  const dropped = (typeId: string): number => {
+    let n = 0;
+    for (const e of test
+      .getDimension()
+      .getEntities({ type: "minecraft:item", location: test.worldBlockLocation(TURRET), maxDistance: 3 })) {
+      const stack = e.getComponent(EntityComponentTypes.Item)?.itemStack;
+      if (stack?.typeId === typeId) n += stack.amount;
+    }
+    return n;
+  };
+  test.succeedWhen(() => {
+    const eye = dropped("minecraft:ender_eye");
+    const block = dropped("minecraft:redstone_block");
+    test.assert(eye === 1 && block === 1, `expected the eye of ender and the redstone block back, found ${eye} and ${block}`);
+  });
 })
   .structureName(STRUCTURE)
   .maxTicks(500);

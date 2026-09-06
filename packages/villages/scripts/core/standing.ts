@@ -137,9 +137,12 @@ export const escortOver = (since: number, now: number): boolean => now < since |
  * workers' chests are the storehouse: the trader also sells what the
  * worker posts of its own village (the same people, within STOCK_RANGE of
  * its post) have in their chests, at a price per kind of produce below.
- * Only produce is priced, so a tool or a wage the kids left in a chest is
- * not for sale; the fixed wares stay as the floor, and a thing in both is
- * offered once, from the storehouse.
+ * Only produce is priced, so a tool the kids left in a chest is not for
+ * sale (a food is, and the workers' wages are food, so a paid trade's
+ * bread can be sold out from under it); the fixed wares stay as the
+ * floor, and a kind in the people's table is offered once, from the
+ * table, at the table's tier, so a Friend ware is not sold to a guest
+ * from the chests.
  */
 export const STOCK_RANGE = 64;
 export interface StockPrice {
@@ -177,10 +180,10 @@ export interface StockLine extends Ware {
   available: number;
 }
 
-/** What the storehouse offers a player of this tier: every priced kind the chests hold a sale's worth of, sorted, less what the fixed wares already offer. */
-export function stock(counts: Readonly<Record<string, number>>, tier: number, fixed: readonly Ware[]): StockLine[] {
+/** What a people's storehouse offers a player of this tier: every priced kind the chests hold a sale's worth of, sorted, less every kind in the people's own table (at any tier). */
+export function stock(counts: Readonly<Record<string, number>>, people: number, tier: number): StockLine[] {
   if (tier < GUEST) return [];
-  const offered = new Set(fixed.map((w) => w.item));
+  const offered = new Set(wares(people, KIN).map((w) => w.item));
   const lines: StockLine[] = [];
   for (const [item, available] of Object.entries(counts)) {
     if (offered.has(item)) continue;

@@ -15,8 +15,9 @@
  */
 import { CommandPermissionLevel, ItemStack, Player, system, world, type Dimension } from "@minecraft/server";
 import { spawnSpot } from "../core/peopling";
-import { type PostRecord } from "../core/record";
+import { itemName, type PostRecord } from "../core/record";
 import * as core from "../core/standing";
+import { takeCarried } from "./standing";
 import * as storage from "./storage";
 import { nearestChest, type Chest } from "./trades";
 
@@ -55,24 +56,17 @@ export function countsOf(chests: readonly Chest[]): Record<string, number> {
   return counts;
 }
 
-/** What the trader at `elder` can sell from the storehouse to a player of `tier`, beside the fixed `wares`. */
-export function stockOf(dim: Dimension, elder: PostRecord, tier: number, wares: readonly core.Ware[]): core.StockLine[] {
-  return core.stock(countsOf(chestsOf(dim, elder)), tier, wares);
+/** What the trader at `elder` can sell from the storehouse to a player of `tier`, beside its people's fixed wares. */
+export function stockOf(dim: Dimension, elder: PostRecord, tier: number): core.StockLine[] {
+  return core.stock(countsOf(chestsOf(dim, elder)), elder.people, tier);
 }
 
-/** Take `n` of `typeId` out of the chests, across chests and slots. Returns how many were taken. */
+/** Take `n` of `typeId` out of the chests, across chests and slots (each chest as a player's inventory, engine/standing.ts). Returns how many were taken. */
 export function take(chests: readonly Chest[], typeId: string, n: number): number {
   let left = n;
   for (const { container } of chests) {
     if (left <= 0) break;
-    if (!container.isValid) continue;
-    for (let i = 0; i < container.size && left > 0; i++) {
-      const s = container.getItem(i);
-      if (s?.typeId !== typeId) continue;
-      const t = Math.min(left, s.amount);
-      container.setItem(i, s.amount > t ? new ItemStack(s.typeId, s.amount - t) : undefined);
-      left -= t;
-    }
+    if (container.isValid) left -= takeCarried(container, typeId, left);
   }
   return n - left;
 }
@@ -99,7 +93,7 @@ export function putBack(dim: Dimension, chests: readonly Chest[], typeId: string
   }
 }
 
-const describe = (typeId: string, n: number): string => `${n} ${typeId.replace("minecraft:", "").replace(/_/g, " ")}`;
+const describe = (typeId: string, n: number): string => `${n} ${itemName(typeId)}`;
 
 export function install(logger: (...parts: unknown[]) => void): void {
   log = logger;
@@ -108,8 +102,8 @@ export function install(logger: (...parts: unknown[]) => void): void {
     const src = ev.sourceEntity;
     if (src instanceof Player && src.commandPermissionLevel < CommandPermissionLevel.GameDirectors) return;
     const [xs, ys, zs, item] = ev.message.trim().split(/\s+/);
-    const [x, y, z] = [xs, ys, zs].map(Number);
-    if (x === undefined || y === undefined || z === undefined || [x, y, z].some((n) => !Number.isFinite(n))) {
+    const [x, y, z] = [xs, ys, zs].map(Number) as [number, number, number];
+    if (![x, y, z].every(Number.isFinite)) {
       log("villages:stock wants x y z [item]");
       return;
     }
@@ -120,7 +114,7 @@ export function install(logger: (...parts: unknown[]) => void): void {
       return;
     }
     const chests = chestsOf(dim, elder);
-    const lines = core.stock(countsOf(chests), core.GUEST, []);
+    const lines = core.stock(countsOf(chests), elder.people, core.GUEST);
     if (!item) {
       log(`the storehouse of the post at ${x},${y},${z}: ${chests.length} chest(s); ${lines.map((l) => `${describe(l.item, l.amount)} for ${l.price} (${l.available} there)`).join(", ") || "nothing priced"}`);
       return;

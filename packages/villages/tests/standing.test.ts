@@ -150,11 +150,15 @@ describe("standing", () => {
     expect(stockPrice("minecraft:iron_pickaxe")).toBeUndefined();
     expect(stockPrice("minecraft:cooked_beef")).toBeUndefined(); // a wage, not produce
     const counts = { "minecraft:wheat": 40, "minecraft:oak_log": 7, "minecraft:cod": 6, "minecraft:sweet_berries": 30, "minecraft:iron_pickaxe": 1 };
-    expect(stock(counts, STRANGER, [])).toEqual([]);
-    const lines = stock(counts, GUEST, wares(9, GUEST)); // the foxfolk's fixed wares already sell sweet berries
+    expect(stock(counts, 9, STRANGER)).toEqual([]);
+    const lines = stock(counts, 9, GUEST); // the foxfolk's fixed wares already sell sweet berries
     expect(lines.map((l) => l.item)).toEqual(["minecraft:cod", "minecraft:wheat"]);
     expect(lines[1]).toEqual({ item: "minecraft:wheat", amount: 16, price: 1, from: GUEST, available: 40 });
-    expect(stock(counts, GUEST, []).map((l) => l.item)).toContain("minecraft:sweet_berries");
+    expect(stock(counts, 0, GUEST).map((l) => l.item)).toContain("minecraft:sweet_berries"); // the stonefolk's do not
+    // A Friend ware stays a Friend ware: the squirrelfolk's jungle saplings are not sold to a guest from the chests.
+    expect(wares(16, GUEST).some((w) => w.item === "minecraft:jungle_sapling")).toBe(false);
+    expect(stock({ "minecraft:jungle_sapling": 8 }, 16, GUEST)).toEqual([]);
+    expect(stock({ "minecraft:jungle_sapling": 8 }, 16, KIN)).toEqual([]);
   });
   it("a trader's storehouse is the worker posts of its own village", () => {
     const elder = post(0, 0, { placedBy: PLACED_BY_WORLD });

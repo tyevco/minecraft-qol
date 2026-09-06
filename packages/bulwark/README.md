@@ -1,8 +1,9 @@
-# Bulwark — the turret (Phase 2: core)
+# Bulwark — the turret (Phase 2: core; Phase 3a: ammo kinds)
 
 Automated base defense: a placeable turret that acquires and shoots hostile
-mobs using the engine's own AI, fed arrows by an adjacent hopper or by hand.
-Stable APIs only, no experiments.
+mobs using the engine's own AI, fed arrows by an adjacent hopper or by hand,
+and tipped arrows, snowballs or splash potions by hopper. Stable APIs only,
+no experiments.
 
 Design: [`docs/design/bulwark-turret.md`](../../docs/design/bulwark-turret.md).
 **Read [`docs/README.md`](../../docs/README.md) first** — several of that
@@ -24,9 +25,15 @@ head rotation as a player sees it, mob caps — is still the probe protocol in
 
 What Phase 2 covers, per the design's phasing: block, paired entity,
 reconciliation, vanilla ranged AI, ammo via adjacent hopper, one tier. No
-upgrades, no config form, no ownership. Phase 3 (ammo types, tiers) is
-researched, not built: [`docs/design/bulwark-ammo-and-upgrades.md`](../../docs/design/bulwark-ammo-and-upgrades.md),
-with what was measured in [`docs/bulwark-ammo-results.md`](../../docs/bulwark-ammo-results.md). Player targeting is not possible at all
+upgrades, no config form, no ownership.
+
+**Phase 3a, ammo kinds, is built** on the research in
+[`docs/design/bulwark-ammo-and-upgrades.md`](../../docs/design/bulwark-ammo-and-upgrades.md)
+and the measurements in [`docs/bulwark-ammo-results.md`](../../docs/bulwark-ammo-results.md):
+a hopper of arrows of slowness, weakness or decay, of snowballs, or of splash
+potions of those three effects makes the turret fire those, straight from the
+hopper. Six more `turret_*` GameTests pin it. Phase 3b, the four upgrade
+axes, is designed there and not built. Player targeting is not possible at all
 yet — the acquisition filter is `is_family: monster`, nothing else.
 
 ## How it works
@@ -59,6 +66,22 @@ record names someone else. After a chunk load the block waits two ticks for
 the head it remembers before spawning a replacement, so a slow-loading entity
 does not produce a pop-and-cull on every load. The decisions are pure
 functions in `scripts/core/reconcile.ts`, tested exhaustively.
+
+**Two kinds of supply.** Plain arrows are pulled into the record's buffer
+(64, sixteen per block tick) and returned when the block breaks. Everything
+special — a tipped arrow, a snowball, a splash potion — is never taken out of
+its hopper: the block's tick looks at what the feeding hoppers hold, the
+head's shooter group follows the first special stack it finds, and each shot
+decrements that stack where it lies. Script cannot construct a tipped arrow
+(no aux value, no arrow delivery in the `Potions` registry), so a buffered
+count of them could never be given back; leaving them in the hopper is what
+keeps rule 4. A tipped arrow is told from a plain one by `localizationKey`
+(`tipped_arrow.effect.moveSlowdown` and so on), the only field that names the
+tint; an arrow whose key cannot be read is never treated as plain. Poison,
+harming and healing tints are read and refused: poison and harming do nothing
+to (or heal) the undead, and healing heals everything else. Special ammo
+takes priority over the buffer, because a tipped arrow in the hopper is a
+deliberate choice.
 
 **Ammo gates the AI.** `ranged_attack` fires whenever it has a target and
 knows nothing about ammo. So the entity has two component groups —
@@ -106,7 +129,17 @@ height in `tools/models/generate.ts` and this number moves with it;
 - **A feeding hopper must point into the turret.** A hopper touching its side
   but facing down feeds the block below, exactly as it would a chest.
 - **Right-click with arrows loads them**; with anything else reports status:
-  ammo, kills, and whether the head is armed, idle, or missing.
+  ammo, kills, whether the head is armed, idle, or missing, and what it is
+  firing from a hopper. Right-click with a tipped arrow, snowball or splash
+  potion is refused with the reason: those are fed by hopper only.
+- **A hopper of special ammo is fired as it is.** Arrows of slowness,
+  weakness and decay; snowballs; splash potions of slowness, weakness and
+  decay (their long and strong forms too). The first special stack in the
+  first feeding hopper wins; plain arrows in the same hopper still fill the
+  buffer, and the turret falls back to the buffer when the special runs out.
+- **Kills by any projectile are counted.** Every shot the turret fires is
+  remembered by id, because a kill by a custom projectile names the
+  projectile, not the shooter (measured).
 - **Breaking the block returns its arrows** as items and removes the head.
 - **Range is 16 blocks, line of sight required**, 1.5 s between shots. Line
   of sight is judged from the eye, which sits at barrel height.
@@ -129,6 +162,16 @@ failure.
 | block, entity or recipe JSON | exit to the main menu and re-enter |
 | resource pack | exit and re-enter; **restart** for the RP manifest |
 
+Phase 3a adds one row a simulated player cannot check, because a pack's
+dynamic properties are invisible to the test pack: **the kill counter
+through the projectile map.** Let a turret kill something, then
+`/scriptevent bulwark:debug` — `kills` should have gone up, and `by
+projectile` says whether the map or the damaging entity attributed it. If
+`kills` stays at zero for a vanilla arrow, `damagingEntity` is not the
+shooter for mob arrows either and the map is the only route, which is
+already the code's fallback; if it stays at zero for everything, the map is
+not being filled and `shots` in the same line says whether attribution ran.
+
 | Command | What |
 | --- | --- |
 | `/scriptevent bulwark:debug` | counters, loaded heads per dimension, and the nearest record with both halves of its pairing |
@@ -139,10 +182,10 @@ failure.
 
 ```
 behavior_pack/blocks/turret.json          the block: generated model + minecraft:tick + bulwark:turret
-behavior_pack/entities/turret_head.json   the head, format 1.26.40: armed/disarmed groups
+behavior_pack/entities/turret_head.json   the head, format 1.26.40: armed/disarmed groups, one ammo group per kind
 behavior_pack/recipes/turret.json         iron, dispenser, stone, redstone
 resource_pack/                            generated by tools/ - never hand-edited
-scripts/core/                             pure: record codec, ammo, hopper rule, reconcile
+scripts/core/                             pure: record codec, ammo kinds and rules, hopper rule, reconcile
 scripts/engine/storage.ts                 the storage seam over the shared position index
 scripts/engine/head.ts                    entity link helpers
 scripts/engine/turret.ts                  the block component: tick, feed, retire

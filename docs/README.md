@@ -37,7 +37,9 @@ Three kinds of document live here, and they carry very different authority.
   takes an arrow from 1.9 to 6.9 damage, the undead ignore a poison tint, a
   custom projectile's kill names the projectile as `damagingEntity` and must
   be attributed from a spawn-time map, and `Potions.resolve` makes a splash
-  potion.
+  potion. Then Phase 3a on the shipped turret: tipped arrows, snowballs and
+  splash potions fired straight from a hopper, one charged per shot; and a
+  dynamic property is private to the pack that wrote it.
 - [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
   pack's jigsaw structure loads, places and generates in a world with **no
   experiments** (25 wells in 400 fresh chunks, one per cell). The files live
@@ -119,6 +121,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | The settlement catalogue's sizes and counts (`settlements.md` §3: the well 5×6×5 and 51 blocks, the larder 161, the wall segment 103) | **Stale.** The generator's well is 5×7×5 and 76 blocks; the larder is 163 as the builder pack ships it (its job post left out, since the builder stands alone) and the wall segment 102. `tools/structures/buildings.ts` is the authority; read counts off `Blueprint.materials()`, not the table. |
 | A building placed block by block can be taken down in reverse order (`settlements.md` §5.4) | **Not quite: an attached block must come down before its support.** A hanging lantern set by script under open air stays, but the roof block above it removed by script pops it onto the ground, and the builder found no lantern to return to the chest. Removal takes attached blocks first (`removalOrder` in the builder's `core/order.ts`); a door's two halves and a bed are the same kind of thing and are not yet in a tested building. `settlements-results.md`. |
 | A structure saved from the world reads like a generated one (implicit in the builder's rotation test, which compared against `createFromWorld`) | **Air is a block in a saved structure**, `minecraft:air`, where a generated file has nothing (`getBlockPermutation` undefined). Treat air as empty when comparing, or 98 empty cells of a 5×7×5 count as matches. |
+| A GameTest can read another pack's dynamic properties (implicit in the first Bulwark ammo tests, which read the turret's record and the head's flags) | **No. A dynamic property is private to the pack that wrote it.** Entity and world properties Bulwark had just written read `undefined` from the GameTest pack, in the tick the turret was acting on them (`bulwark-ammo-results.md`). A test observes a pack through the world: containers, effects, health, what gets spawned. |
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
@@ -136,14 +139,15 @@ the bare form at an older format version. What the doc misses and a turret needs
 caps. The lens half of that design shipped separately as `packages/lens`.
 
 **[`design/bulwark-ammo-and-upgrades.md`](design/bulwark-ammo-and-upgrades.md)** —
-**Phase 3 research, unbuilt.** What the vanilla `minecraft:shooter`,
+**Phase 3a built, 3b designed.** What the vanilla `minecraft:shooter`,
 `ranged_attack` and `minecraft:projectile` definitions offer a turret beyond a
 plain arrow, rated against the stable API and rule 4. Recommends tipped
 arrows, snowballs and a custom non-griefing ember drawn straight from the
 hopper (special ammo is never buffered, because it cannot be given back), one
 tier axis on the `bulwark:tier` property the head already carries, and range
-as a world setting. Carries its own "must prototype" list; nothing in it is
-pinned by a GameTest yet.
+as a world setting. Carries its own "must prototype" list, every item of which is a passing
+`rig_*` GameTest, and 3a (ammo from the hopper) ships in the pack with five
+`turret_*` tests of its own.
 
 **[`design/fluidworks.md`](design/fluidworks.md)** — **Phases 1 and 3 built**
 (funnel, Concrete Mixer, Rain Collector, fluid transfer, the four QOL Times

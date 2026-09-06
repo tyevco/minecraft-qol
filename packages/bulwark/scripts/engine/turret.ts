@@ -13,7 +13,19 @@ import {
 } from "@minecraft/server";
 import { NEIGHBOURS } from "@qol/shared/core/facing";
 import { safeGetBlock } from "@qol/shared/engine/safeBlock";
-import { AMMO_CAP, AMMO_ITEM, acceptFeed, isArmed, planPull, type Slot } from "../core/ammo";
+import {
+  AMMO_CAP,
+  AMMO_ITEM,
+  KIND_LABEL,
+  acceptFeed,
+  arming,
+  findKind,
+  findSpecial,
+  planPull,
+  type Kind,
+  type Slot,
+  type StackView,
+} from "../core/ammo";
 import { hopperFeeds } from "../core/hopper";
 import { linkKey, samePosition, type Position, type TurretRecord } from "../core/record";
 import { reconcileBlock, spawnAllowed } from "../core/reconcile";
@@ -22,6 +34,7 @@ import {
   isTurretEntity,
   linkedEntity,
   readArmed,
+  readKind,
   readLink,
   removeHead,
   seat,
@@ -40,6 +53,10 @@ import * as storage from "./storage";
  * there is no world scan, no per-tick script, and an unloaded turret costs
  * nothing - the lazy, loaded-chunks-only reconciliation the design asks for
  * falls out of the block component model for free.
+ *
+ * Ammo comes two ways (core/ammo.ts): plain arrows are pulled into the
+ * record's buffer, and anything special - a tipped arrow, a snowball, a
+ * splash potion - stays in its hopper and is charged there shot by shot.
  */
 
 export const TURRET_BLOCK = "bulwark:turret";
@@ -62,6 +79,10 @@ export const stats = {
   retired: 0,
   pulled: 0,
   fed: 0,
+  /** Special shots charged to a hopper stack. */
+  charged: 0,
+  /** Special shots that found no stack to charge: the hopper emptied mid-tick. */
+  uncharged: 0,
 };
 
 /** Consecutive ticks a block has failed to find the head it remembers. */
@@ -80,34 +101,57 @@ function fresh(pos: Position): TurretRecord {
 // Ammo
 // ---------------------------------------------------------------------------
 
+/** What the classifier needs to know about a stack, read defensively. */
+export function viewOf(item: ItemStack | undefined): StackView | undefined {
+  if (!item) return undefined;
+  const view: StackView = { typeId: item.typeId, amount: item.amount };
+  try {
+    view.localizationKey = item.localizationKey;
+  } catch {
+    // Left undefined: an arrow with no readable key is never treated as plain.
+  }
+  try {
+    view.potionEffectId = item.getComponent("minecraft:potion")?.potionEffectType.id;
+  } catch {
+    // Not a potion, or the component threw; either way no effect id.
+  }
+  return view;
+}
+
 function snapshot(container: Container): Slot[] {
   const out: Slot[] = [];
-  for (let i = 0; i < container.size; i++) {
-    const slot = container.getSlot(i);
-    out.push(slot.hasItem() ? [slot.typeId, slot.amount] : null);
+  for (let i = 0; i < container.size; i++) out.push(viewOf(container.getItem(i)) ?? null);
+  return out;
+}
+
+interface Feeder {
+  container: Container;
+  slots: Slot[];
+}
+
+/** Every adjacent hopper that points into this block, with its contents. */
+function feeders(dim: Dimension, pos: Position): Feeder[] {
+  const out: Feeder[] = [];
+  for (const offset of NEIGHBOURS) {
+    const block = safeGetBlock(dim, { x: pos.x + offset.x, y: pos.y + offset.y, z: pos.z + offset.z });
+    if (!block || !block.isValid) continue;
+    try {
+      if (block.typeId !== HOPPER) continue;
+      if (!hopperFeeds(offset, block.permutation.getState("facing_direction"))) continue;
+      const container = block.getComponent(BlockComponentTypes.Inventory)?.container;
+      if (!container || !container.isValid) continue;
+      out.push({ container, slots: snapshot(container) });
+    } catch {
+      continue;
+    }
   }
   return out;
 }
 
-/** Pull arrows from every adjacent hopper that points into this block. */
-function pullFromHoppers(dim: Dimension, pos: Position, ammo: number): number {
-  for (const offset of NEIGHBOURS) {
+/** Pull plain arrows from every feeding hopper into the buffer. */
+function pullFromHoppers(hoppers: Feeder[], ammo: number): number {
+  for (const { container, slots } of hoppers) {
     if (ammo >= AMMO_CAP) break;
-    const block = safeGetBlock(dim, { x: pos.x + offset.x, y: pos.y + offset.y, z: pos.z + offset.z });
-    if (!block || !block.isValid) continue;
-
-    let container: Container | undefined;
-    let slots: Slot[];
-    try {
-      if (block.typeId !== HOPPER) continue;
-      if (!hopperFeeds(offset, block.permutation.getState("facing_direction"))) continue;
-      container = block.getComponent(BlockComponentTypes.Inventory)?.container;
-      if (!container || !container.isValid) continue;
-      slots = snapshot(container);
-    } catch {
-      continue;
-    }
-
     const plan = planPull(ammo, slots, AMMO_CAP, PULL_PER_TICK);
     // Count what was actually taken, take by take, so a failure part-way
     // through can never destroy arrows: whatever left the hopper is credited.
@@ -120,7 +164,7 @@ function pullFromHoppers(dim: Dimension, pos: Position, ammo: number): number {
         taken += take.amount;
       }
     } catch (e) {
-      console.warn(`${TAG} hopper pull interrupted at ${linkKey(pos)}: ${e}`);
+      console.warn(`${TAG} hopper pull interrupted: ${e}`);
     }
     ammo += taken;
     stats.pulled += taken;
@@ -128,13 +172,57 @@ function pullFromHoppers(dim: Dimension, pos: Position, ammo: number): number {
   return ammo;
 }
 
+/** The special kind the turret should be firing, if any hopper offers one. */
+function specialOffered(hoppers: Feeder[]): Kind | undefined {
+  for (const { slots } of hoppers) {
+    const found = findSpecial(slots);
+    if (found) return found.kind;
+  }
+  return undefined;
+}
+
+/**
+ * Charge one special shot to the hopper that supplies it: the first stack of
+ * that kind, decremented in place. Measured safe against the hopper's own
+ * transfers (`rig_hopper_decrement_survives_transfer`). False when nothing
+ * was there to charge, which the next block tick resolves by re-arming.
+ */
+export function chargeSpecial(dim: Dimension, pos: Position, kind: Kind): boolean {
+  for (const { container, slots } of feeders(dim, pos)) {
+    const i = findKind(slots, kind);
+    if (i === undefined) continue;
+    try {
+      const item = container.getItem(i);
+      if (!item) continue;
+      if (item.amount > 1) {
+        item.amount -= 1;
+        container.setItem(i, item);
+      } else {
+        container.setItem(i, undefined);
+      }
+      stats.charged++;
+      return true;
+    } catch (e) {
+      console.warn(`${TAG} could not charge a ${kind} shot at ${linkKey(pos)}: ${e}`);
+    }
+  }
+  stats.uncharged++;
+  return false;
+}
+
+/** The head's arming for a record and its hoppers, without touching either. */
+export function armingFor(dim: Dimension, record: TurretRecord): ReturnType<typeof arming> {
+  return arming(record.ammo, specialOffered(feeders(dim, record)));
+}
+
 // ---------------------------------------------------------------------------
 // Reconciliation
 // ---------------------------------------------------------------------------
 
 /**
- * One block tick: top up ammo, then make sure exactly one head stands on this
- * block and that it is armed if and only if there is ammo.
+ * One block tick: top up the buffer, note what the hoppers offer, then make
+ * sure exactly one head stands on this block and that it is armed with the
+ * right ammo if and only if there is any.
  */
 export function tick(block: Block): void {
   if (!block.isValid) return;
@@ -151,13 +239,17 @@ export function tick(block: Block): void {
     dirty = true;
   }
 
+  const hoppers = feeders(dim, pos);
   if (record.ammo < AMMO_CAP) {
-    const ammo = pullFromHoppers(dim, pos, record.ammo);
+    const ammo = pullFromHoppers(hoppers, record.ammo);
     if (ammo !== record.ammo) {
       record.ammo = ammo;
       dirty = true;
     }
   }
+  // Read after the pull: a hopper's first special stack is unchanged by it,
+  // but its slots may have shifted.
+  const special = specialOffered(hoppers.map((h) => ({ container: h.container, slots: snapshot(h.container) })));
 
   const linked = linkedEntity(record.entityId, pos.dimId);
   const nearby = headsAt(dim, pos).map((e) => toHead(e, pos));
@@ -220,7 +312,7 @@ export function tick(block: Block): void {
   if (head) {
     const link = readLink(head);
     if (!link || !samePosition(link, pos)) writeLink(head, pos);
-    syncArming(head, record.ammo);
+    syncArming(head, arming(record.ammo, special));
   }
 
   if (dirty) storage.put(record);
@@ -247,6 +339,8 @@ function dropArrows(dim: Dimension, pos: Position, count: number): void {
 /**
  * Forget a turret: record, head, and any other head claiming the block.
  * Idempotent, so it is safe to call from every removal path at once.
+ * Special ammo was never taken from its hopper, so there is nothing of it to
+ * give back.
  */
 export function retire(dim: Dimension, pos: Position, player?: Player): void {
   const record = storage.remove(pos);
@@ -271,17 +365,20 @@ export function retire(dim: Dimension, pos: Position, player?: Player): void {
 }
 
 function statusLine(record: TurretRecord, head: Entity | undefined): string {
-  const headState = !head ? "§cmissing" : readArmed(head) ? "§aarmed" : "§eidle";
+  const armed = head ? readArmed(head) : undefined;
+  const kind = head ? readKind(head) : undefined;
+  const headState = !head ? "§cmissing" : armed ? "§aarmed" : "§eidle";
+  const firing = armed && kind && kind !== "arrow" ? ` §7firing §f${KIND_LABEL[kind]}§7 from a hopper.` : "";
   const base =
     `§6Bulwark Turret §7ammo §f${record.ammo}/${AMMO_CAP}§7, kills §f${record.kills}§7, ` +
-    `head ${headState}§7.`;
-  if (record.ammo === 0) {
+    `head ${headState}§7.${firing}`;
+  if (record.ammo === 0 && !firing) {
     return `${base} §cNo ammo§7 - use arrows on it, or point a hopper into it.`;
   }
   return base;
 }
 
-/** Right-click: feed arrows from the hand, otherwise report status. */
+/** Right-click: feed plain arrows from the hand, otherwise report status. */
 export function interact(player: Player, block: Block): void {
   const pos = positionOf(block);
   const record = storage.get(pos) ?? fresh(pos);
@@ -290,7 +387,15 @@ export function interact(player: Player, block: Block): void {
   try {
     const equippable = player.getComponent(EntityComponentTypes.Equippable);
     const held = equippable?.getEquipment(EquipmentSlot.Mainhand);
-    const feed = acceptFeed(record.ammo, held ? { typeId: held.typeId, amount: held.amount } : undefined);
+    const feed = acceptFeed(record.ammo, viewOf(held));
+
+    if (feed.refused) {
+      player.sendMessage(
+        `§7A turret takes §f${KIND_LABEL[feed.refused]}§7 only from a hopper pointed into it, ` +
+          `so it can fire them as they are.`,
+      );
+      return;
+    }
 
     if (feed.accepted > 0 && equippable && held) {
       if (held.amount > feed.accepted) {
@@ -302,10 +407,11 @@ export function interact(player: Player, block: Block): void {
       record.ammo = feed.ammo;
       storage.put(record);
       stats.fed += feed.accepted;
-      if (head) syncArming(head, record.ammo);
+      const want = armingFor(block.dimension, record);
+      if (head) syncArming(head, want);
       player.sendMessage(
         `§7Loaded §f${feed.accepted}§7 arrow(s). Ammo §f${record.ammo}/${AMMO_CAP}§7` +
-          (isArmed(record.ammo) && head ? " §a- armed." : "."),
+          (want.armed && head ? " §a- armed." : "."),
       );
       return;
     }

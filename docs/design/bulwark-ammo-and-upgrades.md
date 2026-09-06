@@ -15,13 +15,15 @@ Companion to `design/bulwark-turret.md` §4–5 · Draft v0.1
 **Decisions taken (2026-09-06), which override the recommendations below
 where they differ:**
 
-1. Prototype §8 before building anything.
+1. Prototype §8 before building anything. **Done**: all nine `rig_*` tests pass.
 2. First-cut ammo: **tipped arrows, snowballs and splash potions.** The
-   custom ember is deferred, not rejected.
+   custom ember is deferred, not rejected. **Built as Phase 3a** (§7):
+   hopper-direct for every kind, tints slowness, weakness and decay, and the
+   spawn-time kill map, with five `turret_*` GameTests.
 3. **Keep the original design's four upgrade axes** (damage, fire rate,
    range, projectile) rather than collapsing to one tier. §4.5 is rewritten
    for that; the group-count cost it carries is stated there so it is chosen
-   with eyes open.
+   with eyes open. Phase 3b, not yet built.
 
 ---
 
@@ -323,12 +325,17 @@ the shooter for every kind, which is measured for arrows only (§8).
 
 ## 7. Proposal, phased
 
-**3a — ammo from the hopper.** Tipped arrows (four tints), snowballs and
-splash potions (decision 2). Hopper-direct consumption (§5) for arrows and
-snowballs; splash potions may be buffered as a typed count because
-`Potions.resolve` can give them back. `bulwark:ammo_*` groups on the head.
-The attribution set. Status text names the ammo and where it comes from.
-**No record schema change** if splash potions stay hopper-direct too.
+**3a — ammo from the hopper. Built.** Tipped arrows of slowness, weakness
+and decay, snowballs, and splash potions of the same three effects
+(decision 2; poison and harming were dropped because they do nothing to the
+undead, measured). Hopper-direct consumption (§5) for every kind, splash
+potions included, by decision. `bulwark:ammo_*` groups on the head, one per
+kind, additive with `bulwark:armed`. The attribution set and the spawn-time
+kill map. Status text names the ammo and where it comes from; a special
+stack offered by hand is refused with the reason. **No record schema
+change.** Pinned by `turret_fires_tipped_from_hopper`,
+`turret_leaves_healing_tint_alone`, `turret_throws_snowballs_from_hopper`,
+`turret_throws_splash_from_hopper` and `turret_prefers_special_over_buffer`.
 
 **3b — the four axes.** Schema 2 with four tier columns and the materials
 fed. Nine aim groups, damage in script, the projectile gate in `core/`.

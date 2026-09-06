@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { FRESH, PLACED_BY_PLAYER, type PostRecord } from "../scripts/core/record";
+import { FRESH, PEOPLES, PLACED_BY_PLAYER, type PostRecord } from "../scripts/core/record";
 import {
-  ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, UNWELCOME,
-  acceptGift, elderOffer, inviteCandidate, lapsed, likes, mayTakePost, parseErrand, parseGiftDay, standingWords, tierOf,
+  ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, WARES,
+  acceptGift, countTrade, elderOffer, inviteCandidate, lapsed, likes, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, standingWords, tierOf, wares,
 } from "../scripts/core/standing";
 
 const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 9, job: 2, ...FRESH, ...extra });
@@ -47,10 +47,47 @@ describe("standing", () => {
     const open = { item: "minecraft:egg", amount: 8, day: 1 };
     expect(elderOffer(9, 3, open, 7, 0)).toMatchObject({ canPay: false, canTake: false });
     expect(elderOffer(9, 3, open, 8, 0)).toMatchObject({ canPay: true });
+    expect(stranger.canTrade).toBe(false);
+    expect(elderOffer(9, 10, undefined, 0, 0).canTrade).toBe(true);
     expect(elderOffer(9, 30, undefined, 0, POST_PRICE - 1).canBuy).toBe(false);
     expect(elderOffer(9, 30, undefined, 0, POST_PRICE).canBuy).toBe(true);
     expect(elderOffer(9, 30, undefined, 0, 64).canInvite).toBe(false);
     expect(elderOffer(9, 50, undefined, 0, 0)).toMatchObject({ canInvite: true, canBuy: false });
+  });
+  it("every people has three wares at guest and a fourth at friend, each a namespaced item at a price", () => {
+    expect(WARES).toHaveLength(PEOPLES.length);
+    for (const [i, list] of WARES.entries()) {
+      expect(list, PEOPLES[i]).toHaveLength(4);
+      for (const w of list) {
+        expect(w.item, PEOPLES[i]).toMatch(/^minecraft:[a-z_]+$/);
+        expect(w.amount, PEOPLES[i]).toBeGreaterThanOrEqual(1);
+        expect(w.price, PEOPLES[i]).toBeGreaterThanOrEqual(1);
+      }
+      expect(list.filter((w) => w.from === FRIEND), PEOPLES[i]).toHaveLength(1);
+      expect(wares(i, STRANGER)).toEqual([]);
+      expect(wares(i, GUEST)).toHaveLength(3);
+      expect(wares(i, FRIEND)).toHaveLength(4);
+      expect(wares(i, KIN)).toHaveLength(4);
+    }
+    expect(wares(9, GUEST).map((w) => w.item)).toEqual(["minecraft:sweet_berries", "minecraft:spruce_sapling", "minecraft:lantern"]);
+  });
+  it("a trade earns standing only for the first few each day with a people, and the count starts over with the day", () => {
+    let day = parseTradeDay(undefined, 3);
+    expect(day).toEqual({ day: 3, counts: {} });
+    for (let n = 0; n < TRADES_PER_DAY; n++) {
+      const t = countTrade(day, 9);
+      expect(t.earns, `trade ${n + 1}`).toBe(true);
+      day = t.next;
+    }
+    expect(day.counts["9"]).toBe(TRADES_PER_DAY);
+    const over = countTrade(day, 9);
+    expect(over.earns).toBe(false);
+    expect(over.next.counts["9"]).toBe(TRADES_PER_DAY + 1);
+    expect(countTrade(over.next, 3).earns).toBe(true); // another people's count is its own
+    expect(parseTradeDay(JSON.stringify(over.next), 3)).toEqual(over.next);
+    expect(parseTradeDay(JSON.stringify(over.next), 4)).toEqual({ day: 4, counts: {} }); // a new day
+    expect(parseTradeDay("junk", 4)).toEqual({ day: 4, counts: {} });
+    expect(parseTradeDay(JSON.stringify({ day: 4, counts: { 9: "two" } }), 4)).toEqual({ day: 4, counts: {} });
   });
   it("names the nearest present person of the job in the elder's own village, never the elder", () => {
     const elder = post(0, 0);

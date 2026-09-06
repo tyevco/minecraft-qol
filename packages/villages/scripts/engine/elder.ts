@@ -3,9 +3,11 @@
  * village has one on its square and the design left "a fifth job, or the
  * trader" open. Interact and a form says where the player stands with the
  * people, offers an errand (one open per player per people, from the same
- * table a visitor draws on), takes its payment, sells a job post at
- * Friend, and at Kin names a person of a chosen job to come home with
- * the player (engine/follow.ts). The decisions are in core/standing.ts.
+ * table a visitor draws on), takes its payment, trades the people's wares
+ * for emeralds at Guest (a second form; +1 standing for the first few
+ * trades a day), sells a job post at Friend, and at Kin names a person of
+ * a chosen job to come home with the player (engine/follow.ts). The
+ * decisions are in core/standing.ts.
  */
 import { Player, world, type Entity } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
@@ -57,6 +59,10 @@ export async function showElder(player: Player, elder: Entity): Promise<void> {
   } else if (offer.canTake) {
     form.button("Is there something you need?");
     actions.push(() => take(player, people, day));
+  }
+  if (offer.canTrade) {
+    form.button("What do you have to trade?");
+    actions.push(() => void trade(player, elder, people, offer.tier));
   }
   if (offer.canBuy) {
     form.button(`Buy a job post (${core.POST_PRICE} emeralds)`);
@@ -115,6 +121,42 @@ function buy(player: Player, people: number): void {
   }
   standing.give(player, core.POST_ITEM, 1);
   player.sendMessage(`A job post of the ${peopleName(people)}. Place it in your settlement; someone will come to it.`);
+}
+
+/** The people's wares, one button each; a pick takes the emeralds, hands over the goods and counts the trade. */
+async function trade(player: Player, elder: Entity, people: number, tier: number): Promise<void> {
+  const wares = core.wares(people, tier);
+  if (wares.length === 0) return;
+  const c = standing.inventoryOf(player);
+  const emeralds = c ? standing.countCarried(c, core.EMERALD) : 0;
+  const form = new ActionFormData().title(`${elder.nameTag || peopleName(people)}'s wares`).body(`You carry ${emeralds} emerald${emeralds === 1 ? "" : "s"}.`);
+  for (const w of wares) form.button(`${describe(w)} for ${w.price} emerald${w.price === 1 ? "" : "s"}`);
+  form.button("Nothing today");
+  let r;
+  try {
+    r = await form.show(player);
+  } catch (e) {
+    console.warn("[Villages]", `the wares form failed: ${e}`);
+    return;
+  }
+  if (r.canceled || r.selection === undefined || r.selection >= wares.length) return;
+  const w = wares[r.selection]!;
+  const inv = standing.inventoryOf(player);
+  if (!inv || standing.countCarried(inv, core.EMERALD) < w.price) {
+    player.sendMessage(`That is ${w.price} emerald${w.price === 1 ? "" : "s"}.`);
+    return;
+  }
+  // Consume before producing: the emeralds first, and back if they came up short.
+  const taken = standing.takeCarried(inv, core.EMERALD, w.price);
+  if (taken < w.price) {
+    if (taken > 0) standing.give(player, core.EMERALD, taken);
+    player.sendMessage("Not enough, on a second count.");
+    return;
+  }
+  standing.give(player, w.item, w.amount);
+  const after = standing.recordTrade(player, people);
+  player.sendMessage(after.earned ? `${describe(w)}, yours. ${core.standingWords(people, after.standing)}` : `${describe(w)}, yours.`);
+  console.warn("[Villages]", `${player.name} bought ${describe(w)} from the ${peopleName(people)} for ${w.price}: standing ${after.standing}${after.earned ? "" : " (the day's trades are counted)"}`);
 }
 
 async function invite(player: Player, elder: Entity, people: number): Promise<void> {

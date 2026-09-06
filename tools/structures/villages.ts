@@ -79,6 +79,14 @@ export interface People {
   squareExtra?: (bp: Blueprint, side: number) => void;
   /** Vanilla biome tags the village generates in (any of). */
   biomes: string[];
+  /**
+   * Tags that rule a biome out even when one of `biomes` matches. Tags
+   * overlap more than their names say (measured against the server's own
+   * biome files, docs/villages-jigsaw-results.md): `cold` is on forest,
+   * plains and extreme hills, `forest` on every taiga and the dark forest,
+   * `hills` on desert and jungle hills, `frozen` and `river` on oceans.
+   */
+  avoid?: string[];
   salt: number;
 }
 
@@ -161,7 +169,7 @@ export const PEOPLES: People[] = [
     ],
     emptyLots: 2, tree: { log: "mangrove_log", leaves: "mangrove_leaves" },
     watch: "reedfolk_tower", deck: { height: 3, post: "mangrove_log", rail: "mangrove_fence", floor: "water" },
-    biomes: ["swamp", "mangrove_swamp", "river"], salt: 20260912,
+    biomes: ["swamp", "mangrove_swamp", "river"], avoid: ["frozen"], salt: 20260912,
   },
   {
     key: "tinker", title: "Tinker", paving: "brick_block", verge: "grass", post: "oak_fence", core: "tinker_workshop",
@@ -214,7 +222,7 @@ export const PEOPLES: People[] = [
       ["orchard", 1, orchard],
     ],
     emptyLots: 2, tree: { log: "oak_log", leaves: "oak_leaves" },
-    watch: "hobbit_bounder", biomes: ["flower_forest", "hills"], salt: 20260915,
+    watch: "hobbit_bounder", biomes: ["flower_forest", "hills"], avoid: ["desert", "jungle", "taiga", "birch", "frozen", "mesa", "mountains"], salt: 20260915,
   },
   {
     key: "wood_elf", title: "Wood Elf", paving: "dark_oak_planks", verge: "dark_oak_planks", post: "dark_oak_fence", core: "wood_elf_hearth",
@@ -363,6 +371,21 @@ function stampPeople(p: People, bp: Blueprint): Blueprint {
 }
 
 /**
+ * A deck people's joint: the socket is at ground level (every marker sits
+ * in the ground layer) while the walking surface is `deck.height` up, so
+ * the joint column needs a post from the marker's block to a plank at deck
+ * height, or the walkway ends one block short of the house, the lot or the
+ * doorstep with a drop where the jigsaw was. Measured in a generated
+ * reedfolk village (docs/villages-jigsaw-results.md). Only empty cells are
+ * filled, so a piece that already bridges the column keeps its own.
+ */
+function deckLanding(p: People, bp: Blueprint, x: number, z: number): void {
+  if (!p.deck) return;
+  for (let y = 1; y < p.deck.height; y++) if (bp.at(x, y, z) === undefined) bp.set(x, y, z, p.deck.post);
+  if (bp.at(x, p.deck.height, z) === undefined) bp.set(x, p.deck.height, z, p.paving);
+}
+
+/**
  * A building with a socket on its doorstep, the block outside its door at
  * ground level, facing out. A building with no door gets one at the middle
  * of its south side. `name` is the marker's name: a house answers a street's
@@ -380,10 +403,11 @@ function withDoorstep(p: People, b: Blueprint, name = HOUSE_MARK): Blueprint {
   const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[facing];
   const sx = dx + step[0]!, sz = dz + step[1]!;
   const ox = sx < 0 ? 1 : 0, oz = sz < 0 ? 1 : 0;
-  const size: [number, number, number] = [Math.max(b.sx, sx + 1) + ox, b.sy, Math.max(b.sz, sz + 1) + oz];
+  const size: [number, number, number] = [Math.max(b.sx, sx + 1) + ox, Math.max(b.sy, deckOf(p) + 1), Math.max(b.sz, sz + 1) + oz];
   const out = new Blueprint(b.key, b.title, size, b.people, b.notes);
   out.paste(b, ox, 0, oz);
   out.jigsaw(sx + ox, 0, sz + oz, marker(p, facing, name, name, "minecraft:empty"));
+  deckLanding(p, out, sx + ox, sz + oz);
   return stampPeople(p, out);
 }
 
@@ -512,8 +536,9 @@ export function villageSet(p: People): VillageSet {
   if (p.deck) lampPost.fill(0, 1, 0, 1, p.deck.height, 1, p.deck.post);
   lamp(p, lampPost, 0, deckOf(p) + 1, 0);
   pieces.set("lamp", lampPost);
-  const doorstep = new Blueprint(`${p.key}_doorstep`, `${p.title} Doorstep`, [1, 1, 1], p.key, "Where no house fits.");
+  const doorstep = new Blueprint(`${p.key}_doorstep`, `${p.title} Doorstep`, [1, deckOf(p) + 1, 1], p.key, "Where no house fits.");
   doorstep.jigsaw(0, 0, 0, { facing: "north", name: HOUSE_MARK, target: HOUSE_MARK, pool: "minecraft:empty", final: p.deck ? p.deck.post : p.verge });
+  deckLanding(p, doorstep, 0, 0);
   pieces.set("doorstep", doorstep);
   const ends: Pool["elements"] = [{ piece: lampPost, weight: 3 }];
   if (p.watch) {
@@ -537,6 +562,7 @@ export function villageSet(p: People): VillageSet {
     // The socket at the middle of the south edge, facing the street.
     bp.set(Math.floor(w / 2), 0, d - 1, p.deck ? p.deck.floor : p.verge);
     bp.jigsaw(Math.floor(w / 2), 0, d - 1, marker(p, "south", HOUSE_MARK, HOUSE_MARK, "minecraft:empty"));
+    deckLanding(p, bp, Math.floor(w / 2), d - 1);
     return stampPeople(p, bp);
   };
   for (const [key, weight, paint] of p.greens) {
@@ -586,7 +612,10 @@ export function villageWorldgen(set: VillageSet): Record<string, object> {
     format_version: "1.21.20",
     "minecraft:jigsaw": {
       description: { identifier: `villages:${p.key}_village` },
-      biome_filters: [{ any_of: p.biomes.map((tag) => ({ test: "has_biome_tag", operator: "==", value: tag })) }],
+      biome_filters: [
+        { any_of: p.biomes.map((tag) => ({ test: "has_biome_tag", operator: "==", value: tag })) },
+        ...(p.avoid?.length ? [{ none_of: p.avoid.map((tag) => ({ test: "has_biome_tag", operator: "==", value: tag })) }] : []),
+      ],
       step: "surface_structures",
       // Buildings on the ground get the terrain drawn up to them; a deck over water stands in it as it is.
       terrain_adaptation: p.deck?.floor === "water" ? "none" : "beard_thin",

@@ -1492,8 +1492,8 @@ furred({ file: "otterfolk", identifier: "geometry.villages_otterfolk", head: [8,
 furred({ file: "deerfolk", identifier: "geometry.villages_deerfolk", head: [8, 8, 8], body: [6, 12, 4], arm: [3, 12, 3], leg: [3, 11, 3], muzzle: [4, 3, 3], ear: { size: [3, 4, 1], on: "top", splay: 30 }, antlers: true, tail: "puff" });
 
 // ---------------------------------------------------------------------------
-// Villages job post - the block a person is anchored to. A wooden post with
-// a plaque, centred on x/z, standing on y = 0 (docs/design/villages.md §4).
+// Villages job post - the block a person is anchored to: a plaque set into
+// the floor, centred on x/z, standing on y = 0 (docs/design/villages.md §4).
 // ---------------------------------------------------------------------------
 
 type PB = keyof typeof A.POST.tiles;
@@ -1515,10 +1515,13 @@ write("packages/villages/resource_pack/models/blocks/post.geo.json", {
     {
       name: "post",
       pivot: [0, 0, 0],
+      // A plaque set into the floor: a plank frame and the dark plate in it,
+      // two units tall, so nobody trips on it and a house is not a
+      // house with a pole in it. It was a twelve-unit post with a plaque
+      // either side; the kids found it in the people's way and unsightly.
       cubes: [
-        { origin: [-2, 0, -2], size: [4, 12, 4], faces: { all: "post" } } as Cube<PB>,
-        { origin: [-6, 7, -3], size: [12, 5, 1], faces: { all: "plaque" } } as Cube<PB>,
-        { origin: [-6, 7, 2], size: [12, 5, 1], faces: { all: "plaque" } } as Cube<PB>,
+        { origin: [-6, 0, -6], size: [12, 1, 12], faces: { all: "post" } } as Cube<PB>,
+        { origin: [-5, 1, -5], size: [10, 1, 10], faces: { all: "plaque" } } as Cube<PB>,
       ],
     },
   ],

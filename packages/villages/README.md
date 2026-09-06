@@ -34,15 +34,16 @@ measurements: `docs/villages-jigsaw-results.md`.
   at spawn, shown while a player looks at it as a name-tagged villager's is;
   a name tag of the player's own replaces it. A lang key cannot read an
   entity property, so the names live in the record, not `en_US.lang`.
-- **The job post** (`villages:post`): a block with the people and the job in
-  its states. It ticks every two to four seconds and keeps one person: spawns
+- **The job post** (`villages:post`): a plaque set into the floor, two
+  units tall with no collision, with the people and the job in its states
+  (it was a twelve-unit post with a plaque either side; in a real village
+  the kids found it in the people's way and unsightly). It ticks every two to four seconds and keeps one person: spawns
   one on its first tick, and replaces a lost one a day later
   (`scripts/core/peopling.ts`). Breaking the post removes the person. Records
-  live in the shared position index (`vl:posts`, schema 3; older rows are
+  live in the shared position index (`vl:posts`, schema 4; older rows are
   read with the newer fields defaulted). Stamps are `system.currentTick`,
-  which counts from the server's boot: a stamp ahead of the clock means a
-  restart, and every wait treats it as over rather than waiting for the
-  clock to catch up. A post placed over an existing
+  which counts from the server's boot; a restart is told by the marker
+  below and ends every wait. A post placed over an existing
   record (a structure load, `/fill`) retires the old person and starts over.
 - **Trades** (design §5.1, `scripts/core/trades.ts` decides,
   `scripts/engine/trades.ts` acts): a **worker's** post surveys the blocks
@@ -288,6 +289,16 @@ measurements: `docs/villages-jigsaw-results.md`.
   core building, streets, houses with a post each, lamp posts and watches at
   the ends. They generate every 34 chunks (separation 8) in each people's
   biomes; `/place structure villages:<people>_village` raises one by hand.
+  The biome tags are checked against the server's own biome files
+  (`behavior_packs/vanilla*/biomes`, `docs/villages-jigsaw-results.md`),
+  since they overlap more than their names say: `cold` is on forest,
+  plains and extreme hills (a wolffolk village came up on grass), the
+  mushroom island's tag is `mooshroom_island` (so the mousefolk village had
+  never generated), `forest` is on every taiga and the dark forest, `hills`
+  on desert and jungle hills, `frozen` and `river` on oceans. Each people
+  therefore also names tags that rule a biome out (`avoid`, a `none_of`
+  group in the structure's filter), and a unit test keeps every tag one
+  that exists.
   Each people has ground of its own: stonefolk in the stony hills
   (`extreme_hills`), reedfolk in swamp and river, tinkers on the savanna,
   tallfolk on the plains, hobbits in flower forests and hills, wood elves
@@ -295,18 +306,28 @@ measurements: `docs/villages-jigsaw-results.md`.
   drow under the dark forest and in the pale garden, drovers in the
   desert. The wood elf village is in the canopy: plank walkways six blocks
   up on dark oak trunks, the same deck machinery as the reedfolk's stilts.
+  A **deck people's joints** are bridged: every marker sits in the ground
+  layer while the walkway is three to six blocks up, so each joint column
+  (a house's doorstep, a lot's socket, the doorstep terminator) carries a
+  post from the marker's block up to a plank at deck height. Without it
+  the walkway ended one block short of the house with a drop where the
+  jigsaw was, which is what "blocks missing where the jigsaw blocks were"
+  looked like in a generated reedfolk village; a unit test keeps every
+  deck joint bridged.
   The **drover town** is a false-fronted trading post on the square with
   the town bell and a hitching rail, adobe cabins, corrals and ranches, the
   stall and the larder, a water tower at the street ends, cacti where the
   other peoples have trees and dead bushes where they have flowers
   (`docs/design/settlements.md` §2.6). The ten furfolk villages
   (`tools/structures/furfolk.ts`, `docs/design/furfolk.md` §3) have their
-  own ground too: foxfolk in the taiga, catfolk in cherry groves and flower
-  forests, wolffolk in the cold, rabbitfolk among birches, bearfolk under
-  the dark forest, fennecfolk in the desert, mousefolk on mushroom fields,
-  squirrelfolk on a deck five up in the jungle, otterfolk on the beach,
-  deerfolk in the forest; each structure set has its own salt, so two
-  peoples sharing a biome fall on different cells.
+  own ground too: foxfolk in the taiga (not the snowy one), catfolk in
+  cherry groves and flower forests, wolffolk in the snow (`frozen`, less
+  the frozen seas and rivers and the peaks), rabbitfolk among birches,
+  bearfolk under the dark forest, fennecfolk in the desert, mousefolk on
+  the mushroom island, squirrelfolk on a deck five up in the jungle,
+  otterfolk on the beach (not a frozen or mushroom one), deerfolk in the
+  plain oak forest; each structure set has its own salt, so two peoples
+  sharing a biome fall on different cells.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
 

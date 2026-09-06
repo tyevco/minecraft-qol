@@ -1203,6 +1203,105 @@ world.afterEvents.worldLoad.subscribe(() => {
       }, delay);
       return;
     }
+    // Holes: air at one y level inside a box (a placed village's paving
+    // layer, where the flat test world has no air), and any jigsaw block
+    // left within 24 above it. Villages: "blocks missing where the jigsaw
+    // blocks were".
+    if (ev.id === "qolprobe:holes") {
+      const [x1 = 0, z1 = 0, x2 = 0, z2 = 0, y = -61, delay = 100] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+      system.runTimeout(() => {
+        const air = [], jig = [];
+        try {
+          for (let x0 = Math.min(x1, x2); x0 <= Math.max(x1, x2); x0 += 32)
+            for (let z0 = Math.min(z1, z2); z0 <= Math.max(z1, z2); z0 += 32) {
+              const vol = new BlockVolume({ x: x0, y, z: z0 }, { x: Math.min(x0 + 31, Math.max(x1, x2)), y, z: Math.min(z0 + 31, Math.max(z1, z2)) });
+              for (const loc of overworld.getBlocks(vol, { includeTypes: ["minecraft:air"] }, true).getBlockLocationIterator()) air.push(`${loc.x},${loc.y},${loc.z}`);
+              const tall = new BlockVolume({ x: x0, y, z: z0 }, { x: Math.min(x0 + 31, Math.max(x1, x2)), y: y + 24, z: Math.min(z0 + 31, Math.max(z1, z2)) });
+              for (const loc of overworld.getBlocks(tall, { includeTypes: ["minecraft:jigsaw"] }, true).getBlockLocationIterator()) {
+                const b = overworld.getBlock(loc);
+                jig.push(`${loc.x},${loc.y},${loc.z}`);
+              }
+            }
+        } catch (e) { log(`holes THREW: ${e}`); }
+        log(`holes at y=${y} in ${x1},${z1}..${x2},${z2}: ${air.length} air block(s)` + (air.length ? "\n" + air.slice(0, 80).join(" ") : "") + `\n${jig.length} jigsaw block(s) left` + (jig.length ? "\n" + jig.slice(0, 40).join(" ") : ""));
+      }, delay);
+      return;
+    }
+    // Pits: on real terrain a hole cannot be told from the open air by its
+    // type, so a pit is an air block with solid ground under it and solid
+    // blocks on all four sides at its own height - a one-block hole in a
+    // surface. Lists them, and any jigsaw block left, in a box.
+    if (ev.id === "qolprobe:pits") {
+      const [x1 = 0, z1 = 0, x2 = 0, z2 = 0, y1 = 60, y2 = 90, delay = 100] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+      // A job, a tile a tick: a 160x160x60 box read block by block in one
+      // tick trips the script watchdog ("Hang") and stops the server.
+      function* pitScan() {
+        const pits = [], jig = [];
+        const OPEN = new Set(["minecraft:air", "minecraft:water", "minecraft:flowing_water", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow_layer"]);
+        const solid = (x, y, z) => { const b = overworld.getBlock({ x, y, z }); return b !== undefined && !OPEN.has(b.typeId); };
+        let n = 0;
+        for (let x0 = Math.min(x1, x2); x0 <= Math.max(x1, x2); x0 += 16)
+          for (let z0 = Math.min(z1, z2); z0 <= Math.max(z1, z2); z0 += 16) {
+            try {
+              const vol = new BlockVolume({ x: x0, y: Math.min(y1, y2), z: z0 }, { x: Math.min(x0 + 15, Math.max(x1, x2)), y: Math.max(y1, y2), z: Math.min(z0 + 15, Math.max(z1, z2)) });
+              for (const loc of overworld.getBlocks(vol, { includeTypes: ["minecraft:air"] }, true).getBlockLocationIterator()) {
+                if (++n % 400 === 0) yield;
+                if (solid(loc.x, loc.y - 1, loc.z) && solid(loc.x + 1, loc.y, loc.z) && solid(loc.x - 1, loc.y, loc.z) && solid(loc.x, loc.y, loc.z + 1) && solid(loc.x, loc.y, loc.z - 1)) {
+                  const under = overworld.getBlock({ x: loc.x, y: loc.y - 1, z: loc.z });
+                  pits.push(`${loc.x},${loc.y},${loc.z}(on ${under ? under.typeId.replace("minecraft:", "") : "?"})`);
+                }
+              }
+              for (const loc of overworld.getBlocks(vol, { includeTypes: ["minecraft:jigsaw"] }, true).getBlockLocationIterator()) jig.push(`${loc.x},${loc.y},${loc.z}`);
+            } catch (e) { log(`pits tile ${x0},${z0} THREW: ${e}`); }
+            yield;
+          }
+        log(`pits in ${x1},${z1}..${x2},${z2} y ${y1}..${y2}: ${pits.length}` + (pits.length ? "\n" + pits.slice(0, 80).join(" ") : "") + `\n${jig.length} jigsaw block(s) left` + (jig.length ? "\n" + jig.slice(0, 40).join(" ") : ""));
+      }
+      system.runTimeout(() => system.runJob(pitScan()), delay);
+      return;
+    }
+    // Surface pits: a column whose topmost block has solid blocks on all
+    // four sides one above it is a one-block hole in a floor open to the
+    // sky - what a missing paving block in a village looks like, and what
+    // a cave is not. Also any jigsaw block left within the box.
+    if (ev.id === "qolprobe:surface-pits") {
+      const [x1 = 0, z1 = 0, x2 = 0, z2 = 0, delay = 100] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+      function* scan() {
+        const pits = [], jig = [];
+        const PLANT = /leaves|litter|grass|vine|fern|flower|sapling|bush|petals|mushroom$|torch|lantern|seagrass|kelp|lily|reeds|deadbush|snow_layer|water|air$|carpet|moss_carpet/;
+        const solid = (x, y, z) => { const b = overworld.getBlock({ x, y, z }); return b !== undefined && !PLANT.test(b.typeId); };
+        // Only the village: columns within 20 of a job post.
+        const posts = [];
+        try {
+          for (let x0 = Math.min(x1, x2); x0 <= Math.max(x1, x2); x0 += 32)
+            for (let z0 = Math.min(z1, z2); z0 <= Math.max(z1, z2); z0 += 32) {
+              const vol = new BlockVolume({ x: x0, y: -64, z: z0 }, { x: Math.min(x0 + 31, Math.max(x1, x2)), y: 120, z: Math.min(z0 + 31, Math.max(z1, z2)) });
+              for (const loc of overworld.getBlocks(vol, { includeTypes: ["villages:post"] }, true).getBlockLocationIterator()) posts.push({ x: loc.x, z: loc.z });
+            }
+        } catch (e) { log(`post scan THREW: ${e}`); }
+        yield;
+        const nearPost = (x, z) => posts.some((p) => Math.abs(p.x - x) <= 20 && Math.abs(p.z - z) <= 20);
+        let n = 0;
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++)
+          for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+            if (++n % 200 === 0) yield;
+            if (!nearPost(x, z)) continue;
+            try {
+              const top = overworld.getTopmostBlock({ x, z });
+              if (!top) continue;
+              if (top.typeId === "minecraft:jigsaw") jig.push(`${x},${top.y},${z}`);
+              const y = top.y + 1;
+              if (solid(x + 1, y, z) && solid(x - 1, y, z) && solid(x, y, z + 1) && solid(x, y, z - 1)) {
+                const e = overworld.getBlock({ x: x + 1, y, z });
+                pits.push(`${x},${y},${z}(on ${top.typeId.replace("minecraft:", "")}, beside ${e ? e.typeId.replace("minecraft:", "") : "?"})`);
+              }
+            } catch (e) { /* unloaded */ }
+          }
+        log(`surface pits near ${posts.length} post(s) in ${x1},${z1}..${x2},${z2}: ${pits.length}` + (pits.length ? "\n" + pits.slice(0, 80).join(" ") : "") + `\n${jig.length} jigsaw block(s) on the surface` + (jig.length ? "\n" + jig.slice(0, 40).join(" ") : ""));
+      }
+      system.runTimeout(() => system.runJob(scan()), delay);
+      return;
+    }
     if (ev.id !== "qolprobe:jigsaw-scan") return;
     // A fourth argument delays the scan, in ticks: right after a boot the
     // ticking areas have not loaded their chunks yet, and an unloaded chunk

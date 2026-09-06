@@ -13,6 +13,35 @@
             "value": "forest"
           }
         ]
+      },
+      {
+        "none_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "taiga"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "roofed"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "birch"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "frozen"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "extreme_hills"
+          }
+        ]
       }
     ],
     "step": "surface_structures",

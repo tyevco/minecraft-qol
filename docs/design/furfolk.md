@@ -537,7 +537,11 @@ bakes if there is a furnace near it.
    applies per structure only (which the schema suggests) or can differ per
    piece. If per structure only, the warren is a cut piece: the house's
    footprint is dug by the piece itself.
-7. **The biome tags** for `taiga`, `cold`, `cherry_grove`, `flower_forest`,
+7. ~~**The biome tags**~~ read against the server's biome files
+   (`villages-jigsaw-results.md`, "Biome tags"): `cold` was the forest
+   and the plains, `mushroom_island` was no biome at all, `forest` every
+   wood; each people now also names tags that rule a biome out. The
+   original item, for the record: **the biome tags** for `taiga`, `cold`, `cherry_grove`, `flower_forest`,
    `birch`, `roofed`, `desert`, `mushroom_island`, `jungle`, `beach` and
    `forest`, as written in `furfolk.ts`, read against `bedrock-samples`;
    and that each concept village **places and generates** from the probe

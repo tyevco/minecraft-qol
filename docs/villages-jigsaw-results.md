@@ -471,6 +471,66 @@ server:
 - **Not measured**: the gift, the trader's form, the hit and the defence,
   all of which need a real player in the event.
 
+## The gap at a deck joint (design §3)
+
+"Blocks missing where the jigsaw blocks were", seen in game, chased on
+both servers:
+
+- A tallfolk village placed on the flat GameTest world had **no air block
+  at its paving layer** (a probe scan of the hundred-chunk area at y = −61
+  and −62) and **no jigsaw block left** anywhere in it, so a ground
+  people's joints and the markers' `final_state` are sound.
+- A deerfolk and a reedfolk village generated in the plain world (the
+  `dist/bds/probe` server, `locate structure` from spawn, then ticking
+  areas) had **no surface hole within twenty blocks of a job post** by the
+  probe's `surface-pits` scan (a column whose topmost block has solid
+  neighbours on four sides one above it) and no jigsaw block on the
+  surface. The first two scans were wrong tools: a box read block by block
+  in one tick tripped the script watchdog and stopped the server (`Hang`
+  in the probe pack; a `system.runJob` a tile a tick does not), and a pit
+  test that counted caves and leaf litter reported thousands.
+- The generator's own pieces showed it. For the three peoples on a deck
+  (reedfolk at 3, squirrelfolk at 5, wood elves at 6), every marker sits
+  in the ground layer, and at deck height the child piece's joint column
+  was **air** for the stilt house, the rack, the dock, the tower end, the
+  bower, the lookout end, every green and empty lot, and the doorstep
+  terminator: the walkway ended on its own edge plank and the next block,
+  at the house's door, was a drop of the deck's height where the jigsaw
+  block had turned into a log at the ground. `withDoorstep`, `lot` and the
+  doorstep piece now put a post column and a plank on every joint column
+  (`deckLanding`), and a test asserts every deck joint is bridged. A
+  reedfolk and a wood elf village placed on the flat world with the new
+  pieces read **one surface pit near their 22 posts**, a plank enclosed by
+  four rails on a walkway (not a hole), and no jigsaw block.
+
+## Biome tags, as the server has them
+
+The tags the villages' filters name were read against the server's own
+biome definitions (`behavior_packs/vanilla*/biomes/*.json` on BDS
+1.26.45.1, every versioned pack, since the cherry grove, the meadow, the
+pale garden and the mangrove swamp live in later ones), after a wolffolk
+village was found generated on grass:
+
+| Tag | Biomes it is on |
+| --- | --- |
+| `cold` | cold beach, cold oceans, cold taiga and its hills, **extreme hills, forest, grove, plains**, mega taiga, taiga |
+| `frozen` | cold taiga, frozen oceans and river, frozen peaks, ice mountains, ice plains and spikes, jagged peaks, snowy slopes |
+| `forest` | every birch forest, every taiga (cold, mega, redwood), extreme hills plus trees, forest and its hills, roofed forest |
+| `hills` | every `*_hills` biome: bamboo jungle, birch, cold taiga, **desert, jungle**, forest, mega taiga, taiga |
+| `beach` | beach, cold beach, mushroom island shore, stone beach |
+| `river` | river, **frozen river** |
+| `mushroom_island` | **no biome**: the island's tag is `mooshroom_island` (and its shore's) |
+| `mountains` | the peaks and slopes, ice mountains and plains, cherry grove, meadow, grove, and most `*_hills` |
+| `taiga`, `birch`, `roofed`, `desert`, `jungle`, `cherry_grove`, `flower_forest`, `meadow`, `pale_garden`, `mangrove_swamp`, `swamp`, `savanna`, `plateau`, `mesa`, `plains`, `extreme_hills` | what their names say |
+
+So the wolffolk's `cold` covered the forest and the plains, the
+mousefolk's `mushroom_island` covered nothing, the deer's `forest` was
+every wood there is, and the hobbits' `hills` reached the desert. Each
+people's filter gained a `none_of` group (`avoid` on the `People`) and
+the tallfolk village placed after the change with no content-log line
+for any structure file. Whether `none_of` is honoured by the generator
+(rather than only loaded) is for a `locate` in a plain world to show.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment

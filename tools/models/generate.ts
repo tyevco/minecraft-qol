@@ -1191,14 +1191,6 @@ interface BipedSpec {
   /** A neckerchief round the collar, in the hat's cloth. Drovers. */
   kerchief?: boolean;
   hat: "cap" | "reed" | "straw" | "hood" | "circlet" | "brim" | "none";
-  /**
-   * The tool held upright: gripped at the handle's end, the head above the
-   * fist. The default hangs it head-down along the forearm, which read as
-   * "a weird angle" on the builder in game (the first look at a person
-   * holding one); the villages' people keep the old grip until they are
-   * looked at too.
-   */
-  toolUp?: boolean;
 }
 
 /** The biped's bones, and the heights the accessories and the furfolk hang off. */
@@ -1310,16 +1302,15 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
       name: "tool",
       parent: "right_arm",
       pivot: [rightArmX + aw / 2, shoulder - 1, 0],
-      cubes: spec.toolUp
-        ? [
-            // Gripped at the handle's foot, just below the hand; the head sits above the fist, in front of the arm.
-            { origin: [rightArmX + aw / 2 - 0.5, handY - 1, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
-            { origin: [rightArmX + aw / 2 - 2, handY + 6.5, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
-          ]
-        : [
-            { origin: [rightArmX + aw / 2 - 0.5, handY - 6, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
-            { origin: [rightArmX + aw / 2 - 2, handY - 8, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
-          ],
+      // The hammer gripped at the handle's foot, just below the hand, its
+      // head above the fist in front of the arm. It hung head-down along
+      // the forearm before, which read as a weird angle the first time a
+      // person was seen holding one in game (the builder); everyone holds
+      // it upright now.
+      cubes: [
+        { origin: [rightArmX + aw / 2 - 0.5, handY - 1, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
+        { origin: [rightArmX + aw / 2 - 2, handY + 6.5, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
+      ],
     },
   ];
   return { bones, hip, shoulder, top };
@@ -1587,7 +1578,7 @@ write(`${BUILDER_MODELS}/blocks/survey_stake.geo.json`, {
   ],
 });
 
-biped({ file: "builder", identifier: "geometry.builder_person", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw", toolUp: true }, `${BUILDER_MODELS}/entity`);
+biped({ file: "builder", identifier: "geometry.builder_person", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" }, `${BUILDER_MODELS}/entity`);
 
 write(`${BUILDER_MODELS}/entity/waypoint.geo.json`, {
   identifier: "geometry.builder_waypoint",

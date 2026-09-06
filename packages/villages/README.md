@@ -468,6 +468,14 @@ measurements: `docs/villages-jigsaw-results.md`.
 
 ## To confirm in game
 
+- **The builder's hammer**, on every people: the biped rig now grips it at
+  the handle's foot with the head above the fist. The old grip hung it
+  head-down along the forearm, which read as a weird angle the first time
+  a person was seen holding one on a client (the builder pack's builder,
+  which shares the rig). If it clips the arm or the pack on a small people
+  (the mousefolk, the tinker), the `tool` bone's cubes in
+  `tools/models/generate.ts` are the two numbers to move.
+
 - **People stay by their posts** across a chunk unload and reload and a
   long session (the post keeps its record; the person is `persistent`). If
   a person wanders off, lower `restriction_radius` in `entities/person.json`.

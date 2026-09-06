@@ -109,9 +109,10 @@ The rest of the catalogue and the palette swaps wait on that.
   turf and could not be seen going in, so a job now pulses sparks
   (`minecraft:endrod`) round the box's edges every second while it runs and
   the chat names the corner, the extent and the door's facing; and the
-  hammer hung head-down along the forearm, so the rig gained an upright
-  grip (`toolUp` in `tools/models/generate.ts`), used by the builder only
-  until the villages' people are looked at the same way.
+  hammer hung head-down along the forearm, so the biped rig now grips it
+  at the handle's foot with the head above the fist, for the builder and
+  for every one of the villages' people alike (`tools/models/generate.ts`,
+  the `tool` bone).
 - **Repair and survey, pinned** (`builder_repair_fills_the_gaps`,
   `builder_survey_makes_a_blueprint`): four blocks knocked out of a finished
   well come back from the chest, exactly four items leave it, and a stone put

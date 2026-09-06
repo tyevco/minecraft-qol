@@ -1,4 +1,6 @@
 tile.builder:blueprint_table.name=Blueprint Table
+tile.builder:survey_stake.name=Survey Stake
+item.builder:blueprint_survey=Blueprint: Survey
 item.builder:blueprint_tallfolk_well=Blueprint: Well
 item.builder:blueprint_shared_larder=Blueprint: Larder
 item.builder:blueprint_shared_wall=Blueprint: Wall Segment

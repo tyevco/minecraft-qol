@@ -20,6 +20,7 @@ import * as jobs from "./jobs";
 import * as placing from "./placing";
 import * as settings from "./settings";
 import * as storage from "./storage";
+import * as survey from "./survey";
 import { log, tell } from "./tell";
 
 export const COMPONENT_ID = "builder:table";
@@ -61,12 +62,25 @@ async function blueprintForm(player: Player, table: Block, key: string): Promise
 
 async function tableForm(player: Player, table: Block): Promise<void> {
   const mine = storage.all().filter((r) => r.dimId === table.dimension.id && sameTable(r, table.location));
-  if (!mine.length) {
-    tell(player, "Hold a blueprint and tap the table to place a building. This table has raised nothing yet.");
+  const stakes = survey.stakesNear(table.dimension, table.location);
+  if (!mine.length && !stakes.length) {
+    tell(player, "Hold a blueprint and tap the table to place a building, or put two survey stakes round something to make a blueprint of it. This table has raised nothing yet.");
     return;
   }
-  const form = new ActionFormData().title("Blueprint Table").body("What this table has raised. Taking a building down puts every block back in the chest.");
+  const form = new ActionFormData().title("Blueprint Table").body("What this table has raised. Taking a building down puts every block back in the chest; repairing fills its gaps from the chest. A survey saves what stands between two stakes as a new blueprint.");
   const actions: (() => void)[] = [];
+  if (stakes.length === 2) {
+    const [a, b] = stakes as [typeof stakes[0], typeof stakes[0]];
+    form.button(`Survey the box between the stakes at ${a.x},${a.y},${a.z} and ${b.x},${b.y},${b.z}`);
+    actions.push(() => {
+      const s = survey.survey(table.dimension, a, b);
+      if ("refused" in s) tell(player, `Cannot survey: ${s.refused}.`);
+      else survey.give(player, s);
+    });
+  } else if (stakes.length > 2) {
+    form.button(`${stakes.length} stakes stand near the table; a survey wants exactly two`);
+    actions.push(() => tell(player, "Take up the extra stakes so exactly two mark the box."));
+  }
   for (const r of mine) {
     const title = catalogueEntry(r.key)?.title ?? r.key;
     const where = `${r.x},${r.y},${r.z}`;
@@ -76,6 +90,11 @@ async function tableForm(player: Player, table: Block): Promise<void> {
     } else if (r.phase === "built") {
       form.button(`Take down the ${title} at ${where}`);
       actions.push(() => takeDown(player, r));
+      form.button(`Repair the ${title} at ${where}`);
+      actions.push(() => {
+        if (jobs.startRepair(r)) tell(player, `The builder looks the ${title} over and fills what is missing.`);
+        else tell(player, `The ${title} cannot be repaired right now; see the content log.`);
+      });
     } else {
       form.button(`Carry on with the ${title} at ${where} (${r.phase}, ${r.done} done)`);
       actions.push(() => {
@@ -102,7 +121,7 @@ function open(player: Player, table: Block): void {
     return;
   }
   const held = mainhand(player);
-  const key = held ? keyOfBlueprintItem(held.typeId) : undefined;
+  const key = held ? (keyOfBlueprintItem(held.typeId) ?? survey.surveyKeyOf(held)) : undefined;
   const shown = key ? blueprintForm(player, table, key) : tableForm(player, table);
   shown.catch((e) => log(`the table's form failed for ${player.name}: ${e}`));
 }

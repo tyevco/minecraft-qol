@@ -17,9 +17,9 @@ export interface Position {
   z: number;
 }
 
-/** building: going up; built: finished; removing: coming down into the chest. */
-export type Phase = "building" | "built" | "removing";
-export const PHASES: readonly Phase[] = ["building", "built", "removing"];
+/** building: going up; built: finished; removing: coming down into the chest; repairing: the gaps filled from the chest. */
+export type Phase = "building" | "built" | "removing" | "repairing";
+export const PHASES: readonly Phase[] = ["building", "built", "removing", "repairing"];
 
 export interface BuildingRecord extends Position {
   key: string;
@@ -28,7 +28,7 @@ export interface BuildingRecord extends Position {
   sy: number;
   sz: number;
   phase: Phase;
-  /** Cells done so far in the phase's order: placed while building, taken while removing. */
+  /** Cells done so far in the phase's order: placed while building, taken while removing, looked at while repairing. */
   done: number;
   /** The blueprint table the job was started from; its chest pays for and takes back the blocks. */
   table: { x: number; y: number; z: number };

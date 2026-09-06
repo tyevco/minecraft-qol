@@ -46,7 +46,18 @@ export const CATALOGUE: readonly CatalogueEntry[] = [
   { key: "shared_wall", title: "Wall Segment", description: "Cobblestone, four high, a walkway behind and battlements on top. Segments join side by side." },
 ];
 
-export const catalogueEntry = (key: string): CatalogueEntry | undefined => CATALOGUE.find((e) => e.key === key);
+/** A surveyed building's key: `survey_<n>`, the n-th survey taken in this world. */
+export const SURVEY_ITEM = "builder:blueprint_survey";
+export const surveyKey = (n: number): string => `survey_${n}`;
+export const isSurveyKey = (key: string): boolean => /^survey_[1-9]\d*$/.test(key);
+
+/** The catalogue's entry, or a synthesised one for a survey: "Survey 3". */
+export function catalogueEntry(key: string): CatalogueEntry | undefined {
+  const fixed = CATALOGUE.find((e) => e.key === key);
+  if (fixed) return fixed;
+  if (isSurveyKey(key)) return { key, title: `Survey ${key.slice("survey_".length)}`, description: "A building the kids surveyed between two stakes." };
+  return undefined;
+}
 export const structureId = (key: string): string => `${STRUCTURE_NAMESPACE}:${key}`;
 export const blueprintItemId = (key: string): string => `${BLUEPRINT_ITEM_PREFIX}${key}`;
 /** The catalogue key a blueprint item names, or undefined for any other item. */

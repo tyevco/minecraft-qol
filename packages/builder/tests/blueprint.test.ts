@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BUILDINGS } from "../../../tools/structures/buildings";
 import { blueprintItemId, CATALOGUE, itemFor, keyOfBlueprintItem, materials, plainName, structureId, type Cell } from "../scripts/core/blueprint";
-import { countItems, nextPlacement, nextRemoval, stillOurs, ticksPerBlock } from "../scripts/core/job";
+import { countItems, nextPlacement, nextRemoval, nextRepair, repairStatus, stillOurs, ticksPerBlock } from "../scripts/core/job";
 
 const cell = (name: string, states = {}): Cell => ({ x: 0, y: 0, z: 0, name, states });
 
@@ -67,5 +67,37 @@ describe("job steps", () => {
   it("paces in ticks, never below one", () => {
     expect(ticksPerBlock(4)).toBe(80);
     expect(ticksPerBlock(0)).toBe(1);
+  });
+});
+
+describe("repair", () => {
+  const AIR = { typeId: "minecraft:air", isAir: true, isLiquid: false };
+  const WATER = { typeId: "minecraft:water", isAir: false, isLiquid: true };
+  const STONE = { typeId: "minecraft:stone", isAir: false, isLiquid: false };
+  const POPPY = { typeId: "minecraft:poppy", isAir: false, isLiquid: false };
+  const at = (x: number, name: string, states = {}): Cell => ({ x, y: 0, z: 0, name, states });
+  it("tells the building's own block from a gap and from somebody else's", () => {
+    expect(repairStatus(at(0, "minecraft:cobblestone"), { typeId: "minecraft:cobblestone", isAir: false, isLiquid: false })).toBe("ours");
+    expect(repairStatus(at(0, "minecraft:cobblestone"), AIR)).toBe("missing");
+    expect(repairStatus(at(0, "minecraft:cobblestone"), POPPY)).toBe("missing");
+    expect(repairStatus(at(0, "minecraft:cobblestone"), STONE)).toBe("other");
+    expect(repairStatus(at(0, "minecraft:water"), WATER)).toBe("ours");
+    expect(repairStatus(at(0, "minecraft:water"), AIR)).toBe("missing");
+  });
+  it("finds the first gap from where it left off, and lists the cells another block holds", () => {
+    const cells = [at(0, "minecraft:cobblestone"), at(1, "minecraft:cobblestone"), at(2, "minecraft:oak_fence"), at(3, "minecraft:lantern", { hanging: true })];
+    const world = [STONE, { typeId: "minecraft:cobblestone", isAir: false, isLiquid: false }, AIR, AIR];
+    const first = nextRepair(cells, 0, (c) => world[c.x]);
+    expect(first.step).toEqual({ kind: "place", index: 2, cell: cells[2], item: "minecraft:oak_fence" });
+    expect(first.blocked).toEqual([cells[0]]);
+    const second = nextRepair(cells, 3, (c) => world[c.x]);
+    expect(second.step).toMatchObject({ kind: "place", index: 3, item: "minecraft:lantern" });
+    expect(second.blocked).toEqual([]);
+    expect(nextRepair(cells, 4, (c) => world[c.x]).step).toEqual({ kind: "done" });
+  });
+  it("leaves a cell it cannot see for another pass", () => {
+    const cells = [at(0, "minecraft:cobblestone"), at(1, "minecraft:cobblestone")];
+    const r = nextRepair(cells, 0, (c) => (c.x === 0 ? undefined : AIR));
+    expect(r.step).toMatchObject({ kind: "place", index: 1 });
   });
 });

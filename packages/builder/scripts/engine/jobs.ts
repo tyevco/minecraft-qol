@@ -17,9 +17,9 @@
  * `builder:resume` picks it up again.
  */
 import { BlockPermutation, system, world, type Dimension, type Entity, type Vector3 } from "@minecraft/server";
-import { catalogueEntry, plainName, type Cell } from "../core/blueprint";
+import { catalogueEntry, itemFor, plainName, type Cell } from "../core/blueprint";
 import { nextPlacement, nextRemoval, nextRepair, stillOurs, ticksPerBlock, withinReach, type Step } from "../core/job";
-import { removalOrder, worldCells } from "../core/order";
+import { companionOf, removalOrder, worldCells } from "../core/order";
 import { boxOfRecord, type BuildingRecord, type Position } from "../core/record";
 import * as chest from "./chest";
 import * as outline from "./outline";
@@ -289,7 +289,14 @@ function place(job: Job, dim: Dimension, step: Extract<Step, { kind: "place" }>)
   return true;
 }
 
-/** Put the item in the chest, then take the block; a block that is not the building's any more is left alone and skipped. */
+/**
+ * Put the item in the chest, then take the block; a block that is not the
+ * building's any more is left alone and skipped. A two-block thing (a door,
+ * a bed) comes down as a pair in one tick, its one item banked first: taking
+ * one half alone lets the game pop the other as a drop (measured: a door
+ * taken upper half first came back as no door), and the other half's own
+ * step later finds air and skips.
+ */
 function take(job: Job, dim: Dimension, step: Extract<Step, { kind: "take" }>): boolean {
   const block = dim.getBlock(step.cell);
   if (!block) {
@@ -297,20 +304,32 @@ function take(job: Job, dim: Dimension, step: Extract<Step, { kind: "take" }>): 
     return false;
   }
   if (!stillOurs(step.cell, block.typeId)) return true; // somebody else's now: skip, count the step
+  const partnerAt = companionOf(step.cell);
+  const partnerCell = partnerAt ? job.cells.find((c) => c.x === partnerAt.x && c.y === partnerAt.y && c.z === partnerAt.z) : undefined;
+  const partner = partnerCell ? dim.getBlock(partnerCell) : undefined;
+  const pair = partnerCell && partner && stillOurs(partnerCell, partner.typeId) ? { cell: partnerCell, block: partner } : undefined;
+  const item = step.item ?? (pair ? itemFor(pair.cell) : undefined);
   // A building raised free gives nothing back: nothing was taken for it.
-  if (step.item && !job.record.free) {
+  if (item && !job.record.free) {
     const c = chest.chestBeside(dim, job.record.table);
     if (!c) {
       stop(job, "the chest beside the table is gone");
       return false;
     }
-    if (!chest.giveOne(c, step.item)) {
+    if (!chest.giveOne(c, item)) {
       stop(job, "the chest is full");
       return false;
     }
   }
   try {
-    block.setType("minecraft:air");
+    // The half that carries the item goes first, then the other, in one tick.
+    if (pair && itemFor(pair.cell) && !step.item) {
+      pair.block.setType("minecraft:air");
+      block.setType("minecraft:air");
+    } else {
+      block.setType("minecraft:air");
+      pair?.block.setType("minecraft:air");
+    }
   } catch (e) {
     stop(job, `${plainName(step.cell.name)} at ${step.cell.x},${step.cell.y},${step.cell.z} would not come down (${e})`);
     return false;

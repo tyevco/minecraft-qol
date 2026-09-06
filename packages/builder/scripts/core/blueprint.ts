@@ -44,6 +44,10 @@ export const CATALOGUE: readonly CatalogueEntry[] = [
   { key: "tallfolk_well", title: "Well", description: "A cobblestone ring round water, a little roof on fence posts." },
   { key: "shared_larder", title: "Larder", description: "A stone-floored hut of chests, with a door to the south." },
   { key: "shared_wall", title: "Wall Segment", description: "Cobblestone, four high, a walkway behind and battlements on top. Segments join side by side." },
+  { key: "tallfolk_gatehouse", title: "Gatehouse", description: "A log palisade with three gates and a walkway behind. Wall segments continue it either side." },
+  { key: "tallfolk_farmhouse", title: "Farmhouse", description: "Oak and cobblestone under a dark oak gable: two beds, a table, a chest and a barrel." },
+  { key: "tallfolk_barn", title: "Barn", description: "A dark oak barn on coarse dirt, gates on the south wall, hay in the loft." },
+  { key: "shared_inn", title: "Inn", description: "Two floors, four beds up a ladder, a table by the door. Where a settlement's respawn point goes." },
 ];
 
 /** A surveyed building's key: `survey_<n>`, the n-th survey taken in this world. */

@@ -80,27 +80,35 @@ function chestTotal(test: Test): number {
 }
 
 /** How many of the well's cells stand in the world as the structure has them, and how many are wrong. */
-function compare(test: Test, rotation: StructureRotation = StructureRotation.None): { right: number; wrong: string[]; placed: number } {
-  const s = world.structureManager.get(WELL);
-  test.assert(s !== undefined, `the structure ${WELL} is not in the world's packs`);
+function compare(test: Test, rotation: StructureRotation = StructureRotation.None): { right: number; wrong: string[]; missing: string[]; placed: number } {
+  return compareAt(test, WELL, WELL_SIZE, ORIGIN, rotation);
+}
+
+/**
+ * The world at `origin` against the game's own placement of `structure` at
+ * `rotation`, taken once into memory forty blocks up. A structure saved from
+ * the world holds air as a block; the shipped one holds it as nothing.
+ */
+function compareAt(test: Test, structure: string, size0: { x: number; y: number; z: number }, origin: Vector3, rotation: StructureRotation): { right: number; wrong: string[]; missing: string[]; placed: number } {
+  const s = world.structureManager.get(structure);
+  test.assert(s !== undefined, `the structure ${structure} is not in the world's packs`);
   const dim = test.getDimension();
-  const o = test.worldBlockLocation(ORIGIN);
-  // Compare against the game's own placement of the same rotation, taken once into memory.
-  const id = `qoltest:well_${rotation}`;
+  const o = test.worldBlockLocation(origin);
+  const id = `qoltest:${structure.replace(/^[^:]+:/, "")}_${rotation}`;
   let ref = world.structureManager.get(id);
   if (!ref) {
     const far = { x: o.x, y: o.y + 40, z: o.z };
     world.structureManager.place(s!, dim, far, { rotation });
-    const size = rotation === StructureRotation.None || rotation === StructureRotation.Rotate180 ? WELL_SIZE : { x: WELL_SIZE.z, y: WELL_SIZE.y, z: WELL_SIZE.x };
+    const size = rotation === StructureRotation.None || rotation === StructureRotation.Rotate180 ? size0 : { x: size0.z, y: size0.y, z: size0.x };
     ref = world.structureManager.createFromWorld(id, dim, far, { x: far.x + size.x - 1, y: far.y + size.y - 1, z: far.z + size.z - 1 }, { includeEntities: false, saveMode: StructureSaveMode.Memory });
     for (let x = 0; x < size.x; x++) for (let y = 0; y < size.y; y++) for (let z = 0; z < size.z; z++) dim.setBlockType({ x: far.x + x, y: far.y + y, z: far.z + z }, "minecraft:air");
   }
   let right = 0, placed = 0;
   const wrong: string[] = [];
+  const missing: string[] = [];
   for (let x = 0; x < ref.size.x; x++)
     for (let y = 0; y < ref.size.y; y++)
       for (let z = 0; z < ref.size.z; z++) {
-        // A structure saved from the world holds air as a block; the shipped one holds it as nothing.
         const saved = ref.getBlockPermutation({ x, y, z });
         const want = saved && saved.type.id !== "minecraft:air" ? saved : undefined;
         const b = dim.getBlock({ x: o.x + x, y: o.y + y, z: o.z + z });
@@ -112,8 +120,9 @@ function compare(test: Test, rotation: StructureRotation = StructureRotation.Non
         }
         if (b.typeId === want.type.id && JSON.stringify(b.permutation.getAllStates()) === JSON.stringify(want.getAllStates())) right++;
         else if (!b.isAir) wrong.push(`${x},${y},${z} wants ${want.type.id} ${JSON.stringify(want.getAllStates())}, is ${b.typeId} ${JSON.stringify(b.permutation.getAllStates())}`);
+        else missing.push(`${x},${y},${z} wants ${want.type.id} ${JSON.stringify(want.getAllStates())}, is air`);
       }
-  return { right, wrong, placed };
+  return { right, wrong, missing, placed };
 }
 
 function highestPlacedLayer(test: Test): { top: number; lowestGap: number } {
@@ -310,3 +319,138 @@ registerAsync("qol", "builder_survey_makes_a_blueprint", async (test) => {
     test.assert(same === 27, `expected all 27 cells of the copy to match (the stakes' cells as air), ${same} do`);
   });
 }).maxTicks(600).structureName("qol:arena");
+
+// ---------------------------------------------------------------------------
+// Buildings wider than the eight-block arena: the sixteen-block one, its own
+// floor (the (0,*,0) column reserved as ever), the table at x = 15.
+// ---------------------------------------------------------------------------
+
+const ARENA16 = "qol:arena16";
+const TABLE16: Vector3 = { x: 15, y: 1, z: 1 };
+const CHEST16: Vector3 = { x: 15, y: 1, z: 2 };
+
+function rig16(test: Test, chest: Record<string, number> = {}): void {
+  for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) if (x !== 0 || z !== 0) test.setBlockType("minecraft:stone", { x, y: 0, z });
+  const dim = test.getDimension();
+  const here = test.worldBlockLocation(ORIGIN);
+  for (const type of ["builder:builder", "builder:waypoint"]) for (const e of dim.getEntities({ type, location: here, maxDistance: 32 })) e.remove();
+  dim.runCommand(`scriptevent builder:forget ${here.x} ${here.y} ${here.z} 32`);
+  test.setBlockType("builder:blueprint_table", TABLE16);
+  test.setBlockType("minecraft:chest", CHEST16);
+  let slot = 0;
+  for (const [item, n] of Object.entries(chest)) {
+    let left = n;
+    while (left > 0) {
+      const amount = Math.min(64, left);
+      put(test, CHEST16, new ItemStack(item, amount), slot++);
+      left -= amount;
+    }
+  }
+}
+
+function chestTotal16(test: Test): number {
+  const c = container(test, CHEST16);
+  let total = 0;
+  if (c) for (let i = 0; i < c.size; i++) total += c.getItem(i)?.amount ?? 0;
+  return total;
+}
+
+// The inn turned once by the pack against the game's Rotate90: the first
+// building with beds (direction), a ladder (facing_direction), lying logs
+// (pillar_axis) and doors, so the rotation table's unmeasured rows are
+// measured here, cell for cell. Free, since 689 items would not fit a chest.
+registerAsync("qol", "builder_turned_inn_matches_the_games_rotation", async (test) => {
+  rig16(test);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:place shared_inn ${o.x} ${o.y} ${o.z} 1 1 free`);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok"), `expected the hatch to accept the turned inn, got "${last(test)}"`);
+  const INN = { x: 11, y: 13, z: 11 };
+  test.succeedWhen(() => {
+    const r = compareAt(test, "builder:shared_inn", INN, ORIGIN, StructureRotation.Rotate90);
+    test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the game's Rotate90 inn: ${r.wrong.slice(0, 4).join("; ")}`);
+    test.assert(r.right === 688, `expected all 688 cells as the game turns them, found ${r.right}; missing: ${r.missing.slice(0, 4).join("; ")}`);
+  });
+}).maxTicks(3000).structureName(ARENA16);
+
+// The larder comes down whole: its door is two cells and one item, and its
+// five chests stand in rows that pair into double chests. Everything that
+// went in comes back and nothing more, so a popped door half or a merged
+// chest would show as a count.
+const LARDER_MATERIALS: Record<string, number> = {
+  "minecraft:spruce_planks": 69,
+  "minecraft:spruce_stairs": 48,
+  "minecraft:stone_bricks": 25,
+  "minecraft:spruce_log": 12,
+  "minecraft:chest": 5,
+  "minecraft:spruce_door": 1,
+  "minecraft:lantern": 1,
+  "minecraft:spruce_slab": 1,
+};
+registerAsync("qol", "builder_larder_comes_down_whole", async (test) => {
+  rig16(test, LARDER_MATERIALS);
+  const o = test.worldBlockLocation(ORIGIN);
+  const dim = test.getDimension();
+  dim.runCommand(`scriptevent builder:place shared_larder ${o.x} ${o.y} ${o.z} 0 1`);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok"), `expected the hatch to accept the larder, got "${last(test)}"`);
+  const LARDER = { x: 7, y: 8, z: 7 };
+  for (let t = 0; t < 1200 && compareAt(test, "builder:shared_larder", LARDER, ORIGIN, StructureRotation.None).right < 163; t += 10) await test.idle(10);
+  const built = compareAt(test, "builder:shared_larder", LARDER, ORIGIN, StructureRotation.None);
+  test.assert(built.right === 163, `expected the larder finished before taking it down, ${built.right} of 163 cells stand: ${built.wrong.slice(0, 3).join("; ")}`);
+  test.assert(chestTotal16(test) === 0, `expected the chest emptied by the build, ${chestTotal16(test)} item(s) left`);
+  dim.runCommand(`scriptevent builder:remove ${o.x + 3} ${o.y + 1} ${o.z + 3} 1`);
+  await test.idle(5);
+  test.assert(last(test).startsWith("builder:remove ok"), `expected the removal to start, got "${last(test)}"`);
+  test.succeedWhen(() => {
+    const r = compareAt(test, "builder:shared_larder", LARDER, ORIGIN, StructureRotation.None);
+    test.assert(r.placed === 0, `expected the larder gone, ${r.placed} block(s) still stand`);
+    for (const [item, n] of Object.entries(LARDER_MATERIALS)) {
+      const back = count(test, CHEST16, item);
+      test.assert(back === n, `expected ${n} ${item} back in the chest, found ${back}`);
+    }
+    const drops = dim.getEntities({ type: "minecraft:item", location: o, maxDistance: 16 }).length;
+    test.assert(drops === 0, `expected nothing on the ground, found ${drops} dropped item(s)`);
+  });
+}).maxTicks(3000).structureName(ARENA16);
+
+// A bed and a door, the two-block things, surveyed and then placed and taken
+// down: one item each into the chest, none on the ground.
+registerAsync("qol", "builder_bed_and_door_come_down_whole", async (test) => {
+  rig(test, { "minecraft:bed": 1, "minecraft:spruce_door": 1 });
+  const dim = test.getDimension();
+  // On the floor at z = 1..3: a bed lying north-south (head north) and a door facing south; stakes at the box's far corners.
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:bed", { direction: 2, head_piece_bit: true, occupied_bit: false }), { x: 1, y: 1, z: 1 });
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:bed", { direction: 2, head_piece_bit: false, occupied_bit: false }), { x: 1, y: 1, z: 2 });
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:spruce_door", { "minecraft:cardinal_direction": "south", door_hinge_bit: false, open_bit: false, upper_block_bit: false }), { x: 3, y: 1, z: 3 });
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:spruce_door", { "minecraft:cardinal_direction": "south", door_hinge_bit: false, open_bit: false, upper_block_bit: true }), { x: 3, y: 2, z: 3 });
+  test.setBlockType("builder:survey_stake", { x: 1, y: 3, z: 3 });
+  test.setBlockType("builder:survey_stake", { x: 3, y: 3, z: 1 });
+  const a = test.worldBlockLocation({ x: 1, y: 1, z: 1 });
+  const b = test.worldBlockLocation({ x: 3, y: 3, z: 3 });
+  dim.runCommand(`scriptevent builder:survey ${a.x} ${a.y} ${a.z} ${b.x} ${b.y} ${b.z}`);
+  await test.idle(5);
+  const m = /builder:survey ok: (survey_\d+) 3x3x3, (\d+) cells/.exec(last(test, { x: 1, y: 1, z: 1 }));
+  test.assert(m !== null, `expected the survey to be taken, got "${last(test, { x: 1, y: 1, z: 1 })}"`);
+  test.assert(m![2] === "4", `expected 4 cells (two bed halves, two door halves), got ${m![2]}`);
+  // Raise the copy beside the original, paid from the chest, then take it down.
+  const o = test.worldBlockLocation({ x: 1, y: 1, z: 5 });
+  dim.runCommand(`scriptevent builder:place ${m![1]} ${o.x} ${o.y} ${o.z} 0 1`);
+  await test.idle(5);
+  test.assert(last(test, { x: 1, y: 1, z: 5 }).startsWith("builder:place ok"), `expected the copy to start, got "${last(test, { x: 1, y: 1, z: 5 })}"`);
+  for (let t = 0; t < 200 && !(test.getBlock({ x: 3, y: 2, z: 7 }).typeId === "minecraft:spruce_door" && test.getBlock({ x: 1, y: 1, z: 6 }).typeId === "minecraft:bed"); t += 5) await test.idle(5);
+  test.assert(test.getBlock({ x: 1, y: 1, z: 5 }).typeId === "minecraft:bed" && test.getBlock({ x: 1, y: 1, z: 6 }).typeId === "minecraft:bed", `expected both bed halves placed, found ${test.getBlock({ x: 1, y: 1, z: 5 }).typeId} and ${test.getBlock({ x: 1, y: 1, z: 6 }).typeId}`);
+  test.assert(test.getBlock({ x: 3, y: 1, z: 7 }).typeId === "minecraft:spruce_door" && test.getBlock({ x: 3, y: 2, z: 7 }).typeId === "minecraft:spruce_door", `expected both door halves placed, found ${test.getBlock({ x: 3, y: 1, z: 7 }).typeId} and ${test.getBlock({ x: 3, y: 2, z: 7 }).typeId}`);
+  test.assert(chestTotal(test) === 0, `expected the bed and the door taken from the chest, ${chestTotal(test)} item(s) left`);
+  dim.runCommand(`scriptevent builder:remove ${o.x} ${o.y} ${o.z} 1`);
+  await test.idle(5);
+  test.assert(last(test, { x: 1, y: 1, z: 5 }).startsWith("builder:remove ok"), `expected the removal to start, got "${last(test, { x: 1, y: 1, z: 5 })}"`);
+  test.succeedWhen(() => {
+    for (const p of [{ x: 1, y: 1, z: 5 }, { x: 1, y: 1, z: 6 }, { x: 3, y: 1, z: 7 }, { x: 3, y: 2, z: 7 }]) test.assertBlockPresent("minecraft:air", p, true);
+    const bed = count(test, CHEST, "minecraft:bed");
+    const door = count(test, CHEST, "minecraft:spruce_door");
+    test.assert(bed === 1 && door === 1, `expected one bed and one door back in the chest, found ${bed} bed(s) and ${door} door(s)`);
+    const drops = dim.getEntities({ type: "minecraft:item", location: o, maxDistance: 12 }).length;
+    test.assert(drops === 0, `expected nothing on the ground, found ${drops} dropped item(s)`);
+  });
+}).maxTicks(800).structureName("qol:arena");

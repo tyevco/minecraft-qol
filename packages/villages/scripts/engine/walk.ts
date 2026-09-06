@@ -51,7 +51,10 @@ export function canStart(from: Vector3): boolean {
  * where it got to, with the walking group taken off.
  */
 export function walk(dim: Dimension, person: Entity, spot: Vector3, done: (arrived: boolean) => void): void {
-  if (!person.isValid || !canStart(spot) || active.has(person.id)) return done(false);
+  if (!person.isValid || !canStart(spot) || active.has(person.id)) {
+    log(`a walk to ${spot.x},${spot.y},${spot.z} could not start: ${!person.isValid ? "the person is gone" : active.has(person.id) ? "already walking" : "another walk is under way within earshot"}`);
+    return done(false);
+  }
   const centre = { x: spot.x + 0.5, y: spot.y, z: spot.z + 0.5 };
   const state: Walk = { spot: centre, waypoint: undefined };
   try {

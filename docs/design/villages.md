@@ -436,4 +436,10 @@ found, in buildings they raised. That is the whole loop.
    settler, a visitor comes at dawn every two or three days, its errand and
    gift tables cover all nineteen peoples, and paying raises the standing
    counter; measured headlessly in `villages-jigsaw-results.md`. Then the
-   elder, standing tiers and invite in the villages (§5, §6; issue #73).
+   ~~elder, standing tiers and invite in the villages (§5, §6)~~ built:
+   the trader is the village's voice, standing moves by gifts, errands,
+   defence and blows, a post sells at friend, and at kin a named person
+   follows the player home on the walk's waypoint and settles on a post
+   whose plaque has been turned to its job (the post item places a
+   guard's; a tap turns it). Trading and building for standing, and the
+   guest's inn, are still open (issue #73).

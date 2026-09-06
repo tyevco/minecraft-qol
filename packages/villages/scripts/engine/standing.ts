@@ -1,0 +1,163 @@
+/**
+ * Standing, carried out (docs/design/villages.md §5; the rules are in
+ * core/standing.ts). A player's standing with a people is a player dynamic
+ * property, read and written here and nowhere else. What moves it:
+ *
+ * - a gift: interacting with a person while holding an item its people
+ *   likes hands one over, +1, once per person per day;
+ * - an errand from the village's voice (the trader), +5 on payment
+ *   (engine/elder.ts), −2 when one lapses;
+ * - a monster killed by the player within reach of a guard, +1;
+ * - hitting a person, −5, and the guards within earshot come to the
+ *   player: they walk to where the blow landed (nobody targets players,
+ *   design §4; "the guards come" is that, on a family Realm).
+ *
+ * Trading (+1 a trade) and building for a people (+10) wait for a trade
+ * table and the builder; breaking a village block (−1) waits for a
+ * village to know its own blocks (issue #73).
+ */
+import { EntityComponentTypes, ItemStack, Player, world, type Container, type Entity } from "@minecraft/server";
+import { peopleName } from "../core/record";
+import * as core from "../core/standing";
+import { standingProperty } from "../core/visitors";
+import { showElder } from "./elder";
+import { PERSON } from "./post";
+import { VISITOR_TAG } from "./visitors";
+import * as walk from "./walk";
+
+const GIFTS_PROPERTY = "villages:gifts";
+const ERRAND_PROPERTY = "villages:errand.";
+const TRADER_JOB = 2;
+const GUARD_JOB = 0;
+let log: (...parts: unknown[]) => void = () => undefined;
+
+export function standingOf(player: Player, people: number): number {
+  const v = player.getDynamicProperty(standingProperty(people));
+  return typeof v === "number" ? v : 0;
+}
+
+/** Move a player's standing with a people; returns the new value. */
+export function addStanding(player: Player, people: number, delta: number): number {
+  const next = standingOf(player, people) + delta;
+  player.setDynamicProperty(standingProperty(people), next);
+  return next;
+}
+
+export function openErrand(player: Player, people: number): core.OpenErrand | undefined {
+  return core.parseErrand(player.getDynamicProperty(`${ERRAND_PROPERTY}${people}`));
+}
+
+export function setErrand(player: Player, people: number, errand: core.OpenErrand | undefined): void {
+  player.setDynamicProperty(`${ERRAND_PROPERTY}${people}`, errand ? JSON.stringify(errand) : undefined);
+}
+
+export function inventoryOf(player: Player): Container | undefined {
+  const c = player.getComponent(EntityComponentTypes.Inventory)?.container;
+  return c && c.isValid ? c : undefined;
+}
+
+export function countCarried(c: Container, typeId: string): number {
+  let n = 0;
+  for (let i = 0; i < c.size; i++) {
+    const s = c.getItem(i);
+    if (s?.typeId === typeId) n += s.amount;
+  }
+  return n;
+}
+
+/** Take `n` of `typeId` out of the inventory, the selected slot first. Returns how many were taken. */
+export function takeCarried(c: Container, typeId: string, n: number, first = -1): number {
+  let left = n;
+  const order = [first, ...Array.from({ length: c.size }, (_, i) => i)].filter((i, k, a) => i >= 0 && i < c.size && a.indexOf(i) === k);
+  for (const i of order) {
+    if (left <= 0) break;
+    const s = c.getItem(i);
+    if (s?.typeId !== typeId) continue;
+    const take = Math.min(left, s.amount);
+    c.setItem(i, s.amount > take ? new ItemStack(s.typeId, s.amount - take) : undefined);
+    left -= take;
+  }
+  return n - left;
+}
+
+export function give(player: Player, typeId: string, amount: number): void {
+  const stack = new ItemStack(typeId, amount);
+  let leftover: ItemStack | undefined = stack;
+  const c = inventoryOf(player);
+  if (c) leftover = c.addItem(stack);
+  if (leftover) player.dimension.spawnItem(leftover, player.location);
+}
+
+const peopleOf = (e: Entity): number => {
+  const p = e.getProperty("villages:people");
+  return typeof p === "number" ? p : 0;
+};
+const jobOf = (e: Entity): number => {
+  const j = e.getProperty("villages:job");
+  return typeof j === "number" ? j : 1;
+};
+
+/** A gift: one of the held item, if the person's people likes it and this person has not been given to today. Returns whether it was one. */
+function gift(player: Player, person: Entity, held: ItemStack | undefined): boolean {
+  if (!held) return false;
+  const people = peopleOf(person);
+  if (!core.likes(people).includes(held.typeId)) return false;
+  const day = world.getDay();
+  const gifts = core.parseGiftDay(player.getDynamicProperty(GIFTS_PROPERTY), day);
+  const after = core.acceptGift(gifts, person.id);
+  if (!after) {
+    player.sendMessage(`${person.nameTag || peopleName(people)} has had a gift from you today.`);
+    return true;
+  }
+  const c = inventoryOf(player);
+  if (!c || takeCarried(c, held.typeId, 1, player.selectedSlotIndex) < 1) return false;
+  player.setDynamicProperty(GIFTS_PROPERTY, JSON.stringify(after));
+  const standing = addStanding(player, people, core.STANDING_GIFT);
+  player.sendMessage(`${person.nameTag || peopleName(people)} takes the ${held.typeId.replace("minecraft:", "").replace(/_/g, " ")}. ${core.standingWords(people, standing)}`);
+  log(`${player.name} gave ${held.typeId} to ${person.nameTag}: standing with ${peopleName(people)} ${standing}`);
+  return true;
+}
+
+export function install(logger: (...parts: unknown[]) => void): void {
+  log = logger;
+  world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
+    const person = ev.target;
+    if (!person.isValid || person.typeId !== PERSON || person.hasTag(VISITOR_TAG)) return;
+    if (!(ev.player instanceof Player)) return;
+    if (gift(ev.player, person, ev.itemStack)) return;
+    if (jobOf(person) === TRADER_JOB) void showElder(ev.player, person);
+  });
+
+  // A blow on a person: standing falls, and the guards come to where it landed.
+  world.afterEvents.entityHurt.subscribe((ev) => {
+    const person = ev.hurtEntity;
+    const player = ev.damageSource.damagingEntity;
+    if (!person.isValid || person.typeId !== PERSON || !(player instanceof Player)) return;
+    const people = peopleOf(person);
+    const standing = addStanding(player, people, core.STANDING_HIT);
+    player.sendMessage(`${core.standingWords(people, standing)}`);
+    log(`${player.name} hit ${person.nameTag}: standing with ${peopleName(people)} ${standing}`);
+    const at = { x: Math.floor(player.location.x), y: Math.floor(player.location.y), z: Math.floor(player.location.z) };
+    for (const guard of person.dimension.getEntities({ type: PERSON, location: person.location, maxDistance: core.ROUSE_RANGE })) {
+      if (jobOf(guard) !== GUARD_JOB || guard.hasTag(VISITOR_TAG)) continue;
+      if (walk.canStart(at)) walk.walk(person.dimension, guard, at, () => undefined);
+    }
+  });
+
+  // A monster the player kills within reach of a guard is the village's defence.
+  world.afterEvents.entityDie.subscribe((ev) => {
+    const player = ev.damageSource.damagingEntity;
+    const dead = ev.deadEntity;
+    if (!(player instanceof Player) || !dead.matches({ families: ["monster"] })) return;
+    let guard: Entity | undefined;
+    try {
+      guard = dead.dimension.getEntities({ type: PERSON, location: dead.location, maxDistance: core.DEFENCE_RANGE, closest: 1 }).find((g) => jobOf(g) === GUARD_JOB && !g.hasTag(VISITOR_TAG));
+    } catch {
+      return;
+    }
+    if (!guard) return;
+    const people = peopleOf(guard);
+    const standing = addStanding(player, people, core.STANDING_DEFENCE);
+    log(`${player.name} killed ${dead.typeId} by a ${peopleName(people)} guard: standing ${standing}`);
+  });
+}

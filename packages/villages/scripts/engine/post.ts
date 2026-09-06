@@ -16,6 +16,7 @@
 import { system, world, type Block, type BlockCustomComponent, type Dimension, type Entity } from "@minecraft/server";
 import { decide, spawnSpot } from "../core/peopling";
 import { FRESH, JOBS, PAGE_STATE, PEOPLE_STATE, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, peopleIndex, peopleName, type Position, type PostRecord } from "../core/record";
+import * as follow from "./follow";
 import * as storage from "./storage";
 import * as trades from "./trades";
 
@@ -69,7 +70,7 @@ export function postTag(pos: Position): string {
  * would otherwise count the person lost and, a day later, spawn a second one.
  * A person found by tag is adopted: the record takes its id.
  */
-function personOf(dim: Dimension, record: PostRecord): Entity | undefined {
+export function personOf(dim: Dimension, record: PostRecord): Entity | undefined {
   if (record.entityId) {
     try {
       const e = world.getEntity(record.entityId);
@@ -138,6 +139,10 @@ function tick(block: Block, placed = false): void {
   const pos = positionOf(block);
   let record = storage.get(pos);
   if (record && placed) {
+    // The kids' own post with its plaque turned (turnPlaque sets the job on
+    // the record, then the block, so the two agree here): the same post.
+    const same = record.placedBy === PLACED_BY_PLAYER && record.job === stateOf(block, "villages:job") && record.people === peopleIndex(stateOf(block, PEOPLE_STATE), stateOf(block, PAGE_STATE));
+    if (same) return;
     retire(block.dimension, pos);
     record = undefined;
   }
@@ -182,9 +187,34 @@ function retire(dim: Dimension, pos: Position): void {
   }
 }
 
+/**
+ * A kid's post is placed with the block's default states (the item cannot
+ * choose them), so its job is chosen afterwards by tapping it: each tap
+ * turns the plaque to the next job while the post has nobody. A tap with an
+ * invited person of the post's job within reach settles them instead
+ * (engine/follow.ts). A village's post is never turned.
+ */
+function turnPlaque(block: Block, record: PostRecord): void {
+  if (record.placedBy !== PLACED_BY_PLAYER || personOf(block.dimension, record)) return;
+  const job = (record.job + 1) % JOBS.length;
+  storage.update(record, (row) => void (row.job = job));
+  try {
+    block.setPermutation(block.permutation.withState("villages:job" as never, job as never));
+  } catch (e) {
+    log(`could not turn the plaque at ${record.x},${record.y},${record.z}: ${e}`);
+    storage.update(record, (row) => void (row.job = record.job));
+  }
+}
+
 export const postComponent: BlockCustomComponent = {
   onPlace(ev) {
     tick(ev.block, true);
+  },
+  onPlayerInteract(ev) {
+    const record = storage.get(positionOf(ev.block));
+    if (!record) return;
+    if (follow.settleAt(ev.block.dimension, record, ev.player)) return;
+    turnPlaque(ev.block, record);
   },
   onTick(ev) {
     tick(ev.block);

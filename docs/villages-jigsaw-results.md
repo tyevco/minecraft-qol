@@ -446,6 +446,31 @@ villages suite:
   delivery, the standing property and the gift are in the villages README
   to confirm in game.
 
+## Invite and the plaque (design §5–6, `packages/villages`)
+
+`villages_invited_person_follows_and_settles`, on the headless GameTest
+server:
+
+- **A post item places the block's default states.** A SimulatedPlayer's
+  hand-placed post read `villages:job` 0 (a guard's) every time, which the
+  design's "a matching job block the player placed" had not allowed for
+  with one post block for four jobs. The post now turns its plaque on a
+  tap: the block's own `onPlayerInteract` **fires for a SimulatedPlayer's
+  `interactWithBlock`** (with no player in the event), the first tap set
+  the state to 1 and the block was still a post. Setting a state fires
+  the custom component's `onPlace` again as a placement; the record's job
+  is written before the block's, and a placement over a kids' record
+  whose job and people match the block is read as the same post rather
+  than retired.
+- **The follow.** A `villages:waypoint` kept at a spot, with the person in
+  its `villages:walking` group, brought the invited foxfolk from its post
+  to within three blocks of a spot six blocks away in under four seconds;
+  the same mechanism as the walk, never released. A second tap on the
+  turned post settled it: a foxfolk with `villages:kin` at the kids' post,
+  the follower gone, the village post's spot empty.
+- **Not measured**: the gift, the trader's form, the hit and the defence,
+  all of which need a real player in the event.
+
 ## How the measurement was taken, and what it cost
 
 - **Two servers, one port.** The GameTest world has the Beta APIs experiment

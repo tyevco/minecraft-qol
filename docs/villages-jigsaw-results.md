@@ -323,7 +323,9 @@ What was measured on the way:
   wait in the pack (respawn, survey, cycle, the vein's window) now treats
   a stamp ahead of the clock as elapsed. `world.getAbsoluteTime()` was
   not used instead because a world with the daylight cycle locked (a Realm
-  might) would freeze it; unmeasured, and worth a probe.
+  might) would freeze it: measured since (`villages_locked_clock_is_readable`),
+  both `getAbsoluteTime` and `getTimeOfDay` stand still with
+  `dodaylightcycle false`.
 - `Dimension.getBlocks(volume, { includeTypes }, true)` finds custom and
   vanilla types alike across a 33×17×33 survey volume in one call, and a
   log removed with `Block.setType("minecraft:air")` drops nothing, so a
@@ -445,6 +447,34 @@ villages suite:
   player into the pack, so `showForm` never runs headlessly; the errand's
   delivery, the standing property and the gift are in the villages README
   to confirm in game.
+
+## Dawn on a locked clock (design §6.1, `packages/villages`)
+
+A Realm may lock its daylight cycle, and the visitors keyed on the time
+of day entering the dawn window, which then never happens. Measured on
+the headless server (`villages_locked_clock_is_readable`): after
+`gamerule dodaylightcycle false`, `world.gameRules.doDayLightCycle` reads
+false on the stable API, and both `world.getTimeOfDay()` and
+`world.getAbsoluteTime()` are the same forty ticks later, so nothing on
+the world's clock would bring a dawn or advance `world.getDay()`. The
+fallback counts on the server's clock instead (`core/visitors.ts`
+`lockedDawn`): while the rule is off, a day of ticks from the tick the
+lock was first seen is a dawn, and the days so counted are added to the
+world's frozen day (`dayOf`), so "the next visitor on day N" still comes
+due; a tick behind the stored one is a restart and counts as the day
+elapsed, as every other wait in the pack reads a stamp ahead of the
+clock. When the rule is turned back on the tick is forgotten and the
+days kept, so the day never goes backwards.
+
+**The GameTest framework locks the daylight cycle for the duration of a
+test.** Every test in the run had the pack log "the daylight cycle is
+locked" a tick after the structure loaded and "runs again" once the test
+ended, with nothing in the suite or the runner touching the rule, and the
+console's `gamerule dodaylightcycle` read `true` between tests. Harmless
+here (a test never runs a day of ticks, and `/time add` moves the time of
+day whether or not the cycle runs, which is what
+`villages_visitor_leaves_at_dawn` relies on), but a pack that reads the
+rule sees a locked world inside any GameTest.
 
 ## Invite and the plaque (design §5–6, `packages/villages`)
 

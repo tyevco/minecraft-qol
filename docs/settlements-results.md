@@ -208,6 +208,18 @@ arena, and the larder was built and taken down whole. Three things measured:
   free-standing door placed the same way a few ticks apart survived (the
   bed-and-door test's copy). `placementOrder` now puts the other half of a
   door or a bed straight after the first (`companionOf`).
+- **A ladder on a window pane stays under `place` and pops under the
+  builder.** With the ladder-after-wall rule in, the turned inn placed 687
+  of 688: the one cell left was the ladder rung whose wall cell is one of
+  the cottage's north windows, a glass pane. `structureManager.place` sets
+  every cell at once and skips the support check; a block set on its own
+  gets it, and a pane is not a full block. So a blueprint must be buildable
+  block by block, not only placeable whole: the inn's ladder moved one block
+  west onto planks, the stonefolk watch post's window moved off its ladder's
+  wall, and `tools/structures/tests/buildable.test.ts` holds every ladder in
+  the catalogue to a full block behind it. (The villages' tallfolk and
+  catfolk inn pieces regenerate with the moved ladder; a world that has
+  already loaded them keeps the old piece, as the structure cache note says.)
 - **Taking a door's upper half first pops the lower as a drop.** The
   bed-and-door copy came down with one bed and **no door** in the chest. A
   bed's halves did not pop each other. The removal step now takes both halves

@@ -12,7 +12,7 @@
  */
 import { Player, world, type Entity } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
-import { peopleName, type PostRecord } from "../core/record";
+import { itemName, peopleName, type PostRecord } from "../core/record";
 import * as core from "../core/standing";
 import { pickErrand } from "../core/visitors";
 import * as follow from "./follow";
@@ -34,7 +34,7 @@ function postOf(elder: Entity): PostRecord | undefined {
   return record && postTag(record) === tag ? record : undefined;
 }
 
-const describe = (e: { item: string; amount: number }): string => `${e.amount} ${e.item.replace("minecraft:", "").replace(/_/g, " ")}`;
+const describe = (e: { item: string; amount: number }): string => `${e.amount} ${itemName(e.item)}`;
 
 export async function showElder(player: Player, elder: Entity): Promise<void> {
   const people = (elder.getProperty("villages:people") as number | undefined) ?? 0;
@@ -135,7 +135,7 @@ async function trade(player: Player, elder: Entity, people: number, tier: number
   if (wares.length === 0) return;
   const post = postOf(elder);
   const dim = elder.dimension;
-  const stock = post ? storehouse.stockOf(dim, post, tier, wares) : [];
+  const stock = post ? storehouse.stockOf(dim, post, tier) : [];
   const c = standing.inventoryOf(player);
   const emeralds = c ? standing.countCarried(c, core.EMERALD) : 0;
   const form = new ActionFormData().title(`${elder.nameTag || peopleName(people)}'s wares`).body(`You carry ${emeralds} emerald${emeralds === 1 ? "" : "s"}.`);
@@ -171,7 +171,7 @@ async function trade(player: Player, elder: Entity, people: number, tier: number
     if (got < w.amount) {
       storehouse.putBack(dim, chests, w.item, got);
       standing.give(player, core.EMERALD, w.price);
-      player.sendMessage(`The storehouse has less ${w.item.replace("minecraft:", "").replace(/_/g, " ")} than it did.`);
+      player.sendMessage(`The storehouse has less ${itemName(w.item)} than it did.`);
       return;
     }
   }

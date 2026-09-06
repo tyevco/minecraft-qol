@@ -1,4 +1,4 @@
-import { BlockPermutation, Direction, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
 import { WARES } from "../../../villages/scripts/core/standing";
 import { count, floor, put } from "./rig";
@@ -644,8 +644,10 @@ registerAsync("qol", "villages_trader_sells_from_the_storehouse", async (test) =
   await test.idle(5);
   put(test, C, new ItemStack("minecraft:wheat", 20));
   put(test, C, new ItemStack("minecraft:iron_pickaxe", 1), 1);
-  for (let t = 0; t < 300 && people(test).length === 0; t += 5) await test.idle(5);
-  test.assert(people(test).length === 1, `expected the trader post's person, found ${people(test).length}`);
+  // The worker's post keeps a person too, a few blocks off; only the trader's is waited on.
+  const traders = () => people(test).filter((p) => p.getProperty("villages:job") === 2);
+  for (let t = 0; t < 300 && traders().length === 0; t += 5) await test.idle(5);
+  test.assert(traders().length === 1, `expected the trader post's person, found ${traders().length}`);
   const dim = test.getDimension();
   const w = test.worldBlockLocation(AT);
   dim.runCommand(`scriptevent villages:stock ${w.x} ${w.y} ${w.z} minecraft:wheat`);
@@ -653,7 +655,10 @@ registerAsync("qol", "villages_trader_sells_from_the_storehouse", async (test) =
     const left = count(test, C, "minecraft:wheat");
     test.assert(left === 4, `expected 4 wheat left in the storehouse after a sale of 16, found ${left}`);
     test.assert(count(test, C, "minecraft:iron_pickaxe") === 1, "expected the pickaxe, which is not produce, left alone");
-    const dropped = dim.getEntities({ type: "minecraft:item", location: test.worldLocation({ x: 4.5, y: 1, z: 4.5 }), maxDistance: 4 });
-    test.assert(dropped.length >= 1, `expected the wheat dropped at the trader's post, found ${dropped.length} item(s)`);
+    const dropped = dim
+      .getEntities({ type: "minecraft:item", location: test.worldLocation({ x: 4.5, y: 1, z: 4.5 }), maxDistance: 4 })
+      .map((e) => e.getComponent(EntityComponentTypes.Item)?.itemStack)
+      .reduce((n, s) => n + (s?.typeId === "minecraft:wheat" ? s.amount : 0), 0);
+    test.assert(dropped === 16, `expected the 16 wheat dropped at the trader's post, found ${dropped}`);
   });
 }).maxTicks(600).structureName("qol:arena");

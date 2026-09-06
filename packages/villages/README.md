@@ -267,10 +267,12 @@ measurements: `docs/villages-jigsaw-results.md`.
   kind of produce (`core/standing.ts` `stockPrice`: eight logs, four
   saplings, sixteen wheat, six fish, four wool, two raw iron for two, and
   so on), each line saying how many the storehouse has. Only produce is
-  priced, so a tool or a wage the kids left in a chest is never sold; a
-  kind the fixed wares already offer is offered once, from the
-  storehouse; a kind the chests hold less than a sale's worth of is not
-  listed. A sale takes the emeralds, then the goods out of the chests
+  priced, so a tool the kids left in a chest is never sold; food is
+  produce, and the workers' wages are food, so the bread in a miner's
+  chest is for sale and a buyer can leave the miner unpaid. A kind the
+  people's own table offers is offered once, from the table at the
+  table's tier, so a Friend ware is not sold to a guest from the chests;
+  a kind the chests hold less than a sale's worth of is not listed. A sale takes the emeralds, then the goods out of the chests
   (across chests and slots), and if the chests came up short in between
   the goods go back and so do the emeralds. `/scriptevent villages:stock
   x y z [item]` lists a trader post's storehouse, or takes one sale's

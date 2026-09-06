@@ -33,6 +33,8 @@ export const PEOPLE_NAMES: Readonly<Record<(typeof PEOPLES)[number], string>> = 
   fennecfolk: "Fennecfolk", mousefolk: "Mousefolk", squirrelfolk: "Squirrelfolk", otterfolk: "Otterfolk", deerfolk: "Deerfolk",
 };
 export const peopleName = (people: number): string => PEOPLE_NAMES[PEOPLES[people] ?? "stonefolk"];
+/** An item id as a player reads it: `minecraft:oak_log` is "oak log". */
+export const itemName = (typeId: string): string => typeId.replace("minecraft:", "").replace(/_/g, " ");
 
 /**
  * The block carries the people index in two states, because a block state

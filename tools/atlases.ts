@@ -203,3 +203,12 @@ export const FURRED = layout(80, {
   tailTip: [4, 3],
   antler: [4, 4],
 });
+
+/** The builder's blueprint table: an oak table with a drafting sheet on it. */
+export const BLUEPRINT_TABLE = layout(64, {
+  top: [0, 0],
+  side: [1, 0],
+  leg: [2, 0],
+  sheet: [3, 0],
+  dark: [0, 1],
+});

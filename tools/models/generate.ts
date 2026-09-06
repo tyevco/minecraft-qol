@@ -1311,8 +1311,8 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
   return { bones, hip, shoulder, top };
 }
 
-function biped(spec: BipedSpec): void {
-  write(`${VILLAGES_MODELS}/${spec.file}.geo.json`, {
+function biped(spec: BipedSpec, dir = VILLAGES_MODELS): void {
+  write(`${dir}/${spec.file}.geo.json`, {
     identifier: spec.identifier,
     atlas: A.BIPED,
     visibleBounds: { width: 2, height: 3, offset: [0, 1, 0] },
@@ -1525,4 +1525,41 @@ write("packages/villages/resource_pack/models/blocks/post.geo.json", {
       ],
     },
   ],
+});
+
+// ---------------------------------------------------------------------------
+// Builder (packages/builder): the blueprint table, the builder's own biped
+// (the tallfolk rig in the builder's outfit; the villages person takes the
+// job over later) and the waypoint it walks to.
+// ---------------------------------------------------------------------------
+
+type BT = keyof typeof A.BLUEPRINT_TABLE.tiles;
+
+const BUILDER_MODELS = "packages/builder/resource_pack/models";
+
+write(`${BUILDER_MODELS}/blocks/blueprint_table.geo.json`, {
+  identifier: "geometry.builder_blueprint_table",
+  atlas: A.BLUEPRINT_TABLE,
+  visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "table",
+      pivot: [0, 0, 0],
+      cubes: [
+        // Four legs, a two-unit top, and a drafting sheet lying on it.
+        ...([[-8, -8], [6, -8], [-8, 6], [6, 6]] as const).map(([x, z]): Cube<BT> => ({ origin: [x, 0, z], size: [2, 12, 2], faces: { sides: "leg", up: "leg", down: "dark" } })),
+        { origin: [-8, 12, -8], size: [16, 2, 16], faces: { sides: "side", up: "top", down: "dark" } } as Cube<BT>,
+        { origin: [-6, 14, -5], size: [12, 1, 10], faces: { all: "sheet", down: "dark" } } as Cube<BT>,
+      ],
+    },
+  ],
+});
+
+biped({ file: "builder", identifier: "geometry.builder_person", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" }, `${BUILDER_MODELS}/entity`);
+
+write(`${BUILDER_MODELS}/entity/waypoint.geo.json`, {
+  identifier: "geometry.builder_waypoint",
+  atlas: A.BLUEPRINT_TABLE,
+  visibleBounds: { width: 0.1, height: 0.1, offset: [0, 0, 0] },
+  bones: [{ name: "root", pivot: [0, 0, 0], cubes: [] }],
 });

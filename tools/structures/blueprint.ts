@@ -158,6 +158,12 @@ export class Blueprint {
   /** Jigsaw markers by cell index. */
   readonly jigsaws = new Map<number, Jigsaw>();
   private readonly keys = new Map<string, number>();
+  /**
+   * Cells whose second layer is water: a fence post standing in a pond, a
+   * stair at a dock's edge. The .mcstructure's second block layer names the
+   * water palette entry there; everywhere else it is -1, "nothing".
+   */
+  readonly waterlogged = new Set<number>();
 
   constructor(
     readonly key: string,
@@ -206,7 +212,25 @@ export class Blueprint {
     const i = this.index(x, y, z);
     this.cells[i] = block === "air" ? -1 : this.paletteIndex(block, states);
     if (block !== "jigsaw") this.jigsaws.delete(i);
+    if (block === "air") this.waterlogged.delete(i);
     return this;
+  }
+
+  /** Mark a placed block as standing in water (the structure's second layer). Air cannot be waterlogged. */
+  waterlog(x: number, y: number, z: number): this {
+    const i = this.index(x, y, z);
+    if (this.cells[i]! < 0) throw new Error(`${this.key}: (${x},${y},${z}) is air and cannot be waterlogged`);
+    this.waterlogged.add(i);
+    return this;
+  }
+
+  isWaterlogged(x: number, y: number, z: number): boolean {
+    return this.waterlogged.has(this.index(x, y, z));
+  }
+
+  /** The waterlogged cells, as positions. */
+  waterloggedCells(): [number, number, number][] {
+    return [...this.waterlogged].map((i) => this.cellAt(i));
   }
 
   at(x: number, y: number, z: number): string | undefined {
@@ -422,6 +446,10 @@ export class Blueprint {
       const b = this.cellAt(i);
       out.jigsaws.set(out.index(b[0] - min[0]!, b[1] - min[1]!, b[2] - min[2]!), j);
     }
+    for (const i of this.waterlogged) {
+      const b = this.cellAt(i);
+      out.waterlogged.add(out.index(b[0] - min[0]!, b[1] - min[1]!, b[2] - min[2]!));
+    }
     return out;
   }
 
@@ -455,6 +483,11 @@ export class Blueprint {
       const [nx, nz] = map(x, z);
       out.jigsaws.set(out.index(nx, y, nz), { ...j, facing: turnFacing(j.facing, t) });
     }
+    for (const i of this.waterlogged) {
+      const [x, y, z] = this.cellAt(i);
+      const [nx, nz] = map(x, z);
+      out.waterlogged.add(out.index(nx, y, nz));
+    }
     return out;
   }
 
@@ -464,6 +497,10 @@ export class Blueprint {
     for (const [i, j] of other.jigsaws) {
       const [x, y, z] = other.cellAt(i);
       this.jigsaws.set(this.index(x + ox, y + oy, z + oz), j);
+    }
+    for (const i of other.waterlogged) {
+      const [x, y, z] = other.cellAt(i);
+      this.waterlogged.add(this.index(x + ox, y + oy, z + oz));
     }
     return this;
   }
@@ -502,7 +539,12 @@ export class Blueprint {
     const [sx, sy, sz] = this.size;
     const count = sx * sy * sz;
     const indices: Tag[] = new Array<Tag>(count);
+    // The second layer: the water palette entry under a waterlogged block,
+    // -1 ("nothing") everywhere else. Water joins the palette only if a
+    // cell asks for it, so a dry building's palette is unchanged.
+    const water = this.waterlogged.size ? this.paletteIndex("water", {}) : -1;
     const waterlogged: Tag[] = new Array<Tag>(count).fill(int(-1));
+    for (const i of this.waterlogged) waterlogged[i] = int(water);
     for (let i = 0; i < count; i++) indices[i] = int(this.cells[i]!);
     const palette = this.palette.length
       ? this.palette

@@ -1584,3 +1584,82 @@ export function tailTile(fur: Fur): Canvas {
   if (fur.markings.includes("stripes")) for (const y of [3, 7, 11]) c.fill(0, y, 16, 1, stripeColour(fur.coat));
   return c;
 }
+
+// ---------------------------------------------------------------------------
+// Builder (docs/design/settlements.md §5): the blueprint table and the
+// blueprint item. Blue paper, white lines, a house drawn on it.
+// ---------------------------------------------------------------------------
+
+const PAPER_BLUE = 0x2f5f9e;
+const PAPER_LINE = 0xbcd6f2;
+
+/** A drafting sheet: blue paper with a faint grid and a house in white lines. */
+export function draftingSheet(): Canvas {
+  const c = tile().fill(0, 0, 16, 16, PAPER_BLUE);
+  for (let i = 0; i < 16; i += 4) c.fill(i, 0, 1, 16, mix(PAPER_BLUE, PAPER_LINE, 0.18)).fill(0, i, 16, 1, mix(PAPER_BLUE, PAPER_LINE, 0.18));
+  return c.art(
+    3,
+    3,
+    [
+      "....ww....", //
+      "...w..w...",
+      "..w....w..",
+      ".wwwwwwww.",
+      ".w......w.",
+      ".w.ww.w.w.",
+      ".w.ww.w.w.",
+      ".w....w.w.",
+      ".wwwwwwww.",
+    ],
+    { ".": "transparent", w: PAPER_LINE },
+  );
+}
+
+/** The blueprint item: a rolled sheet of blue paper, the house showing on the open end. */
+export function blueprintIcon(): Canvas {
+  return tile().art(
+    1,
+    2,
+    [
+      "..............", //
+      ".pppppppppppp.",
+      "pbbbbbbbbbbbbP",
+      "pbwbbbbwwbbbbP",
+      "pbbbbbwbbwbbbP",
+      "pbwbbwwwwwwbbP",
+      "pbbbbwbwwbwbbP",
+      "pbwbbwbwwbwbbP",
+      "pbbbbwwwwwwbbP",
+      "pbwbbbbbbbbbbP",
+      "pbbbbbbbbbbbbP",
+      ".pppppppppppp.",
+      "..............",
+    ],
+    { ".": "transparent", p: mix(PAPER_BLUE, 0x000000, 0.35), P: mix(PAPER_BLUE, 0x000000, 0.5), b: PAPER_BLUE, w: PAPER_LINE },
+  );
+}
+
+/** Builder: a table with a blue sheet on it, and a wall going up beside it. */
+export function iconBuilder(): Canvas {
+  return iconGround(0x1e3350).art(
+    1,
+    1,
+    [
+      "..............", //
+      "..........cc..",
+      "..........cc..",
+      "........cccc..",
+      "........cccc..",
+      ".bbbbbb.cccc..",
+      ".bwwwwb.cccc..",
+      ".bwbbwb.......",
+      ".bwwwwb.......",
+      "oooooooo......",
+      ".o....o.......",
+      ".o....o.......",
+      ".o....o.......",
+      "..............",
+    ],
+    { ".": "transparent", b: PAPER_BLUE, w: PAPER_LINE, o: OAK.mid, c: STONE.mid },
+  );
+}

@@ -1,0 +1,7 @@
+{
+  "resource_pack_name": "builder",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "builder:blueprint": { "textures": "textures/items/blueprint" }
+  }
+}

@@ -4,7 +4,10 @@
 
 Companion to `design/npcs.md` · Draft v0.1
 
-> Planned, not built. Every building here exists as a generated blueprint
+> The catalogue is designed, not built; **§5, the builder, is built as a
+> prototype** in `packages/builder` (the table, three blueprints, the
+> checks, a builder that places and takes down), with §8 measured in
+> `docs/settlements-results.md`. Every building here exists as a generated blueprint
 > under `concepts/structures/` (a `.mcstructure` the game could place and a
 > preview the viewer draws under `concept · <people> buildings`, with a
 > cutaway slider). The viewer draws them in the game's own block textures,
@@ -369,30 +372,46 @@ default red; that is fine.
 
 ## 8. Must prototype
 
-1. **`Structure.getBlockPermutation` on a shipped `.mcstructure`** returns
+Measured in `docs/settlements-results.md` with `qolprobe:blueprint` and the
+builder pack's GameTests; struck through as answered.
+
+1. ~~**`Structure.getBlockPermutation` on a shipped `.mcstructure`** returns
    every block, including furniture and states, in the stable API. The whole
-   scheme rests on this; probe it first with `qolprobe:blueprint`.
-2. **A generated `.mcstructure` loads.** `tools/structures/nbt.ts` writes
+   scheme rests on this; probe it first with `qolprobe:blueprint`.~~ Yes:
+   77, 163 and 102 cells for the well, larder and wall, every state and the
+   engine's aliases besides; air is undefined.
+2. ~~**A generated `.mcstructure` loads.** `tools/structures/nbt.ts` writes
    the arena for GameTest already; a building with a real palette and
    states has not been loaded. Place `settlements:tallfolk_well` with
-   `/structure load` and compare with the preview.
-3. **Rotation of states** when placing block by block: which state names
+   `/structure load` and compare with the preview.~~ `place` matches the
+   file cell for cell for all three.
+3. ~~**Rotation of states** when placing block by block: which state names
    need rotating (`direction`, `facing_direction`, `weirdo_direction`,
    `minecraft:cardinal_direction`, `pillar_axis`, the wall joins) and how
-   the values map; and that the §6 meanings hold at all.
+   the values map; and that the §6 meanings hold at all.~~ The generator's
+   tables are the game's for stairs and doors (222 and 6 of 6), the aliases
+   follow, and the turned box keeps its corner on the origin. Wall joins
+   (only `none` occurs), a lying log, a bed and a ladder are still the
+   table's assumption.
 4. **Walking to a placement spot**: a `home` that moves per block, or a
-   `teleport` step per placement, and how it reads (§4 of `npcs.md`).
-5. **Water under stilts**: whether `setPermutation` over water leaves the
+   `teleport` step per placement, and how it reads (§4 of `npcs.md`). The
+   prototype reuses the villages' measured `follow_mob` waypoint and does not
+   wait on it; how it reads needs a client.
+5. ~~**Water under stilts**: whether `setPermutation` over water leaves the
    water in the neighbours and whether the `waterlogged` list in the
-   structure is honoured by `place`.
+   structure is honoured by `place`.~~ Both: neighbours stay water, a block
+   set over water is waterlogged on its own, and the second layer is
+   honoured.
 
 ## 9. Where this goes next
 
-1. Probe §8.1 and §8.2, record the results in `docs/settlements-results.md`.
-2. Blueprint table, blueprint items, the placer's pure checks (§5.2) under
+1. ~~Probe §8.1 and §8.2, record the results in `docs/settlements-results.md`.~~
+2. ~~Blueprint table, blueprint items, the placer's pure checks (§5.2) under
    test, and a builder that places from the chest. Three blueprints to
-   start: well, larder, wall segment. They are small and have no stand-ins.
-3. Confirm the state meanings in §6 with the well, larder and wall segment
-   placed by `/structure load`; fix any that read wrong.
+   start: well, larder, wall segment. They are small and have no stand-ins.~~
+   Built as `packages/builder`, a pack of its own until the villages'
+   builder job takes it over; remove too, repair and survey filed as issues.
+3. ~~Confirm the state meanings in §6 with the well, larder and wall segment
+   placed by `/structure load`; fix any that read wrong.~~ None read wrong.
 4. The rest of the catalogue, one people at a time, in the order the kids
    want to live in them.

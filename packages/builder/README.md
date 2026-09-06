@@ -83,6 +83,15 @@ palette swaps wait on that.
   stairs, 6 door halves, the corner staying on the origin); blocks set over
   water are waterlogged on their own and the structure's second layer is
   honoured.
+- **Seen on a client** (the first in-game look): the builder appears at
+  the table, walks to the well and places it, in the blue outfit with the
+  hammer showing. Two things came of it: the well's first layer sits in the
+  turf and could not be seen going in, so a job now pulses sparks
+  (`minecraft:endrod`) round the box's edges every second while it runs and
+  the chat names the corner, the extent and the door's facing; and the
+  hammer hung head-down along the forearm, so the rig gained an upright
+  grip (`toolUp` in `tools/models/generate.ts`), used by the builder only
+  until the villages' people are looked at the same way.
 - Five GameTests pass headlessly (`suites/builder.ts`): the well goes up
   block by block and matches the structure cell for cell, materials gone
   from the chest; a stone in the way is refused by name and position; a
@@ -105,11 +114,14 @@ issue #79; paste what you see there.
   (yaw 0 is taken as south).
 - **The empty-hand form** lists this table's buildings with "Take down" and
   "Carry on", and a visitor is turned away with the panel at its default.
-- **The builder's look**: a tallfolk in the blue builder's outfit, straw
-  hat hidden, pack and tool showing, idle and walk animations on its own
-  rig. If it is invisible, the render controller or the client entity's
-  geometry name is wrong; if it does not swing while placing, the
-  `builder:working` property is not reaching the client.
+- **The builder's look**, seen once: a tallfolk in the blue outfit, hammer
+  showing. Still to judge: the hat hidden, the pack on its back, the swing
+  while placing (`builder:working` reaching the client), and the hammer now
+  held upright.
+- **The outline**: sparks round the box just above the footing and up its
+  corners, every second while the builder works, and the chat line naming
+  the corner and extent. If they cannot be seen in daylight, `PARTICLE` in
+  `engine/outline.ts` is the one name to change.
 - **The walk reads as building**: the builder arrives at the cell before
   or as the block appears at four seconds a block, and does not end up
   inside the wall it is building. If it lags, `PATIENCE` in `engine/jobs.ts`

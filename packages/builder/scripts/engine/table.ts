@@ -14,7 +14,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import { roleOf } from "@qol/shared/engine/roles";
 import { catalogueEntry, keyOfBlueprintItem } from "../core/blueprint";
 import { sameTable, type BuildingRecord } from "../core/record";
-import { rotationFromYaw } from "../core/rotate";
+import { doorFacing, rotationFromYaw } from "../core/rotate";
 import { mayBuild } from "../core/settings";
 import * as jobs from "./jobs";
 import * as placing from "./placing";
@@ -54,7 +54,8 @@ async function blueprintForm(player: Player, table: Block, key: string): Promise
     return;
   }
   storage.put(again.record);
-  if (jobs.start(again.record)) tell(player, `The builder starts on the ${title}.`);
+  const b = again.record;
+  if (jobs.start(b)) tell(player, `The builder starts on the ${title} at ${b.x},${b.y},${b.z}: ${b.sx} east by ${b.sz} south, ${b.sy} high, the door facing ${doorFacing(b.rotation)}. The sparks mark its edges; the first layer sits in the ground.`);
   else tell(player, `The builder could not start on the ${title}; see the content log.`);
 }
 

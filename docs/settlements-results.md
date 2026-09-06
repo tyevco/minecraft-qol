@@ -186,6 +186,34 @@ Built after the placer was measured, pinned by two more GameTests:
   in the verdict is whatever number the world is up to; the test reads it
   off the verdict rather than assuming 1.
 
+## Four more blueprints, and the two-block things
+
+The gatehouse, farmhouse, barn and inn joined the pack (the bridge span
+waits on a rule for water under a footing, the field on farmland and wheat
+having no item of their own). The inn is the first building with beds, a
+ladder, lying logs and doors, so it was placed turned once by the pack and
+compared with `structureManager.place` at `Rotate90` in a sixteen-block
+arena, and the larder was built and taken down whole. Three things measured:
+
+- **A ladder set against air pops.** The turned inn placed 685 of 688
+  cells: its ladder, facing west after the turn with its wall to the east,
+  came three cells before the wall in the west-to-east order and was gone by
+  the time the wall stood. `placementOrder` now puts a cell after the block
+  it leans on (`leansOn` in `core/order.ts`: a ladder's wall from its
+  `facing_direction`), which also takes it down before the wall.
+- **A lone door half in a wall is taken off by the next neighbour update.**
+  The larder built 161 of 163 cells: the door's lower half went in with its
+  layer, the wall blocks placed beside it a layer before the upper half
+  arrived gave it an update, and the game removed the half-door. A
+  free-standing door placed the same way a few ticks apart survived (the
+  bed-and-door test's copy). `placementOrder` now puts the other half of a
+  door or a bed straight after the first (`companionOf`).
+- **Taking a door's upper half first pops the lower as a drop.** The
+  bed-and-door copy came down with one bed and **no door** in the chest. A
+  bed's halves did not pop each other. The removal step now takes both halves
+  of a pair in one tick, the pair's one item banked first, and the other
+  half's own step later finds air and skips.
+
 ## The walk (§8.4)
 
 Not measured for its own sake. The builder is a `builder:builder` biped

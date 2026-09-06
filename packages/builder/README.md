@@ -9,16 +9,19 @@ job in the villages pack takes it over. Measurements:
 
 ## What is built
 
-- **Three blueprints**, written by the structure generator into
-  `behavior_pack/structures/builder/` as `builder:tallfolk_well`,
-  `builder:shared_larder` and `builder:shared_wall`, from the same source as
-  the catalogue (`tools/structures/buildings.ts`, `builderBlueprint` in
-  `generate.ts`). The larder's job post is left out: it is the villages
-  pack's block, and a block the world does not know is dropped from a
-  structure on load. One **blueprint item** per building
-  (`builder:blueprint_<key>`, a plain item with the `builder:blueprint`
-  custom component naming the key), in the creative menu under crafting.
-  The trader will sell them (#73).
+- **Seven blueprints**, written by the structure generator into
+  `behavior_pack/structures/builder/` as `builder:<key>` from the same
+  source as the catalogue (`tools/structures/buildings.ts`,
+  `builderBlueprint` in `generate.ts`): the tallfolk well, gatehouse,
+  farmhouse and barn, and the shared larder, wall segment and inn. Each
+  building's job post is left out: it is the villages pack's block, and a
+  block the world does not know is dropped from a structure on load. One
+  **blueprint item** per building (`builder:blueprint_<key>`, a plain item
+  with the `builder:blueprint` custom component naming the key), in the
+  creative menu under crafting. The trader will sell them (#73). Not
+  shipped yet: the bridge span, whose footing is water (`grounded` refuses
+  water under a footing until the reedfolk's stilts get their own rule), and
+  the field, whose farmland and wheat have no item of their own to charge.
 - **The blueprint table** (`builder:blueprint_table`): an oak table with a
   drafting sheet on it, the `builder:table` custom component. Tap it
   **holding a blueprint** and a form shows the building, its size after
@@ -43,13 +46,16 @@ job in the villages pack takes it over. Measurements:
   `builder:waypoint` its `follow_mob` group follows, the villages' measured
   mechanism, and puts one block down every N seconds (the panel's slider,
   default 4), **bottom layer up, far corner toward the door, water last in
-  its layer**. Each block costs one item taken from the chest in the same
+  its layer**, a ladder after the wall it leans on and the second half of a
+  door or a bed straight after the first (both measured to pop otherwise). Each block costs one item taken from the chest in the same
   step; a cell the structure waterlogs is waterlogged after it is set. The
   walk is best effort: a cell out of reach waits two beats and is then
   placed regardless, so the pace never hangs on pathfinding.
 - **Remove**: the same list backwards, an attached block before its support
   (a hanging lantern before the roof it hangs from, or the game pops it onto
-  the ground), each block's item into the chest **before** the block goes. A
+  the ground), a door's or a bed's two halves in one tick with their one item
+  banked first (taking the upper half alone dropped the door; measured),
+  each block's item into the chest **before** the block goes. A
   block that is no longer the building's (a different type stands there) is
   left alone and skipped. If the chest is gone, short or full the job stops
   where it is and says so; the record keeps its progress.

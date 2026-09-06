@@ -105,6 +105,20 @@ export const WARES: readonly (readonly Ware[])[] = [
   [ware("apple", 8, 1), ware("oak_sapling", 4, 1), ware("birch_sapling", 4, 1), ware("moss_block", 8, 1, FRIEND)], // deerfolk
 ];
 
+/**
+ * The inn (§5's table: at Guest "the inn lets you sleep"): a bed inside a
+ * village's hull is the village's, and a stranger may not use it. A guest
+ * sleeping there gets the game's own respawn point, as at any bed, so the
+ * village is the Hearthstone-style respawn the design wanted with nothing
+ * set from script.
+ */
+export const BED = "minecraft:bed";
+export const mayRest = (tier: number): boolean => tier >= GUEST;
+export function restWords(people: number, standing: number): string {
+  const who = PEOPLE_NAMES[PEOPLES[people] ?? "stonefolk"];
+  return tierOf(standing) === UNWELCOME ? `The ${who} would not have you under their roof; make amends first.` : `The ${who} keep their beds for guests; they do not know you yet.`;
+}
+
 /** The wares a people shows a player of this tier: none below Guest. */
 export function wares(people: number, tier: number): readonly Ware[] {
   if (tier < GUEST) return [];

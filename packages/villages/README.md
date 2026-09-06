@@ -233,6 +233,14 @@ measurements: `docs/villages-jigsaw-results.md`.
   `/scriptevent villages:standing [people [value]]` (operator) reads the
   caller's standing with every people back in numbers and tiers, or sets
   one: the testers' hatch, since the game never shows the number.
+- **The inn** (design §5's table: at guest "the inn lets you sleep"):
+  every people's house has a bed, and a bed inside a village's hull is
+  the village's. A stranger's tap on one is cancelled in the before-event
+  with a word ("The Foxfolk keep their beds for guests; they do not know
+  you yet"; the unwelcome are told to make amends); a guest's goes
+  through to the game, which sets the respawn point as at any bed, so
+  the village is the Hearthstone-style respawn the design wanted with
+  nothing set from script.
 - **The village's voice** (design §5–6, `scripts/engine/elder.ts`) is its
   **trader**: interact and a form says where the player stands, offers an
   errand from the people's table (one open per player per people, three
@@ -502,7 +510,9 @@ measurements: `docs/villages-jigsaw-results.md`.
   guest (the emeralds leave, the goods arrive, the fifth trade of a day
   with a people says nothing of standing); breaking a village's plank or
   lantern (−1 and a line; the dirt under it, a tree beside it or a torch
-  you placed, nothing); hitting a person
+  you placed, nothing); a village bed as a stranger (turned away with a
+  word, nothing set) and as a guest (the game's own respawn point, and
+  you come back there when you die); hitting a person
   (−5, and the guards walk to where you stood); a zombie killed by a
   guard (+1); and at kin the invite's two forms, the follow behind you
   through a real village, and the settle by tapping your own post. If the
@@ -623,9 +633,9 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): building for a people and the guest tier's
-inn (a Hearthstone-style respawn point); the trader's blueprints wait for
-the builder (`docs/design/settlements.md`), and the wares are a fixed
-table per people rather than the village's own storehouse (issue #85).
+Not yet built (design §5–6): building for a people, and the trader's
+blueprints, which wait for the builder (`docs/design/settlements.md`);
+the wares are a fixed table per people rather than the village's own
+storehouse (issue #85).
 A kid's own house within twenty blocks of a village's plaques is inside
 the hull, so build a little further off or expect the village to mind.

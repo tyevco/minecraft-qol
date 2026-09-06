@@ -451,5 +451,6 @@ found, in buildings they raised. That is the whole loop.
    guard's; a tap turns it). Trading is the trader's form: the people's
    wares for emeralds at guest, the fourth at friend, +1 for the first
    four trades a day. Breaking a village's block is −1 inside a hull
-   round its posts, natural blocks free. Building for standing and the
-   guest's inn are still open (issue #73).
+   round its posts, natural blocks free. The inn is any bed in that hull:
+   a stranger is turned away, a guest sleeps and the game sets the respawn
+   point. Building for standing is still open (issue #73, #80).

@@ -18,6 +18,11 @@
  *   the hull round a village's posts (core.villageOf), and not one the
  *   player placed there this session.
  *
+ * And what standing opens here: a village's bed (any bed inside the hull)
+ * is the inn, for guests and up; a stranger's use of it is cancelled in
+ * the before-event with a word, and a guest's goes through to the game,
+ * which sets the respawn point as at any bed.
+ *
  * Building for a people (+10) waits for the builder (issue #80).
  *
  * `/scriptevent villages:standing [people [value]]` (operator) reads the
@@ -164,6 +169,21 @@ export function install(logger: (...parts: unknown[]) => void): void {
       return `${PEOPLES[i]} ${s} (${core.TIERS[core.tierOf(s)]})`;
     });
     player.sendMessage(`[Villages] ${player.name}'s standing: ${lines.join("; ")}`);
+  });
+  world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
+    if (!ev.isFirstEvent || !ev.block.isValid || ev.block.typeId !== core.BED) return;
+    const player = ev.player;
+    if (!(player instanceof Player)) return;
+    const at = { dimId: ev.block.dimension.id, x: ev.block.x, y: ev.block.y, z: ev.block.z };
+    const village = core.villageOf(storage.all(), at);
+    if (!village) return;
+    const s = standingOf(player, village.people);
+    if (core.mayRest(core.tierOf(s))) return;
+    ev.cancel = true;
+    system.run(() => {
+      player.sendMessage(core.restWords(village.people, s));
+      log(`${player.name} was turned away from a bed of the ${peopleName(village.people)}: standing ${s}`);
+    });
   });
   world.afterEvents.playerPlaceBlock.subscribe((ev) => {
     const at = { dimId: ev.dimension.id, x: ev.block.location.x, y: ev.block.location.y, z: ev.block.location.z };

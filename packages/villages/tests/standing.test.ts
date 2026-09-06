@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FRESH, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, type PostRecord } from "../scripts/core/record";
 import {
   ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, VILLAGE_ABOVE, VILLAGE_BELOW, VILLAGE_HULL, WARES,
-  acceptGift, countTrade, elderOffer, inviteCandidate, isNatural, lapsed, likes, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, standingWords, tierOf, villageOf, wares,
+  acceptGift, countTrade, elderOffer, inviteCandidate, isNatural, lapsed, likes, mayRest, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, restWords, standingWords, tierOf, villageOf, wares,
 } from "../scripts/core/standing";
 
 const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 9, job: 2, ...FRESH, ...extra });
@@ -114,6 +114,14 @@ describe("standing", () => {
       expect(isNatural(`minecraft:${id}`), id).toBe(false);
     }
     expect(isNatural("villages:post")).toBe(false);
+  });
+  it("a village's bed is for guests and up; a stranger and the unwelcome are turned away in different words", () => {
+    expect(mayRest(UNWELCOME)).toBe(false);
+    expect(mayRest(STRANGER)).toBe(false);
+    expect(mayRest(GUEST)).toBe(true);
+    expect(mayRest(KIN)).toBe(true);
+    expect(restWords(9, 0)).toBe("The Foxfolk keep their beds for guests; they do not know you yet.");
+    expect(restWords(9, -3)).toContain("amends");
   });
   it("names the nearest present person of the job in the elder's own village, never the elder", () => {
     const elder = post(0, 0);

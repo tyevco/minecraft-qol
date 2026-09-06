@@ -303,6 +303,7 @@ packIcon("packages/guardian", T.iconGuardian(), false);
 packIcon("packages/fluidworks", T.iconFluidworks());
 packIcon("packages/bulwark", T.iconBulwark());
 packIcon("packages/hatchling", T.iconHatchling());
+packIcon("packages/villages", T.iconVillages());
 packIcon("packages/gametest", T.iconGametest(), false);
 write("packages/probe/pack_icon.png", T.iconProbe().scale(ICON_SCALE));
 

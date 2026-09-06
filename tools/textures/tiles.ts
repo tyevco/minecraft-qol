@@ -1293,6 +1293,31 @@ export function iconHatchling(): Canvas {
   );
 }
 
+/** Villages: a thatched cottage with a lit window, and the job post beside it. */
+export function iconVillages(): Canvas {
+  return iconGround(0x2e4a63).art(
+    1,
+    1,
+    [
+      "....tt........", //
+      "...tTTt.......",
+      "..tTTTTt......",
+      ".tTTTTTTt.....",
+      "tTTTTTTTTt.ppp",
+      ".wwwwwwww..pPp",
+      ".wwYYwwww..ppp",
+      ".wwYYwwdd...o.",
+      ".wwwwwwdd...o.",
+      ".wwwwwwdd...o.",
+      ".wwwwwwdd...o.",
+      ".wwwwwwdd...o.",
+      "gggggggggggggg",
+      "GgGGgGgGGgGgGG",
+    ],
+    { ".": "transparent", t: STRAW.dark, T: STRAW.mid, w: OAK.mid, Y: STRAW.light, d: OAK.deep, p: DARK_STONE.dark, P: DARK_STONE.mid, o: OAK.dark, g: 0x4a7030, G: 0x5d8a3a },
+  );
+}
+
 /** GameTests: a flask with a tick. */
 export function iconGametest(): Canvas {
   return iconGround(0x1f3a2a).art(

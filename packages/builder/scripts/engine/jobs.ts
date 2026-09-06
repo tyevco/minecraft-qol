@@ -227,8 +227,10 @@ function tick(job: Job): void {
 
 /** Take the item, then set the block; if the block cannot be set, the item goes back. Returns whether the step counts. */
 function place(job: Job, dim: Dimension, step: Extract<Step, { kind: "place" }>): boolean {
-  const c = chest.chestBeside(dim, job.record.table);
-  if (!c) {
+  // A free building costs nothing and needs no chest.
+  const item = job.record.free ? undefined : step.item;
+  const c = item ? chest.chestBeside(dim, job.record.table) : undefined;
+  if (item && !c) {
     stop(job, "the chest beside the table is gone");
     return false;
   }
@@ -237,15 +239,15 @@ function place(job: Job, dim: Dimension, step: Extract<Step, { kind: "place" }>)
     stop(job, `${step.cell.x},${step.cell.y},${step.cell.z} is not loaded`);
     return false;
   }
-  if (step.item && !chest.takeOne(c, step.item)) {
-    stop(job, `the chest is out of ${plainName(step.item)}`);
+  if (item && c && !chest.takeOne(c, item)) {
+    stop(job, `the chest is out of ${plainName(item)}`);
     return false;
   }
   try {
     block.setPermutation(BlockPermutation.resolve(step.cell.name, step.cell.states));
     if (step.cell.waterlogged) block.setWaterlogged(true);
   } catch (e) {
-    if (step.item) chest.giveOne(c, step.item);
+    if (item && c) chest.giveOne(c, item);
     stop(job, `${plainName(step.cell.name)} could not be placed at ${step.cell.x},${step.cell.y},${step.cell.z} (${e})`);
     return false;
   }
@@ -260,7 +262,8 @@ function take(job: Job, dim: Dimension, step: Extract<Step, { kind: "take" }>): 
     return false;
   }
   if (!stillOurs(step.cell, block.typeId)) return true; // somebody else's now: skip, count the step
-  if (step.item) {
+  // A building raised free gives nothing back: nothing was taken for it.
+  if (step.item && !job.record.free) {
     const c = chest.chestBeside(dim, job.record.table);
     if (!c) {
       stop(job, "the chest beside the table is gone");

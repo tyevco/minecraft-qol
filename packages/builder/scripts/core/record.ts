@@ -8,7 +8,7 @@
 import type { Box } from "./checks";
 import type { Rotation } from "./rotate";
 
-export const SCHEMA = 1;
+export const SCHEMA = 2;
 
 export interface Position {
   dimId: string;
@@ -32,23 +32,26 @@ export interface BuildingRecord extends Position {
   done: number;
   /** The blueprint table the job was started from; its chest pays for and takes back the blocks. */
   table: { x: number; y: number; z: number };
+  /** Raised with the free-build toggle on: nothing was taken, so nothing comes back. */
+  free: boolean;
 }
 
-export type Row = [string, number, number, number, string, number, number, number, number, number, number, number, number, number];
+export type Row = [string, number, number, number, string, number, number, number, number, number, number, number, number, number, number];
 
 export function packRecord(r: BuildingRecord): Row {
-  return [r.dimId, r.x, r.y, r.z, r.key, r.rotation, r.sx, r.sy, r.sz, PHASES.indexOf(r.phase), r.done, r.table.x, r.table.y, r.table.z];
+  return [r.dimId, r.x, r.y, r.z, r.key, r.rotation, r.sx, r.sy, r.sz, PHASES.indexOf(r.phase), r.done, r.table.x, r.table.y, r.table.z, r.free ? 1 : 0];
 }
 
 const int = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
 
 export function unpackRecord(packed: unknown): BuildingRecord | undefined {
   if (!Array.isArray(packed) || packed.length < 14) return undefined;
-  const [dimId, x, y, z, key, rotation, sx, sy, sz, phase, done, tx, ty, tz] = packed as unknown[];
+  // A schema-1 row has no `free` column: it was paid for.
+  const [dimId, x, y, z, key, rotation, sx, sy, sz, phase, done, tx, ty, tz, free = 0] = packed as unknown[];
   if (typeof dimId !== "string" || typeof key !== "string") return undefined;
   if (!int(x) || !int(y) || !int(z) || !int(rotation) || !int(sx) || !int(sy) || !int(sz) || !int(phase) || !int(done) || !int(tx) || !int(ty) || !int(tz)) return undefined;
   if (rotation < 0 || rotation > 3 || phase < 0 || phase >= PHASES.length) return undefined;
-  return { dimId, x, y, z, key, rotation: rotation as Rotation, sx, sy, sz, phase: PHASES[phase]!, done, table: { x: tx, y: ty, z: tz } };
+  return { dimId, x, y, z, key, rotation: rotation as Rotation, sx, sy, sz, phase: PHASES[phase]!, done, table: { x: tx, y: ty, z: tz }, free: free === 1 || free === true };
 }
 
 export const boxOfRecord = (r: BuildingRecord): Box => ({ x: r.x, y: r.y, z: r.z, sx: r.sx, sy: r.sy, sz: r.sz });

@@ -7,7 +7,8 @@ describe("settings", () => {
     expect(parsePolicy({ "builder:seconds_per_block": "fast", "builder:who_may_build": 3 })).toEqual(DEFAULT_POLICY);
   });
   it("reads and clamps the panel", () => {
-    expect(parsePolicy({ "builder:seconds_per_block": 2.6, "builder:who_may_build": "everyone" })).toEqual({ secondsPerBlock: 3, whoMayBuild: "everyone" });
+    expect(parsePolicy({ "builder:seconds_per_block": 2.6, "builder:who_may_build": "everyone", "builder:free_build": true })).toEqual({ secondsPerBlock: 3, whoMayBuild: "everyone", freeBuild: true });
+    expect(parsePolicy({ "builder:free_build": "yes" }).freeBuild).toBe(false);
     expect(parsePolicy({ "builder:seconds_per_block": 99 }).secondsPerBlock).toBe(30);
     expect(parsePolicy({ "builder:seconds_per_block": 0 }).secondsPerBlock).toBe(1);
   });
@@ -22,5 +23,6 @@ describe("settings", () => {
     expect(samePolicy(DEFAULT_POLICY, { ...DEFAULT_POLICY })).toBe(true);
     expect(samePolicy(DEFAULT_POLICY, { ...DEFAULT_POLICY, secondsPerBlock: 5 })).toBe(false);
     expect(describePolicy(DEFAULT_POLICY)).toBe("a block every 4s, table for members");
+    expect(describePolicy({ ...DEFAULT_POLICY, freeBuild: true })).toBe("a block every 4s, table for members, buildings free");
   });
 });

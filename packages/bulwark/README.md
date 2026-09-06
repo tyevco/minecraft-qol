@@ -13,13 +13,14 @@ shipped separately** as `packages/lens`, so Bulwark is the turret alone.
 
 ## Status
 
-**Built, not yet measured in game.** Everything here compiles, bundles, and the
-pure layer is under test — but this repo's rule is that a design assumption is
-not trusted until it has been observed, and the block-to-entity pairing is the
-riskiest assumption on the roadmap. The probe protocol in
-[`docs/bulwark-turret-probe.md`](../../docs/bulwark-turret-probe.md) is the
-next step (#39): run it, write the results doc, fix whatever it finds, then run the
-GameTest suite (`/gametest runset qol`, the `turret_*` tests).
+**Built; pairing, feeding and firing measured headlessly.** The five
+`turret_*` GameTests pass on a dedicated server: a placed block grows one
+head, a removed head is replaced, a hopper feeds it, breaking it returns the
+arrows, and an armed head shoots a husk with the arrow leaving at the barrel
+([`docs/bulwark-turret-results.md`](../../docs/bulwark-turret-results.md)).
+What no simulated player can measure — persistence across unload and restart,
+head rotation as a player sees it, mob caps — is still the probe protocol in
+[`docs/bulwark-turret-probe.md`](../../docs/bulwark-turret-probe.md) (#39).
 
 What Phase 2 covers, per the design's phasing: block, paired entity,
 reconciliation, vanilla ranged AI, ammo via adjacent hopper, one tier. No
@@ -88,6 +89,16 @@ vanilla `animation.common.look_at_target`; the barrel is on that bone and
 points −z, the entity convention. The head spawns at the base's socket,
 `y + 14/16`.
 
+**The collision box is what aims the barrel.** `ranged_attack` releases the
+arrow from the entity's eye, and the eye is 0.85 × `collision_box.height`
+(measured; there is no eye-height component in the stable API). The barrel
+is drawn 5.5/16 above the origin, so the box is 0.47 tall: 0.85 × 0.47 =
+0.40 puts the eye on the barrel axis and the arrow, which spawns a hair below
+the eye and about a block forward along the aim, leaves at the muzzle. At the
+original 0.9 the shot left six pixels above the barrel. Change the barrel's
+height in `tools/models/generate.ts` and this number moves with it;
+`turret_shot_origin` fails with the measured offset if they part.
+
 ## Behaviours worth knowing
 
 - **A feeding hopper must point into the turret.** A hopper touching its side
@@ -95,16 +106,20 @@ points −z, the entity convention. The head spawns at the base's socket,
 - **Right-click with arrows loads them**; with anything else reports status:
   ammo, kills, and whether the head is armed, idle, or missing.
 - **Breaking the block returns its arrows** as items and removes the head.
-- **Range is 16 blocks, line of sight required**, 1.5 s between shots.
+- **Range is 16 blocks, line of sight required**, 1.5 s between shots. Line
+  of sight is judged from the eye, which sits at barrel height.
 - The head is disarmed on spawn, so a summoned or probe head does nothing.
 
 ## To confirm in game
 
-Everything, in the order of `docs/bulwark-turret-probe.md`: P0 (definitions
-load, a placed block grows a head), P1 (entity persistence), P2 (a stationary
-`ranged_attack` fires, and `Projectile.owner` is set on its arrows), P3 (the
-head turns), P4 (mob caps), P5 (every removal path leaves exactly one head or
-none). Each row there carries the one-line fix for its failure.
+What the headless suite cannot see, in the order of
+`docs/bulwark-turret-probe.md`: P1 (entity persistence), the rest of P2
+(`Projectile.owner` is set on its arrows, so ammo goes down; range and a
+target straight below), P3 (the head turns, and the barrel visibly points
+where the arrow goes), P4 (mob caps), P5 under a real player. P0 and the
+first half of P2 are measured: a placed block grows a head, and a stationary
+`ranged_attack` fires. Each row there carries the one-line fix for its
+failure.
 
 | Changed | Do |
 | --- | --- |

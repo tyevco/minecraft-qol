@@ -23,6 +23,10 @@ Three kinds of document live here, and they carry very different authority.
 - [`gametest-structure-results.md`](gametest-structure-results.md) — test-relative
   `(0,0,0)` is the test's own structure block; writing it kills the test. Also
   how to run the suite headlessly on a dedicated server.
+- [`bulwark-turret-results.md`](bulwark-turret-results.md) — a `ranged_attack`
+  shooter fires from its eye, and the eye is 0.85 × the collision box height;
+  the vanilla arrow's `anchor: 1` is that eye. The turret's box is sized so
+  the shot leaves at the barrel. Measured headlessly with `turret_shot_origin`.
 - [`villages-jigsaw-results.md`](villages-jigsaw-results.md) — a behavior
   pack's jigsaw structure loads, places and generates in a world with **no
   experiments** (25 wells in 400 fresh chunks, one per cell). The files live
@@ -40,7 +44,8 @@ Three kinds of document live here, and they carry very different authority.
   head rotation, mob caps, and reconciliation under fire. Built as
   `/scriptevent qolprobe:turret-*` in the probe pack, with `bulwark:debug` for
   the counters. Not a findings document until it has been run; it says so at
-  the top.
+  the top. The first half of P2 (a stationary shooter fires) and the shot's
+  origin are measured in `bulwark-turret-results.md`.
 
 ## Design docs — read with the corrections below
 
@@ -90,8 +95,9 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | "Whether `entityHurt` fires for void damage at all" (Guardian §6) | Answered at the typings: **there is no `void` in `EntityDamageCause` 2.9.0**, so the void cannot be matched by cause however the event behaves. The void catch is a teleport on its own switch, and `none` is left untouched so an unattributed source can never be cancelled into an endless fall. |
 
 **[`design/bulwark-turret.md`](design/bulwark-turret.md)** — **Phase 2 built**
-(block, paired entity, reconciliation, vanilla ranged AI, hopper ammo), not yet
-measured in game; see `bulwark-turret-probe.md`. Additional corrections: the doc
+(block, paired entity, reconciliation, vanilla ranged AI, hopper ammo). The
+pairing, hopper feed and firing are pinned by GameTests; persistence, rotation
+and mob caps still wait on `bulwark-turret-probe.md`. Additional corrections: the doc
 treats the `on_kill` fix as good news for a turret, but that fix covers **melee
 goals only**; `ranged_attack` is not in the list, so kills come from `entityDie`
 in script. And `ranged_attack.attack_interval` did not replace the min/max pair

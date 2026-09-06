@@ -72,7 +72,9 @@ never valid again would delay every respawn by two ticks for nothing.
 ## P2 — acquisition and firing from a stationary shooter
 
 *Does `ranged_attack` with `hold_position`, zero movement and no gravity
-actually fire? At what distances? Straight down?*
+actually fire? At what distances? Straight down?* That it fires at all is
+measured: `turret_shot_origin` shoots a husk four blocks out on every run.
+Distances, straight down and owner attribution are still this protocol's.
 
 ```
 /scriptevent qolprobe:turret-target    MUTATES: spawns one zombie 8 blocks
@@ -93,6 +95,7 @@ wanders in.
 | no arrows at all, head yaw changes | Targeting works, firing does not: `ranged_attack` needs a component the head lacks, or `attack_radius` is being read as a *minimum* — try `attack_range: {min: 0, max: 16}` |
 | no arrows, yaw never changes, zombie walks straight past | Acquisition failed: check `must_see` (line of sight from the head's eye height at the top of a full block), and that the zombie is loaded — the `P4` census will show it |
 | head fires at the zombie's feet / over its head | Aim leading assumes a normal mob's eye height; adjust `collision_box.height` |
+| arrows appear above the barrel | **Measured and fixed** (`bulwark-turret-results.md`): the arrow leaves from the eye, at 0.85 × the collision box height, so the box is 0.47 tall to put the eye on the barrel axis. `turret_shot_origin` pins it |
 
 Then repeat with the zombie **directly below** the turret (dig a pit) and at
 the edge of range: the design specifically flags "fast targets and targets

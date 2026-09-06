@@ -2,7 +2,10 @@ import { Player, system, world, type Entity } from "@minecraft/server";
 import { withBlock } from "@qol/shared/engine/safeBlock";
 import { AMMO_CAP } from "../core/ammo";
 import { linkKey } from "../core/record";
+import { describePolicy } from "../core/policy";
+import { describeTiers } from "../core/tiers";
 import { isTurretEntity, readArmed, readKind } from "./head";
+import * as settings from "./settings";
 import * as hooks from "./hooks";
 import * as storage from "./storage";
 import * as turret from "./turret";
@@ -22,6 +25,7 @@ const v3 = (l: { x: number; y: number; z: number }): string =>
   `${l.x.toFixed(2)},${l.y.toFixed(2)},${l.z.toFixed(2)}`;
 
 function debug(player: Player): void {
+  player.sendMessage(`§7policy: §f${describePolicy(settings.policy())}`);
   const census = hooks.headCensus();
   player.sendMessage(
     `§7records §f${storage.count()}§7, heads loaded ` +
@@ -74,6 +78,28 @@ function debug(player: Player): void {
   player.sendMessage(
     `§7nearest §f${best.key}§7 ammo §f${best.ammo}/${AMMO_CAP}§7 kills §f${best.kills}§7 head ${headState}`,
   );
+
+  // One line per turret within 64 blocks: what it holds, its tiers, and what
+  // its head is set to fire.
+  let listed = 0;
+  for (const r of storage.all()) {
+    if (r.dimId !== player.dimension.id) continue;
+    if ((r.x - at.x) ** 2 + (r.y - at.y) ** 2 + (r.z - at.z) ** 2 > 64 * 64) continue;
+    let h: Entity | undefined;
+    try {
+      h = r.entityId ? world.getEntity(r.entityId) : undefined;
+    } catch {
+      h = undefined;
+    }
+    const kind = isTurretEntity(h) ? (readArmed(h) ? (readKind(h) ?? "arrow") : "idle") : "no head";
+    player.sendMessage(
+      `§7  ${linkKey(r)} ammo §f${r.ammo}§7 kills §f${r.kills}§7 tiers §f${describeTiers(r.tiers)}§7 firing §f${kind}`,
+    );
+    if (++listed >= 12) {
+      player.sendMessage("§7  ...");
+      break;
+    }
+  }
 }
 
 function reconcileAll(player: Player): void {

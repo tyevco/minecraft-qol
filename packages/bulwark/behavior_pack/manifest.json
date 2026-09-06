@@ -1,25 +1,25 @@
 {
-  "format_version": 2,
+  "format_version": 3,
   "header": {
     "name": "Bulwark",
-    "description": "A craftable turret that shoots hostile mobs near your base, fed arrows by a hopper or by hand.",
+    "description": "A craftable turret that shoots hostile mobs near your base, fed arrows by a hopper or by hand; tipped arrows, snowballs and splash potions by hopper; upgraded one item at a time. Range cap and switches in the pack settings.",
     "uuid": "ef636387-82d2-4a7b-a1fb-b8f25e034aee",
-    "version": [0, 1, 0],
-    "min_engine_version": [1, 26, 40]
+    "version": "0.1.0",
+    "min_engine_version": "1.26.40"
   },
   "modules": [
     {
       "description": "Bulwark blocks, entities and recipes",
       "type": "data",
       "uuid": "2717e182-934d-4b13-b8d1-542e2277b925",
-      "version": [0, 1, 0]
+      "version": "0.1.0"
     },
     {
       "description": "Bulwark scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "958e67c0-3a4d-411a-a9e1-74ff044a4e64",
-      "version": [0, 1, 0],
+      "version": "0.1.0",
       "entry": "scripts/main.js"
     }
   ],
@@ -30,12 +30,52 @@
     },
     {
       "uuid": "23010022-7a90-4f23-acdf-abf72b76b5e9",
-      "version": [0, 1, 0]
+      "version": "0.1.0"
     }
   ],
   "metadata": {
-    "authors": ["Sweetpotato Games"],
+    "authors": [
+      "Sweetpotato Games"
+    ],
     "url": "https://sweetpotato.games",
     "product_type": "addon"
-  }
+  },
+  "settings": [
+    {
+      "type": "label",
+      "text": "Bulwark turrets. Everything is on by default; these are the Realm-wide switches an operator flips once."
+    },
+    {
+      "type": "dropdown",
+      "text": "Furthest any turret may reach",
+      "name": "bulwark:range_cap",
+      "options": [
+        {
+          "name": "16",
+          "text": "16 blocks (range tier I)"
+        },
+        {
+          "name": "24",
+          "text": "24 blocks (range tier II)"
+        },
+        {
+          "name": "32",
+          "text": "32 blocks (range tier III)"
+        }
+      ],
+      "default": "32"
+    },
+    {
+      "type": "toggle",
+      "text": "Hoppers may feed tipped arrows, snowballs and splash potions",
+      "name": "bulwark:special_ammo",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Turrets accept upgrade materials",
+      "name": "bulwark:upgrades",
+      "default": true
+    }
+  ]
 }

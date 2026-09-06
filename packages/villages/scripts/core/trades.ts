@@ -15,6 +15,8 @@ import { TRADES } from "./record";
 
 export type Trade = (typeof TRADES)[number];
 export const NONE = 0, LUMBERJACK = 1, FARMER = 2, MINER = 3, FISHER = 4, RANCHER = 5;
+/** The furfolk's trades (docs/design/furfolk.md §5). */
+export const FORAGER = 6, BAKER = 7, BEEKEEPER = 8, CUTTER = 9, PICKER = 10, COCOA = 11, GLEANER = 12;
 
 /** How far round the post, horizontally, the survey and the lumberjack look. */
 export const SURVEY_RANGE = 16;
@@ -103,6 +105,71 @@ export const TICKS_PER_SWING = 8;
 
 export const WATER_TYPES: readonly string[] = ["minecraft:water", "minecraft:flowing_water"];
 
+// The furfolk's fixtures (docs/design/furfolk.md §5). Each threshold is set
+// above what another people's pieces put near their own posts by accident: an
+// orchard scatters four berry bushes, a drover's scrub has six cactus blocks,
+// so the fox patch's twelve bushes and the fennec garden's thirty cactus are
+// what count. A hive, a cocoa pod or an oven is placed on purpose, so one is
+// enough (four pods, since a cocoa grove has eight).
+/** The forager: sweet berry bushes, `growth` 3 ripe; picked back to 1, as a player's hand leaves it. */
+export const BERRY_BUSH = "minecraft:sweet_berry_bush";
+export const BERRY_STATE = "growth";
+export const BERRY_RIPE = 3;
+export const BERRY_PICKED = 1;
+export const BERRIES = "minecraft:sweet_berries";
+export const PATCH_MIN = 8;
+export const BUSHES_PER_CYCLE = 8;
+export const TICKS_PER_BUSH = 8;
+/** The baker: an oven within eight, three wheat a loaf, and the oven lit while the loaves bake. */
+export const OVEN_RANGE = 8;
+export const WHEAT = "minecraft:wheat", BREAD = "minecraft:bread";
+export const WHEAT_PER_LOAF = 3;
+export const LOAVES_PER_CYCLE = 8;
+export const TICKS_PER_LOAF = 20;
+/** An unlit oven and what it is lit as (and back). Blast furnaces smelt ore, not bread. */
+export const LIT_OF: Readonly<Record<string, string>> = { "minecraft:furnace": "minecraft:lit_furnace", "minecraft:smoker": "minecraft:lit_smoker" };
+export const UNLIT_OF: Readonly<Record<string, string>> = Object.fromEntries(Object.entries(LIT_OF).map(([k, v]) => [v, k]));
+export const OVEN_TYPES: readonly string[] = [...Object.keys(LIT_OF), ...Object.values(LIT_OF)];
+export const OVEN_FACING = "minecraft:cardinal_direction";
+/** The beekeeper: a hive at `honey_level` 5, one glass bottle in, one honey bottle out, one hive a cycle. */
+export const HIVE_TYPES: readonly string[] = ["minecraft:beehive", "minecraft:bee_nest"];
+export const HONEY_STATE = "honey_level";
+export const HONEY_FULL = 5;
+export const GLASS_BOTTLE = "minecraft:glass_bottle", HONEY_BOTTLE = "minecraft:honey_bottle";
+/** The cactus cutter: columns two or more tall, cut down to the base, top down, one block every eight ticks. */
+export const CACTUS = "minecraft:cactus";
+export const CACTUS_MIN = 8;
+export const CUTS_PER_CYCLE = 8;
+export const TICKS_PER_CUT = 8;
+/** The mushroom picker: small mushrooms on mycelium, at least four left standing to spread from. */
+export const MUSHROOM_TYPES: readonly string[] = ["minecraft:brown_mushroom", "minecraft:red_mushroom"];
+export const MYCELIUM = "minecraft:mycelium";
+export const MUSHROOMS_MIN = 4;
+export const MUSHROOMS_KEPT = 4;
+export const MUSHROOMS_PER_CYCLE = 8;
+export const TICKS_PER_MUSHROOM = 8;
+/** The cocoa picker: ripe pods (shared crops.ts knows cocoa), replanted from their own beans like a farmer's tile. */
+export const COCOA_POD = "minecraft:cocoa";
+export const PODS_MIN = 4;
+export const PODS_PER_CYCLE = 8;
+/**
+ * The gleaner: a hedge of oak leaves. A hedge is leaves somebody placed,
+ * which the game marks `persistent_bit`; a tree's leaves are not persistent
+ * (the pieces' trees are authored that way so a felled crown decays), so a
+ * hedge is a fixture and a tree is a tree. Measured in a placed deerfolk
+ * village: counting every oak leaf made all four hedge workers lumberjacks,
+ * since a village has trees within sixteen blocks of everything. One apple a
+ * cycle per eight leaves, up to four - the design's flat alternative to
+ * rolling each leaf's own 1-in-200, which from a hedge of fifty would be an
+ * apple every fourth cycle and invisible.
+ */
+export const OAK_LEAVES = "minecraft:oak_leaves";
+export const PERSISTENT_STATE = "persistent_bit";
+export const APPLE = "minecraft:apple";
+export const HEDGE_MIN = 16;
+export const LEAVES_PER_APPLE = 8;
+export const APPLES_PER_CYCLE = 4;
+
 /**
  * The walk. A person walks to its work and back (engine/walk.ts) rather
  * than appearing there, so a route through the dark is the player's to
@@ -145,19 +212,42 @@ export interface Survey {
   water: number;
   /** Grown sheep within the survey range. */
   sheep: number;
+  /** The furfolk's fixtures: berry bushes, ovens (within OVEN_RANGE), full or not hives, cactus blocks, small mushrooms on mycelium, cocoa pods, persistent oak leaves. */
+  bushes: number;
+  ovens: number;
+  hives: number;
+  cactus: number;
+  mushrooms: number;
+  pods: number;
+  hedge: number;
 }
 
+/** A survey with nothing round the post; a caller fills in what it counted. */
+export const EMPTY_SURVEY: Survey = { farmland: 0, logs: 0, leaves: 0, veins: 0, water: 0, sheep: 0, bushes: 0, ovens: 0, hives: 0, cactus: 0, mushrooms: 0, pods: 0, hedge: 0 };
+
 /**
- * Which trade the surroundings offer, strongest signal first: a vein is
- * placed on purpose, and so is a pen of sheep; a field beats a few trees; open water (a marsh, a
- * river) beats trees, since a reedfolk dock stands among mangroves; trees
- * beat a pond; a stray farmland block still makes a farmer. A post beside
+ * Which trade the surroundings offer, strongest signal first. Fixtures that
+ * are only ever placed on purpose come first: a vein, a hive, a cocoa grove,
+ * an oven, a pen of sheep, a berry patch, a mushroom bed, and after a field
+ * a hedge (leaves placed by hand are persistent; a tree's are not, so an
+ * orchard of oaks is still felled and only a hedge is gleaned). Then the
+ * land: a field beats a few trees; open water (a marsh, a river) beats
+ * trees, since a reedfolk dock stands among mangroves; trees beat a pond; a
+ * stray farmland block still makes a farmer. A cactus garden ranks under a
+ * field, so a drover's corral beside its scrub stays a farmer. A post beside
  * none of these has no trade, and the worker just lives there.
  */
 export function chooseTrade(s: Survey): number {
   if (s.veins >= 1) return MINER;
+  if (s.hives >= 1) return BEEKEEPER;
+  if (s.pods >= PODS_MIN) return COCOA;
+  if (s.ovens >= 1) return BAKER;
   if (s.sheep >= FLOCK_MIN) return RANCHER;
+  if (s.bushes >= PATCH_MIN) return FORAGER;
+  if (s.mushrooms >= MUSHROOMS_MIN) return PICKER;
   if (s.farmland >= 8) return FARMER;
+  if (s.hedge >= HEDGE_MIN) return GLEANER;
+  if (s.cactus >= CACTUS_MIN) return CUTTER;
   if (s.water >= 16) return FISHER;
   if (s.logs >= 4 && s.leaves >= 4) return LUMBERJACK;
   if (s.water >= 4) return FISHER;
@@ -355,10 +445,19 @@ export function pickWage(slots: readonly (Slot | undefined)[]): number | undefin
   return i < 0 ? undefined : i;
 }
 
-/** The slot a seed for a bare tile comes from, when the harvest rolled none. */
-export function pickSeed(slots: readonly (Slot | undefined)[], seed: string): number | undefined {
-  const i = slots.findIndex((s) => s !== undefined && s.typeId === seed && s.amount > 0);
+/** The first slot holding `typeId`: a seed for a bare tile, the baker's wheat, the beekeeper's bottle. */
+export function pickItem(slots: readonly (Slot | undefined)[], typeId: string): number | undefined {
+  const i = slots.findIndex((s) => s !== undefined && s.typeId === typeId && s.amount > 0);
   return i < 0 ? undefined : i;
+}
+/** The slot a seed for a bare tile comes from, when the harvest rolled none. */
+export const pickSeed = pickItem;
+
+/** How many of `typeId` the chest holds, across its slots. */
+export function countItem(slots: readonly (Slot | undefined)[], typeId: string): number {
+  let n = 0;
+  for (const s of slots) if (s && s.typeId === typeId) n += s.amount;
+  return n;
 }
 
 export type WaitReason = "interval" | "no chest" | "chest full" | "no wage";
@@ -370,8 +469,13 @@ export function cycleDue(record: { cycleAt: number }, now: number, intervalTicks
   return elapsed(record.cycleAt, now, intervalTicks);
 }
 
-/** The trades that fill the larder work unpaid; the rest are paid from it. */
-export const paid = (trade: number): boolean => trade === LUMBERJACK || trade === MINER || trade === RANCHER;
+/**
+ * The trades that fill the larder work unpaid; the rest are paid from it.
+ * Berries, bread, honey, apples and fish are food; the mice's mushrooms
+ * become stew, so the picker fills the larder too. Cactus and cocoa beans
+ * feed nobody, so those two wait for food the way a stonefolk grove does.
+ */
+export const paid = (trade: number): boolean => trade === LUMBERJACK || trade === MINER || trade === RANCHER || trade === CUTTER || trade === COCOA;
 
 /**
  * May a cycle start? The chest must exist and have room (nothing is ever
@@ -501,6 +605,94 @@ export function catchPlan(rand: () => number): { typeId: string; amount: number 
   if (FISH_PER_CYCLE - cod > 0) out.push({ typeId: SALMON, amount: FISH_PER_CYCLE - cod });
   if (rand() < TREASURE_CHANCE) out.push({ typeId: TREASURES[Math.floor(rand() * TREASURES.length)]!, amount: 1 });
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// The furfolk's trades (docs/design/furfolk.md §5). Each plan is what one
+// cycle does, from a view of the blocks the engine read; the engine makes the
+// changes in the plan's order, inputs before outputs.
+// ---------------------------------------------------------------------------
+
+export interface StateBlock {
+  pos: Vec;
+  typeId: string;
+  /** The state the trade cares about: `growth` for a bush, `honey_level` for a hive, `age` for a pod. */
+  state: number;
+}
+
+const byDistance = <T extends { pos: Vec }>(items: readonly T[], from: Vec): T[] =>
+  [...items].sort((a, b) => dist2(a.pos, from) - dist2(b.pos, from) || a.pos.x - b.pos.x || a.pos.y - b.pos.y || a.pos.z - b.pos.z);
+
+/** The ripe bushes nearest the post, a cycle's worth. */
+export function foragePlan(bushes: readonly StateBlock[], from: Vec, limit = BUSHES_PER_CYCLE): StateBlock[] {
+  return byDistance(bushes.filter((b) => b.typeId === BERRY_BUSH && b.state >= BERRY_RIPE), from).slice(0, limit);
+}
+
+/** A ripe bush gives two or three berries, as it does to a hand. */
+export function berryYield(rand: () => number): number {
+  return 2 + (rand() < 0.5 ? 1 : 0);
+}
+
+export interface BakePlan {
+  /** Loaves this cycle: the chest's wheat, three a loaf, up to a cycle's worth. */
+  loaves: number;
+}
+
+export function bakePlan(slots: readonly (Slot | undefined)[], limit = LOAVES_PER_CYCLE): BakePlan {
+  return { loaves: Math.min(limit, Math.floor(countItem(slots, WHEAT) / WHEAT_PER_LOAF)) };
+}
+
+/** The oven to bake in: the nearest, lit or not. */
+export function nearestOven(ovens: readonly StateBlock[], from: Vec): StateBlock | undefined {
+  return nearestOf(ovens.filter((o) => OVEN_TYPES.includes(o.typeId)), from);
+}
+
+/**
+ * Whether the oven is swapped for its lit block while the baker works. Only
+ * an unlit oven with nothing in it: a village oven is empty, a kid's may be
+ * smelting, and the swap must never eject what a player put in.
+ */
+export function litSwap(typeId: string, empty: boolean): string | undefined {
+  const lit = LIT_OF[typeId];
+  return lit !== undefined && empty ? lit : undefined;
+}
+
+/** The full hive nearest the post; one a cycle, so bottles run out before the honey does. */
+export function hivePlan(hives: readonly StateBlock[], from: Vec): StateBlock | undefined {
+  return nearestOf(hives.filter((h) => HIVE_TYPES.includes(h.typeId) && h.state >= HONEY_FULL), from);
+}
+
+/**
+ * The cactus blocks to cut: every block standing on another cactus (the base
+ * stays and regrows the column), nearest column first and top down within
+ * it, so nothing is ever cut with cactus still above it. A cycle's worth.
+ */
+export function cutPlan(cactus: readonly Vec[], from: Vec, limit = CUTS_PER_CYCLE): Vec[] {
+  const set = new Set(cactus.map(key));
+  const above = cactus.filter((c) => set.has(key({ x: c.x, y: c.y - 1, z: c.z })));
+  const columnD = (c: Vec) => (c.x - from.x) ** 2 + (c.z - from.z) ** 2;
+  return [...above].sort((a, b) => columnD(a) - columnD(b) || a.x - b.x || a.z - b.z || b.y - a.y).slice(0, limit);
+}
+
+/**
+ * The mushrooms to pick: nearest first, a cycle's worth, and never the last
+ * MUSHROOMS_KEPT, which stay to spread from - a bed picked bare on mycelium
+ * comes back too slowly to be a trade.
+ */
+export function pickPlan(mushrooms: readonly Vec[], from: Vec, limit = MUSHROOMS_PER_CYCLE, keep = MUSHROOMS_KEPT): Vec[] {
+  const spare = Math.max(0, mushrooms.length - keep);
+  return byDistance(mushrooms.map((pos) => ({ pos })), from).slice(0, Math.min(limit, spare)).map((m) => m.pos);
+}
+
+/** The ripe pods nearest the post, a cycle's worth. Ripe is the shared crop table's `mature` (age 2). */
+export function cocoaPlan(pods: readonly StateBlock[], from: Vec, limit = PODS_PER_CYCLE): StateBlock[] {
+  const crop = cropOf(COCOA_POD);
+  return byDistance(pods.filter((p) => p.typeId === COCOA_POD && crop !== undefined && isMature(crop, p.state)), from).slice(0, limit);
+}
+
+/** A cycle at a hedge: one apple per eight leaves, up to four. Nothing is touched. */
+export function gleanPlan(leaves: number, perApple = LEAVES_PER_APPLE, limit = APPLES_PER_CYCLE): number {
+  return Math.min(limit, Math.floor(leaves / perApple));
 }
 
 export const tradeName = (trade: number): Trade => TRADES[trade] ?? "none";

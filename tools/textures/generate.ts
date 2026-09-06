@@ -396,8 +396,8 @@ for (const people of PEOPLES) {
 }
 
 // Furfolk (docs/design/furfolk.md): animal peoples on the same job outfits,
-// under concepts/entities/ until one is picked up. Window sizes are the
-// furred specs' in tools/models/generate.ts, as for the four.
+// peoples 9-18 of the villages pack. Window sizes are the furred specs' in
+// tools/models/generate.ts, as for the nine.
 interface Furfolk {
   key: string;
   fur: T.Fur;
@@ -425,7 +425,7 @@ for (const people of FURFOLK) {
   for (const job of JOBS) {
     const look: T.Look = { skin: paw, hair: people.fur.coat, eye: people.fur.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
     write(
-      `concepts/entities/textures/${people.key}_${job.key}.png`,
+      `${VILLAGES_RP}/entity/${people.key}_${job.key}.png`,
       atlas(A.FURRED, {
         skin: T.furTile(people.fur.coat),
         face: T.furFaceTile(people.fur, people.head[0], people.head[1]),

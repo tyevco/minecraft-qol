@@ -650,93 +650,19 @@ emit(HATCHLING_RP, "egg", {
 // ---------------------------------------------------------------------------
 // Peoples: one set for every biped. A breathing idle with the head glancing
 // about, a vanilla-style walk, and a work swing with the right arm (the tool
-// bone rides on it) gated on a property the job would set.
+// bone rides on it) gated on a property the job would set. The furfolk
+// (docs/design/furfolk.md) add an ear flick now and then, a tail swish in
+// the idle and walk, and a tail sway on the work swing; the humans have no
+// ear or tail bones, and an animation channel for a bone a geometry lacks is
+// ignored by the client (docs/design/furfolk.md §7 item 4, to confirm on a
+// real client: the viewer ignores it). The bone list is the union over every
+// people's geometry, so every channel here names a bone some people has.
 // ---------------------------------------------------------------------------
 
-function bipedSet(dir: string, file: string, name: string, geometry: string, working: string): void {
+function bipedSet(dir: string, file: string, name: string, geometries: string[], working: string): void {
+  const bones = [...new Set(geometries.flatMap((g) => bonesOf(g)))];
   emit(dir, file, {
     name,
-    bones: bonesOf(geometry),
-    animations: [
-      {
-        key: "idle",
-        loop: true,
-        bones: {
-          head: { rotation: ["math.sin(query.life_time * 35) * 3", "math.sin(query.life_time * 22) * 12", 0] },
-          left_arm: { rotation: [0, 0, "-2 - math.sin(query.life_time * 60) * 1.5"] },
-          right_arm: { rotation: [0, 0, "2 + math.sin(query.life_time * 60) * 1.5"] },
-        },
-      },
-      {
-        key: "walk",
-        loop: true,
-        bones: {
-          left_leg: { rotation: [walk(45), 0, 0] },
-          right_leg: { rotation: [walk(45, -1), 0, 0] },
-          left_arm: { rotation: [walk(35, -1), 0, 0] },
-          right_arm: { rotation: [walk(35), 0, 0] },
-          body: { position: [0, `math.abs(math.cos(${STRIDE})) * ${SPEED} * 0.4`, 0] },
-        },
-      },
-      {
-        key: "work",
-        loop: true,
-        length: 0.8,
-        bones: {
-          right_arm: {
-            rotation: [
-              [0, [-20, 0, 0]],
-              [0.3, [-110, 0, 0]],
-              [0.45, [10, 0, 0]],
-              [0.8, [-20, 0, 0]],
-            ],
-          },
-          body: {
-            rotation: [
-              [0, [0, 0, 0]],
-              [0.45, [6, 0, 0]],
-              [0.8, [0, 0, 0]],
-            ],
-          },
-        },
-      },
-    ],
-    controllers: [
-      {
-        key: "general",
-        initial: "idle",
-        states: {
-          idle: {
-            animations: ["idle"],
-            transitions: [
-              ["work", `query.property('${working}')`],
-              ["walk", MOVING],
-            ],
-          },
-          walk: { animations: ["walk"], transitions: [["idle", STOPPED]], blendTransition: 0.2 },
-          work: { animations: ["idle", "work"], transitions: [["idle", `!query.property('${working}')`]] },
-        },
-      },
-    ],
-  });
-}
-// Shipped: packages/villages. The four peoples share one rig's bone names, so
-// one set animates all of them; the stonefolk geometry stands in for the bones.
-bipedSet("packages/villages/resource_pack", "person", "villages_person", "packages/villages/resource_pack/models/entity/stonefolk.geo.json", "villages:working");
-
-// ---------------------------------------------------------------------------
-// Furfolk (docs/design/furfolk.md): the biped set with ears that flick and a
-// tail that swishes, one set per people because the tails differ (the cat's
-// has a tip bone). Gated on villages:working, the property they would join.
-// ---------------------------------------------------------------------------
-
-function furredSet(file: string): void {
-  const geometry = `${CONCEPTS}/models/${file}.geo.json`;
-  const bones = bonesOf(geometry);
-  const tipIdle: Record<string, BoneAnimation> = bones.includes("tail_tip") ? { tail_tip: { rotation: [0, "math.sin(query.life_time * 55 + 70) * 20", 0] } } : {};
-  const tipWalk: Record<string, BoneAnimation> = bones.includes("tail_tip") ? { tail_tip: { rotation: [0, `math.sin(${STRIDE} + 60) * ${SPEED} * 25`, 0] } } : {};
-  emit(CONCEPTS, file, {
-    name: `concept_${file}`,
     bones,
     animations: [
       {
@@ -750,7 +676,7 @@ function furredSet(file: string): void {
           left_ear: { rotation: ["math.clamp(math.sin(query.life_time * 47) * 40 - 30, 0, 12)", 0, 0] },
           right_ear: { rotation: ["math.clamp(math.sin(query.life_time * 47 + 150) * 40 - 30, 0, 12)", 0, 0] },
           tail: { rotation: [0, "math.sin(query.life_time * 55) * 14", 0] },
-          ...tipIdle,
+          tail_tip: { rotation: [0, "math.sin(query.life_time * 55 + 70) * 20", 0] },
         },
       },
       {
@@ -765,7 +691,7 @@ function furredSet(file: string): void {
           left_ear: { rotation: [`math.abs(math.cos(${STRIDE})) * ${SPEED} * -8`, 0, 0] },
           right_ear: { rotation: [`math.abs(math.cos(${STRIDE})) * ${SPEED} * -8`, 0, 0] },
           tail: { rotation: [0, `math.sin(${STRIDE}) * ${SPEED} * 22`, 0] },
-          ...tipWalk,
+          tail_tip: { rotation: [0, `math.sin(${STRIDE} + 60) * ${SPEED} * 25`, 0] },
         },
       },
       {
@@ -807,15 +733,21 @@ function furredSet(file: string): void {
           idle: {
             animations: ["idle"],
             transitions: [
-              ["work", "query.property('villages:working')"],
+              ["work", `query.property('${working}')`],
               ["walk", MOVING],
             ],
           },
           walk: { animations: ["walk"], transitions: [["idle", STOPPED]], blendTransition: 0.2 },
-          work: { animations: ["idle", "work"], transitions: [["idle", "!query.property('villages:working')"]] },
+          work: { animations: ["idle", "work"], transitions: [["idle", `!query.property('${working}')`]] },
         },
       },
     ],
   });
 }
-for (const people of ["foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk"]) furredSet(people);
+// Shipped: packages/villages. Every people shares the rig's bone names, so one
+// set animates all nineteen; the bones are read from every geometry.
+const PEOPLE_GEOMETRIES = [
+  "stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow", "drover",
+  "foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk",
+].map((k) => `packages/villages/resource_pack/models/entity/${k}.geo.json`);
+bipedSet("packages/villages/resource_pack", "person", "villages_person", PEOPLE_GEOMETRIES, "villages:working");

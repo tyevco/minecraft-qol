@@ -13,7 +13,17 @@
             "Geometry.wood_elf",
             "Geometry.high_elf",
             "Geometry.drow",
-            "Geometry.drover"
+            "Geometry.drover",
+            "Geometry.foxfolk",
+            "Geometry.catfolk",
+            "Geometry.wolffolk",
+            "Geometry.rabbitfolk",
+            "Geometry.bearfolk",
+            "Geometry.fennecfolk",
+            "Geometry.mousefolk",
+            "Geometry.squirrelfolk",
+            "Geometry.otterfolk",
+            "Geometry.deerfolk"
           ]
         },
         "textures": {
@@ -53,18 +63,58 @@
             "Texture.drover_guard",
             "Texture.drover_worker",
             "Texture.drover_trader",
-            "Texture.drover_builder"
+            "Texture.drover_builder",
+            "Texture.foxfolk_guard",
+            "Texture.foxfolk_worker",
+            "Texture.foxfolk_trader",
+            "Texture.foxfolk_builder",
+            "Texture.catfolk_guard",
+            "Texture.catfolk_worker",
+            "Texture.catfolk_trader",
+            "Texture.catfolk_builder",
+            "Texture.wolffolk_guard",
+            "Texture.wolffolk_worker",
+            "Texture.wolffolk_trader",
+            "Texture.wolffolk_builder",
+            "Texture.rabbitfolk_guard",
+            "Texture.rabbitfolk_worker",
+            "Texture.rabbitfolk_trader",
+            "Texture.rabbitfolk_builder",
+            "Texture.bearfolk_guard",
+            "Texture.bearfolk_worker",
+            "Texture.bearfolk_trader",
+            "Texture.bearfolk_builder",
+            "Texture.fennecfolk_guard",
+            "Texture.fennecfolk_worker",
+            "Texture.fennecfolk_trader",
+            "Texture.fennecfolk_builder",
+            "Texture.mousefolk_guard",
+            "Texture.mousefolk_worker",
+            "Texture.mousefolk_trader",
+            "Texture.mousefolk_builder",
+            "Texture.squirrelfolk_guard",
+            "Texture.squirrelfolk_worker",
+            "Texture.squirrelfolk_trader",
+            "Texture.squirrelfolk_builder",
+            "Texture.otterfolk_guard",
+            "Texture.otterfolk_worker",
+            "Texture.otterfolk_trader",
+            "Texture.otterfolk_builder",
+            "Texture.deerfolk_guard",
+            "Texture.deerfolk_worker",
+            "Texture.deerfolk_trader",
+            "Texture.deerfolk_builder"
           ]
         }
       },
-      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 8)]",
+      "geometry": "Array.people[math.clamp(q.property('villages:people'), 0, 18)]",
       "materials": [
         {
           "*": "Material.default"
         }
       ],
       "textures": [
-        "Array.look[math.clamp(q.property('villages:people'), 0, 8) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
+        "Array.look[math.clamp(q.property('villages:people'), 0, 18) * 4 + math.clamp(q.property('villages:job'), 0, 3)]"
       ],
       "part_visibility": [
         {

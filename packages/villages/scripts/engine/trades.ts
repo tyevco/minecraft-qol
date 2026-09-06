@@ -4,8 +4,11 @@
  * nearest chest, a farmer harvesting and replanting, a miner at a vein, a
  * fisher at the water's edge, a rancher shearing its pen's sheep (the
  * sheep's own `minecraft:on_sheared` event, which swaps its component
- * groups exactly as shears do, before its wool is delivered). Every decision is in core/trades.ts; this
- * file reads blocks and makes the changes.
+ * groups exactly as shears do, before its wool is delivered), and the
+ * furfolk's seven (docs/design/furfolk.md §5): a forager at the berry
+ * bushes, a baker at an oven, a beekeeper at a full hive, a cactus cutter, a
+ * mushroom picker, a cocoa picker and a gleaner at a hedge. Every decision
+ * is in core/trades.ts; this file reads blocks and makes the changes.
  *
  * A cycle is a walk to the work, the work, and a walk home (engine/walk.ts:
  * real pathing, so the route is the player's to secure). A walk that cannot
@@ -21,6 +24,7 @@
  */
 import {
   BlockComponentTypes,
+  BlockPermutation,
   BlockVolume,
   EntityComponentTypes,
   ItemStack,
@@ -115,9 +119,35 @@ function flockOf(dim: Dimension, record: PostRecord, range: number): core.Sheep[
   }
 }
 
+/** A numeric block state, or 0 when the block has no such state. */
+function stateNumber(block: Block, state: string): number {
+  const v = block.permutation.getState(state as never);
+  return typeof v === "number" ? v : 0;
+}
+
+/** A block with the one state a trade reads, as the core sees it. */
+function stateBlocks(blocks: readonly Block[], state: string): core.StateBlock[] {
+  return blocks.map((b) => ({ pos: { x: b.x, y: b.y, z: b.z }, typeId: b.typeId, state: stateNumber(b, state) }));
+}
+
+/** A hedge: oak leaves somebody placed (`persistent_bit`), as against a tree's, which decay once the trunk is gone. */
+function hedgeOf(dim: Dimension, record: PostRecord, range: number): Block[] {
+  const level = volumeAround(record, range, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  return blocksOf(dim, level, [core.OAK_LEAVES]).filter((b) => b.permutation.getState(core.PERSISTENT_STATE as never) === true);
+}
+
+/** Small mushrooms standing on mycelium: the mice's beds, not a stray one under a tree. */
+function mushroomsOf(dim: Dimension, record: PostRecord, range: number): core.Vec[] {
+  const level = volumeAround(record, range, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  return blocksOf(dim, level, core.MUSHROOM_TYPES)
+    .filter((b) => dim.getBlock({ x: b.x, y: b.y - 1, z: b.z })?.typeId === core.MYCELIUM)
+    .map((b) => ({ x: b.x, y: b.y, z: b.z }));
+}
+
 function survey(dim: Dimension, record: PostRecord): core.Survey {
   const wide = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_ABOVE);
   const level = volumeAround(record, core.SURVEY_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const ovens = volumeAround(record, core.OVEN_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
   return {
     farmland: blocksOf(dim, level, [core.FARMLAND]).length,
     logs: blocksOf(dim, wide, core.LOG_TYPES).length,
@@ -125,11 +155,19 @@ function survey(dim: Dimension, record: PostRecord): core.Survey {
     veins: enclosedVeins(dim, record, true).length,
     water: blocksOf(dim, level, core.WATER_TYPES).length,
     sheep: flockOf(dim, record, core.SURVEY_RANGE).filter((s) => !s.baby).length,
+    bushes: blocksOf(dim, level, [core.BERRY_BUSH]).length,
+    ovens: blocksOf(dim, ovens, core.OVEN_TYPES).length,
+    hives: blocksOf(dim, level, core.HIVE_TYPES).length,
+    cactus: blocksOf(dim, level, [core.CACTUS]).length,
+    mushrooms: mushroomsOf(dim, record, core.SURVEY_RANGE).length,
+    pods: blocksOf(dim, wide, [core.COCOA_POD]).length,
+    hedge: hedgeOf(dim, record, core.SURVEY_RANGE).length,
   };
 }
 
 const describeSurvey = (s: core.Survey): string =>
-  `farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, veins ${s.veins}, water ${s.water}, sheep ${s.sheep}`;
+  `farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, veins ${s.veins}, water ${s.water}, sheep ${s.sheep}, ` +
+  `bushes ${s.bushes}, ovens ${s.ovens}, hives ${s.hives}, cactus ${s.cactus}, mushrooms ${s.mushrooms}, pods ${s.pods}, hedge ${s.hedge}`;
 
 interface Chest {
   block: Block;
@@ -187,6 +225,23 @@ function takeOne(container: Container, i: number): void {
   const s = container.getItem(i);
   if (!s) return;
   container.setItem(i, s.amount > 1 ? new ItemStack(s.typeId, s.amount - 1) : undefined);
+}
+
+/** Take `n` of `typeId` out of the chest, across slots. Returns how many were taken: fewer means the chest ran short. */
+function takeItems(container: Container, typeId: string, n: number): number {
+  let taken = 0;
+  while (taken < n && container.isValid) {
+    const i = core.pickItem(viewOf(container).slots, typeId);
+    if (i === undefined) break;
+    takeOne(container, i);
+    taken++;
+  }
+  return taken;
+}
+
+/** Swings on the spot, then `after`. The pacing every worker with nothing to carry uses (miner, fisher, beekeeper, gleaner). */
+function swing(person: Entity, after: () => void): void {
+  pace(core.TICKS_PER_SWING, Array.from({ length: core.WORK_SWINGS }, () => () => person.isValid), after);
 }
 
 function payWage(chest: Chest, trade: number): void {
@@ -334,7 +389,7 @@ function mineJob(dim: Dimension, record: PostRecord, person: Entity, chest: Ches
         row.veinCycles = allowance.veinCycles;
       });
       const produce = core.mineYield(vein.ore);
-      pace(core.TICKS_PER_SWING, Array.from({ length: core.WORK_SWINGS }, () => () => person.isValid), () => {
+      swing(person, () => {
         if (!person.isValid) return done(false);
         deliver(chest, new ItemStack(produce.typeId, produce.amount), dim, vein.pos);
         done(true);
@@ -352,7 +407,7 @@ function fishJob(dim: Dimension, record: PostRecord, person: Entity, chest: Ches
   return {
     spot: spot.stand,
     work(done) {
-      pace(core.TICKS_PER_SWING, Array.from({ length: core.WORK_SWINGS }, () => () => person.isValid), () => {
+      swing(person, () => {
         if (!person.isValid) return done(false);
         for (const c of core.catchPlan(Math.random)) deliver(chest, new ItemStack(c.typeId, c.amount), dim, spot.stand);
         done(true);
@@ -393,6 +448,203 @@ function ranchJob(dim: Dimension, record: PostRecord, person: Entity, chest: Che
   };
 }
 
+// ---------------------------------------------------------------------------
+// The furfolk's trades (docs/design/furfolk.md §5)
+// ---------------------------------------------------------------------------
+
+/** The forager: picks each ripe bush back to its unripe state, the berries to the chest. The bush stands and regrows. */
+function forageJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const level = volumeAround(record, core.FARM_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const plan = core.foragePlan(stateBlocks(blocksOf(dim, level, [core.BERRY_BUSH]), core.BERRY_STATE), record);
+  const first = plan[0];
+  if (!first) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(first.pos, record)),
+    work(done) {
+      const steps = plan.map((b) => () => {
+        if (!person.isValid) return false;
+        const block = dim.getBlock(b.pos);
+        if (!block || block.typeId !== core.BERRY_BUSH || stateNumber(block, core.BERRY_STATE) < core.BERRY_RIPE) return true;
+        block.setPermutation(block.permutation.withState(core.BERRY_STATE as never, core.BERRY_PICKED as never));
+        deliver(chest, new ItemStack(core.BERRIES, core.berryYield(Math.random)), dim, b.pos);
+        return true;
+      });
+      pace(core.TICKS_PER_BUSH, steps, () => done(true));
+    },
+  };
+}
+
+/**
+ * The baker: three wheat from the chest become a loaf, up to eight a cycle,
+ * with the oven lit for the duration (an empty, unlit one only; a kid's
+ * oven with something in it is left as it is). Wheat is taken before the
+ * bread is put, so a chest that empties mid-cycle costs nothing.
+ */
+function bakeJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const near = volumeAround(record, core.OVEN_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const oven = core.nearestOven(stateBlocks(blocksOf(dim, near, core.OVEN_TYPES), core.OVEN_FACING), record);
+  if (!oven) return undefined;
+  if (core.bakePlan(viewOf(chest.container).slots).loaves === 0) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(oven.pos, record)),
+    work(done) {
+      const { loaves } = core.bakePlan(viewOf(chest.container).slots);
+      const block = dim.getBlock(oven.pos);
+      let lit: string | undefined;
+      if (block && core.OVEN_TYPES.includes(block.typeId)) {
+        const inv = block.getComponent(BlockComponentTypes.Inventory)?.container;
+        const empty = inv !== undefined && inv.isValid && inv.emptySlotsCount === inv.size;
+        lit = core.litSwap(block.typeId, empty);
+        if (lit) {
+          try {
+            block.setPermutation(lightOven(block, lit));
+          } catch (e) {
+            log(`could not light the oven at ${oven.pos.x},${oven.pos.y},${oven.pos.z}: ${e}`);
+            lit = undefined;
+          }
+        }
+      }
+      const steps = Array.from({ length: loaves }, () => () => {
+        if (!person.isValid) return false;
+        if (takeItems(chest.container, core.WHEAT, core.WHEAT_PER_LOAF) < core.WHEAT_PER_LOAF) return false; // the chest ran short; what was taken is at most two wheat
+        deliver(chest, new ItemStack(core.BREAD, 1), dim, oven.pos);
+        return true;
+      });
+      pace(core.TICKS_PER_LOAF, steps, () => {
+        if (lit) {
+          const b = dim.getBlock(oven.pos);
+          if (b && b.typeId === lit) {
+            try {
+              b.setPermutation(lightOven(b, core.UNLIT_OF[lit]!));
+            } catch (e) {
+              log(`could not put the oven out at ${oven.pos.x},${oven.pos.y},${oven.pos.z}: ${e}`);
+            }
+          }
+        }
+        done(true);
+      });
+    },
+  };
+}
+
+/** The oven's lit (or unlit) twin, facing the same way. */
+function lightOven(block: Block, typeId: string): BlockPermutation {
+  const facing = block.permutation.getState(core.OVEN_FACING as never);
+  return BlockPermutation.resolve(typeId, facing === undefined ? {} : { [core.OVEN_FACING]: facing as string });
+}
+
+/** The beekeeper: a glass bottle from the chest, the nearest full hive set back to empty, a honey bottle to the chest. One hive a cycle. */
+function beekeepJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const level = volumeAround(record, core.FARM_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const hive = core.hivePlan(stateBlocks(blocksOf(dim, level, core.HIVE_TYPES), core.HONEY_STATE), record);
+  if (!hive) return undefined;
+  if (core.pickItem(viewOf(chest.container).slots, core.GLASS_BOTTLE) === undefined) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(hive.pos, record)),
+    work(done) {
+      swing(person, () => {
+        if (!person.isValid) return done(false);
+        const block = dim.getBlock(hive.pos);
+        if (!block || !core.HIVE_TYPES.includes(block.typeId) || stateNumber(block, core.HONEY_STATE) < core.HONEY_FULL) return done(true);
+        if (takeItems(chest.container, core.GLASS_BOTTLE, 1) < 1) return done(true);
+        block.setPermutation(block.permutation.withState(core.HONEY_STATE as never, 0 as never));
+        deliver(chest, new ItemStack(core.HONEY_BOTTLE, 1), dim, hive.pos);
+        done(true);
+      });
+    },
+  };
+}
+
+/** The cactus cutter: every block above a column's base, top down, one cactus item each. The base regrows the column. */
+function cutJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const level = volumeAround(record, core.FARM_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW);
+  const plan = core.cutPlan(blocksOf(dim, level, [core.CACTUS]).map((b) => ({ x: b.x, y: b.y, z: b.z })), record);
+  const first = plan[0];
+  if (!first) return undefined;
+  return {
+    spot: blockOf(core.standingSpot({ x: first.x, y: first.y - 1, z: first.z }, record)),
+    work(done) {
+      const steps = plan.map((c) => () => {
+        if (!person.isValid) return false;
+        const block = dim.getBlock(c);
+        if (!block || block.typeId !== core.CACTUS) return true;
+        if (dim.getBlock({ x: c.x, y: c.y + 1, z: c.z })?.typeId === core.CACTUS) return true; // something grew back above; leave the column
+        block.setType("minecraft:air");
+        deliver(chest, new ItemStack(core.CACTUS, 1), dim, c);
+        return true;
+      });
+      pace(core.TICKS_PER_CUT, steps, () => done(true));
+    },
+  };
+}
+
+/** The mushroom picker: the nearest mushrooms on mycelium, a cycle's worth, four always left to spread from. */
+function pickJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const plan = core.pickPlan(mushroomsOf(dim, record, core.FARM_RANGE), record);
+  const first = plan[0];
+  if (!first) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(first, record)),
+    work(done) {
+      const steps = plan.map((m) => () => {
+        if (!person.isValid) return false;
+        const block = dim.getBlock(m);
+        if (!block || !core.MUSHROOM_TYPES.includes(block.typeId)) return true;
+        const typeId = block.typeId;
+        block.setType("minecraft:air");
+        deliver(chest, new ItemStack(typeId, 1), dim, m);
+        return true;
+      });
+      pace(core.TICKS_PER_MUSHROOM, steps, () => done(true));
+    },
+  };
+}
+
+/** The cocoa picker: each ripe pod harvested and replanted from its own beans, the farmer's tile rule, on the pod's log. */
+function cocoaJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const wide = volumeAround(record, core.FARM_RANGE, core.SURVEY_BELOW, core.SURVEY_ABOVE);
+  const crop = cropOf(core.COCOA_POD);
+  if (!crop) return undefined;
+  const plan = core.cocoaPlan(stateBlocks(blocksOf(dim, wide, [core.COCOA_POD]), crop.ageState), record);
+  const first = plan[0];
+  if (!first) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(first.pos, record)),
+    work(done) {
+      const steps = plan.map((p) => () => {
+        if (!person.isValid) return false;
+        const block = dim.getBlock(p.pos);
+        if (!block || block.typeId !== core.COCOA_POD) return true;
+        try {
+          harvestTile(dim, block, chest);
+        } catch (e) {
+          log(`cocoa at ${p.pos.x},${p.pos.y},${p.pos.z} failed: ${e}`);
+        }
+        return true;
+      });
+      pace(core.TICKS_PER_CROP, steps, () => done(true));
+    },
+  };
+}
+
+/** The gleaner: stands at the hedge for a while, and an apple per eight leaves (up to four) appears in the chest. No leaf is touched. */
+function gleanJob(dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
+  const leaves = hedgeOf(dim, record, core.FARM_RANGE).map((b) => ({ pos: { x: b.x, y: b.y, z: b.z } }));
+  const apples = core.gleanPlan(leaves.length);
+  const nearest = core.nearestOf(leaves, record);
+  if (apples === 0 || !nearest) return undefined;
+  return {
+    spot: blockOf(core.standingSpot(nearest.pos, record)),
+    work(done) {
+      swing(person, () => {
+        if (!person.isValid) return done(false);
+        deliver(chest, new ItemStack(core.APPLE, apples), dim, nearest.pos);
+        done(true);
+      });
+    },
+  };
+}
+
 function jobFor(trade: number, dim: Dimension, record: PostRecord, person: Entity, chest: Chest): Job | undefined {
   switch (trade) {
     case core.LUMBERJACK: return fellJob(dim, record, person, chest);
@@ -400,6 +652,13 @@ function jobFor(trade: number, dim: Dimension, record: PostRecord, person: Entit
     case core.MINER: return mineJob(dim, record, person, chest);
     case core.FISHER: return fishJob(dim, record, person, chest);
     case core.RANCHER: return ranchJob(dim, record, person, chest);
+    case core.FORAGER: return forageJob(dim, record, person, chest);
+    case core.BAKER: return bakeJob(dim, record, person, chest);
+    case core.BEEKEEPER: return beekeepJob(dim, record, person, chest);
+    case core.CUTTER: return cutJob(dim, record, person, chest);
+    case core.PICKER: return pickJob(dim, record, person, chest);
+    case core.COCOA: return cocoaJob(dim, record, person, chest);
+    case core.GLEANER: return gleanJob(dim, record, person, chest);
     default: return undefined;
   }
 }

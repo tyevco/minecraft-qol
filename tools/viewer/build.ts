@@ -67,7 +67,7 @@ const PEOPLES: [id: string, name: string][] = [
   ["high_elf", "High Elf"],
   ["drow", "Drow"],
   ["drover", "Drover"],
-  // The furfolk (docs/design/furfolk.md), concepts.
+  // The furfolk (docs/design/furfolk.md), peoples 9-18.
   ...FURFOLK.map(([id, name]): [string, string] => [id, name]),
 ];
 const GREENS: Record<string, string[]> = {
@@ -75,7 +75,7 @@ const GREENS: Record<string, string[]> = {
   hobbit: ["party_field", "orchard"], wood_elf: ["glade"], high_elf: ["reflecting_pool", "cherry_garden"], drow: ["mushroom_grove", "web_hollow", "mine"],
   drover: ["paddock", "scrub"],
   foxfolk: ["berry_patch", "grove"], catfolk: ["paddock", "garden"], wolffolk: ["snowfield"], rabbitfolk: ["carrot_patch", "meadow"], bearfolk: ["apiary", "grove"],
-  fennecfolk: ["cactus_garden"], mousefolk: ["mushroom_patch"], squirrelfolk: ["cocoa_grove"], otterfolk: ["shingle"], deerfolk: ["orchard", "meadow"],
+  fennecfolk: ["cactus_garden"], mousefolk: ["mushroom_patch"], squirrelfolk: ["cocoa_grove"], otterfolk: ["shingle"], deerfolk: ["hedge", "orchard", "meadow"],
 };
 const VILLAGE_PIECES: [id: string, name: string, people: string][] = PEOPLES.flatMap(([p, name]) => [
   ...(GREENS[p] ?? []).map((g): [string, string, string] => [`${p}_${g}`, `${name} ${g[0]!.toUpperCase()}${g.slice(1).replace("_", " ")}`, p]),
@@ -532,24 +532,26 @@ const MODELS: Model[] = [
     notes: "A donkey with panniers and a harness. Each pannier is its own bone so an empty side can be hidden by bone visibility.",
   },
   // Furfolk (docs/design/furfolk.md): animal peoples on the biped rig, in the four job outfits.
+  // The furfolk (docs/design/furfolk.md): peoples 9-18 of the villages pack,
+  // on the one person animation set, whose ear and tail bones they alone have.
   ...FURFOLK.map(([id, name, notes]): Model => ({
-    id: `concept_${id}`,
-    name: `${name} (concept)`,
-    pack: "concept · furfolk",
+    id: `villages_${id}`,
+    name,
+    pack: "villages",
     kind: "entity",
-    geometry: `concepts/entities/models/${id}.geo.json`,
+    geometry: `packages/villages/resource_pack/models/entity/${id}.geo.json`,
     textures: {
-      guard: `concepts/entities/textures/${id}_guard.png`,
-      worker: `concepts/entities/textures/${id}_worker.png`,
-      trader: `concepts/entities/textures/${id}_trader.png`,
-      builder: `concepts/entities/textures/${id}_builder.png`,
+      guard: `packages/villages/resource_pack/textures/entity/${id}_guard.png`,
+      worker: `packages/villages/resource_pack/textures/entity/${id}_worker.png`,
+      trader: `packages/villages/resource_pack/textures/entity/${id}_trader.png`,
+      builder: `packages/villages/resource_pack/textures/entity/${id}_builder.png`,
     },
     animations: {
-      file: `concepts/entities/animations/${id}.animation.json`,
-      controller: `concepts/entities/animation_controllers/${id}.animation_controllers.json`,
+      file: "packages/villages/resource_pack/animations/person.animation.json",
+      controller: "packages/villages/resource_pack/animation_controllers/person.animation_controllers.json",
     },
     defaultVisible: ["body", "head", "left_arm", "right_arm", "left_leg", "right_leg", "left_ear", "right_ear", "tail", "tail_tip"],
-    notes: `${notes} Same job outfits and accessory bones as the four peoples (guard: helmet; worker: hat; trader: pack; builder: tool and pack); the ears stand up through the hat. Ears flick and the tail swishes in the idle.`,
+    notes: `${notes} Same job outfits and accessory bones as the nine peoples (guard: helmet; worker: hat; trader: pack; builder: tool and pack); the ears stand up through the hat. Ears flick and the tail swishes in the idle.`,
   })),
   // Concept buildings (docs/design/settlements.md), drawn in vanilla textures.
   ...BUILDINGS.map(([id, name, people]): Model => ({

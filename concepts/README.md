@@ -9,21 +9,18 @@ references these files, and `npm run mcaddon` never sees them.
   `textures/`, an animation set under `animations/` and its state machine
   under `animation_controllers/`. The hatchling and its egg started here and
   moved to `packages/hatchling` when they were built; the peoples of
-  `docs/design/npcs.md` likewise moved to `packages/villages`, eight of them
-  now. The ten furfolk of `docs/design/furfolk.md` (fox, cat, wolf, rabbit,
-  bear, fennec, mouse, squirrel, otter, deer) are here: one geometry each on
-  the biped rig with a muzzle, ears and a tail (antlers for the deer), the
-  four job atlases each (`<people>_<job>.png`, on the `FURRED` layout), and
-  an animation set each.
+  `docs/design/npcs.md` likewise moved to `packages/villages`, and so did
+  the ten furfolk of `docs/design/furfolk.md` (fox, cat, wolf, rabbit,
+  bear, fennec, mouse, squirrel, otter, deer), peoples 9-18 of that pack.
 - `villages/` — one village per people, grown from the pieces and pools in
-  `tools/structures/villages.ts` (the four) and `tools/structures/furfolk.ts`
+  `tools/structures/villages.ts` (the nine) and `tools/structures/furfolk.ts`
   (the ten furfolk) by the offline jigsaw expander
   (`tools/structures/jigsaw.ts`) from seed 1, as a preview the viewer draws
   under `concept · villages`. The pieces (squares, streets, lamp posts) sit
-  in `structures/` beside the buildings. A furfolk village's `.mcstructure`
-  pieces and worldgen go to the probe pack, with its job posts written as
-  lodestones until the villages pack knows the people
-  (`docs/design/furfolk.md` §3).
+  in `structures/` beside the buildings. Every people's `.mcstructure`
+  pieces and worldgen go to the villages pack; a people still being judged
+  (`concept: true` on its `People`) would go to the probe pack instead, with
+  its job posts written as lodestones (`docs/design/furfolk.md` §3).
 - `structures/` — the buildings of `docs/design/settlements.md`, each
   as a `.mcstructure` (what a builder would place) and a `.json` preview
   (size, palette, blocks, materials) the viewer draws as blocks in the

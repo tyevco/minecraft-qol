@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { expand } from "../jigsaw";
-import { PEOPLES, villageSet, villageWorldgen } from "../villages";
+import { PEOPLE_PER_PAGE, PEOPLES, postStates, villageSet, villageWorldgen } from "../villages";
 
-// Every people's village, the four shipped and the furfolk concepts, grows
-// from its own pools with the offline expander the same way the game would,
+// Every people's village, all nineteen, grows from its own pools with the
+// offline expander the same way the game would,
 // and every pool a socket names exists. A people whose square never grows a
 // street, or whose houses never fit a socket, fails here before the viewer.
 describe("villages", () => {
@@ -39,11 +39,22 @@ describe("villages", () => {
         for (const piece of set.pieces.values())
           for (const b of piece.blocks()) {
             if (p.concept) expect(b.name, `${piece.key} at ${b.x},${b.y},${b.z}`).not.toBe("villages:post");
-            else if (b.name === "villages:post") expect(b.states["villages:people"], `${piece.key} at ${b.x},${b.y},${b.z}`).toBe(index);
+            else if (b.name === "villages:post") {
+              const page = (b.states["villages:page"] as number | undefined) ?? 0;
+              expect(page * PEOPLE_PER_PAGE + (b.states["villages:people"] as number), `${piece.key} at ${b.x},${b.y},${b.z}`).toBe(index);
+              expect(b.states["villages:people"] as number, `${piece.key}: a state lists at most 16 values`).toBeLessThan(PEOPLE_PER_PAGE);
+            }
           }
       });
     });
   }
+
+  it("splits a people index across the two post states, the page only when set", () => {
+    expect(postStates(3)).toEqual({ "villages:people": 3 });
+    expect(postStates(15)).toEqual({ "villages:people": 15 });
+    expect(postStates(16)).toEqual({ "villages:people": 0, "villages:page": 1 });
+    expect(postStates(18)).toEqual({ "villages:people": 2, "villages:page": 1 });
+  });
 
   it("gives every people its own structure-set salt", () => {
     const salts = PEOPLES.map((p) => p.salt);

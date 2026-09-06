@@ -15,12 +15,49 @@
  */
 export const SCHEMA = 3;
 
-export const PEOPLES = ["stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow", "drover"] as const;
+/**
+ * Append-only (docs/design/furfolk.md §4): the index is in every post's row,
+ * in the block's `villages:people` state on every generated village and in
+ * the entity property of every person alive. The nine humans keep 0-8; the
+ * ten furfolk follow from 9 in the design's order.
+ */
+export const PEOPLES = [
+  "stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow", "drover",
+  "foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk",
+] as const;
+/** What a person is called, by people: its name tag, shown when a player looks at it. */
+export const PEOPLE_NAMES: Readonly<Record<(typeof PEOPLES)[number], string>> = {
+  stonefolk: "Stonefolk", reedfolk: "Reedfolk", tinker: "Tinker", tallfolk: "Tallfolk", hobbit: "Hobbit",
+  wood_elf: "Wood Elf", high_elf: "High Elf", drow: "Drow", drover: "Drover",
+  foxfolk: "Foxfolk", catfolk: "Catfolk", wolffolk: "Wolffolk", rabbitfolk: "Rabbitfolk", bearfolk: "Bearfolk",
+  fennecfolk: "Fennecfolk", mousefolk: "Mousefolk", squirrelfolk: "Squirrelfolk", otterfolk: "Otterfolk", deerfolk: "Deerfolk",
+};
+export const peopleName = (people: number): string => PEOPLE_NAMES[PEOPLES[people] ?? "stonefolk"];
+
+/**
+ * The block carries the people index in two states, because a block state
+ * may list at most sixteen values (BDS 1.26.45 rejects a longer list and the
+ * block does not load; docs/README.md corrections). `villages:people` is
+ * the low four bits and `villages:page` the rest; a post from before the
+ * page state existed has none, which the engine reads as 0, so the nine
+ * humans' villages are unchanged.
+ */
+export const PEOPLE_PER_PAGE = 16;
+export const PEOPLE_STATE = "villages:people", PAGE_STATE = "villages:page";
+export const peopleStates = (people: number): { [PEOPLE_STATE]: number; [PAGE_STATE]: number } => ({
+  [PEOPLE_STATE]: people % PEOPLE_PER_PAGE,
+  [PAGE_STATE]: Math.floor(people / PEOPLE_PER_PAGE),
+});
+export const peopleIndex = (people: number, page: number): number => page * PEOPLE_PER_PAGE + people;
 export const JOBS = ["guard", "worker", "trader", "builder"] as const;
 /** Index into JOBS of the one job that takes a trade (docs/design/villages.md §5.1). */
 export const WORKER = 1;
 /** What a worker does, read off the blocks round its post. Index into TRADES. */
-export const TRADES = ["none", "lumberjack", "farmer", "miner", "fisher", "rancher"] as const;
+export const TRADES = [
+  "none", "lumberjack", "farmer", "miner", "fisher", "rancher",
+  // The furfolk's trades (docs/design/furfolk.md §5), appended in the order they were built.
+  "forager", "baker", "beekeeper", "cactus cutter", "mushroom picker", "cocoa picker", "gleaner",
+] as const;
 
 export interface Position {
   dimId: string;

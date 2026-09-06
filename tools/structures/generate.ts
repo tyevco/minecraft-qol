@@ -88,8 +88,9 @@ mkdirSync(PROBE, { recursive: true });
 // expander for the viewer.
 const VILLAGES = resolve(ROOT, "concepts/villages");
 mkdirSync(VILLAGES, { recursive: true });
-// A concept people's pieces (docs/design/furfolk.md) go to the probe pack,
-// which never ships, as the four's did before the villages pack existed.
+// A concept people's pieces (a `People` with `concept` on, docs/design/
+// furfolk.md §3) go to the probe pack, which never ships, as the four's did
+// before the villages pack existed; none is a concept at the moment.
 for (const people of PEOPLES) {
   const set = villageSet(people);
   const pack = people.concept ? "packages/probe" : "packages/villages/behavior_pack";

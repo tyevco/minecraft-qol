@@ -74,6 +74,7 @@ not reached retail, or because a Java capability does not exist on Bedrock.
 | A `spawnEvent` runs *in addition to* `minecraft:entity_spawned` (implicit in the Hatchling tests' `spawnEntity(..., { spawnEvent })`) | **It replaces it.** Every group `entity_spawned` would add is silently dropped, so a hatchling spawned with a variant event had no `stage_0` (no scale) and no `wild` (no tameable). Measured side by side: plain spawn `tameable=true scale=0.55`, spawnEvent `tameable=false scale=undefined`. Spawn plainly, then `triggerEvent` the variant. |
 | An entity event's effect is readable in the tick that triggered it | **No** — it lands on the next tick, so a same-tick `getProperty` sees the old value. Cost one Hatchling test a false failure. |
 | `minecraft:pushable` controls whether a custom entity can be shoved | **Not in the entity schema.** Its presence makes the whole definition fail to load, so the entity simply does not exist. Removed from `turret_head`, `gravestone`, and again from both Hatchling entities — it keeps coming back, so check for it in any new entity. Use `minecraft:knockback_resistance` for the shoving. |
+| A block state may list as many values as a pack needs (`furfolk.md` §4: "76 permutations at nineteen peoples, well within what the engine allows") | **A state's value list is capped at sixteen.** BDS 1.26.45 rejects `villages:post` with nineteen values in `villages:people` (`too many input elements, expected no more than 16`) and the whole block fails to load, so every post in the world is air. The villages pack splits the people index across two states, `villages:people` (0–15) and `villages:page` (0–1); a post from before the page state existed reads its page as 0. |
 | A recipe needs only `pattern`, `key` and `result` | **1.20+ recipes require `unlock` data** or the engine rejects them outright. An item list is enough: `"unlock": [{ "item": "minecraft:egg" }]`. Hit on five recipes, then again on all three Hatchling egg recipes. |
 | `minecraft:leashable` takes `soft_distance` / `hard_distance` / `max_distance` | **Those live inside a `presets` array now**, not at the top level. BDS ships `behavior_packs/vanilla`, so the current shape of any vanilla component is readable locally — `entities/horse.json` for this one. Better than a design doc. |
 | A GameTest may build its rig anywhere in the structure volume (implicit in the all-air arena and `rig.floor()`) | **Test-relative `(0,0,0)` holds the test's structure block.** Writing it makes every later `Test` call throw "Could not find StructureBlockActor". `floor()` skips it; treat the `(0, *, 0)` column as reserved. See `gametest-structure-results.md`. |
@@ -178,26 +179,26 @@ prototype” list. In suggested order:
   by job blocks that tick, and a per-player standing system that ends in
   inviting a villager to the kids' own settlement. Revises the "no world
   generation" stance in `settlements.md`. Built so far in `packages/villages`:
-  the generated villages, the posts that people them, and the five trades
-  (§5.1: lumberjack, farmer, miner at a vein, fisher, rancher); measurements in
+  the generated villages, the posts that people them, and twelve trades
+  (§5.1: lumberjack, farmer, miner at a vein, fisher, rancher, and the
+  furfolk's seven of `furfolk.md` §5); measurements in
   `villages-jigsaw-results.md`.
 - [`design/entities.md`](design/entities.md) — a concept sheet, not a design:
   custom entities (decoy dummy, patrol golem, runner, messenger, pack mule)
   with generated models under `concepts/entities/`, each with its own "must
   prototype" list. Becomes a design doc per entity when one is picked up, as
   the hatchling and its egg were (`design/hatchling.md`, `packages/hatchling`).
-- [`design/furfolk.md`](design/furfolk.md) — a concept sheet with models:
-  ten animal peoples for the villages (fox, cat, wolf, rabbit, bear, fennec,
-  mouse, squirrel, otter, deer) on the four peoples' rig and job outfits,
-  each with a biome, a village palette, a trade (forager, shearer, fisher,
-  baker, beekeeper, cactus cutter, mushroom picker, cocoa picker, gleaner)
-  and liked gifts. Rigs, job atlases and animation sets are generated under
-  `concepts/entities/` and shown in the viewer as `concept · furfolk`; each
-  people's village (buildings, pieces, pools, worldgen) is generated too,
-  into the probe pack with lodestones for job posts, and previewed under
-  `concept · villages`. Says what changes in `packages/villages` (append-only
-  indices) and what to prototype first (property widening, `bury`, the
-  bushes, hives and sheep). Prompted by a shelf of flocked animal figures.
+- [`design/furfolk.md`](design/furfolk.md) — ten animal peoples for the
+  villages (fox, cat, wolf, rabbit, bear, fennec, mouse, squirrel, otter,
+  deer) on the nine peoples' rig and job outfits, each with a biome, a
+  village palette, a trade (forager, shearer, fisher, baker, beekeeper,
+  cactus cutter, mushroom picker, cocoa picker, gleaner) and liked gifts.
+  **Built** as peoples 9-18 of `packages/villages`: rigs, atlases, the
+  villages and their worldgen, and the seven new trades, each pinned by a
+  GameTest (`villages-jigsaw-results.md`). Its §7 list says what was
+  measured headlessly and what still waits for a real client (the ears
+  through a hat, one animation set naming bones a geometry lacks). Prompted
+  by a shelf of flocked animal figures.
 
 ## Plans
 

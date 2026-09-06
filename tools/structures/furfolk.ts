@@ -2,11 +2,12 @@
  * The furfolk's buildings and villages (docs/design/furfolk.md §3), authored
  * the way the four peoples' are: a palette and a silhouette per people, a
  * core building for the square, houses for the street sockets, greens with
- * the people's trade in them, and for some a watch to end a street. They are
- * concepts: `concept: true` on each people writes every job post as a
- * lodestone (a processor list turns lodestones into posts once the people is
- * in the pack; measured in docs/villages-jigsaw-results.md) and sends the
- * pieces and worldgen to the probe pack, which never ships.
+ * the people's trade in them, and for some a watch to end a street. They
+ * ship in the villages pack as peoples 9-18 (`PEOPLES` in villages.ts
+ * appends this list), so every job post is stamped with its people's index.
+ * Until the pack knew them they were concepts, `concept: true` writing every
+ * post as a lodestone and sending the pieces to the probe pack; the flag
+ * stays on `People` for the next people that is judged before it is built.
  *
  * Silhouettes, one line each: foxes in low mossy-roofed spruce cabins and a
  * turf den; cats in cherry and terracotta with wool everywhere; wolves in a
@@ -539,11 +540,21 @@ building("deerfolk_cabin", "Cabin", "deerfolk", "Oak on a mossy footing, tall do
   for (const [x, z] of [[1, 2], [7, 6], [4, 1]] as const) if (bp.at(x, top, z) === undefined && bp.at(x, top - 1, z) !== undefined) bp.set(x, top, z, "moss_carpet");
 });
 
-const gleanersOrchard = (bp: Blueprint, rand: () => number, y: number): void => {
-  orchard(bp, rand, y);
-  if (bp.at(4, y, 8) !== undefined) bp.set(4, y, 8, "air");
+/**
+ * The gleaner's hedge (docs/design/furfolk.md §5): two rows of persistent
+ * oak leaves, waist high, with a gap through the middle, and the worker's
+ * post and chest between them. Leaves with no trunk under them: that is what
+ * makes a gleaner rather than a lumberjack (core/trades.ts), so an orchard
+ * of oaks by a post is still felled and a hedge is gleaned.
+ */
+const gleanersHedge = (bp: Blueprint, rand: () => number, y: number): void => {
+  const L = { persistent_bit: true, update_bit: false };
+  for (const z of [1, 7]) for (let x = 0; x < 9; x++) if (x !== 4) bp.fill(x, y, z, 1, 2, 1, "oak_leaves", L);
+  for (const x of [0, 8]) for (let z = 2; z < 7; z++) bp.fill(x, y, z, 1, 2, 1, "oak_leaves", L);
   bp.set(5, y, 4, "chest");
   bp.set(4, y, 4, "villages:post", { "villages:people": 0, "villages:job": 1 });
+  bp.set(2, y, 4, "oak_fence").set(2, y + 1, 4, "lantern");
+  scatter(bp, rand, 1, y, 2, 7, 5, 4);
 };
 
 const meadow = (log: string, leaves: string) => (bp: Blueprint, rand: () => number, y: number): void => {
@@ -555,7 +566,7 @@ const meadow = (log: string, leaves: string) => (bp: Blueprint, rand: () => numb
 // The peoples
 // ---------------------------------------------------------------------------
 
-const CONCEPT = { concept: true, emptyLots: 2 } as const;
+const CONCEPT = { emptyLots: 2 } as const;
 
 export const FURFOLK: People[] = [
   {
@@ -630,7 +641,7 @@ export const FURFOLK: People[] = [
   {
     ...CONCEPT, key: "deerfolk", title: "Deerfolk", paving: "moss_block", verge: "grass", post: "oak_fence", core: "deerfolk_glade_hall",
     houses: [["deerfolk_cabin", 3], ["shared_larder", 1]],
-    greens: [["orchard", 3, gleanersOrchard], ["meadow", 2, meadow("oak_log", "oak_leaves")]],
+    greens: [["hedge", 3, gleanersHedge], ["orchard", 1, orchard], ["meadow", 2, meadow("oak_log", "oak_leaves")]],
     tree: { log: "oak_log", leaves: "oak_leaves" },
     biomes: ["forest"], salt: 20260930,
   },

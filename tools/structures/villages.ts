@@ -343,13 +343,21 @@ function marker(p: People, facing: Facing, name: string, target: string, pool: s
   return { facing, name, target, pool, final: p.deck ? p.deck.post : p.paving };
 }
 
+/** A block state lists at most sixteen values (measured; docs/README.md corrections), so the index is split: the low four bits and a page. */
+export const PEOPLE_PER_PAGE = 16;
+/** The post's states for a people index. The page is written only when it is set, so the nine humans' pieces are as they were. */
+export function postStates(people: number): Record<string, number> {
+  const page = Math.floor(people / PEOPLE_PER_PAGE);
+  return page > 0 ? { "villages:people": people % PEOPLE_PER_PAGE, "villages:page": page } : { "villages:people": people };
+}
+
 /** Every job post in a piece gets the people's index, so its person is one of them. */
 function stampPeople(p: People, bp: Blueprint): Blueprint {
   const people = PEOPLES.indexOf(p);
   for (const b of bp.blocks()) {
     if (b.name !== "villages:post") continue;
     if (p.concept) bp.set(b.x, b.y, b.z, "lodestone");
-    else bp.set(b.x, b.y, b.z, "villages:post", { ...b.states, "villages:people": people });
+    else bp.set(b.x, b.y, b.z, "villages:post", { ...b.states, ...postStates(people) });
   }
   return bp;
 }

@@ -550,6 +550,22 @@ so the rule is under Vitest (the hull's edges, both dimensions, the kids'
 posts making no village, forty block kinds sorted) and on the in-game
 list (#84).
 
+## A guard walks with you (design §5, `packages/villages`)
+
+`villages_guard_escorts_and_goes_home`, on the headless server: the
+guard at a village post, hired by the hatch, gained `villages:escort`
+and kept its post tag; told to go to a spot across the arena it stood
+within three blocks of it inside four seconds (the invite's bond, the
+walk's waypoint kept at the target); sent home, it walked back to its
+post, the tag gone, the one person within four blocks of the post its
+own, and no second guard spawned in the meantime, since the post still
+found it by id. The day's end and the restart are the same code path as
+the hatch's "home" (`escortOver` under Vitest). Not measured: the
+follow over a real distance, where `minecraft:home` (radius 10, the
+guard's `move_towards_home_restriction` at priority 5) may pull against
+the walking group's `follow_mob` at priority 1; the arena is eight
+blocks wide. The README's confirm list has the fix if it does.
+
 ## The gap at a deck joint (design §3)
 
 "Blocks missing where the jigsaw blocks were", seen in game, chased on

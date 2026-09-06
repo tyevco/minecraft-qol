@@ -119,6 +119,18 @@ export function restWords(people: number, standing: number): string {
   return tierOf(standing) === UNWELCOME ? `The ${who} would not have you under their roof; make amends first.` : `The ${who} keep their beds for guests; they do not know you yet.`;
 }
 
+/**
+ * A guard walks with the player for a day (§5's table, at Friend). The
+ * elder names the nearest present guard of its own village, as for an
+ * invite, and the guard follows on the invite's bond (engine/follow.ts)
+ * while keeping its post, then walks home when the day is up, when the
+ * player sends it, or when the clock restarts (a stamp ahead of the clock
+ * is read as elapsed, as everywhere in the pack).
+ */
+export const ESCORT_TICKS = 24000;
+export const GUARD_JOB = 0;
+export const escortOver = (since: number, now: number): boolean => now < since || now - since >= ESCORT_TICKS;
+
 /** The wares a people shows a player of this tier: none below Guest. */
 export function wares(people: number, tier: number): readonly Ware[] {
   if (tier < GUEST) return [];
@@ -254,8 +266,9 @@ export type ElderOffer = {
   canTake: boolean;
   /** The trader trades (Guest and up). */
   canTrade: boolean;
-  /** A job post may be bought (Friend and up) and a person invited (Kin). */
+  /** A job post may be bought (Friend and up), a guard asked to walk along (Friend), and a person invited (Kin). */
   canBuy: boolean;
+  canEscort: boolean;
   canInvite: boolean;
 };
 
@@ -270,6 +283,7 @@ export function elderOffer(people: number, standing: number, errand: OpenErrand 
     canTake: errand === undefined && tier >= STRANGER,
     canTrade: tier >= GUEST,
     canBuy: tier >= FRIEND && emeralds >= POST_PRICE,
+    canEscort: tier >= FRIEND,
     canInvite: tier >= KIN,
   };
 }
@@ -295,6 +309,10 @@ export function inviteCandidate(posts: readonly PostRecord[], elder: PostRecord,
   }
   return best;
 }
+
+/** The guard the elder names to walk with the player: the nearest present one of its own village. */
+export const escortCandidate = (posts: readonly PostRecord[], elder: PostRecord, range: number, present: (post: PostRecord) => boolean): PostRecord | undefined =>
+  inviteCandidate(posts, elder, GUARD_JOB, range, present);
 
 /** A follower settles on a post the kids placed if the post's job matches its own (§6: "a matching job block") and the post is empty. */
 export function mayTakePost(follower: { job: number }, post: PostRecord, empty: boolean): boolean {

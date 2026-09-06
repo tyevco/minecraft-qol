@@ -592,3 +592,41 @@ registerAsync("qol", "villages_locked_clock_is_readable", async (test) => {
   test.assert(world.gameRules.doDayLightCycle === true, "expected the cycle back on after the test");
   test.succeed();
 }).maxTicks(200).structureName("qol:arena");
+
+// A guard hired at friend (by the hatch here) keeps its post while it
+// follows, and when sent home walks back to its post: the tag gone, the
+// guard at its spot, and no second guard spawned in its absence.
+registerAsync("qol", "villages_guard_escorts_and_goes_home", async (test) => {
+  placePost(test, 9, 0); // a foxfolk guard's post, a village's
+  for (let t = 0; t < 300 && people(test).length === 0; t += 5) await test.idle(5);
+  test.assert(people(test).length === 1, `expected the village post's guard, found ${people(test).length}`);
+  const dim = test.getDimension();
+  const w = test.worldBlockLocation(AT);
+  const ESCORT = "villages:escort";
+  dim.runCommand(`scriptevent villages:escort ${w.x} ${w.y} ${w.z}`);
+  for (let t = 0; t < 100 && tagged(test, ESCORT, AT, 8).length === 0; t += 5) await test.idle(5);
+  const escorts = tagged(test, ESCORT, AT, 8);
+  test.assert(escorts.length === 1, `expected one escort, found ${escorts.length}`);
+  test.assert(escorts[0]!.hasTag(`villages:post:${w.x},${w.y},${w.z}`), "expected the escort to keep its post tag");
+  const spot: Vector3 = { x: 1, y: 1, z: 6 };
+  const ws = test.worldBlockLocation(spot);
+  dim.runCommand(`scriptevent villages:follow ${ws.x} ${ws.y} ${ws.z}`);
+  let close = false;
+  for (let t = 0; t < 400 && !close; t += 10) {
+    await test.idle(10);
+    const e = tagged(test, ESCORT, AT, 16)[0];
+    if (e) {
+      const l = test.relativeLocation(e.location);
+      close = Math.hypot(l.x - (spot.x + 0.5), l.z - (spot.z + 0.5)) <= 3;
+    }
+  }
+  test.assert(close, "expected the escort to follow to the spot within 400 ticks");
+  dim.runCommand("scriptevent villages:escort home");
+  test.succeedWhen(() => {
+    const left = tagged(test, ESCORT, AT, 24).length;
+    test.assert(left === 0, `expected the escort tag gone once sent home, found ${left}`);
+    const home = people(test);
+    test.assert(home.length === 1, `expected the one guard back at its post, found ${home.length} person(s) within four of it`);
+    test.assert(home[0]!.hasTag(`villages:post:${w.x},${w.y},${w.z}`), "expected the guard home to be the post's own");
+  });
+}).maxTicks(1400).structureName("qol:arena");

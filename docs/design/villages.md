@@ -453,4 +453,6 @@ found, in buildings they raised. That is the whole loop.
    four trades a day. Breaking a village's block is −1 inside a hull
    round its posts, natural blocks free. The inn is any bed in that hull:
    a stranger is turned away, a guest sleeps and the game sets the respawn
-   point. Building for standing is still open (issue #73, #80).
+   point. At friend a guard walks with the player for a day on the
+   invite's bond, keeping its post, and walks home after. Building for
+   standing is still open (issue #73, #80).

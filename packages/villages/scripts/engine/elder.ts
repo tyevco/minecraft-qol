@@ -5,9 +5,10 @@
  * people, offers an errand (one open per player per people, from the same
  * table a visitor draws on), takes its payment, trades the people's wares
  * for emeralds at Guest (a second form; +1 standing for the first few
- * trades a day), sells a job post at Friend, and at Kin names a person of
- * a chosen job to come home with the player (engine/follow.ts). The
- * decisions are in core/standing.ts.
+ * trades a day), sells a job post at Friend and sends a guard to walk
+ * with the player for a day, and at Kin names a person of a chosen job
+ * to come home with the player (engine/follow.ts). The decisions are in
+ * core/standing.ts.
  */
 import { Player, world, type Entity } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
@@ -67,6 +68,10 @@ export async function showElder(player: Player, elder: Entity): Promise<void> {
   if (offer.canBuy) {
     form.button(`Buy a job post (${core.POST_PRICE} emeralds)`);
     actions.push(() => buy(player, people));
+  }
+  if (offer.canEscort && !follow.escortOf(player)) {
+    form.button("Would a guard walk with me?");
+    actions.push(() => escortWith(player, elder, people));
   }
   if (offer.canInvite) {
     form.button("Invite someone home");
@@ -157,6 +162,27 @@ async function trade(player: Player, elder: Entity, people: number, tier: number
   const after = standing.recordTrade(player, people);
   player.sendMessage(after.earned ? `${describe(w)}, yours. ${core.standingWords(people, after.standing)}` : `${describe(w)}, yours.`);
   console.warn("[Villages]", `${player.name} bought ${describe(w)} from the ${peopleName(people)} for ${w.price}: standing ${after.standing}${after.earned ? "" : " (the day's trades are counted)"}`);
+}
+
+/** A guard of the elder's village walks with the player for a day (design §5, Friend). */
+function escortWith(player: Player, elder: Entity, people: number): void {
+  const post = postOf(elder);
+  if (!post) {
+    player.sendMessage("The elder looks about, and cannot say who.");
+    return;
+  }
+  const dim = elder.dimension;
+  const candidate = core.escortCandidate(storage.all(), post, INVITE_RANGE, (p) => follow.presentAt(dim, p));
+  if (!candidate) {
+    player.sendMessage(`No guard of the ${peopleName(people)} can be spared here.`);
+    return;
+  }
+  const guard = follow.escort(dim, candidate, player);
+  if (!guard) {
+    player.sendMessage("Nobody answered.");
+    return;
+  }
+  player.sendMessage(`${guard.nameTag} will walk with you until the day is up. Tap them to send them home sooner.`);
 }
 
 async function invite(player: Player, elder: Entity, people: number): Promise<void> {

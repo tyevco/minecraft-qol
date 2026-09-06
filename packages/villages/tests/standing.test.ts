@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { FRESH, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, type PostRecord } from "../scripts/core/record";
 import {
-  ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, VILLAGE_ABOVE, VILLAGE_BELOW, VILLAGE_HULL, WARES,
-  acceptGift, countTrade, elderOffer, inviteCandidate, isNatural, lapsed, likes, mayRest, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, restWords, standingWords, tierOf, villageOf, wares,
+  ERRAND_DAYS, ESCORT_TICKS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, TRADES_PER_DAY, UNWELCOME, VILLAGE_ABOVE, VILLAGE_BELOW, VILLAGE_HULL, WARES,
+  acceptGift, countTrade, elderOffer, escortCandidate, escortOver, inviteCandidate, isNatural, lapsed, likes, mayRest, mayTakePost, parseErrand, parseGiftDay, parseTradeDay, restWords, standingWords, tierOf, villageOf, wares,
 } from "../scripts/core/standing";
 
 const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 9, job: 2, ...FRESH, ...extra });
@@ -52,6 +52,8 @@ describe("standing", () => {
     expect(elderOffer(9, 30, undefined, 0, POST_PRICE - 1).canBuy).toBe(false);
     expect(elderOffer(9, 30, undefined, 0, POST_PRICE).canBuy).toBe(true);
     expect(elderOffer(9, 30, undefined, 0, 64).canInvite).toBe(false);
+    expect(elderOffer(9, 24, undefined, 0, 0).canEscort).toBe(false);
+    expect(elderOffer(9, 25, undefined, 0, 0).canEscort).toBe(true);
     expect(elderOffer(9, 50, undefined, 0, 0)).toMatchObject({ canInvite: true, canBuy: false });
   });
   it("every people has three wares at guest and a fourth at friend, each a namespaced item at a price", () => {
@@ -130,6 +132,16 @@ describe("standing", () => {
     expect(inviteCandidate(posts, elder, 1, 64, (p) => p.x !== 2)!.x).toBe(5);
     expect(inviteCandidate(posts, elder, 2, 64, () => true)).toBeUndefined(); // the elder is the only trader
     expect(inviteCandidate(posts, elder, 0, 64, () => true)!.x).toBe(3);
+  });
+  it("the elder names the nearest present guard of its own village to walk along, and the day ends on the clock or a restart", () => {
+    const elder = post(0, 0);
+    const posts = [elder, post(6, 0, { job: 0 }), post(3, 0, { job: 0 }), post(2, 0, { job: 1 }), post(4, 0, { job: 0, people: 3 })];
+    expect(escortCandidate(posts, elder, 64, () => true)!.x).toBe(3);
+    expect(escortCandidate(posts, elder, 64, (p) => p.x !== 3)!.x).toBe(6);
+    expect(escortCandidate(posts, elder, 64, () => false)).toBeUndefined();
+    expect(escortOver(1000, 1000 + ESCORT_TICKS - 1)).toBe(false);
+    expect(escortOver(1000, 1000 + ESCORT_TICKS)).toBe(true);
+    expect(escortOver(90000, 120)).toBe(true); // the clock restarted
   });
   it("a follower takes an empty post of its own job", () => {
     const worker = post(0, 0, { job: 1, placedBy: PLACED_BY_PLAYER });

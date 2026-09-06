@@ -14,18 +14,31 @@
  * the `villages:invited` tag; a /reload forgets who it follows, and the
  * hatch or the elder can name it again.
  *
+ * A guard hired at Friend (design §5) follows the same way for a day,
+ * with the `villages:escort` tag and its post kept: the post still finds
+ * it by id, so nobody is spawned in its place while it is away. When the
+ * day is up, the player sends it home from its own form, or the clock
+ * restarts, it walks back to its post (engine/walk.ts; put there if the
+ * walk fails) and is a guard of the village again.
+ *
  * `/scriptevent villages:invite x y z` invites the person at that post with
- * nobody to follow; `villages:follow x y z` gives every follower a spot to
- * go to instead of a player - the hatches the GameTests drive, since a
- * SimulatedPlayer is no player to the pack.
+ * nobody to follow; `villages:escort x y z` hires the guard there the same
+ * way, and `villages:escort home` sends every escort home; `villages:follow
+ * x y z` gives every follower a spot to go to instead of a player - the
+ * hatches the GameTests drive, since a SimulatedPlayer is no player to the
+ * pack.
  */
 import { CommandPermissionLevel, Player, system, world, type Dimension, type Entity, type Vector3 } from "@minecraft/server";
+import { ActionFormData } from "@minecraft/server-ui";
+import { spawnSpot } from "../core/peopling";
 import { PEOPLES, PLACED_BY_PLAYER, peopleName, type PostRecord } from "../core/record";
 import * as core from "../core/standing";
 import { KIN_TAG, PERSON, hasPerson, personOf, postTag, settle as settleOnPost } from "./post";
 import * as storage from "./storage";
+import * as walk from "./walk";
 
 export const INVITED_TAG = "villages:invited";
+export const ESCORT_TAG = "villages:escort";
 const WAYPOINT = "villages:waypoint";
 const POLL_TICKS = 10;
 const WAYPOINT_LIFE = 1200;
@@ -41,6 +54,9 @@ interface Follower {
   at?: Vector3;
   waypoint?: Entity;
   waypointBorn: number;
+  /** An escort keeps its post and goes back to it; an invited person has left its post for good. */
+  post?: PostRecord;
+  since: number;
 }
 const followers = new Map<string, Follower>();
 let log: (...parts: unknown[]) => void = () => undefined;
@@ -69,9 +85,105 @@ export function invite(dim: Dimension, post: PostRecord, player: Player | undefi
   }
   // The post counts its person lost from here: a day on, it spawns another (core/peopling.ts).
   storage.update(post, (row) => void (row.entityId = undefined));
-  followers.set(person.id, { entityId: person.id, job: jobOf(person), people: peopleOf(person), name: person.nameTag || peopleName(peopleOf(person)), playerId: player?.id, waypointBorn: 0 });
+  followers.set(person.id, { entityId: person.id, job: jobOf(person), people: peopleOf(person), name: person.nameTag || peopleName(peopleOf(person)), playerId: player?.id, waypointBorn: 0, since: system.currentTick });
   log(`${person.nameTag} of the ${PEOPLES[peopleOf(person)]} leaves the post at ${post.x},${post.y},${post.z} to follow ${player?.name ?? "nobody yet"}`);
   return person;
+}
+
+/** The player's escort, if a guard walks with them now. */
+export function escortOf(player: Player): Follower | undefined {
+  for (const f of followers.values()) if (f.post && f.playerId === player.id) return f;
+  return undefined;
+}
+
+/** The guard at `post` walks with `player` (or nobody, from the hatch) for a day, keeping its post. Returns the guard. */
+export function escort(dim: Dimension, post: PostRecord, player: Player | undefined): Entity | undefined {
+  const person = personOf(dim, post);
+  if (!person || followers.has(person.id)) return undefined;
+  try {
+    person.addTag(ESCORT_TAG);
+  } catch (e) {
+    log(`could not send the guard at ${post.x},${post.y},${post.z} along: ${e}`);
+    return undefined;
+  }
+  followers.set(person.id, { entityId: person.id, job: jobOf(person), people: peopleOf(person), name: person.nameTag || peopleName(peopleOf(person)), playerId: player?.id, waypointBorn: 0, post, since: system.currentTick });
+  log(`${person.nameTag} of the ${PEOPLES[peopleOf(person)]} walks with ${player?.name ?? "nobody yet"} for a day, from the post at ${post.x},${post.y},${post.z}`);
+  return person;
+}
+
+/** An escort's day is over (or the player sends it): it walks back to its post, or is put there if the walk fails. */
+function sendHome(f: Follower, why: string): void {
+  const post = f.post;
+  if (!post) return;
+  removeWaypoint(f);
+  followers.delete(f.entityId);
+  let person: Entity | undefined;
+  try {
+    person = world.getEntity(f.entityId);
+  } catch {
+    person = undefined;
+  }
+  if (!person || !person.isValid) {
+    log(`${f.name} is not about to be sent home (${why})`);
+    return;
+  }
+  try {
+    person.removeTag(ESCORT_TAG);
+  } catch {
+    /* gone */
+  }
+  const dim = person.dimension;
+  const guard = person;
+  // Somebody else at the post by now (the post lost sight of it in an unloaded chunk and spawned another): the escort goes home by going.
+  const there = personOf(dim, post);
+  if (there && there.id !== guard.id) {
+    try {
+      guard.remove();
+    } catch {
+      /* gone */
+    }
+    log(`${f.name} goes home (${why}); the post at ${post.x},${post.y},${post.z} has someone else now`);
+    return;
+  }
+  const home = spawnSpot(post);
+  const put = (): void => {
+    try {
+      if (guard.isValid) guard.teleport(home);
+    } catch {
+      /* gone */
+    }
+  };
+  if (dim.id !== post.dimId) put();
+  else walk.walk(dim, guard, { x: post.x, y: post.y, z: post.z + 1 }, (arrived) => void (arrived || put()));
+  log(`${f.name} goes home to the post at ${post.x},${post.y},${post.z} (${why})`);
+  if (f.playerId) {
+    try {
+      const p = world.getEntity(f.playerId);
+      if (p instanceof Player) p.sendMessage(`${f.name} goes home.`);
+    } catch {
+      /* gone */
+    }
+  }
+}
+
+/** The escort's own form (a tap on the guard): keep walking, or go home. */
+export async function dismissForm(player: Player, guard: Entity): Promise<void> {
+  const f = followers.get(guard.id);
+  if (!f || !f.post) return;
+  if (f.playerId !== player.id) {
+    player.sendMessage(`${f.name} walks with someone else today.`);
+    return;
+  }
+  const form = new ActionFormData().title(f.name).body(`${f.name} of the ${peopleName(f.people)} walks with you until the day is up.`);
+  form.button("Stay with me");
+  form.button("Thank you; go home");
+  try {
+    const r = await form.show(player);
+    if (r.canceled || r.selection !== 1) return;
+  } catch {
+    return;
+  }
+  sendHome(f, "sent home");
 }
 
 function removeWaypoint(f: Follower): void {
@@ -95,7 +207,12 @@ function targetOf(f: Follower): Vector3 | undefined {
 }
 
 function tick(): void {
+  const tickNow = system.currentTick;
   for (const f of [...followers.values()]) {
+    if (f.post && core.escortOver(f.since, tickNow)) {
+      sendHome(f, tickNow < f.since ? "the clock restarted" : "the day is up");
+      continue;
+    }
     let person: Entity | undefined;
     try {
       person = world.getEntity(f.entityId);
@@ -156,7 +273,7 @@ export function settleAt(dim: Dimension, record: PostRecord, player: Player | un
     return false;
   }
   for (const person of near) {
-    const f = followers.get(person.id) ?? { entityId: person.id, job: jobOf(person), people: peopleOf(person), name: person.nameTag || peopleName(peopleOf(person)), waypointBorn: 0 };
+    const f = followers.get(person.id) ?? { entityId: person.id, job: jobOf(person), people: peopleOf(person), name: person.nameTag || peopleName(peopleOf(person)), waypointBorn: 0, since: 0 };
     if (!core.mayTakePost(f, record, empty)) {
       if (!empty) player?.sendMessage("That post has someone already.");
       else player?.sendMessage(`${f.name} is a ${core.jobName(f.job)}; turn the plaque to a ${core.jobName(f.job)}'s post.`);
@@ -183,16 +300,30 @@ export function install(logger: (...parts: unknown[]) => void): void {
   log = logger;
   system.runInterval(tick, POLL_TICKS);
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
-    if (ev.id !== "villages:invite" && ev.id !== "villages:follow") return;
+    if (ev.id !== "villages:invite" && ev.id !== "villages:follow" && ev.id !== "villages:escort") return;
     const src = ev.sourceEntity;
     if (src instanceof Player && src.commandPermissionLevel < CommandPermissionLevel.GameDirectors) return;
+    if (ev.id === "villages:escort" && ev.message.trim() === "home") {
+      const escorts = [...followers.values()].filter((f) => f.post);
+      for (const f of escorts) sendHome(f, "sent home by the hatch");
+      log(`${escorts.length} escort(s) sent home`);
+      return;
+    }
     const [x, y, z] = ev.message.trim().split(/\s+/).map(Number);
     if (x === undefined || y === undefined || z === undefined || [x, y, z].some((n) => !Number.isFinite(n))) {
-      log(`${ev.id} wants x y z`);
+      log(`${ev.id} wants x y z${ev.id === "villages:escort" ? ", or home" : ""}`);
       return;
     }
     const dim = world.getDimension("minecraft:overworld");
-    if (ev.id === "villages:invite") {
+    if (ev.id === "villages:escort") {
+      const record = storage.get({ dimId: dim.id, x, y, z });
+      if (!record) {
+        log(`no post at ${x},${y},${z}`);
+        return;
+      }
+      const e = escort(dim, record, src instanceof Player ? src : undefined);
+      log(e ? `${e.nameTag} walks along (${followers.size} follower(s))` : `nobody at the post at ${x},${y},${z}, or already following`);
+    } else if (ev.id === "villages:invite") {
       const record = storage.get({ dimId: dim.id, x, y, z });
       if (!record) {
         log(`no post at ${x},${y},${z}`);

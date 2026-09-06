@@ -79,8 +79,15 @@
  *                                         coordinates, place it at four rotations and read the
  *                                         world back (B2, B3), then set blocks over water (B4).
  *                                         The builder prototype, settlements.md §8.
+ *   /scriptevent qolprobe:item-at x y z [delayTicks]
+ *                                         dump every stack in the container at that block:
+ *                                         type, amount, tags, components, and the potion
+ *                                         component's effect/delivery ids if it has one. Fill
+ *                                         the chest with /replaceitem first. Measures whether a
+ *                                         tipped arrow is readable from script (Bulwark ammo
+ *                                         types, A1), plus the Potions registry (A2).
  */
-import { world, system, BlockPermutation, BlockVolume, LocationWaypoint } from "@minecraft/server";
+import { world, system, BlockPermutation, BlockVolume, ItemStack, LocationWaypoint, Potions } from "@minecraft/server";
 
 const P = "[QOLPROBE]";
 const log = (...a) => console.warn(P, ...a);
@@ -1532,3 +1539,48 @@ world.afterEvents.worldLoad.subscribe(() => {
     }, delay);
   });
 }
+
+// ---------------------------------------------------------------------------
+// A1/A2: can script tell a tipped arrow from a plain one? Bulwark ammo types.
+//
+// Tipped arrows are `minecraft:arrow` with an aux value in commands
+// (/replaceitem ... arrow 1 18), and ItemStack has no aux accessor. If the
+// stack carries `minecraft:potion`, its potionEffectType.id names the tint;
+// if not, isStackableWith(plain arrow) is the only remaining tell.
+//
+//   tickingarea add 0 100 0 0 100 0 probe
+//   setblock 0 100 0 chest
+//   replaceitem block 0 100 0 slot.container 0 arrow 1 18
+//   scriptevent qolprobe:item-at 0 100 0 20
+// ---------------------------------------------------------------------------
+system.afterEvents.scriptEventReceive.subscribe((ev) => {
+  if (ev.id !== "qolprobe:item-at") return;
+  const [x = 0, y = 100, z = 0, delay = 0] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);
+  system.runTimeout(() => {
+    try {
+      const block = world.getDimension("overworld").getBlock({ x, y, z });
+      if (!block) { log(`A1 block at ${x},${y},${z} not loaded`); return; }
+      const inv = block.getComponent("minecraft:inventory");
+      const c = inv && inv.container;
+      if (!c) { log(`A1 ${block.typeId} at ${x},${y},${z} has no container`); return; }
+      const plain = new ItemStack("minecraft:arrow", 1);
+      for (let i = 0; i < c.size; i++) {
+        const it = c.getItem(i);
+        if (!it) continue;
+        const comps = it.getComponents().map((k) => k.componentId).join(",");
+        let potion = "none";
+        try {
+          const pc = it.getComponent("minecraft:potion");
+          if (pc) potion = `effect=${pc.potionEffectType.id} delivery=${pc.potionDeliveryType.id}`;
+        } catch (e) { potion = `THREW ${e}`; }
+        let stackable = "?";
+        try { stackable = String(it.isStackableWith(plain)); } catch (e) { stackable = `THREW ${e}`; }
+        log(`A1 slot ${i}: ${it.typeId} x${it.amount} name="${it.nameTag ?? ""}" loc=${it.localizationKey} tags=[${it.getTags().join(",")}] components=[${comps}] potion=${potion} stacksWithPlainArrow=${stackable}`);
+      }
+      try {
+        log(`A2 Potions delivery types: ${Potions.getAllDeliveryTypes().map((d) => d.id).join(",")}`);
+        log(`A2 Potions effect types: ${Potions.getAllEffectTypes().map((d) => d.id).join(",")}`);
+      } catch (e) { log(`A2 Potions THREW: ${e}`); }
+    } catch (e) { log(`A1 THREW: ${e}`); }
+  }, delay);
+});

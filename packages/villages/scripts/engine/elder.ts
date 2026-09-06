@@ -1,0 +1,148 @@
+/**
+ * The village's voice (docs/design/villages.md §5–6): its trader, since a
+ * village has one on its square and the design left "a fifth job, or the
+ * trader" open. Interact and a form says where the player stands with the
+ * people, offers an errand (one open per player per people, from the same
+ * table a visitor draws on), takes its payment, sells a job post at
+ * Friend, and at Kin names a person of a chosen job to come home with
+ * the player (engine/follow.ts). The decisions are in core/standing.ts.
+ */
+import { Player, world, type Entity } from "@minecraft/server";
+import { ActionFormData } from "@minecraft/server-ui";
+import { peopleName, type PostRecord } from "../core/record";
+import * as core from "../core/standing";
+import { pickErrand } from "../core/visitors";
+import * as follow from "./follow";
+import { postTag } from "./post";
+import * as standing from "./standing";
+import * as storage from "./storage";
+
+const INVITE_RANGE = 64;
+const JOBS = ["guard", "worker", "trader", "builder"];
+
+/** The elder's own post, from the tag it carries. */
+function postOf(elder: Entity): PostRecord | undefined {
+  const tag = elder.getTags().find((t) => t.startsWith("villages:post:"));
+  if (!tag) return undefined;
+  const [x, y, z] = tag.slice("villages:post:".length).split(",").map(Number);
+  if (x === undefined || y === undefined || z === undefined) return undefined;
+  const record = storage.get({ dimId: elder.dimension.id, x, y, z });
+  return record && postTag(record) === tag ? record : undefined;
+}
+
+const describe = (e: { item: string; amount: number }): string => `${e.amount} ${e.item.replace("minecraft:", "").replace(/_/g, " ")}`;
+
+export async function showElder(player: Player, elder: Entity): Promise<void> {
+  const people = (elder.getProperty("villages:people") as number | undefined) ?? 0;
+  const day = world.getDay();
+  let errand = standing.openErrand(player, people);
+  const lines: string[] = [];
+  if (errand && core.lapsed(errand, day)) {
+    const s = standing.addStanding(player, people, core.STANDING_LAPSE);
+    standing.setErrand(player, people, undefined);
+    lines.push(`You never brought the ${describe(errand)}; it is forgotten, and so is a little of you. (${core.standingWords(people, s)})`);
+    errand = undefined;
+  }
+  const c = standing.inventoryOf(player);
+  const carried = errand && c ? standing.countCarried(c, errand.item) : 0;
+  const emeralds = c ? standing.countCarried(c, core.EMERALD) : 0;
+  const offer = core.elderOffer(people, standing.standingOf(player, people), errand, carried, emeralds);
+  lines.unshift(offer.words);
+  if (errand) lines.push(`You are bringing ${describe(errand)} (${carried} so far).`);
+  const form = new ActionFormData().title(`${elder.nameTag || peopleName(people)}`).body(lines.join(" "));
+  const actions: (() => void)[] = [];
+  if (offer.canPay && errand) {
+    form.button(`Here is the ${describe(errand)}`);
+    actions.push(() => pay(player, people, errand!));
+  } else if (offer.canTake) {
+    form.button("Is there something you need?");
+    actions.push(() => take(player, people, day));
+  }
+  if (offer.canBuy) {
+    form.button(`Buy a job post (${core.POST_PRICE} emeralds)`);
+    actions.push(() => buy(player, people));
+  }
+  if (offer.canInvite) {
+    form.button("Invite someone home");
+    actions.push(() => void invite(player, elder, people));
+  }
+  form.button("Not now");
+  actions.push(() => undefined);
+  try {
+    const r = await form.show(player);
+    if (r.canceled || r.selection === undefined) return;
+    actions[r.selection]?.();
+  } catch (e) {
+    console.warn("[Villages]", `the elder's form failed: ${e}`);
+  }
+}
+
+function take(player: Player, people: number, day: number): void {
+  const errand = { ...pickErrand(people, Math.random), day };
+  standing.setErrand(player, people, errand);
+  player.sendMessage(`The ${peopleName(people)} could use ${describe(errand)}. Bring it within ${core.ERRAND_DAYS} days.`);
+}
+
+function pay(player: Player, people: number, errand: core.OpenErrand): void {
+  const c = standing.inventoryOf(player);
+  if (!c) return;
+  if (standing.countCarried(c, errand.item) < errand.amount) {
+    player.sendMessage("Not enough, on a second count.");
+    return;
+  }
+  const taken = standing.takeCarried(c, errand.item, errand.amount);
+  if (taken < errand.amount) {
+    if (taken > 0) standing.give(player, errand.item, taken);
+    player.sendMessage("Not enough, on a second count.");
+    return;
+  }
+  standing.setErrand(player, people, undefined);
+  const s = standing.addStanding(player, people, core.STANDING_ERRAND);
+  player.sendMessage(`The ${peopleName(people)} thank you. ${core.standingWords(people, s)}`);
+  console.warn("[Villages]", `${player.name} paid the ${peopleName(people)}'s errand (${describe(errand)}): standing ${s}`);
+}
+
+function buy(player: Player, people: number): void {
+  const c = standing.inventoryOf(player);
+  if (!c || standing.countCarried(c, core.EMERALD) < core.POST_PRICE) {
+    player.sendMessage(`That is ${core.POST_PRICE} emeralds.`);
+    return;
+  }
+  const taken = standing.takeCarried(c, core.EMERALD, core.POST_PRICE);
+  if (taken < core.POST_PRICE) {
+    if (taken > 0) standing.give(player, core.EMERALD, taken);
+    return;
+  }
+  standing.give(player, core.POST_ITEM, 1);
+  player.sendMessage(`A job post of the ${peopleName(people)}. Place it in your settlement; someone will come to it.`);
+}
+
+async function invite(player: Player, elder: Entity, people: number): Promise<void> {
+  const form = new ActionFormData().title("Who should come?").body(`Which of the ${peopleName(people)} would you have home with you?`);
+  for (const job of JOBS) form.button(`A ${job}`);
+  form.button("Nobody");
+  let r;
+  try {
+    r = await form.show(player);
+  } catch {
+    return;
+  }
+  if (r.canceled || r.selection === undefined || r.selection >= JOBS.length) return;
+  const post = postOf(elder);
+  if (!post) {
+    player.sendMessage("The elder looks about, and cannot say who.");
+    return;
+  }
+  const dim = elder.dimension;
+  const candidate = core.inviteCandidate(storage.all(), post, r.selection, INVITE_RANGE, (p) => follow.presentAt(dim, p));
+  if (!candidate) {
+    player.sendMessage(`No ${JOBS[r.selection]} of the ${peopleName(people)} can be spared here.`);
+    return;
+  }
+  const named = follow.invite(dim, candidate, player);
+  if (!named) {
+    player.sendMessage("Nobody answered.");
+    return;
+  }
+  player.sendMessage(`${named.nameTag} will come with you. Use a ${JOBS[r.selection]}'s post you placed and they will settle there.`);
+}

@@ -11,6 +11,7 @@ import { JOBS, PEOPLES, PLACED_BY_PLAYER, TRADES, WORKER } from "../core/record"
 import { PERSON, postTag } from "./post";
 import * as storage from "./storage";
 import * as trades from "./trades";
+import * as follow from "./follow";
 import * as visitors from "./visitors";
 
 export function install(): void {
@@ -38,7 +39,7 @@ export function install(): void {
         const kin = r.placedBy === PLACED_BY_PLAYER ? " (the kids' post)" : "";
         lines.push(`${PEOPLES[r.people]} ${JOBS[r.job]}${trade} @${r.x},${r.y},${r.z} ${state}${kin}`);
       }
-      const text = `[Villages] ${storage.count()} post(s), ${alive} person(s) present; ${visitors.status()}\n${lines.join("\n")}`;
+      const text = `[Villages] ${storage.count()} post(s), ${alive} person(s) present; ${visitors.status()}; ${follow.count()} follower(s)\n${lines.join("\n")}`;
       if (src instanceof Player) src.sendMessage(text);
       console.warn(text);
     }, delay);

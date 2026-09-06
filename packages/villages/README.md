@@ -194,6 +194,50 @@ measurements: `docs/villages-jigsaw-results.md`.
   diagnostic hatch (console or operator): `arrive` brings the next visitor
   now, `leave` and `settle` do what they say without the form, which a
   SimulatedPlayer cannot be shown.
+- **The plaque** on a kid's post: the post item places the block's default
+  states (an item cannot choose them), so a hand-placed post is a guard's
+  until it is **tapped**: each tap turns the plaque to the next job while
+  the post has nobody (the block's own `onPlayerInteract`, which fires for
+  a SimulatedPlayer too; the record's job is set before the block's, so
+  the re-placement the state change fires is read as the same post). A
+  tap with an invited person of the post's job within eight blocks settles
+  them instead. A village's post is never turned.
+- **Standing** (design §5, `scripts/core/standing.ts` decides,
+  `scripts/engine/standing.ts` acts): an integer per player per people in
+  a player dynamic property, never shown as a number. Tiers: unwelcome
+  below 0, stranger 0–9, guest 10–24, friend 25–49, kin 50 and up; the
+  village's voice says which in words. It moves by: a **gift** (interact
+  with any person while holding an item its people likes, the items of
+  its errand table: one is taken, +1, once per person per day); an
+  **errand** from the village paid, +5, or lapsed after three days, −2; a
+  **monster the player kills** within twenty-four blocks of a guard, +1;
+  **hitting a person**, −5, and the guards within sixteen blocks come to
+  where the blow landed (they walk there; nobody targets players, design
+  §4). Trading (+1) and building for a people (+10) wait for a trade
+  table and the builder; breaking a village block (−1) waits for a village
+  to know its own blocks (issue #73).
+- **The village's voice** (design §5–6, `scripts/engine/elder.ts`) is its
+  **trader**: interact and a form says where the player stands, offers an
+  errand from the people's table (one open per player per people, three
+  days to bring it) and takes its payment, sells a **job post** for six
+  emeralds at friend, and at kin offers to **invite** someone home.
+- **Invite** (design §6, `scripts/engine/follow.ts`): the elder names the
+  nearest present person of the chosen job among its own people's posts
+  within sixty-four blocks (never itself); that person loses its post tag,
+  gains `villages:invited`, and **follows** the player: a `villages:waypoint`
+  kept at the player's feet, which the walking group follows (the walk's
+  mechanism, continuous; removed while the follower is within three
+  blocks, replaced before its ninety-second timer). The stable API has no
+  bond to hand a person from script, so this is the bond; a `/reload`
+  forgets who it follows and the elder can name it again. The village post
+  counts its person lost and spawns another a day later. The follower
+  **settles** when the player taps a post the kids placed whose plaque
+  shows its job (above): spawned fresh there as its person with the
+  `villages:kin` tag, the follower removed.
+  `/scriptevent villages:invite x y z` invites the person at that post
+  with nobody to follow, and `villages:follow x y z` sends every follower
+  to a spot: the hatches the GameTest drives, since a SimulatedPlayer is
+  no player to the pack.
 - **A restart** (issue #71): every stamp is a `system.currentTick`, which
   counts from boot. The last tick seen is kept in `vl:tick` every ten
   seconds; at load, a stored tick ahead of the clock is a restart and every
@@ -291,6 +335,15 @@ measurements: `docs/villages-jigsaw-results.md`.
   put ten drover posts in the world (traders, guards, builders; that draw
   had no corral), and forty seconds later every one had its drover present
   (`/scriptevent villages:debug`). No content-log error for any piece.
+- **Invite, the follow and the plaque**
+  (`villages_invited_person_follows_and_settles`): a village worker post's
+  person, invited by the hatch, loses its post tag and gains
+  `villages:invited`; told to go to a spot across the arena it stands
+  within three blocks of it inside four seconds; a post placed by hand
+  beside it reads `villages:job` 0, the first tap turns the plaque to 1
+  and the block is still a post, and the second tap settles the follower
+  there: a foxfolk with the `villages:kin` tag at the kids' post, no
+  invited person left, and the village post empty.
 - **The kids' posts and the visitors** (`docs/villages-jigsaw-results.md`,
   "Visitors"): `villages_player_post_waits_for_settler` has a
   SimulatedPlayer place a post and sees nobody spawn in 300 ticks, with
@@ -379,6 +432,18 @@ measurements: `docs/villages-jigsaw-results.md`.
   a person wanders off, lower `restriction_radius` in `entities/person.json`.
 - **A village that generated naturally** (not placed by hand) is peopled
   the same way as chunks first load.
+- **Standing on a real client**: every path but the invite's follow and
+  settle needs a real player, since a SimulatedPlayer marshals as
+  `undefined` into the pack's events. To see: a gift (hold sweet berries,
+  interact with a foxfolk: one taken, "The Foxfolk do not know you yet",
+  a second gift to the same person refused today); the trader's form and
+  its errand, payment and the post for six emeralds; hitting a person
+  (−5, and the guards walk to where you stood); a zombie killed by a
+  guard (+1); and at kin the invite's two forms, the follow behind you
+  through a real village, and the settle by tapping your own post. If the
+  follower lags or loses you, the waypoint refresh (ten ticks) or its
+  search range (48) are the numbers in `engine/follow.ts` and
+  `entities/person.json`.
 - **The visitor's form** on a real client: it opens on interact, "Here it
   is" appears only with the errand's items carried, paying takes exactly
   the amount and gives the gift, and "Stay with us" appears after the
@@ -492,6 +557,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): standing's tiers and what they open, the
-elder and errands from the village itself, inviting a person home (issue
-#73). Visitors carry the first errand tables and the standing counter.
+Not yet built (design §5–6): trading for standing, building for a people,
+losing standing for a village's broken blocks, and the guest tier's inn
+(a Hearthstone-style respawn point); the trader's blueprints wait for the
+builder (`docs/design/settlements.md`).

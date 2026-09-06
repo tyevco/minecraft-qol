@@ -487,3 +487,61 @@ registerAsync("qol", "villages_visitor_leaves_at_dawn", async (test) => {
     test.assert(n === 0, `expected the visitor gone at dawn, found ${n}`);
   });
 }).maxTicks(600).structureName("qol:arena");
+
+// ---------------------------------------------------------------------------
+// Invite (docs/design/villages.md §6). A village worker is invited by the
+// hatch, follows a spot the hatch names, and settles when the player taps a
+// post the kids placed once its plaque shows the worker's job: the post
+// item places a guard's post, so the first tap turns the plaque and the
+// second settles the follower.
+// ---------------------------------------------------------------------------
+
+const INVITED = "villages:invited";
+
+registerAsync("qol", "villages_invited_person_follows_and_settles", async (test) => {
+  placePost(test, 9, 1); // a foxfolk worker's post, a village's
+  for (let t = 0; t < 300 && people(test).length === 0; t += 5) await test.idle(5);
+  test.assert(people(test).length === 1, `expected the village post's person, found ${people(test).length}`);
+  const dim = test.getDimension();
+  const w = test.worldBlockLocation(AT);
+  dim.runCommand(`scriptevent villages:invite ${w.x} ${w.y} ${w.z}`);
+  for (let t = 0; t < 100 && tagged(test, INVITED, AT, 8).length === 0; t += 5) await test.idle(5);
+  const invited = tagged(test, INVITED, AT, 8);
+  test.assert(invited.length === 1, `expected one invited person, found ${invited.length}`);
+  test.assert(!invited[0]!.hasTag(`villages:post:${w.x},${w.y},${w.z}`), "expected the invited person freed of its post tag");
+  // Follow: a spot across the arena, named by the hatch since a SimulatedPlayer is no player to the pack.
+  const spot: Vector3 = { x: 1, y: 1, z: 6 };
+  const ws = test.worldBlockLocation(spot);
+  dim.runCommand(`scriptevent villages:follow ${ws.x} ${ws.y} ${ws.z}`);
+  let close = false;
+  for (let t = 0; t < 400 && !close; t += 10) {
+    await test.idle(10);
+    const e = tagged(test, INVITED, AT, 16)[0];
+    if (e) {
+      const l = test.relativeLocation(e.location);
+      close = Math.hypot(l.x - (spot.x + 0.5), l.z - (spot.z + 0.5)) <= 3;
+    }
+  }
+  test.assert(close, "expected the invited person to follow to the spot within 400 ticks");
+  // The kids' post by hand beside the spot: a guard's until the plaque is turned.
+  const player = test.spawnSimulatedPlayer({ x: 3, y: 1, z: 6 }, "vl_inviter", GameMode.Survival);
+  const kid = await placeByHand(test, player, { x: 1, y: 0, z: 4 });
+  test.assert(test.getBlock(kid).permutation.getState("villages:job" as never) === 0, "expected a hand-placed post to be a guard's");
+  player.lookAtBlock(kid);
+  await test.idle(5);
+  test.assert(player.interactWithBlock(kid), "interactWithBlock refused the post");
+  await test.idle(20);
+  const job = test.getBlock(kid).permutation.getState("villages:job" as never);
+  test.assert(job === 1, `expected the first tap to turn the plaque to the worker's job (1), got ${String(job)}`);
+  test.assert(test.getBlock(kid).typeId === POST, "expected the post still there after the turn");
+  test.assert(player.interactWithBlock(kid), "interactWithBlock refused the post a second time");
+  test.succeedWhen(() => {
+    const kin = tagged(test, KIN, kid, 3);
+    test.assert(kin.length === 1, `expected the follower settled at the kids' post, found ${kin.length}`);
+    test.assert(kin[0]!.getProperty("villages:people") === 9, `expected a foxfolk settler, got ${String(kin[0]!.getProperty("villages:people"))}`);
+    const stray = tagged(test, INVITED, AT, 24).length;
+    test.assert(stray === 0, `expected no invited person left, found ${stray}`);
+    const atVillagePost = dim.getEntities({ type: PERSON, location: test.worldLocation({ x: 4.5, y: 1, z: 4.5 }), maxDistance: 1.5 }).length;
+    test.assert(atVillagePost === 0, `expected the village post empty until its day is up, found ${atVillagePost}`);
+  });
+}).maxTicks(1400).structureName("qol:arena");

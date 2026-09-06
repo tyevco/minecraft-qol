@@ -12,6 +12,8 @@ import * as debug from "./engine/debug";
 import { COMPONENT_ID, markPlacedByPlayer, postComponent } from "./engine/post";
 import * as settings from "./engine/settings";
 import * as storage from "./engine/storage";
+import * as follow from "./engine/follow";
+import * as standing from "./engine/standing";
 import * as visitors from "./engine/visitors";
 
 const log = (...parts: unknown[]): void => console.warn("[Villages]", ...parts);
@@ -33,6 +35,8 @@ world.afterEvents.worldLoad.subscribe(() => {
   clock.install(log);
   settings.install(log);
   visitors.install(log);
+  standing.install(log);
+  follow.install(log);
   system.runInterval(() => {
     settings.refresh();
     clock.touch();

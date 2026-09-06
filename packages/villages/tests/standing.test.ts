@@ -1,0 +1,69 @@
+import { describe, expect, it } from "vitest";
+import { FRESH, PLACED_BY_PLAYER, type PostRecord } from "../scripts/core/record";
+import {
+  ERRAND_DAYS, FRIEND, GUEST, KIN, POST_PRICE, STRANGER, UNWELCOME,
+  acceptGift, elderOffer, inviteCandidate, lapsed, likes, mayTakePost, parseErrand, parseGiftDay, standingWords, tierOf,
+} from "../scripts/core/standing";
+
+const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 9, job: 2, ...FRESH, ...extra });
+
+describe("standing", () => {
+  it("tiers at the design's thresholds, in words", () => {
+    expect(tierOf(-1)).toBe(UNWELCOME);
+    expect(tierOf(0)).toBe(STRANGER);
+    expect(tierOf(9)).toBe(STRANGER);
+    expect(tierOf(10)).toBe(GUEST);
+    expect(tierOf(25)).toBe(FRIEND);
+    expect(tierOf(49)).toBe(FRIEND);
+    expect(tierOf(50)).toBe(KIN);
+    expect(standingWords(9, 0)).toBe("The Foxfolk do not know you yet.");
+    expect(standingWords(9, 50)).toBe("The Foxfolk count you as kin.");
+    expect(standingWords(9, -5)).toContain("amends");
+  });
+  it("a people likes the items of its errands; a gift counts once per person per day", () => {
+    expect(likes(9)).toEqual(["minecraft:sweet_berries", "minecraft:glow_berries", "minecraft:egg"]);
+    const day = parseGiftDay(undefined, 4);
+    expect(day).toEqual({ day: 4, persons: [] });
+    const after = acceptGift(day, "p1")!;
+    expect(after.persons).toEqual(["p1"]);
+    expect(acceptGift(after, "p1")).toBeUndefined();
+    expect(acceptGift(after, "p2")!.persons).toEqual(["p1", "p2"]);
+    expect(parseGiftDay(JSON.stringify(after), 4)).toEqual(after);
+    expect(parseGiftDay(JSON.stringify(after), 5)).toEqual({ day: 5, persons: [] }); // a new day
+    expect(parseGiftDay("junk", 5)).toEqual({ day: 5, persons: [] });
+  });
+  it("an errand from the village lapses after three days", () => {
+    const e = parseErrand(JSON.stringify({ item: "minecraft:coal", amount: 16, day: 2 }))!;
+    expect(e).toEqual({ item: "minecraft:coal", amount: 16, day: 2 });
+    expect(lapsed(e, 2 + ERRAND_DAYS)).toBe(false);
+    expect(lapsed(e, 3 + ERRAND_DAYS)).toBe(true);
+    expect(parseErrand(undefined)).toBeUndefined();
+    expect(parseErrand("{}")).toBeUndefined();
+  });
+  it("the elder's offer follows the tier: an errand to a stranger, a post at friend, an invite at kin", () => {
+    const stranger = elderOffer(9, 0, undefined, 0, 0);
+    expect(stranger).toMatchObject({ tier: STRANGER, canTake: true, canPay: false, canBuy: false, canInvite: false });
+    expect(elderOffer(9, -1, undefined, 0, 99).canTake).toBe(false);
+    const open = { item: "minecraft:egg", amount: 8, day: 1 };
+    expect(elderOffer(9, 3, open, 7, 0)).toMatchObject({ canPay: false, canTake: false });
+    expect(elderOffer(9, 3, open, 8, 0)).toMatchObject({ canPay: true });
+    expect(elderOffer(9, 30, undefined, 0, POST_PRICE - 1).canBuy).toBe(false);
+    expect(elderOffer(9, 30, undefined, 0, POST_PRICE).canBuy).toBe(true);
+    expect(elderOffer(9, 30, undefined, 0, 64).canInvite).toBe(false);
+    expect(elderOffer(9, 50, undefined, 0, 0)).toMatchObject({ canInvite: true, canBuy: false });
+  });
+  it("names the nearest present person of the job in the elder's own village, never the elder", () => {
+    const elder = post(0, 0);
+    const posts = [elder, post(5, 0, { job: 1 }), post(2, 0, { job: 1 }), post(1, 0, { job: 1, people: 3 }), post(200, 0, { job: 1 }), post(3, 0, { job: 0 })];
+    expect(inviteCandidate(posts, elder, 1, 64, () => true)!.x).toBe(2);
+    expect(inviteCandidate(posts, elder, 1, 64, (p) => p.x !== 2)!.x).toBe(5);
+    expect(inviteCandidate(posts, elder, 2, 64, () => true)).toBeUndefined(); // the elder is the only trader
+    expect(inviteCandidate(posts, elder, 0, 64, () => true)!.x).toBe(3);
+  });
+  it("a follower takes an empty post of its own job", () => {
+    const worker = post(0, 0, { job: 1, placedBy: PLACED_BY_PLAYER });
+    expect(mayTakePost({ job: 1 }, worker, true)).toBe(true);
+    expect(mayTakePost({ job: 1 }, worker, false)).toBe(false);
+    expect(mayTakePost({ job: 0 }, worker, true)).toBe(false);
+  });
+});

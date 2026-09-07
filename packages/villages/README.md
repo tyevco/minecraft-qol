@@ -160,8 +160,8 @@ measurements: `docs/villages-jigsaw-results.md`.
   and `/setblock` too, so it cannot tell them apart). Registration happens
   in `onPlace` and the first spawn waits for the block's own tick, so the
   mark always lands before anyone is spawned. Such a post is peopled only
-  by a visitor who chooses to stay (below) or, later, an invited villager
-  (design §6, not built); its person carries the `villages:kin` tag and
+  by a visitor who chooses to stay (below) or an invited villager
+  (design §6, "Invite" below); its person carries the `villages:kin` tag and
   works its trade like any other.
 - **Visitors** (design §6.1, `scripts/core/visitors.ts` decides,
   `scripts/engine/visitors.ts` acts). A **settlement** is two or more of
@@ -186,7 +186,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   "Stay with us" once three errands have been paid, and "Not now". Paying
   takes the items out of the player's inventory first, then adds five to
   the player's **standing** with that people (`villages:standing.<people>`,
-  a player dynamic property; design §5's tiers are not built) and hands
+  a player dynamic property; design §5's tiers are "Standing" below) and hands
   over the people's gift (a stack of what it sells); the next errand is
   drawn at once. The visitor **leaves at the next dawn** whether paid or
   not (an unpaid errand waits for its next visit). **Staying**: the visitor

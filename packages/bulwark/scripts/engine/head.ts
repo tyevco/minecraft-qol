@@ -1,21 +1,27 @@
 import { world, type Dimension, type Entity } from "@minecraft/server";
-import { armEvent, isArmed } from "../core/ammo";
+import { groupEvents, isKind, type Arming, type Kind } from "../core/ammo";
 import { linkKey, parseLinkKey, type Position } from "../core/record";
+import { isTier, tierEvent, type Tier } from "../core/tiers";
 import { headSpawnLocation, isAtBlock, type Head } from "../core/reconcile";
 
 /**
  * The turret head: the entity half of the block/entity pair.
  *
  * The link back to its block is a dynamic property on the entity holding the
- * block's position, so either side can find the other. The armed flag
- * mirrors which component group we last asked the entity to wear, so the
- * block's tick can bring the two into line without firing an event every
- * second.
+ * block's position, so either side can find the other. The armed flag and
+ * the ammo kind mirror which component groups we last asked the entity to
+ * wear, so the block's tick can bring them into line without firing an event
+ * every second, and a shot can be charged to the right supply.
  */
 
 export const TURRET_ENTITY = "bulwark:turret_head";
 const PROP_LINK = "bw:link";
 const PROP_ARMED = "bw:armed";
+const PROP_KIND = "bw:kind";
+const PROP_AIM = "bw:aim";
+const PROP_TARGET = "bw:target";
+/** The entity's own int property, drawn by the render controller. */
+const PROPERTY_TIER = "bulwark:tier";
 const TAG = "[Bulwark]";
 
 export function isTurretEntity(entity: Entity | undefined): entity is Entity {
@@ -47,6 +53,46 @@ export function readArmed(entity: Entity): boolean | undefined {
   try {
     const raw = entity.getDynamicProperty(PROP_ARMED);
     return typeof raw === "boolean" ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The ammo kind the head was last set to fire; undefined when disarmed or unknown. */
+export function readKind(entity: Entity): Kind | undefined {
+  try {
+    const raw = entity.getDynamicProperty(PROP_KIND);
+    return isKind(raw) ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The aim group event the head was last set to; undefined when disarmed or unknown. */
+export function readAim(entity: Entity): string | undefined {
+  try {
+    const raw = entity.getDynamicProperty(PROP_AIM);
+    return typeof raw === "string" ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The target selector event the head was last set to; undefined when disarmed or unknown. */
+export function readTarget(entity: Entity): string | undefined {
+  try {
+    const raw = entity.getDynamicProperty(PROP_TARGET);
+    return typeof raw === "string" ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The damage tier the head is drawn at, off its own entity property. */
+export function readTier(entity: Entity): Tier | undefined {
+  try {
+    const raw = entity.getProperty(PROPERTY_TIER);
+    return isTier(raw) ? raw : undefined;
   } catch {
     return undefined;
   }
@@ -116,19 +162,32 @@ export function seat(entity: Entity, block: Position): void {
 }
 
 /**
- * Bring the entity's component group in line with its ammo.
+ * Bring the entity's component groups in line with what it should fire.
  *
- * Fires the arm/disarm event only when the recorded state disagrees, so a
- * settled turret costs nothing per tick.
+ * Fires events only where the recorded state disagrees, so a settled turret
+ * costs nothing per tick. A shooter group swap takes effect on the very next
+ * shot (measured, `rig_swap_changes_next_shot`), so a hopper that changes
+ * ammo changes the turret within a block tick.
  */
-export function syncArming(entity: Entity, ammo: number): void {
-  const event = armEvent(ammo, readArmed(entity));
-  if (!event) return;
+export function syncArming(entity: Entity, want: Arming, damage?: Tier): void {
+  const events = groupEvents(want, {
+    armed: readArmed(entity),
+    kind: readKind(entity),
+    aim: readAim(entity),
+    target: readTarget(entity),
+  });
+  // The texture follows the damage tier; the property lands next tick, so a
+  // same-tick read is stale, and a tier event fires at most once per change.
+  if (damage !== undefined && readTier(entity) !== damage) events.push(tierEvent(damage));
+  if (events.length === 0) return;
   try {
-    entity.triggerEvent(event);
-    entity.setDynamicProperty(PROP_ARMED, isArmed(ammo));
+    for (const event of events) entity.triggerEvent(event);
+    entity.setDynamicProperty(PROP_ARMED, want.armed);
+    entity.setDynamicProperty(PROP_KIND, want.armed ? want.kind : undefined);
+    entity.setDynamicProperty(PROP_AIM, want.armed ? want.aim : undefined);
+    entity.setDynamicProperty(PROP_TARGET, want.armed ? want.target : undefined);
   } catch (e) {
-    console.warn(`${TAG} could not ${event} head ${entity.id}: ${e}`);
+    console.warn(`${TAG} could not ${events.join("+")} head ${entity.id}: ${e}`);
   }
 }
 

@@ -160,8 +160,8 @@ measurements: `docs/villages-jigsaw-results.md`.
   and `/setblock` too, so it cannot tell them apart). Registration happens
   in `onPlace` and the first spawn waits for the block's own tick, so the
   mark always lands before anyone is spawned. Such a post is peopled only
-  by a visitor who chooses to stay (below) or, later, an invited villager
-  (design §6, not built); its person carries the `villages:kin` tag and
+  by a visitor who chooses to stay (below) or an invited villager
+  (design §6, "Invite" below); its person carries the `villages:kin` tag and
   works its trade like any other.
 - **Visitors** (design §6.1, `scripts/core/visitors.ts` decides,
   `scripts/engine/visitors.ts` acts). A **settlement** is two or more of
@@ -186,7 +186,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   "Stay with us" once three errands have been paid, and "Not now". Paying
   takes the items out of the player's inventory first, then adds five to
   the player's **standing** with that people (`villages:standing.<people>`,
-  a player dynamic property; design §5's tiers are not built) and hands
+  a player dynamic property; design §5's tiers are "Standing" below) and hands
   over the people's gift (a stack of what it sells); the next errand is
   drawn at once. The visitor **leaves at the next dawn** whether paid or
   not (an unpaid errand waits for its next visit). **Staying**: the visitor
@@ -323,19 +323,21 @@ measurements: `docs/villages-jigsaw-results.md`.
   lost person is replaced at once rather than a day later. A `/reload`
   keeps the clock running and is not a restart.
 - **The blueprint table and the builder** (design `settlements.md` §5,
-  `npcs.md` §4; issue #80 brought the prototype pack in). Eight
+  `npcs.md` §4; issue #80 brought the prototype pack in). Ten
   **blueprints**, written by the structure generator into
   `behavior_pack/structures/villages/` as `villages:<key>` beside the
   village pieces, from the same source as the catalogue
-  (`tools/structures/buildings.ts`, `builderBlueprint` in `generate.ts`):
-  the tallfolk well, gatehouse, farmhouse and barn, the shared larder, wall
-  segment and inn, and the tinker market stall. Each building keeps its
-  **job post** now that one pack owns both. One **blueprint item** per
+  (`tools/structures/buildings.ts`, `builderBlueprint` in
+  `tools/structures/builder.ts`): the tallfolk well, gatehouse, farmhouse,
+  barn and field, the shared larder, wall segment, inn and bridge span,
+  and the tinker market stall. Each building keeps its **job post** now
+  that one pack owns both. The bridge ships without the river it was drawn
+  standing in: the water is where a span is placed, not part of it, so the
+  builder neither charges for it nor pours it. One **blueprint item** per
   building (`villages:blueprint_<key>`, the `villages:blueprint` custom
   component), in the creative menu under crafting, and **sold by the
   trader at friend** (twelve emeralds: the people's own buildings and the
-  shared ones, on the wares form). Not shipped yet: the bridge span
-  (water under a footing) and the field (farmland and wheat have no item).
+  shared ones, on the wares form).
   - **The table** (`villages:blueprint_table`, the `villages:table`
     component): tap it **holding a blueprint** and a form shows the
     building, its size after turning, the way the door will face, every
@@ -349,9 +351,13 @@ measurements: `docs/villages-jigsaw-results.md`.
   - **The checks** (`core/checks.ts`, pure), in the design's order, each
     naming the first offender: fits (every cell of the box is air, a
     plant, snow or water; the footing layer may also be natural ground),
-    grounded (a solid block under every footing cell), not overlapping
-    another recorded building, **a builder about**, a chest beside the
-    table, and paid for (what is short, listed).
+    grounded (a solid block under every footing cell, or water too for a
+    building the catalogue marks as standing on stilts, the bridge span;
+    never air), not overlapping another recorded building, **a builder
+    about**, a chest beside the table, and paid for (what is short,
+    listed). A block with no item of its own costs what it is made from
+    and gives that back: farmland and a path cost dirt, a crop its seed
+    (`ITEM_FOR` in `core/blueprint.ts`), so the field is dirt and seeds.
   - **The builder is one of the peoples**: the person of the nearest
     **builder's post** (job 3) within sixty-four blocks of the table,
     present and not off following someone (`engine/builderPerson.ts`);
@@ -506,6 +512,44 @@ measurements: `docs/villages-jigsaw-results.md`.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
 
+## The showcase: every people at once
+
+`villages:showcase` (`tools/structures/showcase.ts`) is one structure with a
+fenced plot for every people, in `PEOPLES` order read left to right, north
+to south: the nine humans in the first two rows and a bit, then the ten
+furfolk, and a stone lookout with steps in the twentieth slot. Each plot
+stands on its people's verge with its paving through the middle, its own
+lamp post, its plant where it has one instead of a tree (the mousefolk's
+toadstool, the otterfolk's driftwood), and four job posts, so once placed
+the pack peoples it with a guard, a worker, a trader and a builder of that
+people, 76 persons in a field 47 by 59. The fences keep each people to its
+plot (a person strolls ten blocks from where it spawned, and cannot jump a
+fence or a wall), and a gate on the south side of each lets a player in.
+The whole field stands on a base layer of stone bricks, so a sand or gravel
+verge never has air under it (measured: placed in the air, the three
+sand-floored plots lost their ground and their persons) and a field placed
+on a slope stands on a plinth.
+
+In a creative world with cheats on, with the Villages pack and its resource
+pack enabled, stand where the field's north-west corner should be and:
+
+```
+/place structure villages:showcase ~ ~-2 ~
+```
+
+`~-2` sinks the base into the ground and sets the verges level with it;
+`~-1` leaves the field one block up, on its plinth. The posts take a few seconds to
+tick and spawn; every person is named for its people, so looking at one says
+who it is. Nothing in the field starts a trade (no trees, water, crops or
+cactus, on purpose), so every worker just lives there in its hat. A trade
+needs a village, or a chest and something to work: the sections above.
+Cheats disable achievements for that world, so raise it in a world made for
+showing rather than on the Realm.
+
+Pinned by `villages_showcase_peoples_every_plot` in the GameTest pack: the
+placed structure is peopled by every people in every job, each inside its
+own ring.
+
 ## Measured
 
 - The two GameTests (`villages_post_spawns_person`, `villages_post_break_removes_person`)
@@ -637,7 +681,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   apple carry the component); every food carries the `minecraft:is_food`
   item tag, which is what the wage uses.
 
-- **The builder, pinned** (`suites/builder.ts`, fourteen GameTests, the
+- **The builder, pinned** (`suites/builder.ts`, sixteen GameTests, the
   prototype's, moved with it; `docs/settlements-results.md` has each): the
   well goes up block by block from the villages' tallfolk builder (a
   builder's post beside the table spawns it) and matches the structure
@@ -650,7 +694,10 @@ measurements: `docs/villages-jigsaw-results.md`.
   leaves a stone; a survey between two stakes raises again cell for cell;
   the larder (164 cells, its builder's post now inside) and a surveyed bed
   and door come down whole, and **the larder's own post spawned nobody**:
-  it went up as the kids' and came down with its record.
+  it went up as the kids' and came down with its record; the bridge is
+  accepted over a pool the well is refused over by name and goes up with
+  the pool still full beneath it; the field goes up from dirt, seeds, turf
+  and fences and comes down into the same items.
 
 ## To confirm in game
 
@@ -722,7 +769,14 @@ measurements: `docs/villages-jigsaw-results.md`.
   outside the box); a survey of your own house; water in the well placed
   last for nothing; a footing on a real slope accepted where the higher
   cells are air and the lower turf; and the trader's blueprints at friend
-  (twelve emeralds) arriving as the item the table reads.
+  (twelve emeralds) arriving as the item the table reads. **The bridge on a
+  real river**: stand in the shallows and tap the table; the origin is the
+  block under your feet, so the posts go down from one below the surface
+  and the deck comes one above it (if placing from the water reads wrong,
+  the origin for a stilt building could drop to the water's surface in
+  `blueprintForm`, one line). **The field's farmland** stays moist from its
+  channel; a trampled cell turns to dirt, which repair leaves alone as
+  somebody else's block.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
 - **The furfolk on a real client** (`docs/design/furfolk.md` §7 items 3–5,
@@ -820,7 +874,6 @@ measurements: `docs/villages-jigsaw-results.md`.
   lower the mound or move the piece to the square's pool.
 
 Not yet built: the rest of the settlement catalogue as blueprints
-(`docs/design/settlements.md` §3; eight of twenty-five ship), the bridge
-span and the field.
+(`docs/design/settlements.md` §3; ten of twenty-five ship).
 A kid's own house within twenty blocks of a village's plaques is inside
 the hull, so build a little further off or expect the village to mind.

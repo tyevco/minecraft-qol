@@ -585,6 +585,14 @@ const MODELS: Model[] = [
     kind: "structure",
     structure: `concepts/villages/${id}.json`,
   })),
+  {
+    id: "village_showcase",
+    name: "Showcase (every people)",
+    pack: "concept · villages",
+    kind: "structure",
+    structure: "concepts/villages/showcase.json",
+    notes: "Every people in one field: a fenced plot each with a guard, a worker, a trader and a builder, and a lookout. Shipped in the villages pack; `/place structure villages:showcase` raises it.",
+  },
 ];
 
 rmSync(OUT, { recursive: true, force: true });

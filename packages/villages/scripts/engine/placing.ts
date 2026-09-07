@@ -61,7 +61,7 @@ export function plan(dim: Dimension, key: string, origin: Vector3, rotation: Rot
   const lookup = lookupIn(dim);
   const fit = out.refused ? { ok: true as const } : fits(origin, size, lookup);
   if (!fit.ok) out.refused = fit.reason;
-  const ground = out.refused ? { ok: true as const } : grounded(origin.y, cells, lookup);
+  const ground = out.refused ? { ok: true as const } : grounded(origin.y, cells, lookup, entry.stilts === true);
   if (!ground.ok) out.refused = ground.reason;
   if (!out.refused && !builderNear(dim, table)) out.refused = `no builder is about: a builder's post with its person within ${BUILDER_RANGE} blocks of the table is needed`;
   if (!out.refused && !c && !free) out.refused = "there is no chest beside the table";

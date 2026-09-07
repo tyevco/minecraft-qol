@@ -9,8 +9,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Blueprint } from "./blueprint";
+import { builderBlueprint } from "./builder";
 import { BUILDINGS } from "./buildings";
 import { uniformStructure } from "./mcstructure";
+import { showcase } from "./showcase";
 import { PEOPLES, villagePreview, villageSet, villageWorldgen } from "./villages";
 
 const ROOT = resolve(__dirname, "../..");
@@ -43,9 +45,9 @@ for (const bp of BUILDINGS) {
 
 // The blueprints (docs/design/settlements.md §5): the buildings a builder
 // raises from the blueprint table, shipped in the villages pack as
-// `villages:<key>` beside the village pieces. Small, and no stand-ins; the
-// rest of the catalogue follows as the placer is measured against these.
-export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall"] as const;
+// `villages:<key>` beside the village pieces (tools/structures/builder.ts
+// says what is left out of each).
+export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall", "shared_bridge", "tallfolk_field"] as const;
 const BUILDER = resolve(ROOT, "packages/villages/behavior_pack/structures/villages");
 mkdirSync(BUILDER, { recursive: true });
 for (const key of BUILDER_KEYS) {
@@ -54,20 +56,6 @@ for (const key of BUILDER_KEYS) {
   console.log(`packages/villages/behavior_pack/structures/villages/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
 }
 
-/**
- * A catalogue building as the villages pack ships it for the table: every
- * block as authored, its job post included (the post the builder places is
- * the kids' own, engine/jobs.ts). The prototype pack left the post out
- * because it did not know the block; now the same pack owns both.
- */
-export function builderBlueprint(key: string): Blueprint {
-  const src = BUILDINGS.find((b) => b.key === key);
-  if (!src) throw new Error(`no building ${key} for the blueprints`);
-  const out = new Blueprint(src.key, src.title, src.size, src.people, src.notes);
-  for (const b of src.blocks()) out.set(b.x, b.y, b.z, b.name, b.states);
-  for (const [x, y, z] of src.waterloggedCells()) out.waterlog(x, y, z);
-  return out;
-}
 
 
 // The jigsaw probe (docs/design/villages.md §7.1, issue #38): the tallfolk
@@ -154,6 +142,17 @@ for (const people of PEOPLES) {
   const { expansion, blueprint } = villagePreview(set, 1);
   writeFileSync(resolve(VILLAGES, `${people.key}.json`), JSON.stringify(blueprint.toPreview()) + "\n");
   console.log(`concepts/villages/${people.key}  ${blueprint.size.join("x")}  ${expansion.placements.length} pieces, ${expansion.open.length} open`);
+}
+
+// The showcase (showcase.ts): every people in one field, one .mcstructure
+// in the villages pack for `/place structure villages:showcase`, and a
+// preview beside the whole villages for the viewer.
+{
+  const bp = showcase();
+  const dir = resolve(ROOT, "packages/villages/behavior_pack/structures/villages");
+  writeFileSync(resolve(dir, "showcase.mcstructure"), bp.toMcstructure());
+  writeFileSync(resolve(VILLAGES, "showcase.json"), JSON.stringify(bp.toPreview()) + "\n");
+  console.log(`packages/villages/behavior_pack/structures/villages/showcase.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} blocks`);
 }
 
 // The processor probe (docs/villages-jigsaw-results.md): a pad with a

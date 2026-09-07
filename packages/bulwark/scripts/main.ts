@@ -13,6 +13,7 @@
 import { system, world } from "@minecraft/server";
 import * as debug from "./engine/debug";
 import * as hooks from "./engine/hooks";
+import * as settings from "./engine/settings";
 import * as storage from "./engine/storage";
 import { COMPONENT_ID, turretComponent } from "./engine/turret";
 
@@ -20,6 +21,8 @@ const TAG = "[Bulwark]";
 const log = (...parts: unknown[]): void => console.warn(TAG, ...parts);
 
 let componentRegistered = false;
+/** Ticks between settings-panel polls. The change event is beta-only. */
+const SETTINGS_TICKS = 100;
 
 // Must run at module scope: startup fires before worldLoad, and not on /reload.
 // Registration is logged either way so a turret block that does nothing can be
@@ -37,6 +40,8 @@ system.beforeEvents.startup.subscribe((event) => {
 world.afterEvents.worldLoad.subscribe(() => {
   // /reload discards module state, so everything is re-established here.
   const known = storage.load();
+  settings.install(log);
+  system.runInterval(() => settings.refresh(), SETTINGS_TICKS);
   hooks.install();
   debug.install();
 

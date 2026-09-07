@@ -309,7 +309,9 @@ world's blocks in the box, so they live in `core/` and are unit tested:
    reedfolk blueprint, water is required under the stilts). The first
    offending block is shown to the player as a coordinate and a name.
 2. **Grounded.** Every footing block at y = 0 has a solid block beneath it,
-   or water for stilts. A blueprint half over a cliff is refused.
+   or water for stilts. A blueprint half over a cliff is refused. *Built:
+   the catalogue entry says which buildings stand on stilts (the bridge
+   span), and the shipped bridge carries no river of its own.*
 3. **Paid for.** The chest beside the table holds every material; the form
    lists what is short.
 4. **Not overlapping another blueprint.** The position index records every

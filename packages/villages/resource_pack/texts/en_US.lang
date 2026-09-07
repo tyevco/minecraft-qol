@@ -13,3 +13,5 @@ item.villages:blueprint_tallfolk_farmhouse=Blueprint: Farmhouse
 item.villages:blueprint_tallfolk_barn=Blueprint: Barn
 item.villages:blueprint_shared_inn=Blueprint: Inn
 item.villages:blueprint_tinker_stall=Blueprint: Market Stall
+item.villages:blueprint_shared_bridge=Blueprint: Bridge Span
+item.villages:blueprint_tallfolk_field=Blueprint: Field

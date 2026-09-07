@@ -20,6 +20,22 @@ newest vanilla behaviour pack on it is `vanilla_1.26.45`), `@minecraft/server`
 | `splash_potion 1 21` | `minecraft:splash_potion` | `%potion.heal.splash.name` | effect `minecraft:healing`, delivery `ThrownSplash` | false |
 | `potion 1 25` | `minecraft:potion` | `%potion.poison.name` | effect `minecraft:poison`, delivery `Consume` | false |
 | `fire_charge 1` | `minecraft:fire_charge` | `item.fireball.name` | none | false |
+| `arrow 1 35` | `minecraft:arrow` | `tipped_arrow.effect.weakness` | none | false |
+| `arrow 1 36` | `minecraft:arrow` | `tipped_arrow.effect.weakness` | none | false |
+| `arrow 1 37` | `minecraft:arrow` | `tipped_arrow.effect.wither` | none | false |
+| `arrow 1 19` | `minecraft:arrow` | `tipped_arrow.effect.moveSlowdown` | none | false |
+| `arrow 1 22` | `minecraft:arrow` | `tipped_arrow.effect.heal` | none | false |
+| `arrow 1 24` | `minecraft:arrow` | `tipped_arrow.effect.harm` | none | false |
+| `splash_potion 1 17` | `minecraft:splash_potion` | `%potion.moveSlowdown.splash.name` | `minecraft:slowness`, `ThrownSplash` | false |
+| `splash_potion 1 18` | `minecraft:splash_potion` | `%potion.moveSlowdown.splash.name` | `minecraft:long_slowness`, `ThrownSplash` | false |
+| `splash_potion 1 42` | `minecraft:splash_potion` | `%potion.moveSlowdown.splash.name` | `minecraft:strong_slowness`, `ThrownSplash` | false |
+| `splash_potion 1 34` | `minecraft:splash_potion` | `%potion.weakness.splash.name` | `minecraft:weakness`, `ThrownSplash` | false |
+| `splash_potion 1 36` | `minecraft:splash_potion` | `%potion.wither.splash.name` | `minecraft:wither`, `ThrownSplash` | false |
+| `lingering_potion 1 34` | `minecraft:lingering_potion` | `%potion.weakness.linger.name` | `minecraft:weakness`, `ThrownLingering` | false |
+| `snowball 3` | `minecraft:snowball` | `item.snowball.name` | none | false |
+
+(The second block of rows is a second run, made when the pack needed the
+keys for the tints it fires.)
 
 Every stack reported `getComponents()` empty; the arrows carried the one tag
 `minecraft:arrow`, nothing else did.
@@ -48,7 +64,9 @@ Every stack reported `getComponents()` empty; the arrows carried the one tag
   `tipped_arrow.effect.<effect>` against `item.arrow.name` for a plain arrow.
   So a turret *can* tell what it was fed, by that key. The key does not
   distinguish strength or duration: aux 18 (slowness) and aux 43 (strong
-  slowness) both read `moveSlowdown`.
+  slowness) both read `moveSlowdown`, 35 and 36 both `weakness`. The keys the
+  pack matches on are `moveSlowdown`, `weakness` and `wither`; `heal`, `harm`,
+  `poison` and `nightVision` are read and refused (`core/ammo.ts`).
 - **`isStackableWith` a plain arrow is the cheap tipped-or-not test**: true
   only for the plain one. It says nothing about which tint.
 - **An arrow's aux value is its potion's registry index plus one.** 6 →
@@ -71,18 +89,193 @@ Every stack reported `getComponents()` empty; the arrows carried the one tag
 - **Potions and splash potions are fully readable**: effect id and delivery
   both come off `ItemPotionComponent`. A potion-throwing tier would not need
   the localization trick.
-- **Aside.** `Potions.getAllEffectTypes()` works and `Potions.resolve` is in
-  the 2.9.0 typings. The corrections table's row on the Fluidworks bottling
-  line says script cannot produce a potion of a chosen effect; that row
-  predates `Potions.resolve`, which this run did not call. Worth one probe
-  before anyone builds on either statement.
+- **Aside.** `Potions.getAllEffectTypes()` works, and `Potions.resolve` is
+  measured below (`rig_splash_potion_applies`): it makes a splash potion of a
+  chosen effect. The corrections table's row on the Fluidworks bottling line
+  predates it.
 
 **Confidence.** One reading per stack. The localization keys are engine
-strings with no documentation behind them, so treat the four key-to-effect
+strings with no documentation behind them, so treat the nine key-to-effect
 pairs above as measured and any other tip as expected until read. The
-plus-one rule is four readings that agree with three vanilla definitions.
+plus-one rule is ten readings that agree with three vanilla definitions.
 
 **What it changes.** Nothing shipped. `qolprobe:item-at` stays in the probe
 pack for the next tint. The design that follows from this is in
-`docs/design/bulwark-ammo-and-upgrades.md`, and its "must prototype" list is
-what the next Bulwark change should pin with GameTests before building.
+`docs/design/bulwark-ammo-and-upgrades.md`; its "must prototype" list is
+measured below.
+
+---
+
+# The must-prototype list, measured
+
+**What was measured.** The `rig_*` tests in
+`packages/gametest/scripts/suites/bulwark_ammo.ts`, run one at a time by
+`npm run bds:test` on the same server. The shooter is `qol:shooter_rig`, an
+entity the GameTest pack ships with one component group per thing under
+test, swapped by `triggerEvent`; the target is a husk four blocks in front,
+spawned on easy. `qol:bolt` is a custom projectile the pack ships for §8.4.
+Each line is the test's own log message.
+
+| § | Test | Reading |
+| --- | --- | --- |
+| 8.1a | `rig_tint_applies` | slowness group (`aux_val` 18): the husk had **slowness after the first arrow**. With the poison group (`aux_val` 26) first: 400 ticks, no effect, twice |
+| 8.1b | `rig_swap_changes_next_shot` | slowness group fired once; `triggerEvent` to the weakness group; **the second shot carried weakness** (effects `[weakness]` after 2 shots) |
+| 8.2 | `rig_rate_swap_keeps_firing` | slow group (2 s) fired twice; after `triggerEvent` to the fast group (0.5 s) the **first shot came 16 ticks later** and 4 shots followed in the next 120 ticks |
+| 8.3 | `rig_power_scales_damage` | `shooter.power` 1.0: two hits of **1.92**; `power` 3.0: hits of **6.89 and 5.90** (mean 6.40), read off `entityHurt.damage` |
+| 8.4 | `rig_custom_bolt_has_owner` | `qol:bolt` fired through `shooter.def`; `Projectile.owner` = the rig **at spawn and a tick later**; the husk died to the third bolt; `entityDie.damagingEntity` = **the bolt's id**, `damagingProjectile` = `qol:bolt` whose owner reads **none at death**; the spawn-time map gave the rig |
+| 8.5 | `rig_hopper_decrement_survives_transfer` | 10 arrows in a chest draining into a hopper; 6 shots decremented the hopper's stack from the `entitySpawn` handler while it filled; 0 shots found it empty; **4 left**, exactly 10 − 6 |
+| 8.6 | `rig_picks_tint_by_target` | `projectiles[]` entry slowness for `is_family: undead`, fallback weakness: the husk got **`[slowness]` only** |
+| — | `rig_snowball_no_damage` | 2 snowball hits: **damage 0, health 20/20**, husk moved 0.85 blocks |
+| — | `rig_splash_potion_applies` | `splash_potion` `aux_val` 34 from the shooter: the husk gained **weakness**; `Potions.resolve("minecraft:weakness", "ThrownSplash")` gave **`minecraft:splash_potion` x1, effect `minecraft:weakness`, delivery `ThrownSplash`**; a bare `"weakness"` throws `InvalidPotionEffectTypeError` |
+
+**What it means.**
+
+- **A `shooter` group swap takes effect on the very next shot**, and a
+  `ranged_attack` swap keeps the target and fires again inside the new
+  interval. Component-group swapping is enough for both ammo kinds and tiers;
+  no disarm-arm pair and no respawn.
+- **`shooter.power` is a damage knob**: 1.0 → 1.92, 3.0 → about 6.4, close to
+  the arrow rule (velocity × 2, less drop). The default (no `power`) was not
+  read; the turret fires at whatever `ranged_attack` gives a mob, which the
+  vanilla arrow's mob group puts at 1.6.
+- **The undead are immune to poison, and a poison tint is invisible on
+  them.** 400 ticks of poison arrows at a husk left it with no effect, twice,
+  while a slowness arrow landed on the second shot. The same for a poison
+  splash potion. The design's §3 tint list stands: slowness, weakness and
+  decay work on everyone; poison and harming do not touch the mobs that come
+  at night.
+- **A custom projectile fired through `shooter.def` has its owner at spawn**
+  (the rig's id, at spawn and a tick later), so `attributeShot` works for it
+  unchanged. **But the kill's `damagingEntity` is the bolt, not the rig, and
+  at death the bolt's owner is unreadable** (five runs: `damagingEntity` was
+  the bolt's id every time; `damagingProjectile` was `qol:bolt` with owner
+  `none`, the bolt having been removed on hit). The only route that held was
+  a map of projectile id → owner filled at spawn. Bulwark's kill counter
+  reads `damagingEntity` and would miss every kill by a custom projectile; it
+  must keep that map, which `attributeShot` already has the data for. Whether
+  a vanilla arrow reports the shooter as `damagingEntity` is not measured
+  here — the map covers both.
+- **Decrementing a hopper stack from a spawn handler loses nothing** while
+  the hopper is moving items, over six shots. Hopper-direct consumption (§5)
+  is safe to build.
+- **The witch's `projectiles[]` works on a custom entity**: the undead husk
+  got the filtered tint and not the fallback.
+- **Snowballs do no damage and push**, as the vanilla definition says.
+- **`Potions.resolve` makes a splash potion of a chosen effect**, given the
+  namespaced id (`minecraft:weakness`; the bare name throws), so splash
+  potions are the one special ammo a turret can buffer and give back. The
+  corrections table row that says script cannot produce a potion of a chosen
+  effect is out of date; row updated.
+- **`projectileHitEntity` did not report the arrow that applied slowness**
+  (`1 arrows fired, 0 hit the husk, effects [slowness]`), while it reported
+  both snowball hits. One reading; do not count arrow hits with that event
+  until it has been read again.
+
+---
+
+# Phase 3a in the pack, measured
+
+**What was measured.** Five `turret_*` GameTests on the shipped turret,
+each a placed turret with a hopper pointing into it, filled through the
+console's `/replaceitem` where a tint is needed, and a husk in front. Every
+line is the test's own log message. (Since Phase 3b the same tests first
+feed the ammo gate through the hopper, a fire charge and for the tier III
+kinds dragon's breath; the readings below were repeated that way and
+agreed.)
+
+| Test | Reading |
+| --- | --- |
+| `turret_fires_tipped_from_hopper` | 8 arrows of slowness in the hopper: the husk had slowness after **3 shots, hopper holds 5 tipped of 8**, no plain arrow ever appeared in it. One per shot, nothing pulled into the buffer |
+| `turret_leaves_healing_tint_alone` | 4 arrows of healing: **0 shots in 120 ticks, hopper holds 4 of 4** |
+| `turret_throws_snowballs_from_hopper` | 8 snowballs: **2 thrown, 2 hit, husk health 20/20, hopper holds 6 of 8** |
+| `turret_throws_splash_from_hopper` | 4 splash potions of weakness, one per slot: the husk weakened after **2 thrown, hopper holds 2 of 4** |
+| `turret_prefers_special_over_buffer` | 8 plain arrows and 4 of slowness in one hopper: the plain ones left for the buffer, the tipped stayed; the first shots were the tint (**husk slowed, 2 shots, hopper tipped 2 of 4**) |
+
+**What it means.**
+
+- Hopper-direct ammo works end to end on the shipped turret: the head's
+  shooter group follows the hopper, the shot is charged to the stack, and
+  the buffer never sees a tipped arrow.
+- **Splash potions do not stack.** `/replaceitem … splash_potion 4 34` left
+  one potion in the slot, so a hopper feeds them one slot at a time; five
+  slots is five throws.
+- **A dynamic property is private to the pack that wrote it.** The
+  GameTest pack read `undefined` for the head's `bw:link`, `bw:armed` and
+  `bw:kind` and for the world's `bw:turrets`, in the same tick the turret was
+  plainly acting on them. So a test cannot read another pack's record or
+  flags; it infers them from what the world shows, which is why the kill
+  counter has no GameTest (its mechanism is pinned by
+  `rig_custom_bolt_has_owner`, and the pack's `bulwark:debug` line is the
+  in-game check). Row added to the corrections table.
+
+---
+
+# Phase 3b in the pack, measured
+
+**What was measured.** Four `turret_*` GameTests on the shipped turret,
+feeding the upgrade materials through the hopper (a simulated player's
+right-click never reaches a pack). Each line is the test's own log message.
+
+| Test | Reading |
+| --- | --- |
+| `turret_rate_upgrade_fires_faster` | **3 shots in 100 ticks at tier I, 10 at tier III**, the redstone block and quartz taken from the hopper in between |
+| `turret_damage_upgrade_hits_harder` | tier I hits **2.94, 2.94**; after a diamond and a netherite ingot, tier III hits **5.88, 5.88**: exactly 2× |
+| `turret_gate_holds_tipped_until_upgraded` | 8 arrows of slowness at tier I: **0 shots in 100 ticks, hopper untouched**; a fire charge fed, then **2 shots and the husk slowed** |
+| `turret_break_returns_upgrades` | an eye of ender and a redstone block fed through the hopper, block broken: **both dropped**, one each |
+
+**What it means.** A tier is a `triggerEvent` into one of nine aim groups
+plus an `entityHurt` multiplier, and both take on the shipped head: the
+rate tier more than tripled the shots, the damage tier doubled the hit to
+the decimal, the gate held and then opened, and the materials came back.
+Range tiers are not measured: the arena is eight blocks and a mob cannot be
+stood 24 blocks off. That row is in the pack README under "To confirm in
+game".
+
+---
+
+# Targeting priority (#91), measured
+
+**What was measured.** Four `rig_target_*` GameTests on `qol:shooter_rig`:
+a healthy husk two blocks out and a husk at 4 health five blocks out, and
+which the rig hurts first (by `entityHurt`, cause projectile). Selector
+groups: the plain one (`is_family: monster`); one with two `entity_types`
+entries, a wounded-filter entry (`actor_health <= 5`) first and the plain
+entry second; one with only the wounded-filter entry. Each line is the
+test's own log message.
+
+| Test | Selector | Reading |
+| --- | --- | --- |
+| `rig_target_nearest_by_default` | plain | **near** healthy husk hurt first |
+| `rig_target_order_is_not_priority` | wounded entry first, plain second | **near** healthy husk hurt first, three runs of three |
+| `rig_target_filter_only` | wounded entry only | **far** wounded husk hurt first, near healthy **never** |
+| `rig_target_filter_on_top` | plain group on the head, wounded-only group added on top by a second event | **far** wounded husk hurt first, near healthy never |
+
+**What it means.**
+
+- **The order of `entity_types` entries is not a priority.** The nearest
+  candidate matching any entry wins. A "weakest first" cannot be written as
+  an ordered list.
+- **An `actor_health` filter on an entry holds**, so a selector can be told
+  to see only wounded (or only healthy) monsters.
+- **A second component group's `nearest_attackable_target` replaces the
+  first's**, so the selector can be an additive group on the head and swapped
+  with `triggerEvent` like the aim and ammo groups.
+- So the pack ranks in script and lets the engine select: every block tick a
+  turret set to "weakest first" counts the monsters in range and, while any is
+  at three hearts or under, wears the wounded-only selector; otherwise the
+  plain one. "Strongest first" the same at seven and a half hearts or over.
+  The selectors were moved out of the nine aim groups into nine target groups
+  (`bulwark:target_<any|wounded|healthy>_g<range>`) so a rate change can never
+  put a plain selector back on top. The whole turret suite passes on that
+  head (run 6).
+
+**Also measured on the way.** At entity format `1.26.40`,
+`ranged_attack.attack_interval` as a bare number is rejected
+(`attack_interval: expected an object`) and the entity does not load at
+all. Vanilla's bogged writes the bare form at an older format version. Row
+added to the corrections table.
+
+**Confidence.** One run per reading, each on a single husk; the runner
+re-ran the failures alone. Damage numbers are two hits each on easy with
+`difficulty_randomization: multiplicative`, so treat them as a ratio, not a
+table.

@@ -8,9 +8,10 @@ identifiers below are the prototype's as measured; today the same code is
 and `engine/{jobs,table,placing,chest,structures,survey,outline,beacon,buildings,hatches}.ts`,
 the structures are `villages:<key>`, the hatches `villages:place` and the
 rest, and the builder is the person of the nearest builder's post rather
-than an entity of the pack's own. The fourteen GameTests pass unchanged in
-substance after the move, with a builder's post in every rig, the larder
-at 164 cells and the inn at 689 now that each keeps its job post. Answers `docs/design/settlements.md` §8 (the must-prototype list) and
+than an entity of the pack's own. The GameTests pass unchanged in substance
+after the move, with a builder's post in every rig, and the larder at 164
+cells, the inn at 689 and the field at 157 now that each keeps its job
+post. Answers `docs/design/settlements.md` §8 (the must-prototype list) and
 records what the pack's own GameTests pinned. The probe is
 `qolprobe:blueprint <id> [x y z]` in `packages/probe/scripts/main.js`; the
 offline diff of its rotation lines against the generator is
@@ -197,9 +198,8 @@ Built after the placer was measured, pinned by two more GameTests:
 
 ## Four more blueprints, and the two-block things
 
-The gatehouse, farmhouse, barn and inn joined the pack (the bridge span
-waits on a rule for water under a footing, the field on farmland and wheat
-having no item of their own). The inn is the first building with beds, a
+The gatehouse, farmhouse, barn and inn joined the pack (the bridge span and
+the field followed; see below). The inn is the first building with beds, a
 ladder, lying logs and doors, so it was placed turned once by the pack and
 compared with `structureManager.place` at `Rotate90` in a sixteen-block
 arena, and the larder was built and taken down whole. Three things measured:
@@ -241,6 +241,47 @@ arena, and the larder was built and taken down whole. Three things measured:
   bed's halves did not pop each other. The removal step now takes both halves
   of a pair in one tick, the pair's one item banked first, and the other
   half's own step later finds air and skips.
+
+## The bridge and the field: water under a footing, and blocks with no item
+
+The last two catalogue buildings joined the pack. Both had waited on a rule.
+
+**Water for stilts** (§5.2 item 2). `grounded` takes a flag from the
+catalogue entry, and a building on stilts may stand on water as well as on a
+solid block, never on air or a plant. The bridge span is the one such
+building so far; the generator and the pack agree on the list
+(`STILTS` in `tools/structures/builder.ts`, `stilts` in the catalogue, a
+unit test holding the two equal). The shipped bridge carries no water: the
+generator's span is drawn standing in two layers of river, and the builder's
+copy drops them, because the river is where a span is placed and not part of
+it; charging for it or pouring it into a river that is already there would
+both be wrong. Measured on a pool one deep across the sixteen-block arena:
+the well, a ground building, was refused over it as "nothing to stand on at
+x,y,z (water)", so the engine's `isLiquid` is what `grounded` sees; the
+bridge was accepted at the same origin, placed 55 of 55 cells matching the
+shipped structure, and left the pool's 45 cells water. Where the deck comes
+relative to a real river depends on where the player stands, and is on the
+confirm list.
+
+**Blocks with no item.** Farmland, a path and a crop have no item that
+places them, so `itemFor` charges what they are made from: dirt for farmland
+and a path, seeds for wheat (carrots, potatoes, beetroot and the stems by
+the same table), and the same item comes back when the building is taken
+down. Measured with the field in the sixteen-block arena, from a chest of
+dirt, wheat seeds, grass blocks, fences, a chest and a gate. The first run
+placed 155 of 156 cells as the file has them: **the path cell under the
+chest was dirt.** A path turns to dirt when a block is set on it, and the
+field's chest and post stood on the path from the gate; `structureManager.place`
+does not trigger that, so the villages' worldgen copy never showed it. The
+chest and post now stand on plain dirt, the path is the one cell before the
+gate, the hobbit garden had the same fault and is fixed the same way, and
+`tools/structures/tests/buildable.test.ts` holds every path in the catalogue
+clear above. With that, all 156 cells matched the game's own placement of
+the structure (farmland at moisture 7, wheat at growth 7, the channel's four
+water cells), the chest was empty when it stood, and every item came back.
+The generator writes turf as `minecraft:grass`, the engine's old name; the
+world reads it back as `minecraft:grass_block`, and that is the item charged
+and returned.
 
 ## Palette swaps (§4)
 

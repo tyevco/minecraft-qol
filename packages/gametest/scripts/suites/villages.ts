@@ -1,7 +1,7 @@
-import { BlockPermutation, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, BlockVolume, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
 import { WARES } from "../../../villages/scripts/core/standing";
-import { count, floor, put } from "./rig";
+import { count, floor, put, until } from "./rig";
 
 /**
  * Villages: a job post keeps one person.
@@ -662,3 +662,75 @@ registerAsync("qol", "villages_trader_sells_from_the_storehouse", async (test) =
     test.assert(dropped === 16, `expected the 16 wheat dropped at the trader's post, found ${dropped}`);
   });
 }).maxTicks(600).structureName("qol:arena");
+
+/**
+ * The showcase (tools/structures/showcase.ts): every people in one field,
+ * placed whole by `/place structure villages:showcase`. Pinned: the posts
+ * people every plot on their own, a person of every people in every job,
+ * each inside its own ring. The structure is far too big for the arena, so
+ * it is placed forty blocks up, as the builder's comparisons are, under a
+ * ticking area of its own so every plot's chunk ticks, and taken down
+ * after, persons and all: a structure reload restores the arena, nothing
+ * else.
+ */
+registerAsync("qol", "villages_showcase_peoples_every_plot", async (test) => {
+  const s = world.structureManager.get("villages:showcase");
+  test.assert(s !== undefined, "villages:showcase is not in the world's packs");
+  const size = s!.size;
+  const dim = test.getDimension();
+  const o = test.worldBlockLocation({ x: 0, y: 1, z: 0 });
+  const far = { x: o.x, y: o.y + 40, z: o.z };
+  const end = { x: far.x + size.x - 1, y: far.y + size.y - 1, z: far.z + size.z - 1 };
+  const middle = { x: far.x + size.x / 2, y: far.y, z: far.z + size.z / 2 };
+  const persons = () => dim.getEntities({ type: PERSON, location: middle, maxDistance: 64 });
+  // The field's layout (tools/structures/showcase.ts): plots of PLOT with GAP between, MARGIN round, on a base G deep.
+  const PLOT = 9, GAP = 3, MARGIN = 1, COLS = 4, JOBS = 4, G = 1;
+  const PEOPLES = 19;
+  const sweep = () => { for (const e of persons()) e.remove(); };
+  // Plot-local cells of the posts, in job order (showcase.ts POST_CELLS).
+  const POST_CELLS = [[3, 3], [5, 3], [3, 5], [5, 5]] as const;
+  const plotOrigin = (people: number) => ({ x: far.x + MARGIN + (people % COLS) * (PLOT + GAP), z: far.z + MARGIN + Math.floor(people / COLS) * (PLOT + GAP) });
+  const postAt = (people: number, job: number): Vector3 => {
+    const o = plotOrigin(people);
+    return { x: o.x + POST_CELLS[job]![0], y: far.y + G + 1, z: o.z + POST_CELLS[job]![1] };
+  };
+  const corners = [far, { x: end.x, y: far.y, z: far.z }, { x: far.x, y: far.y, z: end.z }, { x: end.x, y: far.y, z: end.z }];
+  try {
+    dim.runCommand(`tickingarea add ${far.x} ${far.y} ${far.z} ${end.x} ${end.y} ${end.z} qolshowcase`);
+    // A ticking area loads its chunks lazily, and a structure placed into a
+    // chunk that is not loaded loses that part silently (measured: placed
+    // at once, two plots of the field never came up): wait for every corner.
+    const loaded = await until(test, () => corners.every((c) => dim.getBlock(c) !== undefined), 600, 10);
+    test.assert(loaded, `the field's chunks did not load: ${corners.map((c) => `${c.x},${c.z} ${dim.getBlock(c) ? "loaded" : "not"}`).join("; ")}`);
+    sweep();
+    world.structureManager.place(s!, dim, far);
+    const missingPosts: string[] = [];
+    for (let people = 0; people < PEOPLES; people++)
+      for (let job = 0; job < JOBS; job++) {
+        const b = dim.getBlock(postAt(people, job));
+        if (b?.typeId !== POST) missingPosts.push(`${people}/${job}: ${b ? b.typeId : "unloaded"}`);
+      }
+    test.assert(missingPosts.length === 0, `posts not placed: ${missingPosts.join("; ")}`);
+    await until(test, () => persons().length >= PEOPLES * JOBS, 1600, 10);
+    const found = persons();
+    const seen = new Set<string>();
+    const outside: string[] = [];
+    for (const e of found) {
+      const people = e.getProperty("villages:people") as number;
+      const job = e.getProperty("villages:job") as number;
+      seen.add(`${people}/${job}`);
+      const { x: px, z: pz } = plotOrigin(people);
+      const x = Math.floor(e.location.x), z = Math.floor(e.location.z);
+      if (x <= px || x >= px + PLOT - 1 || z <= pz || z >= pz + PLOT - 1) outside.push(`${e.nameTag} ${job} at ${x},${z} (plot ${px}..${px + PLOT - 1},${pz}..${pz + PLOT - 1})`);
+    }
+    const missing: string[] = [];
+    for (let people = 0; people < PEOPLES; people++) for (let job = 0; job < JOBS; job++) if (!seen.has(`${people}/${job}`)) missing.push(`${people}/${job}`);
+    test.assert(found.length === PEOPLES * JOBS && missing.length === 0, `expected ${PEOPLES * JOBS} persons, one per people per job, found ${found.length}; missing ${missing.join(", ") || "none"}`);
+    test.assert(outside.length === 0, `persons outside their plot: ${outside.join("; ")}`);
+  } finally {
+    sweep();
+    dim.fillBlocks(new BlockVolume(far, end), "minecraft:air");
+    dim.runCommand("tickingarea remove qolshowcase");
+  }
+  test.succeed();
+}).maxTicks(2400).structureName("qol:arena");

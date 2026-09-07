@@ -132,6 +132,15 @@ that needs the pack to notice a block either has a simulated player place it
 (Hearthstone) or asks the pack to rescan (`/scriptevent fluidworks:rescan`,
 which is also the escape hatch after `/fill` or a piston).
 
+Two entities ship in this pack's `behavior_pack/entities/` for the Bulwark
+Phase 3 prototypes (`suites/bulwark_ammo.ts`): `qol:shooter_rig`, a
+stationary shooter with one component group per thing under test (a tint, a
+fire rate, a `shooter.power`, the witch's per-target list, a custom
+projectile), and `qol:bolt`, that projectile. They exist so the engine's
+`minecraft:shooter` can be measured without touching the shipped turret
+head; a `rig_*` test swaps groups with `triggerEvent` the way the turret
+swaps `bulwark:arm`.
+
 ## Adding a test
 
 `registerAsync("qol", "<name>", async (test) => { ... }).structureName(STRUCTURE).maxTicks(n)`

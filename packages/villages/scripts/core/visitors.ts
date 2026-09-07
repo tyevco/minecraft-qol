@@ -8,7 +8,7 @@
  * A settlement is a cluster of posts the kids placed (`placedBy`), two or
  * more within earshot of each other. A kids' post spawns nobody (core/
  * peopling.ts): its people arrive as visitors who chose to stay, or as
- * invited villagers (§6, not built). The same people keeps sending the same
+ * invited villagers (§6, engine/follow.ts). The same people keeps sending the same
  * named face, so a visitor becomes familiar; the face, its errand and how
  * many it has been paid for live in one world property (engine/visitors.ts).
  */

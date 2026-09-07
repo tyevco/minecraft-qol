@@ -20,8 +20,8 @@ import {
 import { safeGetBlock } from "@qol/shared/engine/safeBlock";
 import { inputOf, outputOf, parseFacing, type Vec3 } from "../core/facing";
 import {
+  choose,
   isStuck,
-  plan,
   REASON_TEXT,
   type Endpoint,
   type IdleReason,
@@ -46,6 +46,12 @@ const BATCH = 4;
 
 /** Why each funnel last did nothing, for the debug readout. Runtime only. */
 const reasons = new Map<string, IdleReason>();
+/**
+ * Operations each funnel has completed, so a funnel reaching several tanks
+ * through pipes deals to them in turn (`choose`). Runtime only: after a
+ * reload the deal starts again from the nearest, which costs nothing.
+ */
+const turns = new Map<string, number>();
 const keyOf = (r: FunnelRow): string => `${r.dimId}|${r.x},${r.y},${r.z}`;
 
 /** The last idle reason for a funnel, as a sentence, or undefined if it worked. */
@@ -97,44 +103,67 @@ function step(row: FunnelRow, settings: Settings, now: number, log: Log): void {
   }
   if (!facing) return;
 
+  // Through pipes either end may reach several blocks; directly, exactly one.
   const mouth = inputOf(row, facing);
-  const inRes = resolveThroughPipes(dim, row, mouth, settings.pipes);
-  const outRes = resolveThroughPipes(
+  const ins = resolveThroughPipes(dim, row, mouth, settings.pipes);
+  const outs = resolveThroughPipes(
     dim,
     row,
     outputOf(row, facing),
     settings.pipes,
   );
-  const inBlock = inRes.block;
-  const outBlock = outRes.block;
-  const output = describeBlock(outBlock);
+  const outputs = outs.map((r) => describeBlock(r.block));
   // Only the block directly at the mouth can be "open"; a pipe run never is.
-  const input: Endpoint = inRes.viaPipes
-    ? describeBlock(inBlock)
-    : describeBlock(inBlock, inBlock?.isAir === true && isOpenSky(dim, mouth));
+  const inputs: Endpoint[] = ins.map((r) =>
+    r.viaPipes
+      ? describeBlock(r.block)
+      : describeBlock(r.block, r.block?.isAir === true && isOpenSky(dim, mouth)),
+  );
 
-  if (output.kind === "cauldron" && outBlock)
-    labels.want(dim, outRes.pos, output.state);
-  if (input.kind === "cauldron" && inBlock)
-    labels.want(dim, inRes.pos, input.state);
+  // Every tank the funnel can reach gets a label, not only the one it uses
+  // this cycle: a split shows both arms filling.
+  outputs.forEach((o, i) => {
+    if (o.kind === "cauldron" && outs[i]!.block)
+      labels.want(dim, outs[i]!.pos, o.state);
+  });
+  inputs.forEach((o, i) => {
+    if (o.kind === "cauldron" && ins[i]!.block)
+      labels.want(dim, ins[i]!.pos, o.state);
+  });
 
-  const p = plan(
-    input,
-    output,
+  const k = keyOf(row);
+  const turn = turns.get(k) ?? 0;
+  const chosen = choose(
+    inputs,
+    outputs,
     { raining: isRaining(row.dimId), wear: row.wear },
     settings.policy,
     CAULDRON_RULES,
+    turn,
   );
+  const p = chosen.plan;
   if (p.kind === "idle") {
-    reasons.set(keyOf(row), p.reason);
+    reasons.set(k, p.reason);
     const stuck = isStuck(p.reason);
     if (stuck) smoke(dim, row, facing);
     row.sleepUntil =
       now + settings.cycleTicks * (stuck ? STUCK_CYCLES : IDLE_CYCLES);
     return;
   }
-  reasons.delete(keyOf(row));
-  execute(p, row, dim, inBlock!, outBlock!, input, mouth, log);
+  reasons.delete(k);
+  const inRes = ins[chosen.input]!;
+  const outRes = outs[chosen.output]!;
+  execute(
+    p,
+    row,
+    dim,
+    inRes.block!,
+    outRes.block!,
+    inputs[chosen.input]!,
+    mouth,
+    log,
+  );
+  turns.set(k, turn + 1);
   drip(dim, row, facing);
   flow(dim, row, facing, inRes.path, outRes.path, outRes.pos);
 }

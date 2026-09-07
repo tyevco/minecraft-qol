@@ -53,6 +53,20 @@ measurements: `docs/villages-jigsaw-results.md`.
   which counts from the server's boot; a restart is told by the marker
   below and ends every wait. A post placed over an existing
   record (a structure load, `/fill`) retires the old person and starts over.
+- **The sweep** (`scripts/core/sweep.ts` decides, `scripts/engine/sweep.ts`
+  acts; issue #104): `playerBreakBlock` is the only event that drops a
+  record, so a post taken by an explosion, `/fill`, `/setblock`, a piston or
+  a structure load over it used to leave its row behind for good - and the
+  post's own tick cannot notice, because a record with no block never ticks.
+  Since settlements cluster on x/z, one stale row joined a live one and
+  dragged the settlement's middle to wherever the old post used to be; on a
+  re-used test world that put a visitor sixty blocks under the arena. The
+  ten-second interval now walks the index, sixteen rows a pass, and retires
+  any row whose block is no longer a `villages:post`. Rule 6 of CLAUDE.md
+  decides the rest: an unreadable block (an unloaded chunk, or a position
+  outside the world) is **skipped, never evicted** - a post nobody is
+  standing near is out of sight, not gone. `villages:debug` counts what has
+  been swept, and `villages_stale_post_record_is_swept` pins it.
 - **Trades** (design §5.1, `scripts/core/trades.ts` decides,
   `scripts/engine/trades.ts` acts): a **worker's** post surveys the blocks
   within sixteen of it on the first tick its person is present, and again

@@ -13,6 +13,7 @@ import * as storage from "./storage";
 import * as trades from "./trades";
 import * as follow from "./follow";
 import * as visitors from "./visitors";
+import * as sweep from "./sweep";
 
 export function install(): void {
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
@@ -39,7 +40,7 @@ export function install(): void {
         const kin = r.placedBy === PLACED_BY_PLAYER ? " (the kids' post)" : "";
         lines.push(`${PEOPLES[r.people]} ${JOBS[r.job]}${trade} @${r.x},${r.y},${r.z} ${state}${kin}`);
       }
-      const text = `[Villages] ${storage.count()} post(s), ${alive} person(s) present; ${visitors.status()}; ${follow.count()} follower(s)\n${lines.join("\n")}`;
+      const text = `[Villages] ${storage.count()} post(s), ${alive} person(s) present; ${visitors.status()}; ${follow.count()} follower(s); ${sweep.retiredCount()} stale record(s) swept\n${lines.join("\n")}`;
       if (src instanceof Player) src.sendMessage(text);
       console.warn(text);
     }, delay);

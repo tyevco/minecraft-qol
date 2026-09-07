@@ -10,22 +10,45 @@
  * - a monster killed by the player within reach of a guard, +1;
  * - hitting a person, −5, and the guards within earshot come to the
  *   player: they walk to where the blow landed (nobody targets players,
- *   design §4; "the guards come" is that, on a family Realm).
+ *   design §4; "the guards come" is that, on a family Realm);
+ * - a trade with the village's trader (engine/elder.ts), +1 for the first
+ *   few each day with a people (core.TRADES_PER_DAY), counted here.
  *
- * Trading (+1 a trade) and building for a people (+10) wait for a trade
- * table and the builder; breaking a village block (−1) waits for a
- * village to know its own blocks (issue #73).
+ * - breaking a village's block, −1: a block that is not natural, inside
+ *   the hull round a village's posts (core.villageOf), and not one the
+ *   player placed there this session.
+ *
+ * And what standing opens here: a village's bed (any bed inside the hull)
+ * is the inn, for guests and up; a stranger's use of it is cancelled in
+ * the before-event with a word, and a guest's goes through to the game,
+ * which sets the respawn point as at any bed.
+ *
+ * Building for a people (+10) waits for the builder (issue #80).
+ *
+ * `/scriptevent villages:standing [people [value]]` (operator) reads the
+ * caller's standing with every people back, or sets one: the in-game
+ * testers' hatch, since standing is never shown as a number.
  */
-import { EntityComponentTypes, ItemStack, Player, world, type Container, type Entity } from "@minecraft/server";
-import { peopleName } from "../core/record";
+import { CommandPermissionLevel, EntityComponentTypes, ItemStack, Player, system, world, type Container, type Entity } from "@minecraft/server";
+import { PEOPLES, peopleName } from "../core/record";
 import * as core from "../core/standing";
 import { standingProperty } from "../core/visitors";
 import { showElder } from "./elder";
+import * as follow from "./follow";
 import { PERSON } from "./post";
-import { VISITOR_TAG } from "./visitors";
+import { VISITOR_TAG, today } from "./visitors";
+import * as storage from "./storage";
 import * as walk from "./walk";
 
 const GIFTS_PROPERTY = "villages:gifts";
+/** Position keys of blocks players placed inside a village's hull this session, so taking one's own block back is free. */
+const placedInVillage = new Set<string>();
+const PLACED_CAP = 4096;
+/** The last tick each player was told of a broken block, so a wall coming down is one line, not one a block. */
+const toldAt = new Map<string, number>();
+const TELL_EVERY = 100;
+const keyOf = (at: core.Spot): string => `${at.dimId}:${at.x},${at.y},${at.z}`;
+const TRADES_PROPERTY = "villages:trades";
 const ERRAND_PROPERTY = "villages:errand.";
 const TRADER_JOB = 2;
 const GUARD_JOB = 0;
@@ -49,6 +72,14 @@ export function openErrand(player: Player, people: number): core.OpenErrand | un
 
 export function setErrand(player: Player, people: number, errand: core.OpenErrand | undefined): void {
   player.setDynamicProperty(`${ERRAND_PROPERTY}${people}`, errand ? JSON.stringify(errand) : undefined);
+}
+
+/** Count a trade with a people today; returns the standing after it (moved by STANDING_TRADE while under the day's cap). */
+export function recordTrade(player: Player, people: number): { standing: number; earned: boolean } {
+  const day = today();
+  const { next, earns } = core.countTrade(core.parseTradeDay(player.getDynamicProperty(TRADES_PROPERTY), day), people);
+  player.setDynamicProperty(TRADES_PROPERTY, JSON.stringify(next));
+  return { standing: earns ? addStanding(player, people, core.STANDING_TRADE) : standingOf(player, people), earned: earns };
 }
 
 export function inventoryOf(player: Player): Container | undefined {
@@ -102,7 +133,7 @@ function gift(player: Player, person: Entity, held: ItemStack | undefined): bool
   if (!held) return false;
   const people = peopleOf(person);
   if (!core.likes(people).includes(held.typeId)) return false;
-  const day = world.getDay();
+  const day = today();
   const gifts = core.parseGiftDay(player.getDynamicProperty(GIFTS_PROPERTY), day);
   const after = core.acceptGift(gifts, person.id);
   if (!after) {
@@ -120,11 +151,78 @@ function gift(player: Player, person: Entity, held: ItemStack | undefined): bool
 
 export function install(logger: (...parts: unknown[]) => void): void {
   log = logger;
+  system.afterEvents.scriptEventReceive.subscribe((ev) => {
+    if (ev.id !== "villages:standing") return;
+    const player = ev.sourceEntity;
+    if (!(player instanceof Player) || player.commandPermissionLevel < CommandPermissionLevel.GameDirectors) return;
+    const [who, value] = ev.message.trim().split(/\s+/).filter((w) => w.length > 0);
+    const people = who === undefined ? -1 : /^\d+$/.test(who) ? Number(who) : PEOPLES.indexOf(who as (typeof PEOPLES)[number]);
+    if (who !== undefined && (people < 0 || people >= PEOPLES.length)) {
+      player.sendMessage(`[Villages] no people "${who}"; one of ${PEOPLES.join(", ")} or its index.`);
+      return;
+    }
+    if (people >= 0 && value !== undefined && Number.isFinite(Number(value))) {
+      player.setDynamicProperty(standingProperty(people), Math.trunc(Number(value)));
+      log(`${player.name}'s standing with ${peopleName(people)} set to ${Math.trunc(Number(value))} by hand`);
+    }
+    const lines = PEOPLES.map((_, i) => i).filter((i) => people < 0 || i === people).map((i) => {
+      const s = standingOf(player, i);
+      return `${PEOPLES[i]} ${s} (${core.TIERS[core.tierOf(s)]})`;
+    });
+    player.sendMessage(`[Villages] ${player.name}'s standing: ${lines.join("; ")}`);
+  });
+  world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
+    if (!ev.isFirstEvent || !ev.block.isValid || ev.block.typeId !== core.BED) return;
+    const player = ev.player;
+    if (!(player instanceof Player)) return;
+    const at = { dimId: ev.block.dimension.id, x: ev.block.x, y: ev.block.y, z: ev.block.z };
+    const village = core.villageOf(storage.all(), at);
+    if (!village) return;
+    const s = standingOf(player, village.people);
+    if (core.mayRest(core.tierOf(s))) return;
+    ev.cancel = true;
+    system.run(() => {
+      player.sendMessage(core.restWords(village.people, s));
+      log(`${player.name} was turned away from a bed of the ${peopleName(village.people)}: standing ${s}`);
+    });
+  });
+  world.afterEvents.playerPlaceBlock.subscribe((ev) => {
+    // A natural block costs nothing to break, so its key would only ever be evicted, never read.
+    if (core.isNatural(ev.block.typeId)) return;
+    const at = { dimId: ev.dimension.id, x: ev.block.location.x, y: ev.block.location.y, z: ev.block.location.z };
+    if (!core.villageOf(storage.all(), at)) return;
+    if (placedInVillage.size >= PLACED_CAP) placedInVillage.delete(placedInVillage.values().next().value!);
+    placedInVillage.add(keyOf(at));
+  });
+  world.afterEvents.playerBreakBlock.subscribe((ev) => {
+    const player = ev.player;
+    if (!(player instanceof Player)) return;
+    const typeId = ev.brokenBlockPermutation.type.id;
+    if (core.isNatural(typeId)) return;
+    const at = { dimId: ev.dimension.id, x: ev.block.location.x, y: ev.block.location.y, z: ev.block.location.z };
+    if (placedInVillage.delete(keyOf(at))) return;
+    const village = core.villageOf(storage.all(), at);
+    if (!village) return;
+    const before = standingOf(player, village.people);
+    const s = addStanding(player, village.people, core.STANDING_BREAK);
+    const name = typeId.replace("minecraft:", "").replace(/_/g, " ");
+    const dropped = core.tierOf(s) < core.tierOf(before);
+    const last = toldAt.get(player.id) ?? -Infinity;
+    if (dropped || system.currentTick - last >= TELL_EVERY) {
+      toldAt.set(player.id, system.currentTick);
+      player.sendMessage(`The ${peopleName(village.people)} see their ${name} broken. ${core.standingWords(village.people, s)}`);
+    }
+    log(`${player.name} broke ${typeId} at ${at.x},${at.y},${at.z} in the ${peopleName(village.people)}' village: standing ${s}`);
+  });
   world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
     const person = ev.target;
     if (!person || !person.isValid || person.typeId !== PERSON || person.hasTag(VISITOR_TAG)) return;
     if (!(ev.player instanceof Player)) return;
     if (gift(ev.player, person, ev.itemStack)) return;
+    if (person.hasTag(follow.ESCORT_TAG)) {
+      void follow.dismissForm(ev.player, person);
+      return;
+    }
     if (jobOf(person) === TRADER_JOB) void showElder(ev.player, person);
   });
 

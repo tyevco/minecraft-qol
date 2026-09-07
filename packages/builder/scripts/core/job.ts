@@ -8,7 +8,8 @@
  * a block is taken down only once its item is in the chest. A chest that is
  * short mid-build stops the job and says so, and nothing placed is undone.
  */
-import { itemFor, type Cell } from "./blueprint";
+import { isWater, itemFor, type Cell } from "./blueprint";
+import { isClear, type WorldCell } from "./checks";
 
 export type Step =
   | { kind: "place"; index: number; cell: Cell; item: string | undefined }
@@ -27,6 +28,39 @@ export function nextRemoval(removal: readonly Cell[], done: number): Step {
   if (done >= removal.length) return { kind: "done" };
   const cell = removal[done]!;
   return { kind: "take", index: done, cell, item: itemFor(cell) };
+}
+
+/**
+ * What stands where a building's cell should be: the building's own block
+ * (by type; states are not compared, so an opened door is still the door),
+ * nothing that matters (air, a plant, water where no water belongs), or
+ * somebody else's block, which repair leaves alone rather than destroy.
+ */
+export type CellStatus = "ours" | "missing" | "other";
+export function repairStatus(cell: Cell, w: WorldCell): CellStatus {
+  if (stillOurs(cell, w.typeId)) return "ours";
+  if (isWater(cell.name) && w.isLiquid) return "ours";
+  if (isClear(w)) return "missing";
+  return "other";
+}
+
+/**
+ * The next gap to fill (settlements.md §5.4, repair): the first cell from
+ * `from` on that is missing, in placement order, with the cells passed over
+ * because another block holds them. `done` for a repair is how far the list
+ * has been looked at, so the same cell is never asked about twice.
+ */
+export function nextRepair(cells: readonly Cell[], from: number, lookup: (cell: Cell) => WorldCell | undefined): { step: Step; blocked: Cell[] } {
+  const blocked: Cell[] = [];
+  for (let i = from; i < cells.length; i++) {
+    const cell = cells[i]!;
+    const w = lookup(cell);
+    if (!w) continue; // not loaded: left for another pass
+    const status = repairStatus(cell, w);
+    if (status === "other") blocked.push(cell);
+    if (status === "missing") return { step: { kind: "place", index: i, cell, item: itemFor(cell) }, blocked };
+  }
+  return { step: { kind: "done" }, blocked };
 }
 
 /** Item counts from a container's stacks. */

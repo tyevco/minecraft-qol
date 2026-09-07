@@ -1,6 +1,7 @@
-import { BlockPermutation, Direction, GameMode, ItemStack, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, BlockVolume, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
-import { count, floor, put } from "./rig";
+import { WARES } from "../../../villages/scripts/core/standing";
+import { count, floor, put, until } from "./rig";
 
 /**
  * Villages: a job post keeps one person.
@@ -545,3 +546,191 @@ registerAsync("qol", "villages_invited_person_follows_and_settles", async (test)
     test.assert(atVillagePost === 0, `expected the village post empty until its day is up, found ${atVillagePost}`);
   });
 }).maxTicks(1400).structureName("qol:arena");
+
+// Every ware a trader sells (the villages' own table, imported since it is
+// pure) is an item the server knows, at an amount a stack can hold: an
+// ItemStack of each, so a mistyped identifier fails here and not in a
+// kid's hand.
+registerAsync("qol", "villages_wares_are_items", async (test) => {
+  const bad: string[] = [];
+  for (const list of WARES) {
+    for (const w of list) {
+      try {
+        const s = new ItemStack(w.item, w.amount);
+        if (s.typeId !== w.item) bad.push(`${w.item} became ${s.typeId}`);
+        else if (s.amount !== w.amount) bad.push(`${w.item} x${w.amount} held ${s.amount}`);
+      } catch (e) {
+        bad.push(`${w.item} x${w.amount}: ${e}`);
+      }
+    }
+  }
+  test.assert(bad.length === 0, `wares that are not items: ${bad.join("; ")}`);
+  test.succeed();
+}).maxTicks(20).structureName("qol:arena");
+
+// A locked daylight cycle is what the visitors' fallback keys on: the
+// gamerule is readable from script on the stable API, and the time of day
+// and the absolute time stand still while it is off, so nothing on the
+// world's clock would ever bring a dawn. Measured, and the rule put back.
+registerAsync("qol", "villages_locked_clock_is_readable", async (test) => {
+  const dim = test.getDimension();
+  try {
+    dim.runCommand("gamerule dodaylightcycle false");
+    await test.idle(2);
+    test.assert(world.gameRules.doDayLightCycle === false, `expected world.gameRules.doDayLightCycle false after the command, got ${String(world.gameRules.doDayLightCycle)}`);
+    const t0 = world.getTimeOfDay();
+    const a0 = world.getAbsoluteTime();
+    await test.idle(40);
+    const t1 = world.getTimeOfDay();
+    const a1 = world.getAbsoluteTime();
+    test.assert(t1 === t0, `expected the time of day to stand still with the cycle locked, went ${t0} -> ${t1}`);
+    test.assert(a1 === a0, `expected the absolute time to stand still with the cycle locked, went ${a0} -> ${a1}`);
+  } finally {
+    dim.runCommand("gamerule dodaylightcycle true");
+  }
+  await test.idle(2);
+  test.assert(world.gameRules.doDayLightCycle === true, "expected the cycle back on after the test");
+  test.succeed();
+}).maxTicks(200).structureName("qol:arena");
+
+// A guard hired at friend (by the hatch here) keeps its post while it
+// follows, and when sent home walks back to its post: the tag gone, the
+// guard at its spot, and no second guard spawned in its absence.
+registerAsync("qol", "villages_guard_escorts_and_goes_home", async (test) => {
+  placePost(test, 9, 0); // a foxfolk guard's post, a village's
+  for (let t = 0; t < 300 && people(test).length === 0; t += 5) await test.idle(5);
+  test.assert(people(test).length === 1, `expected the village post's guard, found ${people(test).length}`);
+  const dim = test.getDimension();
+  const w = test.worldBlockLocation(AT);
+  const ESCORT = "villages:escort";
+  dim.runCommand(`scriptevent villages:escort ${w.x} ${w.y} ${w.z}`);
+  for (let t = 0; t < 100 && tagged(test, ESCORT, AT, 8).length === 0; t += 5) await test.idle(5);
+  const escorts = tagged(test, ESCORT, AT, 8);
+  test.assert(escorts.length === 1, `expected one escort, found ${escorts.length}`);
+  test.assert(escorts[0]!.hasTag(`villages:post:${w.x},${w.y},${w.z}`), "expected the escort to keep its post tag");
+  const spot: Vector3 = { x: 1, y: 1, z: 6 };
+  const ws = test.worldBlockLocation(spot);
+  dim.runCommand(`scriptevent villages:follow ${ws.x} ${ws.y} ${ws.z}`);
+  let close = false;
+  for (let t = 0; t < 400 && !close; t += 10) {
+    await test.idle(10);
+    const e = tagged(test, ESCORT, AT, 16)[0];
+    if (e) {
+      const l = test.relativeLocation(e.location);
+      close = Math.hypot(l.x - (spot.x + 0.5), l.z - (spot.z + 0.5)) <= 3;
+    }
+  }
+  test.assert(close, "expected the escort to follow to the spot within 400 ticks");
+  dim.runCommand("scriptevent villages:escort home");
+  test.succeedWhen(() => {
+    const left = tagged(test, ESCORT, AT, 24).length;
+    test.assert(left === 0, `expected the escort tag gone once sent home, found ${left}`);
+    const home = people(test);
+    test.assert(home.length === 1, `expected the one guard back at its post, found ${home.length} person(s) within four of it`);
+    test.assert(home[0]!.hasTag(`villages:post:${w.x},${w.y},${w.z}`), "expected the guard home to be the post's own");
+  });
+}).maxTicks(1400).structureName("qol:arena");
+
+// The trader sells from the storehouse: the chests of its village's worker
+// posts. A worker post with a chest of wheat beside it and a trader post
+// of the same people within range; the hatch takes one sale's worth of
+// wheat out of that chest and drops it at the trader's post.
+registerAsync("qol", "villages_trader_sells_from_the_storehouse", async (test) => {
+  placePost(test, 9, 2); // a foxfolk trader's post, a village's
+  const W: Vector3 = { x: 1, y: 1, z: 6 };
+  const C: Vector3 = { x: 1, y: 1, z: 7 };
+  test.setBlockPermutation(BlockPermutation.resolve(POST, { "villages:people": 9, "villages:page": 0, "villages:job": 1 }), W);
+  test.setBlockType("minecraft:chest", C);
+  await test.idle(5);
+  put(test, C, new ItemStack("minecraft:wheat", 20));
+  put(test, C, new ItemStack("minecraft:iron_pickaxe", 1), 1);
+  // The worker's post keeps a person too, a few blocks off; only the trader's is waited on.
+  const traders = () => people(test).filter((p) => p.getProperty("villages:job") === 2);
+  for (let t = 0; t < 300 && traders().length === 0; t += 5) await test.idle(5);
+  test.assert(traders().length === 1, `expected the trader post's person, found ${traders().length}`);
+  const dim = test.getDimension();
+  const w = test.worldBlockLocation(AT);
+  dim.runCommand(`scriptevent villages:stock ${w.x} ${w.y} ${w.z} minecraft:wheat`);
+  test.succeedWhen(() => {
+    const left = count(test, C, "minecraft:wheat");
+    test.assert(left === 4, `expected 4 wheat left in the storehouse after a sale of 16, found ${left}`);
+    test.assert(count(test, C, "minecraft:iron_pickaxe") === 1, "expected the pickaxe, which is not produce, left alone");
+    const dropped = dim
+      .getEntities({ type: "minecraft:item", location: test.worldLocation({ x: 4.5, y: 1, z: 4.5 }), maxDistance: 4 })
+      .map((e) => e.getComponent(EntityComponentTypes.Item)?.itemStack)
+      .reduce((n, s) => n + (s?.typeId === "minecraft:wheat" ? s.amount : 0), 0);
+    test.assert(dropped === 16, `expected the 16 wheat dropped at the trader's post, found ${dropped}`);
+  });
+}).maxTicks(600).structureName("qol:arena");
+
+/**
+ * The showcase (tools/structures/showcase.ts): every people in one field,
+ * placed whole by `/place structure villages:showcase`. Pinned: the posts
+ * people every plot on their own, a person of every people in every job,
+ * each inside its own ring. The structure is far too big for the arena, so
+ * it is placed forty blocks up, as the builder's comparisons are, under a
+ * ticking area of its own so every plot's chunk ticks, and taken down
+ * after, persons and all: a structure reload restores the arena, nothing
+ * else.
+ */
+registerAsync("qol", "villages_showcase_peoples_every_plot", async (test) => {
+  const s = world.structureManager.get("villages:showcase");
+  test.assert(s !== undefined, "villages:showcase is not in the world's packs");
+  const size = s!.size;
+  const dim = test.getDimension();
+  const o = test.worldBlockLocation({ x: 0, y: 1, z: 0 });
+  const far = { x: o.x, y: o.y + 40, z: o.z };
+  const end = { x: far.x + size.x - 1, y: far.y + size.y - 1, z: far.z + size.z - 1 };
+  const middle = { x: far.x + size.x / 2, y: far.y, z: far.z + size.z / 2 };
+  const persons = () => dim.getEntities({ type: PERSON, location: middle, maxDistance: 64 });
+  // The field's layout (tools/structures/showcase.ts): plots of PLOT with GAP between, MARGIN round, on a base G deep.
+  const PLOT = 9, GAP = 3, MARGIN = 1, COLS = 4, JOBS = 4, G = 1;
+  const PEOPLES = 19;
+  const sweep = () => { for (const e of persons()) e.remove(); };
+  // Plot-local cells of the posts, in job order (showcase.ts POST_CELLS).
+  const POST_CELLS = [[3, 3], [5, 3], [3, 5], [5, 5]] as const;
+  const plotOrigin = (people: number) => ({ x: far.x + MARGIN + (people % COLS) * (PLOT + GAP), z: far.z + MARGIN + Math.floor(people / COLS) * (PLOT + GAP) });
+  const postAt = (people: number, job: number): Vector3 => {
+    const o = plotOrigin(people);
+    return { x: o.x + POST_CELLS[job]![0], y: far.y + G + 1, z: o.z + POST_CELLS[job]![1] };
+  };
+  const corners = [far, { x: end.x, y: far.y, z: far.z }, { x: far.x, y: far.y, z: end.z }, { x: end.x, y: far.y, z: end.z }];
+  try {
+    dim.runCommand(`tickingarea add ${far.x} ${far.y} ${far.z} ${end.x} ${end.y} ${end.z} qolshowcase`);
+    // A ticking area loads its chunks lazily, and a structure placed into a
+    // chunk that is not loaded loses that part silently (measured: placed
+    // at once, two plots of the field never came up): wait for every corner.
+    const loaded = await until(test, () => corners.every((c) => dim.getBlock(c) !== undefined), 600, 10);
+    test.assert(loaded, `the field's chunks did not load: ${corners.map((c) => `${c.x},${c.z} ${dim.getBlock(c) ? "loaded" : "not"}`).join("; ")}`);
+    sweep();
+    world.structureManager.place(s!, dim, far);
+    const missingPosts: string[] = [];
+    for (let people = 0; people < PEOPLES; people++)
+      for (let job = 0; job < JOBS; job++) {
+        const b = dim.getBlock(postAt(people, job));
+        if (b?.typeId !== POST) missingPosts.push(`${people}/${job}: ${b ? b.typeId : "unloaded"}`);
+      }
+    test.assert(missingPosts.length === 0, `posts not placed: ${missingPosts.join("; ")}`);
+    await until(test, () => persons().length >= PEOPLES * JOBS, 1600, 10);
+    const found = persons();
+    const seen = new Set<string>();
+    const outside: string[] = [];
+    for (const e of found) {
+      const people = e.getProperty("villages:people") as number;
+      const job = e.getProperty("villages:job") as number;
+      seen.add(`${people}/${job}`);
+      const { x: px, z: pz } = plotOrigin(people);
+      const x = Math.floor(e.location.x), z = Math.floor(e.location.z);
+      if (x <= px || x >= px + PLOT - 1 || z <= pz || z >= pz + PLOT - 1) outside.push(`${e.nameTag} ${job} at ${x},${z} (plot ${px}..${px + PLOT - 1},${pz}..${pz + PLOT - 1})`);
+    }
+    const missing: string[] = [];
+    for (let people = 0; people < PEOPLES; people++) for (let job = 0; job < JOBS; job++) if (!seen.has(`${people}/${job}`)) missing.push(`${people}/${job}`);
+    test.assert(found.length === PEOPLES * JOBS && missing.length === 0, `expected ${PEOPLES * JOBS} persons, one per people per job, found ${found.length}; missing ${missing.join(", ") || "none"}`);
+    test.assert(outside.length === 0, `persons outside their plot: ${outside.join("; ")}`);
+  } finally {
+    sweep();
+    dim.fillBlocks(new BlockVolume(far, end), "minecraft:air");
+    dim.runCommand("tickingarea remove qolshowcase");
+  }
+  test.succeed();
+}).maxTicks(2400).structureName("qol:arena");

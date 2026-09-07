@@ -232,7 +232,9 @@ Ways to earn it, each small, so a friendship takes an evening or two:
   people's table ("the forge is short of coal; bring 16"), paid on return.
   One open errand at a time; +5.
 - **Trading**: +1 per trade, capped per day, so trading is a slow steady
-  way and not a farm.
+  way and not a farm. (Built as the trader's form, four counted a day:
+  the stable API cannot see a `minecraft:economy_trade_table` trade
+  happen, `villages-jigsaw-results.md`.)
 - **Gifts**: each people has three liked items (stonefolk: iron, coal,
   bread; reedfolk: fish, dye, glass; tinker: copper, redstone, honey;
   tallfolk: wheat, wool, apples; drovers: leather, hay, cooked beef).
@@ -246,7 +248,10 @@ Ways to earn it, each small, so a friendship takes an evening or two:
 
 Ways to lose it: hitting a person (−5, and the guards come), breaking a
 village block (−1 per block, position-indexed at generation by the same
-tick that spawns the people), letting an errand lapse (−2).
+tick that spawns the people), letting an errand lapse (−2). (Built with
+no index: nothing records a generated village's box, so its bounds are a
+hull round its posts, twenty blocks on x/z and a floor-to-roof band on
+y, and natural blocks inside it are free; `packages/villages/README.md`.)
 
 Standing is **per player**. A sibling who annoys the reedfolk does not cost
 the other their friendship; that is a rule for a family Realm, not a
@@ -290,7 +295,9 @@ reedfolk's dock, the drovers' corral and ranch, and two new pieces, a **grove** 
 trees and a lumberjack's post) for the stonefolk and tallfolk, and a
 **mine** (a short shaft into a hillside face with a vein at the end and a
 miner's post) for the stonefolk and the tinkers. What a village produces
-goes into its own storehouse, which is what the trader sells.
+goes into its own storehouse, which is what the trader sells. (Built:
+the workers' chests are the storehouse, read by the trader's form at
+guest, `packages/villages/README.md`.)
 
 **Built** (`packages/villages/scripts/core/trades.ts`, `engine/trades.ts`;
 measured in `docs/villages-jigsaw-results.md`): the survey and its
@@ -433,7 +440,9 @@ found, in buildings they raised. That is the whole loop.
    larder wage.~~ Built.
 6. ~~**Visitors** (§6.1) with the first errand table~~ built
    (`packages/villages`, `core/visitors.ts`): the kids' posts wait for a
-   settler, a visitor comes at dawn every two or three days, its errand and
+   settler, a visitor comes at dawn every two or three days (a dawn
+   counted on the server's clock where the daylight cycle is locked,
+   `villages-jigsaw-results.md`), its errand and
    gift tables cover all nineteen peoples, and paying raises the standing
    counter; measured headlessly in `villages-jigsaw-results.md`. Then the
    ~~elder, standing tiers and invite in the villages (§5, §6)~~ built:
@@ -441,5 +450,11 @@ found, in buildings they raised. That is the whole loop.
    defence and blows, a post sells at friend, and at kin a named person
    follows the player home on the walk's waypoint and settles on a post
    whose plaque has been turned to its job (the post item places a
-   guard's; a tap turns it). Trading and building for standing, and the
-   guest's inn, are still open (issue #73).
+   guard's; a tap turns it). Trading is the trader's form: the people's
+   wares for emeralds at guest, the fourth at friend, +1 for the first
+   four trades a day. Breaking a village's block is −1 inside a hull
+   round its posts, natural blocks free. The inn is any bed in that hull:
+   a stranger is turned away, a guest sleeps and the game sets the respawn
+   point. At friend a guard walks with the player for a day on the
+   invite's bond, keeping its post, and walks home after. Building for
+   standing is still open (issue #73, #80).

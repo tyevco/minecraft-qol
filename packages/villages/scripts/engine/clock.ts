@@ -11,6 +11,10 @@ import { clockRestarted } from "../core/record";
 import * as storage from "./storage";
 
 const PROPERTY = "vl:tick";
+let sawRestart = false;
+
+/** Whether this boot's clock is a fresh one (read at install): every stamp from before it is over. */
+export const restarted = (): boolean => sawRestart;
 
 /** Call once at load, after the index is loaded. Returns how many records were reset. */
 export function install(log: (...parts: unknown[]) => void): number {
@@ -18,6 +22,7 @@ export function install(log: (...parts: unknown[]) => void): number {
   try {
     const last = world.getDynamicProperty(PROPERTY);
     if (clockRestarted(last, system.currentTick)) {
+      sawRestart = true;
       reset = storage.resetAfterRestart();
       log(`the clock restarted (last saw tick ${String(last)}, now ${system.currentTick}); ${reset} record(s) had their waits ended`);
     }

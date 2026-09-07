@@ -5,24 +5,29 @@
  * command, and writes its verdict to a world property a test can read.
  *
  *   /scriptevent builder:debug
- *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock]
+ *   /scriptevent builder:place <key> x y z <rotation> [ticksPerBlock] [free] [palette]
  *   /scriptevent builder:remove x y z [ticksPerBlock]
  *   /scriptevent builder:resume x y z [ticksPerBlock]
+ *   /scriptevent builder:repair x y z [ticksPerBlock]
  *   /scriptevent builder:forget x y z [radius]
+ *   /scriptevent builder:survey x1 y1 z1 x2 y2 z2
  *
  * Console and operators only; `x y z` is the building's origin (its
  * minimum corner, the footing layer), and the table is the nearest blueprint
  * table within sixteen blocks of it. `rotation` is 0-3, degrees, a
- * StructureRotation name, or the way the door should face.
+ * StructureRotation name, or the way the door should face; `free` builds
+ * as though the panel's free-build toggle were on.
  */
 import { BlockVolume, CommandPermissionLevel, Player, system, world, type Dimension, type Vector3 } from "@minecraft/server";
 import { catalogueEntry, CATALOGUE } from "../core/blueprint";
+import { paletteByKey } from "../core/palette";
 import { contains } from "../core/record";
 import { parseRotation } from "../core/rotate";
 import * as jobs from "./jobs";
 import * as placing from "./placing";
 import * as settings from "./settings";
 import * as storage from "./storage";
+import * as survey from "./survey";
 import { TABLE } from "./table";
 import { log } from "./tell";
 
@@ -99,11 +104,15 @@ export function install(): void {
     }
 
     if (ev.id === "builder:place") {
-      const [key, xs, ys, zs, rs, ts] = parts;
+      const [key, xs, ys, zs, rs, ...rest] = parts;
+      // The rest in any order: a tick count, "free", a people's palette.
+      const ts = rest.find((t) => /^\d+$/.test(t));
+      const free = rest.includes("free") || settings.policy().freeBuild;
+      const palette = rest.find((t) => paletteByKey(t)) ?? "";
       const [x, y, z] = [xs, ys, zs].map(Number);
       const rotation = parseRotation(rs ?? "0");
       if (!key || [x, y, z].some((n) => n === undefined || !Number.isInteger(n)) || rotation === undefined) {
-        verdict("builder:place wants <key> x y z <rotation> [ticksPerBlock]");
+        verdict("builder:place wants <key> x y z <rotation> [ticksPerBlock] [free] [palette]");
         return;
       }
       const origin = { x: x!, y: y!, z: z! };
@@ -112,7 +121,7 @@ export function install(): void {
         verdict(`builder:place refused: no blueprint table within sixteen blocks of ${x},${y},${z}`, dim, origin);
         return;
       }
-      const p = placing.plan(dim, key, origin, rotation, table);
+      const p = placing.plan(dim, key, origin, rotation, table, free, palette);
       if (!("record" in p)) {
         verdict(`builder:place refused: ${p.refused}`, dim, origin);
         return;
@@ -125,7 +134,7 @@ export function install(): void {
       storage.put(p.record);
       const ticks = ts ? Number(ts) : undefined;
       const started = jobs.start(p.record, ticks && Number.isInteger(ticks) && ticks > 0 ? ticks : undefined);
-      verdict(started ? `builder:place ok: ${catalogueEntry(key)?.title ?? key} at ${x},${y},${z} rot ${rotation}, ${p.cells.length} cells` : `builder:place refused: the job did not start`, dim, origin);
+      verdict(started ? `builder:place ok: ${catalogueEntry(key)?.title ?? key} at ${x},${y},${z} rot ${rotation}, ${p.cells.length} cells${free ? ", free" : ""}${palette ? `, as ${palette}` : ""}` : `builder:place refused: the job did not start`, dim, origin);
       return;
     }
 
@@ -143,7 +152,16 @@ export function install(): void {
       return;
     }
 
-    if (ev.id === "builder:remove" || ev.id === "builder:resume") {
+    if (ev.id === "builder:survey") {
+      const [x1, y1, z1, x2, y2, z2] = parts.slice(0, 6).map(Number);
+      if ([x1, y1, z1, x2, y2, z2].some((n) => n === undefined || !Number.isInteger(n))) return verdict("builder:survey wants x1 y1 z1 x2 y2 z2");
+      const a = { x: x1!, y: y1!, z: z1! };
+      const s = survey.survey(dim, a, { x: x2!, y: y2!, z: z2! });
+      verdict("refused" in s ? `builder:survey refused: ${s.refused}` : `builder:survey ok: ${s.key} ${s.size.x}x${s.size.y}x${s.size.z}, ${s.cells} cells`, dim, a);
+      return;
+    }
+
+    if (ev.id === "builder:remove" || ev.id === "builder:resume" || ev.id === "builder:repair") {
       const [x, y, z] = parts.slice(0, 3).map(Number);
       const ticks = parts[3] ? Number(parts[3]) : undefined;
       if ([x, y, z].some((n) => n === undefined || !Number.isInteger(n))) {
@@ -157,7 +175,7 @@ export function install(): void {
         return;
       }
       const pace = ticks && Number.isInteger(ticks) && ticks > 0 ? ticks : undefined;
-      const ok = ev.id === "builder:remove" ? jobs.startRemoval(record, pace) : jobs.start(record, pace);
+      const ok = ev.id === "builder:remove" ? jobs.startRemoval(record, pace) : ev.id === "builder:repair" ? jobs.startRepair(record, pace) : jobs.start(record, pace);
       verdict(ok ? `${ev.id} ok: ${record.key} at ${record.x},${record.y},${record.z}` : `${ev.id} refused: a job is already running there`, dim, record);
     }
   });

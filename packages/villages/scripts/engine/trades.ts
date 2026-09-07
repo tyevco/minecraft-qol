@@ -169,12 +169,12 @@ const describeSurvey = (s: core.Survey): string =>
   `farmland ${s.farmland}, logs ${s.logs}, leaves ${s.leaves}, veins ${s.veins}, water ${s.water}, sheep ${s.sheep}, ` +
   `bushes ${s.bushes}, ovens ${s.ovens}, hives ${s.hives}, cactus ${s.cactus}, mushrooms ${s.mushrooms}, pods ${s.pods}, hedge ${s.hedge}`;
 
-interface Chest {
+export interface Chest {
   block: Block;
   container: Container;
 }
 
-function nearestChest(dim: Dimension, record: PostRecord): Chest | undefined {
+export function nearestChest(dim: Dimension, record: PostRecord): Chest | undefined {
   const chests = blocksOf(dim, volumeAround(record, core.CHEST_RANGE, core.SURVEY_BELOW, core.SURVEY_BELOW), core.CHEST_TYPES);
   let best: Chest | undefined;
   let bestD = Infinity;

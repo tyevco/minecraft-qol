@@ -167,7 +167,11 @@ measurements: `docs/villages-jigsaw-results.md`.
   `scripts/engine/visitors.ts` acts). A **settlement** is two or more of
   the kids' posts within 48 blocks of each other (clusters chain). Every
   two to three days, at **dawn** (the time of day entering 0–1000, read
-  every second), a visitor comes to the settlement whose turn it is: a
+  every second; on a world whose daylight cycle is locked, which has no
+  dawn on its clock, one is counted every 24000 ticks of the server's
+  instead, and the world's frozen day carried forward by the days so
+  counted, `core/visitors.ts` `lockedDawn`), a visitor comes to the
+  settlement whose turn it is: a
   person of a people drawn from the settlement's trades (a mine draws
   stonefolk, tinkers or drow; berry bushes foxfolk; a hedge deerfolk; and
   so on, else any of the nineteen), spawned fourteen blocks from the
@@ -209,19 +213,92 @@ measurements: `docs/villages-jigsaw-results.md`.
   below 0, stranger 0–9, guest 10–24, friend 25–49, kin 50 and up; the
   village's voice says which in words. It moves by: a **gift** (interact
   with any person while holding an item its people likes, the items of
-  its errand table: one is taken, +1, once per person per day); an
+  its errand table: one is taken, +1, once per person per day, the day
+  being the pack's, which a locked daylight cycle does not stall); an
   **errand** from the village paid, +5, or lapsed after three days, −2; a
   **monster the player kills** within twenty-four blocks of a guard, +1;
   **hitting a person**, −5, and the guards within sixteen blocks come to
   where the blow landed (they walk there; nobody targets players, design
-  §4). Trading (+1) and building for a people (+10) wait for a trade
-  table and the builder; breaking a village block (−1) waits for a village
-  to know its own blocks (issue #73).
+  §4); a **trade** with the trader, +1 for the first four each day with a
+  people (`villages:trades`, a player property with the day's counts).
+  **breaking a village's block**, −1 a block: a block inside the hull round
+  a village's posts (twenty blocks on x/z from any post the world placed,
+  three under its floor to twelve over it; the nearest post's people) that
+  is not natural (the ground, rock and ore, trees, plants and crops, snow,
+  water and the vein are free, so digging past a village or felling its
+  trees costs nothing) and that the player did not place there this
+  session (taking your own torch back is free; a `/reload` forgets which
+  those were). One chat line per five seconds while a wall comes down,
+  and always when the tier drops. Building for a people (+10) waits for
+  the builder (issue #80).
+  `/scriptevent villages:standing [people [value]]` (operator) reads the
+  caller's standing with every people back in numbers and tiers, or sets
+  one: the testers' hatch, since the game never shows the number.
+- **The inn** (design §5's table: at guest "the inn lets you sleep"):
+  every people's house has a bed, and a bed inside a village's hull is
+  the village's. A stranger's tap on one is cancelled in the before-event
+  with a word ("The Foxfolk keep their beds for guests; they do not know
+  you yet"; the unwelcome are told to make amends); a guest's goes
+  through to the game, which sets the respawn point as at any bed, so
+  the village is the Hearthstone-style respawn the design wanted with
+  nothing set from script.
 - **The village's voice** (design §5–6, `scripts/engine/elder.ts`) is its
   **trader**: interact and a form says where the player stands, offers an
   errand from the people's table (one open per player per people, three
-  days to bring it) and takes its payment, sells a **job post** for six
-  emeralds at friend, and at kin offers to **invite** someone home.
+  days to bring it) and takes its payment, **trades** at guest, sells a
+  **job post** for six emeralds at friend, and at kin offers to **invite**
+  someone home.
+- **Wares** (design §5's "traders trade" at guest; `core/standing.ts`
+  `WARES`): "What do you have to trade?" opens a second form of the
+  people's wares, three at guest and a fourth at friend, each so many of
+  an item for so many emeralds (the foxfolk: eight sweet berries, four
+  spruce saplings or a lantern; four glow berries at friend; the drovers'
+  saddle is eight emeralds, the otterfolk's nautilus shell twelve). A pick
+  takes the emeralds first and hands over the goods, then counts the
+  trade. The trade is the form's rather than a `minecraft:economy_trade_table`
+  on the person: the stable script API cannot see a vanilla trade
+  happen, so a trade table could neither move standing nor be gated per
+  player (a component group is per entity; standing is per player).
+  Every ware is an item the server knows (`villages_wares_are_items`).
+- **The storehouse** (design §5.1: "what a village produces goes into its
+  own storehouse, which is what the trader sells"; `engine/storehouse.ts`):
+  the workers' chests are the storehouse. The trader's wares form also
+  lists what the worker posts of its own village (same people, within
+  sixty-four blocks of its post) have in their chests, at a price per
+  kind of produce (`core/standing.ts` `stockPrice`: eight logs, four
+  saplings, sixteen wheat, six fish, four wool, two raw iron for two, and
+  so on), each line saying how many the storehouse has. Only produce is
+  priced, so a tool the kids left in a chest is never sold; food is
+  produce, and the workers' wages are food, so the bread in a miner's
+  chest is for sale and a buyer can leave the miner unpaid. A kind the
+  people's own table offers is offered once, from the table at the
+  table's tier, so a Friend ware is not sold to a guest from the chests;
+  a kind the chests hold less than a sale's worth of is not listed. A sale takes the emeralds, then the goods out of the chests
+  (across chests and slots), and if the chests came up short in between
+  the goods go back and so do the emeralds. `/scriptevent villages:stock
+  x y z [item]` lists a trader post's storehouse, or takes one sale's
+  worth of an item out of it and drops it at the post: the GameTest's
+  hatch.
+- **A guard walks with you** (design §5's table, at friend;
+  `scripts/engine/follow.ts`): "Would a guard walk with me?" on the
+  trader's form names the nearest present guard of its own village (as
+  an invite does, `escortCandidate`), which follows the player on the
+  invite's bond for a day with the `villages:escort` tag and **its post
+  kept**: the post still finds it by id, so nobody is spawned in its
+  place. Its guard behaviours come along, so monsters within twelve of
+  it are its business on the road. A tap on the guard opens its own
+  form: stay, or go home. When the day is up (24000 ticks), the player
+  sends it, or the clock restarts, it walks back to its post
+  (`engine/walk.ts`; put there if the walk fails), and if the post has
+  somebody else by then (it lost sight of the guard in an unloaded chunk
+  and spawned another) the escort goes home by going. One escort per
+  player at a time; a guard that dies on the road is forgotten at once,
+  so another can be hired. A `/reload` or a restart forgets who it walks
+  with (as for an invite), and a guard left wearing the tag that way, or
+  sent home while its chunk was not loaded, goes home at the next tap on
+  it. `/scriptevent villages:escort x y z` hires the guard
+  at that post with nobody to follow and `villages:escort home` sends
+  every escort home: the hatches the GameTest drives.
 - **Invite** (design §6, `scripts/engine/follow.ts`): the elder names the
   nearest present person of the chosen job among its own people's posts
   within sixty-four blocks (never itself); that person loses its post tag,
@@ -331,6 +408,44 @@ measurements: `docs/villages-jigsaw-results.md`.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
 
+## The showcase: every people at once
+
+`villages:showcase` (`tools/structures/showcase.ts`) is one structure with a
+fenced plot for every people, in `PEOPLES` order read left to right, north
+to south: the nine humans in the first two rows and a bit, then the ten
+furfolk, and a stone lookout with steps in the twentieth slot. Each plot
+stands on its people's verge with its paving through the middle, its own
+lamp post, its plant where it has one instead of a tree (the mousefolk's
+toadstool, the otterfolk's driftwood), and four job posts, so once placed
+the pack peoples it with a guard, a worker, a trader and a builder of that
+people, 76 persons in a field 47 by 59. The fences keep each people to its
+plot (a person strolls ten blocks from where it spawned, and cannot jump a
+fence or a wall), and a gate on the south side of each lets a player in.
+The whole field stands on a base layer of stone bricks, so a sand or gravel
+verge never has air under it (measured: placed in the air, the three
+sand-floored plots lost their ground and their persons) and a field placed
+on a slope stands on a plinth.
+
+In a creative world with cheats on, with the Villages pack and its resource
+pack enabled, stand where the field's north-west corner should be and:
+
+```
+/place structure villages:showcase ~ ~-2 ~
+```
+
+`~-2` sinks the base into the ground and sets the verges level with it;
+`~-1` leaves the field one block up, on its plinth. The posts take a few seconds to
+tick and spawn; every person is named for its people, so looking at one says
+who it is. Nothing in the field starts a trade (no trees, water, crops or
+cactus, on purpose), so every worker just lives there in its hat. A trade
+needs a village, or a chest and something to work: the sections above.
+Cheats disable achievements for that world, so raise it in a world made for
+showing rather than on the Realm.
+
+Pinned by `villages_showcase_peoples_every_plot` in the GameTest pack: the
+placed structure is peopled by every people in every job, each inside its
+own ring.
+
 ## Measured
 
 - The two GameTests (`villages_post_spawns_person`, `villages_post_break_removes_person`)
@@ -365,6 +480,22 @@ measurements: `docs/villages-jigsaw-results.md`.
   and the block is still a post, and the second tap settles the follower
   there: a foxfolk with the `villages:kin` tag at the kids' post, no
   invited person left, and the village post empty.
+- **A guard walks along and goes home**
+  (`villages_guard_escorts_and_goes_home`): the guard's post's person,
+  hired by the hatch, gains `villages:escort` and keeps its post tag;
+  told to go to a spot across the arena it stands within three blocks of
+  it inside four seconds; sent home, the tag is gone, the one guard
+  within four blocks of the post is the post's own, and no second guard
+  was spawned in its absence.
+- **The trader sells from the storehouse**
+  (`villages_trader_sells_from_the_storehouse`): a trader post and a
+  worker post of the same people with a chest beside it holding twenty
+  wheat and a pickaxe; the hatch's sale of wheat left four in the chest
+  and the pickaxe untouched, and dropped the sixteen at the trader's
+  post.
+- **The wares are items** (`villages_wares_are_items`): an `ItemStack` of
+  each of the nineteen peoples' seventy-six wares at its amount, on the
+  headless server; every identifier held.
 - **The kids' posts and the visitors** (`docs/villages-jigsaw-results.md`,
   "Visitors"): `villages_player_post_waits_for_settler` has a
   SimulatedPlayer place a post and sees nobody spawn in 300 ticks, with
@@ -448,6 +579,14 @@ measurements: `docs/villages-jigsaw-results.md`.
 
 ## To confirm in game
 
+- **The builder's hammer**, on every people: the biped rig now grips it at
+  the handle's foot with the head above the fist. The old grip hung it
+  head-down along the forearm, which read as a weird angle the first time
+  a person was seen holding one on a client (the builder pack's builder,
+  which shares the rig). If it clips the arm or the pack on a small people
+  (the mousefolk, the tinker), the `tool` bone's cubes in
+  `tools/models/generate.ts` are the two numbers to move.
+
 - **People stay by their posts** across a chunk unload and reload and a
   long session (the post keeps its record; the person is `persistent`). If
   a person wanders off, lower `restriction_radius` in `entities/person.json`.
@@ -458,7 +597,19 @@ measurements: `docs/villages-jigsaw-results.md`.
   `undefined` into the pack's events. To see: a gift (hold sweet berries,
   interact with a foxfolk: one taken, "The Foxfolk do not know you yet",
   a second gift to the same person refused today); the trader's form and
-  its errand, payment and the post for six emeralds; hitting a person
+  its errand, payment and the post for six emeralds; the wares form at
+  guest (the emeralds leave, the goods arrive, the fifth trade of a day
+  with a people says nothing of standing); breaking a village's plank or
+  lantern (−1 and a line; the dirt under it, a tree beside it or a torch
+  you placed, nothing); a village bed as a stranger (turned away with a
+  word, nothing set) and as a guest (the game's own respawn point, and
+  you come back there when you die); a guard walking with you at friend
+  **over a real distance**: the follow was measured across an arena, and
+  the walking group's `follow_mob` (priority 1) outranks
+  `move_towards_home_restriction` (5), but a guard that turns back
+  towards its village on a long road means `minecraft:home` wins at
+  range and the escort needs the home restriction lifted for its day (a
+  component group without it); hitting a person
   (−5, and the guards walk to where you stood); a zombie killed by a
   guard (+1); and at kin the invite's two forms, the follow behind you
   through a real village, and the settle by tapping your own post. If the
@@ -477,11 +628,12 @@ measurements: `docs/villages-jigsaw-results.md`.
   from the posts' middle on `getTopmostBlock`, which is a roof or a tree
   top as readily as the ground; if visitors keep appearing on roofs, drop
   the spot to the first air block with solid footing below the topmost.
-- **Dawn on a Realm**: the visitor logic reads the time of day every
-  second and acts when it enters 0–1000; a Realm with the daylight cycle
-  locked (`dodaylightcycle false`) never has a dawn, so visitors never
-  come or leave. If that is how the Realm runs, dawn needs a fallback on
-  elapsed absolute time.
+- **Dawn on a Realm with the daylight cycle locked**: a dawn is counted
+  every 24000 ticks (twenty minutes of play) on the server's clock, and
+  `/scriptevent villages:visitor status` says so and how long to the next.
+  If visitors still never come with `dodaylightcycle false`, the status
+  line is the first thing to read: it names the locked clock only if the
+  pack saw `world.gameRules.doDayLightCycle` false.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
 - **The furfolk on a real client** (`docs/design/furfolk.md` §7 items 3–5,
@@ -578,7 +730,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): trading for standing, building for a people,
-losing standing for a village's broken blocks, and the guest tier's inn
-(a Hearthstone-style respawn point); the trader's blueprints wait for the
-builder (`docs/design/settlements.md`).
+Not yet built (design §5–6): building for a people, and the trader's
+blueprints, which wait for the builder (`docs/design/settlements.md`).
+A kid's own house within twenty blocks of a village's plaques is inside
+the hull, so build a little further off or expect the village to mind.

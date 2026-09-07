@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { Blueprint } from "./blueprint";
 import { BUILDINGS } from "./buildings";
 import { uniformStructure } from "./mcstructure";
+import { showcase } from "./showcase";
 import { PEOPLES, villagePreview, villageSet, villageWorldgen } from "./villages";
 
 const ROOT = resolve(__dirname, "../..");
@@ -18,6 +19,8 @@ const OUT = resolve(ROOT, "packages/gametest/behavior_pack/structures/qol");
 
 const STRUCTURES: Record<string, [number, number, number]> = {
   arena: [8, 8, 8],
+  // For a building wider than eight: the inn and the larder (suites/builder.ts).
+  arena16: [16, 16, 16],
 };
 
 mkdirSync(OUT, { recursive: true });
@@ -43,7 +46,7 @@ for (const bp of BUILDINGS) {
 // three blueprints a builder raises from the table, shipped in the builder
 // pack as `builder:<key>`. Small, and no stand-ins; the rest of the
 // catalogue follows once the placer is measured against these.
-export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall"] as const;
+export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall"] as const;
 const BUILDER = resolve(ROOT, "packages/builder/behavior_pack/structures/builder");
 mkdirSync(BUILDER, { recursive: true });
 for (const key of BUILDER_KEYS) {
@@ -152,6 +155,17 @@ for (const people of PEOPLES) {
   const { expansion, blueprint } = villagePreview(set, 1);
   writeFileSync(resolve(VILLAGES, `${people.key}.json`), JSON.stringify(blueprint.toPreview()) + "\n");
   console.log(`concepts/villages/${people.key}  ${blueprint.size.join("x")}  ${expansion.placements.length} pieces, ${expansion.open.length} open`);
+}
+
+// The showcase (showcase.ts): every people in one field, one .mcstructure
+// in the villages pack for `/place structure villages:showcase`, and a
+// preview beside the whole villages for the viewer.
+{
+  const bp = showcase();
+  const dir = resolve(ROOT, "packages/villages/behavior_pack/structures/villages");
+  writeFileSync(resolve(dir, "showcase.mcstructure"), bp.toMcstructure());
+  writeFileSync(resolve(VILLAGES, "showcase.json"), JSON.stringify(bp.toPreview()) + "\n");
+  console.log(`packages/villages/behavior_pack/structures/villages/showcase.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} blocks`);
 }
 
 // The processor probe (docs/villages-jigsaw-results.md): a pad with a

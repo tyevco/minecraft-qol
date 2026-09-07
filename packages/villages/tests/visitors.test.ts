@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { FRESH, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, WORKER, type PostRecord } from "../scripts/core/record";
 import { FARMER, FORAGER, MINER } from "../scripts/core/trades";
 import {
-  DAWN_TO, EDGE_DISTANCE, ERRANDS, ERRANDS_TO_SETTLE, GIFTS, NAMES, SETTLEMENT_MIN_POSTS, SETTLEMENT_RANGE, STANDING_PER_ERRAND, VISIT_EVERY_DAYS,
-  afterPayment, arrived, deliver, edgeSpot, isDawn, leavesAt, left, mayStay, newFace, nextSettlement, parseState, peopleFor, planArrival, settleTarget, settlements,
+  DAWN_TO, DAY_TICKS, EDGE_DISTANCE, ERRANDS, ERRANDS_TO_SETTLE, GIFTS, NAMES, SETTLEMENT_MIN_POSTS, SETTLEMENT_RANGE, STANDING_PER_ERRAND, VISIT_EVERY_DAYS,
+  afterPayment, arrived, dayOf, deliver, edgeSpot, isDawn, leavesAt, left, lockedDawn, mayStay, newFace, nextSettlement, parseState, peopleFor, planArrival, settleTarget, settlements,
+  ticksToLockedDawn,
   standingProperty, visitorName, type Face, type VisitorsState,
 } from "../scripts/core/visitors";
 
@@ -27,6 +28,51 @@ describe("settlements", () => {
   });
   it("keeps dimensions apart", () => {
     expect(settlements([post(0, 0), post(1, 1, { dimId: "minecraft:nether" })])).toHaveLength(0);
+  });
+});
+
+describe("dawn on a locked clock", () => {
+  const empty = parseState(undefined);
+  it("counts nothing while the cycle runs, and a dawn every day of ticks while it is locked", () => {
+    expect(lockedDawn(empty, true, 500)).toEqual({ state: empty, dawn: false, changed: false });
+    const seen = lockedDawn(empty, false, 500);
+    expect(seen).toMatchObject({ dawn: false, changed: true });
+    expect(seen.state.lockedTick).toBe(500);
+    expect(lockedDawn(seen.state, false, 500 + DAY_TICKS - 1)).toEqual({ state: seen.state, dawn: false, changed: false });
+    const dawn = lockedDawn(seen.state, false, 500 + DAY_TICKS);
+    expect(dawn).toMatchObject({ dawn: true, changed: true });
+    expect(dawn.state).toMatchObject({ lockedTick: 500 + DAY_TICKS, extraDays: 1 });
+    expect(dayOf(dawn.state, 7)).toBe(8);
+    expect(ticksToLockedDawn(dawn.state, 500 + DAY_TICKS + 100)).toBe(DAY_TICKS - 100);
+    expect(ticksToLockedDawn(empty, 0)).toBe(DAY_TICKS);
+  });
+  it("a tick behind the stored one is a restart, read as the day elapsed; unlocking forgets the tick and keeps the days", () => {
+    const locked = { ...empty, lockedTick: 90000, extraDays: 3 };
+    const restarted = lockedDawn(locked, false, 120);
+    expect(restarted).toMatchObject({ dawn: true, changed: true });
+    expect(restarted.state).toMatchObject({ lockedTick: 120, extraDays: 4 });
+    const unlocked = lockedDawn(restarted.state, true, 200);
+    expect(unlocked).toMatchObject({ dawn: false, changed: true });
+    expect(unlocked.state.lockedTick).toBeUndefined();
+    expect(unlocked.state.extraDays).toBe(4);
+    expect(dayOf(unlocked.state, 10)).toBe(14); // the world's day never goes back
+  });
+  it("the boot marker's restart is a dawn even when the new clock has already passed the stored tick", () => {
+    // Short sessions on a Realm that sleeps: the tick is stored soon after
+    // one boot and the next boot's first poll comes later than it, so the
+    // heuristic alone would never see a restart (the case record.ts names).
+    const locked = { ...empty, lockedTick: 40, extraDays: 1 };
+    expect(lockedDawn(locked, false, 60)).toEqual({ state: locked, dawn: false, changed: false });
+    const restarted = lockedDawn(locked, false, 60, true);
+    expect(restarted).toMatchObject({ dawn: true, changed: true });
+    expect(restarted.state).toMatchObject({ lockedTick: 60, extraDays: 2 });
+    expect(lockedDawn(empty, false, 60, true).state.lockedTick).toBe(60); // a lock first seen is never a dawn
+    expect(lockedDawn(locked, true, 60, true).state.lockedTick).toBeUndefined(); // nor is a cycle that runs
+  });
+  it("the state keeps the locked tick and the extra days, and reads an older state as none", () => {
+    const s = { ...empty, nextDay: 3, lockedTick: 40, extraDays: 2 };
+    expect(parseState(JSON.stringify(s))).toEqual(s);
+    expect(parseState(JSON.stringify({ version: 1, nextDay: 3, faces: {} }))).toEqual({ version: 1, nextDay: 3, extraDays: 0, faces: {}, lastSettlement: undefined, visit: undefined });
   });
 });
 

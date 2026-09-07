@@ -323,7 +323,9 @@ What was measured on the way:
   wait in the pack (respawn, survey, cycle, the vein's window) now treats
   a stamp ahead of the clock as elapsed. `world.getAbsoluteTime()` was
   not used instead because a world with the daylight cycle locked (a Realm
-  might) would freeze it; unmeasured, and worth a probe.
+  might) would freeze it: measured since (`villages_locked_clock_is_readable`),
+  both `getAbsoluteTime` and `getTimeOfDay` stand still with
+  `dodaylightcycle false`.
 - `Dimension.getBlocks(volume, { includeTypes }, true)` finds custom and
   vanilla types alike across a 33×17×33 survey volume in one call, and a
   log removed with `Block.setType("minecraft:air")` drops nothing, so a
@@ -446,6 +448,38 @@ villages suite:
   delivery, the standing property and the gift are in the villages README
   to confirm in game.
 
+## Dawn on a locked clock (design §6.1, `packages/villages`)
+
+A Realm may lock its daylight cycle, and the visitors keyed on the time
+of day entering the dawn window, which then never happens. Measured on
+the headless server (`villages_locked_clock_is_readable`): after
+`gamerule dodaylightcycle false`, `world.gameRules.doDayLightCycle` reads
+false on the stable API, and both `world.getTimeOfDay()` and
+`world.getAbsoluteTime()` are the same forty ticks later, so nothing on
+the world's clock would bring a dawn or advance `world.getDay()`. The
+fallback counts on the server's clock instead (`core/visitors.ts`
+`lockedDawn`): while the rule is off, a day of ticks from the tick the
+lock was first seen is a dawn, and the days so counted are added to the
+world's frozen day (`dayOf`), so "the next visitor on day N" still comes
+due; a restart (the boot marker, `engine/clock.ts`, issue #71; a tick
+behind the stored one alone would miss a restart whose new clock has
+already passed it, the case `core/record.ts` names) counts as the day
+elapsed, as every other wait in the pack does after one. When the rule
+is turned back on the tick is forgotten and the days kept, so the day
+never goes backwards. The pack's "per day" waits (an errand lapsing, the
+day's gifts and trades) read the same carried-forward day
+(`engine/visitors.ts` `today`), so a locked clock stalls none of them.
+
+**The GameTest framework locks the daylight cycle for the duration of a
+test.** Every test in the run had the pack log "the daylight cycle is
+locked" a tick after the structure loaded and "runs again" once the test
+ended, with nothing in the suite or the runner touching the rule, and the
+console's `gamerule dodaylightcycle` read `true` between tests. Harmless
+here (a test never runs a day of ticks, and `/time add` moves the time of
+day whether or not the cycle runs, which is what
+`villages_visitor_leaves_at_dawn` relies on), but a pack that reads the
+rule sees a locked world inside any GameTest.
+
 ## Invite and the plaque (design §5–6, `packages/villages`)
 
 `villages_invited_person_follows_and_settles`, on the headless GameTest
@@ -470,6 +504,110 @@ server:
   the follower gone, the village post's spot empty.
 - **Not measured**: the gift, the trader's form, the hit and the defence,
   all of which need a real player in the event.
+
+## Trading (design §5, `packages/villages`)
+
+Design §5 counts a trade for standing (+1, capped per day) and
+`npcs.md` §6 left open whether a custom entity trades through
+`minecraft:economy_trade_table` or a form. Decided without a probe, from
+the typings: the stable `@minecraft/server` 2.9.0 has no trade event, no
+trade component and nothing that reads a trade table, so a vanilla table
+on the person could neither move standing per trade nor be gated per
+player (a component group is per entity, standing is per player), and
+its UI would open on the same interact the elder's form already takes.
+The trader's form trades instead: "What do you have to trade?" at guest
+opens a second `ActionFormData` of the people's wares (`core/standing.ts`
+`WARES`: three at guest, a fourth at friend, each so many of an item for
+so many emeralds); a pick takes the emeralds first, hands over the goods,
+and counts the trade in `villages:trades` (a player property: the day and
+a count per people), the first four a day with a people worth +1.
+
+Measured on the headless server (`villages_wares_are_items`): an
+`ItemStack` of each of the seventy-six wares at its amount, every
+identifier an item the server knows, every amount within a stack. The
+form itself, the emeralds leaving and the goods arriving need a real
+player (issue #84).
+
+## A village's bounds (design §5, `packages/villages`)
+
+Design §5 costs a broken village block −1 and would have every block
+"position-indexed at generation by the same tick that spawns the
+people". Nothing records a generated village's box (a jigsaw structure
+leaves no bounds a script can read on the stable API; only the posts
+survive, in the pack's own index), and indexing every block of every
+piece would be a record per block of a village for a rule that fires on
+a break. Built as a hull instead (`core/standing.ts`, `villageOf`): a
+block within twenty on x/z of any post the world placed, from three
+under its floor to twelve over it, belongs to that post's people (the
+nearest post's when two hulls overlap). Measured from the 289 pieces in
+`behavior_pack/structures/villages/`: the squares are up to 23 wide with
+the core's post at the middle, the lots up to 14, and the streets between
+them 7 or 11 long, so a street block is at most about twenty from the
+post at either end. Natural blocks are free inside the hull
+(`isNatural`: soil, rock, ore, trees, plants and crops, snow, water, the
+vein), since the villages are built on and of them; and a block the
+player placed inside the hull this session is theirs to take back.
+
+Not measured on the server: `playerBreakBlock` carries the player, and a
+SimulatedPlayer marshals as `undefined` there as everywhere (issue #31),
+so the rule is under Vitest (the hull's edges, both dimensions, the kids'
+posts making no village, forty block kinds sorted) and on the in-game
+list (#84).
+
+## A guard walks with you (design §5, `packages/villages`)
+
+`villages_guard_escorts_and_goes_home`, on the headless server: the
+guard at a village post, hired by the hatch, gained `villages:escort`
+and kept its post tag; told to go to a spot across the arena it stood
+within three blocks of it inside four seconds (the invite's bond, the
+walk's waypoint kept at the target); sent home, it walked back to its
+post, the tag gone, the one person within four blocks of the post its
+own, and no second guard spawned in the meantime, since the post still
+found it by id. The day's end and the restart are the same code path as
+the hatch's "home" (`escortOver` under Vitest). Not measured: the
+follow over a real distance, where `minecraft:home` (radius 10, the
+guard's `move_towards_home_restriction` at priority 5) may pull against
+the walking group's `follow_mob` at priority 1; the arena is eight
+blocks wide. The README's confirm list has the fix if it does.
+
+## The storehouse (design §5.1, `packages/villages`)
+
+`villages_trader_sells_from_the_storehouse`, on the headless server: a
+trader post and a worker post of the same people, a chest beside the
+worker's holding twenty wheat and a pickaxe. The trader's storehouse is
+the worker posts of its own village within sixty-four blocks, each
+post's chest found as the worker finds it (`nearestChest`, the same
+twelve-block reach); the hatch's sale of sixteen wheat left four in the
+chest, the pickaxe untouched (not produce, so unpriced), and dropped
+the sixteen at the trader's post. The form, the emeralds and the
+put-back on a chest that emptied in between need a real player (#84).
+
+## The showcase (`tools/structures/showcase.ts`, `packages/villages`)
+
+One structure, 47 by 7 by 59, with a fenced plot and four job posts for
+every people, placed whole by `structureManager.place` in the GameTest
+`villages_showcase_peoples_every_plot` (forty blocks over the arena, under
+a ticking area of its own, and taken down after). Two things it measured:
+
+- **A structure placed into a chunk that is not loaded loses that part,
+  silently.** Placed in the same tick as `tickingarea add`, whose chunks
+  load lazily, every post the test looked for was there (the checked
+  cells were in loaded chunks) and yet only 68 of 76 persons came; the
+  test now waits for `getBlock` at all four corners of the field before
+  placing. No error and no content-log line either way.
+- **Sand and gravel in a placed structure fall if there is air under
+  them.** The eight persons that never came were the two south posts of
+  the drovers' and the fennecfolk's plots and all four of the otterfolk's,
+  the three plots whose verge is sand (and the otters' paving gravel): a
+  block update after placing sent the floor down and the persons with it,
+  and the same test passed at once on a second boot where nothing nudged
+  the sand. The field now stands on a base layer of stone bricks, and a
+  unit test keeps every gravity block on something. On the ground this
+  only matters where the ground is uneven or hollow, which is exactly
+  where `/place structure` leaves a floor over air.
+
+With both fixed the test passes first time, twice in a row: 76 persons
+within four seconds of placing, each inside its own ring.
 
 ## The gap at a deck joint (design §3)
 

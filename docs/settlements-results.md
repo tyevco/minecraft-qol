@@ -90,11 +90,12 @@ block where the generator's turned value equals the game's):
 | `direction` alias on a door | — | — | the game keeps it in step: 0 south, 1 west, 2 north, 3 east (read 1 at Rotate90, 2 at Rotate180) |
 | `facing_direction` alias on a chest | — | — | the game keeps it in step with the cardinal direction: 2 north, 3 south, 4 west, 5 east (read 5 at Rotate90, 3 at Rotate180, 4 at Rotate270 for a north chest) |
 | `wall_connection_type_*` | 12 | 0 | but every value in these three buildings is `none`: the battlements are lone posts, so a real join is **unmeasured** |
-| `pillar_axis` | — | — | only `y` occurs in these three; the x↔z swap is the design's assumption still |
+| `pillar_axis` | — | — | only `y` in the first three; the x↔z swap measured later on the turned inn's lying logs (688 of 688 cells) |
 | `upside_down_bit`, `hanging`, `minecraft:vertical_half`, `open_bit`, `upper_block_bit`, `door_hinge_bit` | — | — | not directional; unchanged, as expected |
 
-The bed's `direction`, the ladder's `facing_direction` and a lying log are in
-no shipped building yet; `core/rotate.ts` turns them by the same tables,
+The bed's `direction`, the ladder's `facing_direction` and a lying log were
+in no shipped building at first; the inn brought all three and measured them
+(below). `core/rotate.ts` turns them by the same tables,
 and a unit test (`packages/builder/tests/rotate.test.ts`) holds core equal
 to the generator cell for cell on all three buildings, so the table lives in
 one place and the game has agreed with that place wherever it was asked.
@@ -118,7 +119,7 @@ ground buildings, and stilts will need their own rule.
 
 ## The placer, pinned (`suites/builder.ts`)
 
-Five GameTests, all passing on the headless server, each after the harness's
+Six GameTests, all passing on the headless server, each after the harness's
 sweep:
 
 | Test | What it measured |
@@ -127,6 +128,7 @@ sweep:
 | `builder_refuses_a_block_in_the_way` | a stone inside the box: refused, the verdict `stone is in the way at x,y,z` naming the stone's world position, nothing placed, the chest untouched. |
 | `builder_refuses_a_short_chest` | 31 cobblestone for 32: refused, `the chest is short of 1 cobblestone`, nothing placed. |
 | `builder_remove_puts_every_block_back` | the well built at a tick a block, then `builder:remove`: every cell air, and exactly the 76 items back in the chest, none more. |
+| `builder_free_mode_moves_nothing` | the panel's free-build toggle (the hatch's `free`): the well goes up from an **empty** chest and comes down leaving it empty, so the mode moves nothing either way. |
 | `builder_turned_well_matches_the_games_rotation` | the well built by the pack with rotation 1 against `structureManager.place` with `Rotate90` saved from the world: **77 of 77 cells equal**, states included. |
 
 What was learned on the way:
@@ -160,6 +162,134 @@ What was learned on the way:
   of the builder's reach waits two beats and is then placed regardless, so
   the well at two ticks a block finished inside the test's budget with the
   builder walking behind.
+
+## Repair and survey (§5.4)
+
+Built after the placer was measured, pinned by two more GameTests:
+
+- **Repair**: a finished well with four cells knocked out (two footing
+  cobblestone, a fence post, the hanging lantern) and a stone put in a
+  fifth; `builder:repair` put the four back from a chest holding five items,
+  left exactly one, and left the stone where it was. Repair decides per cell
+  with `repairStatus` (core/job.ts): the building's own block by type is
+  "ours", air, a plant or missing water is "missing", anything else is
+  "other" and is never overwritten.
+- **Survey**: a 3×3×3 box between two `builder:survey_stake` blocks at
+  opposite corners, one high and one low, holding six cobblestone, a fence post and a stair;
+  `createFromWorld` with `saveMode: World` under `builder:survey_<n>`,
+  `Structure.setBlockPermutation(cell, undefined)` on the two stake cells,
+  `saveToWorld()`. The structure read back **8 cells**: the saved air
+  (measured before: a saved structure holds air as `minecraft:air` blocks)
+  and the cleared stakes are nothing to the reader. `builder:place
+  survey_<n>` raised the copy four blocks away: **27 of 27 cells** equal
+  to the original, the stair's states included, the stakes' cells air.
+- The survey counter is a world dynamic property (`bd:surveys`), so the key
+  in the verdict is whatever number the world is up to; the test reads it
+  off the verdict rather than assuming 1.
+
+## Four more blueprints, and the two-block things
+
+The gatehouse, farmhouse, barn and inn joined the pack (the bridge span
+waits on a rule for water under a footing, the field on farmland and wheat
+having no item of their own). The inn is the first building with beds, a
+ladder, lying logs and doors, so it was placed turned once by the pack and
+compared with `structureManager.place` at `Rotate90` in a sixteen-block
+arena, and the larder was built and taken down whole. Three things measured:
+
+- **A ladder set against air pops.** The turned inn placed 685 of 688
+  cells: its ladder, facing west after the turn with its wall to the east,
+  came three cells before the wall in the west-to-east order and was gone by
+  the time the wall stood. `placementOrder` now puts a cell after the block
+  it leans on (`leansOn` in `core/order.ts`: a ladder's wall from its
+  `facing_direction`), which also takes it down before the wall.
+- **A lone door half in a wall is taken off by the next neighbour update.**
+  The larder built 161 of 163 cells: the door's lower half went in with its
+  layer, the wall blocks placed beside it a layer before the upper half
+  arrived gave it an update, and the game removed the half-door. A
+  free-standing door placed the same way a few ticks apart survived (the
+  bed-and-door test's copy). `placementOrder` now puts the other half of a
+  door or a bed straight after the first (`companionOf`).
+- **A ladder on a window pane stays under `place` and pops under the
+  builder.** With the ladder-after-wall rule in, the turned inn placed 687
+  of 688: the one cell left was the ladder rung whose wall cell is one of
+  the cottage's north windows, a glass pane. `structureManager.place` sets
+  every cell at once and skips the support check; a block set on its own
+  gets it, and a pane is not a full block. So a blueprint must be buildable
+  block by block, not only placeable whole: the inn's ladder moved one block
+  west onto planks, the stonefolk watch post's window moved off its ladder's
+  wall, and `tools/structures/tests/buildable.test.ts` holds every ladder in
+  the catalogue to a full block behind it. (The villages' tallfolk and
+  catfolk inn pieces regenerate with the moved ladder; a world that has
+  already loaded them keeps the old piece, as the structure cache note says.)
+  On a fresh world, with the ladder moved and both pair rules in, **the
+  turned inn matched the game's `Rotate90` placement 688 of 688 cells**:
+  the four beds' `direction`, the ladder's `facing_direction`, the lying
+  logs' `pillar_axis` and the door halves included, so the rotation table's
+  last assumed rows are measured. The larder came down whole (door and
+  paired chests, nothing on the ground) and the surveyed bed and door came
+  back as one bed and one door.
+- **Taking a door's upper half first pops the lower as a drop.** The
+  bed-and-door copy came down with one bed and **no door** in the chest. A
+  bed's halves did not pop each other. The removal step now takes both halves
+  of a pair in one tick, the pair's one item banked first, and the other
+  half's own step later finds air and skips.
+
+## Palette swaps (§4)
+
+The §4 table is in the pack as `core/palette.ts`, a row per people and one
+for the shared buildings, and a swap is a block-for-block table computed
+from the source row (the people in the building's key) to the target row:
+role blocks to role blocks, and the source materials' stairs and slabs to the
+target material's through a families table the generator also holds (a unit
+test keeps the two equal). Applied to the cells before rotation and
+ordering, so the materials list, the checks, the placement, repair and
+removal all see the swapped building; the record carries the palette.
+
+Measured with the well as the stonefolk build it, from a chest holding only
+stone bricks, deepslate tile stairs, tiles and slab, fences and a lantern:
+
+- The placement was accepted, so the materials list is the swapped one (the
+  chest had no cobblestone or dark oak to pay for the authored well).
+- All 77 cells matched the shipped well through the swap table, 67 of them
+  swapped (32 footing, 24 stairs, 10 roof planks, one slab), and every
+  swapped stair kept its `weirdo_direction` and `upside_down_bit`. So a
+  permutation resolved from the new block name and the shape states alone
+  is what the game places, and dropping the aliases (`wood_type`,
+  `stone_brick_type`) is right: `BlockPermutation.resolve` refuses a state
+  the block does not have, which is why a swapped cell never carries them.
+- The chest was empty when the well stood, and held exactly the 76
+  stonefolk items again when it came down, none of the tallfolk's.
+
+The awning row joined with the market stall, the eighth blueprint (authored
+under tinker, §2.5: "the trader's block for every people, with the awning
+colours swapped"). An awning role names two blocks, the colour and white,
+and a swap goes stripe for stripe rather than every source block to the
+target's first, so white stays white; the shared row has no awning and
+leaves one as authored. Measured with the stall as the reedfolk build it in
+the sixteen-block arena, from a chest of mangrove logs, green and white wool,
+fences, barrels, a chest and a lantern: accepted, all 117 cells matched the
+shipped stall through the table with 77 swapped (49 footing, 28 red stripes
+to green), the awning layer read 28 green, 21 white and no red, the chest
+was empty when it stood and held exactly the 117 reedfolk items when it came
+down, no brick or red wool among them.
+
+Every people of the villages pack then got a row: the second four from the
+generator's cottage records (`tools/structures/buildings.ts`) and the ten
+furfolk from theirs (`tools/structures/furfolk.ts`, awnings from
+`furfolk.md` §3), so a blueprint can be raised any of nineteen ways. A
+unit test holds every role block to a building that people has generated,
+so a row cannot drift from the buildings. Two kinds need more than their
+shape to stand and get it from the swap: leaves arrive persistent (the wood
+elves' roof), and a mushroom stem or block arrives solid on every face (the
+mice's walls; the default state is pores all round). Measured with the well
+as the high elves build it, whose roof stairs go by the legacy name
+`prismarine_bricks_stairs` and slab `prismarine_brick_slab`: the chest took
+items by those names, the placement was accepted, all 77 cells matched with
+67 swapped, and the 76 items came back. The wood elves' and mice's blocks
+are not measured in game.
+
+Not measured: how the swapped buildings look, which needs a client (pack
+README, "To confirm in game").
 
 ## The walk (§8.4)
 

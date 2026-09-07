@@ -1302,9 +1302,14 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
       name: "tool",
       parent: "right_arm",
       pivot: [rightArmX + aw / 2, shoulder - 1, 0],
+      // The hammer gripped at the handle's foot, just below the hand, its
+      // head above the fist in front of the arm. It hung head-down along
+      // the forearm before, which read as a weird angle the first time a
+      // person was seen holding one in game (the builder); everyone holds
+      // it upright now.
       cubes: [
-        { origin: [rightArmX + aw / 2 - 0.5, handY - 6, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
-        { origin: [rightArmX + aw / 2 - 2, handY - 8, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
+        { origin: [rightArmX + aw / 2 - 0.5, handY - 1, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
+        { origin: [rightArmX + aw / 2 - 2, handY + 6.5, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
       ],
     },
   ];
@@ -1550,6 +1555,24 @@ write(`${BUILDER_MODELS}/blocks/blueprint_table.geo.json`, {
         ...([[-8, -8], [6, -8], [-8, 6], [6, 6]] as const).map(([x, z]): Cube<BT> => ({ origin: [x, 0, z], size: [2, 12, 2], faces: { sides: "leg", up: "leg", down: "dark" } })),
         { origin: [-8, 12, -8], size: [16, 2, 16], faces: { sides: "side", up: "top", down: "dark" } } as Cube<BT>,
         { origin: [-6, 14, -5], size: [12, 1, 10], faces: { all: "sheet", down: "dark" } } as Cube<BT>,
+      ],
+    },
+  ],
+});
+
+// A survey stake: a post with a blue flag, two of which mark the box a
+// survey saves (settlements.md §5.4). Drawn off the table's own atlas.
+write(`${BUILDER_MODELS}/blocks/survey_stake.geo.json`, {
+  identifier: "geometry.builder_survey_stake",
+  atlas: A.BLUEPRINT_TABLE,
+  visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
+  bones: [
+    {
+      name: "stake",
+      pivot: [0, 0, 0],
+      cubes: [
+        { origin: [-1, 0, -1], size: [2, 14, 2], faces: { sides: "leg", up: "leg", down: "dark" } } as Cube<BT>,
+        { origin: [1, 9, -0.5], size: [6, 4, 1], faces: { all: "sheet" } } as Cube<BT>,
       ],
     },
   ],

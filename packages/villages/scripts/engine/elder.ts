@@ -3,38 +3,33 @@
  * village has one on its square and the design left "a fifth job, or the
  * trader" open. Interact and a form says where the player stands with the
  * people, offers an errand (one open per player per people, from the same
- * table a visitor draws on), takes its payment, sells a job post at
- * Friend, and at Kin names a person of a chosen job to come home with
- * the player (engine/follow.ts). The decisions are in core/standing.ts.
+ * table a visitor draws on), takes its payment, trades the people's wares
+ * for emeralds at Guest (a second form; +1 standing for the first few
+ * trades a day), sells a job post at Friend and sends a guard to walk
+ * with the player for a day, and at Kin names a person of a chosen job
+ * to come home with the player (engine/follow.ts). The decisions are in
+ * core/standing.ts.
  */
-import { Player, world, type Entity } from "@minecraft/server";
+import { Player, type Entity } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
-import { peopleName, type PostRecord } from "../core/record";
+import { itemName, peopleName } from "../core/record";
 import * as core from "../core/standing";
 import { pickErrand } from "../core/visitors";
 import * as follow from "./follow";
-import { postTag } from "./post";
+import { postOf } from "./post";
 import * as standing from "./standing";
 import * as storage from "./storage";
+import * as storehouse from "./storehouse";
+import { today } from "./visitors";
 
 const INVITE_RANGE = 64;
 const JOBS = ["guard", "worker", "trader", "builder"];
 
-/** The elder's own post, from the tag it carries. */
-function postOf(elder: Entity): PostRecord | undefined {
-  const tag = elder.getTags().find((t) => t.startsWith("villages:post:"));
-  if (!tag) return undefined;
-  const [x, y, z] = tag.slice("villages:post:".length).split(",").map(Number);
-  if (x === undefined || y === undefined || z === undefined) return undefined;
-  const record = storage.get({ dimId: elder.dimension.id, x, y, z });
-  return record && postTag(record) === tag ? record : undefined;
-}
-
-const describe = (e: { item: string; amount: number }): string => `${e.amount} ${e.item.replace("minecraft:", "").replace(/_/g, " ")}`;
+const describe = (e: { item: string; amount: number }): string => `${e.amount} ${itemName(e.item)}`;
 
 export async function showElder(player: Player, elder: Entity): Promise<void> {
   const people = (elder.getProperty("villages:people") as number | undefined) ?? 0;
-  const day = world.getDay();
+  const day = today();
   let errand = standing.openErrand(player, people);
   const lines: string[] = [];
   if (errand && core.lapsed(errand, day)) {
@@ -58,9 +53,17 @@ export async function showElder(player: Player, elder: Entity): Promise<void> {
     form.button("Is there something you need?");
     actions.push(() => take(player, people, day));
   }
+  if (offer.canTrade) {
+    form.button("What do you have to trade?");
+    actions.push(() => void trade(player, elder, people, offer.tier));
+  }
   if (offer.canBuy) {
     form.button(`Buy a job post (${core.POST_PRICE} emeralds)`);
     actions.push(() => buy(player, people));
+  }
+  if (offer.canEscort && !follow.escortOf(player)) {
+    form.button("Would a guard walk with me?");
+    actions.push(() => escortWith(player, elder, people));
   }
   if (offer.canInvite) {
     form.button("Invite someone home");
@@ -115,6 +118,79 @@ function buy(player: Player, people: number): void {
   }
   standing.give(player, core.POST_ITEM, 1);
   player.sendMessage(`A job post of the ${peopleName(people)}. Place it in your settlement; someone will come to it.`);
+}
+
+/** The people's wares and the storehouse's, one button each; a pick takes the emeralds, hands over the goods and counts the trade. */
+async function trade(player: Player, elder: Entity, people: number, tier: number): Promise<void> {
+  const wares = core.wares(people, tier);
+  if (wares.length === 0) return;
+  const post = postOf(elder);
+  const dim = elder.dimension;
+  const stock = post ? storehouse.stockOf(dim, post, tier) : [];
+  const c = standing.inventoryOf(player);
+  const emeralds = c ? standing.countCarried(c, core.EMERALD) : 0;
+  const form = new ActionFormData().title(`${elder.nameTag || peopleName(people)}'s wares`).body(`You carry ${emeralds} emerald${emeralds === 1 ? "" : "s"}.`);
+  for (const w of wares) form.button(`${describe(w)} for ${w.price} emerald${w.price === 1 ? "" : "s"}`);
+  for (const s of stock) form.button(`${describe(s)} for ${s.price} emerald${s.price === 1 ? "" : "s"} (the storehouse has ${s.available})`);
+  form.button("Nothing today");
+  let r;
+  try {
+    r = await form.show(player);
+  } catch (e) {
+    console.warn("[Villages]", `the wares form failed: ${e}`);
+    return;
+  }
+  if (r.canceled || r.selection === undefined || r.selection >= wares.length + stock.length) return;
+  const fromStore = r.selection >= wares.length;
+  const w = fromStore ? stock[r.selection - wares.length]! : wares[r.selection]!;
+  const inv = standing.inventoryOf(player);
+  if (!inv || standing.countCarried(inv, core.EMERALD) < w.price) {
+    player.sendMessage(`That is ${w.price} emerald${w.price === 1 ? "" : "s"}.`);
+    return;
+  }
+  // Consume before producing: the emeralds first, and back if they came up short.
+  const taken = standing.takeCarried(inv, core.EMERALD, w.price);
+  if (taken < w.price) {
+    if (taken > 0) standing.give(player, core.EMERALD, taken);
+    player.sendMessage("Not enough, on a second count.");
+    return;
+  }
+  if (fromStore && post) {
+    // Then the goods out of the chests; if they went between the form and now, the goods go back and so do the emeralds.
+    const chests = storehouse.chestsOf(dim, post);
+    const got = storehouse.take(chests, w.item, w.amount);
+    if (got < w.amount) {
+      storehouse.putBack(dim, chests, w.item, got);
+      standing.give(player, core.EMERALD, w.price);
+      player.sendMessage(`The storehouse has less ${itemName(w.item)} than it did.`);
+      return;
+    }
+  }
+  standing.give(player, w.item, w.amount);
+  const after = standing.recordTrade(player, people);
+  player.sendMessage(after.earned ? `${describe(w)}, yours. ${core.standingWords(people, after.standing)}` : `${describe(w)}, yours.`);
+  console.warn("[Villages]", `${player.name} bought ${describe(w)} from the ${peopleName(people)}${fromStore ? "' storehouse" : ""} for ${w.price}: standing ${after.standing}${after.earned ? "" : " (the day's trades are counted)"}`);
+}
+
+/** A guard of the elder's village walks with the player for a day (design §5, Friend). */
+function escortWith(player: Player, elder: Entity, people: number): void {
+  const post = postOf(elder);
+  if (!post) {
+    player.sendMessage("The elder looks about, and cannot say who.");
+    return;
+  }
+  const dim = elder.dimension;
+  const candidate = core.escortCandidate(storage.all(), post, INVITE_RANGE, (p) => follow.presentAt(dim, p));
+  if (!candidate) {
+    player.sendMessage(`No guard of the ${peopleName(people)} can be spared here.`);
+    return;
+  }
+  const guard = follow.escort(dim, candidate, player);
+  if (!guard) {
+    player.sendMessage("Nobody answered.");
+    return;
+  }
+  player.sendMessage(`${guard.nameTag} will walk with you until the day is up. Tap them to send them home sooner.`);
 }
 
 async function invite(player: Player, elder: Entity, people: number): Promise<void> {

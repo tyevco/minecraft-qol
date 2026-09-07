@@ -63,6 +63,16 @@ export function postTag(pos: Position): string {
   return `villages:post:${pos.x},${pos.y},${pos.z}`;
 }
 
+/** A person's own post, from the tag it carries (in its own dimension); none if the tag is gone or the post is. */
+export function postOf(person: Entity): PostRecord | undefined {
+  const tag = person.getTags().find((t) => t.startsWith("villages:post:"));
+  if (!tag) return undefined;
+  const [x, y, z] = tag.slice("villages:post:".length).split(",").map(Number);
+  if (x === undefined || y === undefined || z === undefined) return undefined;
+  const record = storage.get({ dimId: person.dimension.id, x, y, z });
+  return record && postTag(record) === tag ? record : undefined;
+}
+
 /**
  * The post's person: by the recorded id first, then by tag among the persons
  * near the post. The id lookup fails whenever the person is in a chunk that

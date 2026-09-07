@@ -122,7 +122,9 @@ building("stonefolk_watchpost", "Watch Post", "stonefolk", "A cobblestone tower 
   bp.walls(1, 1, 1, 5, 8, 5, "cobblestone");
   for (const [cx, cz] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(cx, 1, cz, 1, 8, 1, "polished_deepslate");
   bp.door(3, 1, 5, "spruce", "south");
-  bp.set(3, 3, 1, "glass_pane").set(1, 5, 3, "glass_pane").set(5, 5, 3, "glass_pane");
+  // The north window sits beside the ladder, not behind it: a ladder on a
+  // pane pops when placed block by block (docs/settlements-results.md).
+  bp.set(4, 3, 1, "glass_pane").set(1, 5, 3, "glass_pane").set(5, 5, 3, "glass_pane");
   // Platform overhanging by one, with a wall parapet and a lantern.
   bp.fill(0, 9, 0, 7, 1, 7, "stone_bricks");
   bp.walls(0, 10, 0, 7, 1, 7, "cobblestone_wall");
@@ -446,8 +448,11 @@ building("shared_larder", "Larder", "shared", "A stone-floored hut of chests. Wh
 building("shared_inn", "Inn", "shared", "Two floors, four beds, a table by the door. The innkeeper sets a respawn point here; a Hearthstone in a settlement becomes a place.", (bp) => {
   cottage(bp, 1, 1, 9, 9, 6, { ...TALL, wall: "spruce_planks", corner: "spruce_log", roof: "dark_oak_planks", door: "spruce" });
   bp.fill(2, 4, 2, 7, 1, 7, "oak_planks");
-  bp.fill(8, 4, 2, 1, 1, 2, "air");
-  bp.ladder(8, 1, 2, 4, "south");
+  // The ladder leans on the north wall at x = 7, plank; at x = 8 the wall
+  // cell behind it is a window pane, which structureManager.place tolerates
+  // and a ladder placed block by block does not (measured: it pops).
+  bp.fill(7, 4, 2, 1, 1, 2, "air");
+  bp.ladder(7, 1, 2, 4, "south");
   bed(bp, 2, 5, 2);
   bed(bp, 4, 5, 2);
   bed(bp, 6, 5, 2);

@@ -120,8 +120,12 @@ and `place` has an animation mode.
   moves, or `teleport` steps).
 - **`home` on a custom entity** keeping it within a radius across chunk
   reloads.
-- **Trade tables on a custom entity** and whether the trade UI opens without
-  `minecraft:trade_table` needing the villager's own components.
+- ~~**Trade tables on a custom entity** and whether the trade UI opens without
+  `minecraft:trade_table` needing the villager's own components.~~ Not
+  worth measuring: the stable script API has no event for a trade, so a
+  vanilla table could neither move standing per trade nor be gated per
+  player (a component group is per entity, standing per player). The
+  villages' trader trades from a form instead (`villages-jigsaw-results.md`).
 - **Hire and follow:** `follow_owner` needs `tameable`; a guard hired for a
   walk is bonded the way the hatchling is, and released by a form button.
 - **Cost of the form** on every interaction: whether the before-event can

@@ -498,3 +498,33 @@ the cauldron swallowing a simulated player's click, the same way it swallows a
 placement (corrections table). So the happy path is unreachable headlessly and
 the test is in `known-failures.json` with both halves of the reason; the
 refusal half is measured and passing.
+
+### A re-used world makes the two visitor tests fail, and the pack says so
+
+A full local run of the grown suite came back 100/109 with five failures. Three
+were the Bulwark ammo tests that are red on `main` too. The other two were
+`villages_visitor_settles` and `villages_visitor_leaves_at_dawn`, which pass on
+CI — and they failed **alone**, three times each, so the re-run rule did not
+excuse them.
+
+The Villages pack had already written the answer in the content log:
+
+```
+[Villages] ready at tick 84551: 11 post(s) known; block component registered
+[Villages] a player placed a post at 4,-9,6; its record already existed (onPlace first)
+[Villages] no visitor comes: visiting
+```
+
+A visitor from an **earlier run against the same world** was still recorded as
+visiting, so the pack correctly refused to send another, and the test that asks
+for one found none. The same world also carried eleven post records and the
+posts the test places itself. `npm run bds:setup -- --fresh` deletes the world;
+on a clean one both tests pass first time.
+
+So this is the entity-and-records contamination already documented above, one
+level up: not between two tests in a run, but **between runs**, through a
+pack's own world dynamic properties. CI never sees it because every CI run
+starts from a world that does not exist yet. Locally, a suite result from a
+world that has been run against before is worth exactly as much as a re-run in
+sequence — read the pack's own log lines before believing it, and re-run
+`--fresh` before reporting a failure that CI does not have.

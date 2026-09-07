@@ -81,16 +81,18 @@ export function fits(origin: { x: number; y: number; z: number }, size: Size, lo
 /**
  * Grounded (§5.2 item 2): a solid block under every footing cell, that is
  * every cell the building places on its bottom layer. `cells` are in world
- * coordinates, as `worldCells` gives them. Water under a footing is refused
- * for these three; stilts come with the reedfolk.
+ * coordinates, as `worldCells` gives them. A building on stilts (the bridge
+ * span; the catalogue entry says so) may stand on water as well, since its
+ * posts go down into the river; never on air or a plant.
  */
-export function grounded(originY: number, cells: readonly Cell[], lookup: Lookup): Verdict {
+export function grounded(originY: number, cells: readonly Cell[], lookup: Lookup, stilts = false): Verdict {
   for (const c of cells) {
     if (c.y !== originY) continue;
     const x = c.x, y = originY - 1, z = c.z;
     const under = lookup(x, y, z);
     if (!under) return { ok: false, reason: `the ground at ${x},${y},${z} is not loaded`, at: at(x, y, z, "unloaded") };
-    if (!isSolid(under)) return { ok: false, reason: `nothing to stand on at ${x},${y},${z} (${plain(under.typeId)})`, at: at(x, y, z, under.typeId) };
+    const stands = isSolid(under) || (stilts && under.isLiquid);
+    if (!stands) return { ok: false, reason: `nothing to stand on at ${x},${y},${z} (${plain(under.typeId)})`, at: at(x, y, z, under.typeId) };
   }
   return { ok: true };
 }

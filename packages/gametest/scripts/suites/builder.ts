@@ -549,6 +549,76 @@ registerAsync("qol", "builder_stall_as_the_reedfolk_build_it", async (test) => {
   });
 }).maxTicks(3000).structureName(ARENA16);
 
+// The bridge span stands in water (settlements.md §5.2, "water for stilts").
+// A pool one deep fills the arena floor under it; the well, a ground
+// building, is refused over it by name, and the bridge is accepted and goes
+// up matching the shipped structure, which carries no water of its own: the
+// river is where a span is placed, not part of it.
+const BRIDGE_MATERIALS: Record<string, number> = {
+  "minecraft:oak_planks": 21,
+  "minecraft:oak_log": 18,
+  "minecraft:oak_fence": 14,
+  "minecraft:lantern": 2,
+};
+registerAsync("qol", "builder_bridge_stands_in_water", async (test) => {
+  rig16(test, BRIDGE_MATERIALS);
+  for (let x = 1; x <= 5; x++) for (let z = 1; z <= 9; z++) test.setBlockType("minecraft:water", { x, y: 0, z });
+  const o = test.worldBlockLocation(ORIGIN);
+  const dim = test.getDimension();
+  dim.runCommand(`scriptevent builder:place tallfolk_well ${o.x} ${o.y} ${o.z} 0 1 free`);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place refused: nothing to stand on") && last(test).includes("water"), `expected the well refused over water by name, got "${last(test)}"`);
+  dim.runCommand(`scriptevent builder:place shared_bridge ${o.x} ${o.y} ${o.z} 0 1`);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok"), `expected the bridge accepted over water, got "${last(test)}"`);
+  const BRIDGE = { x: 5, y: 4, z: 9 };
+  test.succeedWhen(() => {
+    const r = compareAt(test, "builder:shared_bridge", BRIDGE, ORIGIN, StructureRotation.None);
+    test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the shipped bridge: ${r.wrong.slice(0, 3).join("; ")}`);
+    test.assert(r.right === 55, `expected all 55 cells of the bridge, found ${r.right}; missing: ${r.missing.slice(0, 3).join("; ")}`);
+    test.assert(chestTotal16(test) === 0, `expected the bridge's materials all taken, ${chestTotal16(test)} item(s) left`);
+    let water = 0;
+    for (let x = 1; x <= 5; x++) for (let z = 1; z <= 9; z++) if (dim.getBlock(test.worldBlockLocation({ x, y: 0, z }))?.isLiquid) water++;
+    test.assert(water === 45, `expected the pool still full under the bridge, ${water} of 45 cells are water`);
+  });
+}).maxTicks(3000).structureName(ARENA16);
+
+// The field: farmland and a path cost dirt, wheat costs seeds, the channel's
+// water is free, and the same items come back when it is taken down. Every
+// cell is checked against the game's own placement of the structure, so the
+// farmland's moisture and the wheat's growth are the file's.
+const FIELD_MATERIALS: Record<string, number> = {
+  "minecraft:dirt": 45,
+  "minecraft:wheat_seeds": 42,
+  "minecraft:grass_block": 32,
+  "minecraft:oak_fence": 31,
+  "minecraft:chest": 1,
+  "minecraft:fence_gate": 1,
+};
+registerAsync("qol", "builder_field_is_dirt_and_seeds", async (test) => {
+  rig16(test, FIELD_MATERIALS);
+  const o = test.worldBlockLocation(ORIGIN);
+  test.getDimension().runCommand(`scriptevent builder:place tallfolk_field ${o.x} ${o.y} ${o.z} 0 1`);
+  await test.idle(10);
+  test.assert(last(test).startsWith("builder:place ok"), `expected the field accepted from a chest of dirt and seeds, got "${last(test)}"`);
+  const FIELD = { x: 9, y: 2, z: 9 };
+  for (let t = 0; t < 2000 && compareAt(test, "builder:tallfolk_field", FIELD, ORIGIN, StructureRotation.None).right < 156; t += 10) await test.idle(10);
+  const r = compareAt(test, "builder:tallfolk_field", FIELD, ORIGIN, StructureRotation.None);
+  test.assert(r.wrong.length === 0, `${r.wrong.length} cell(s) differ from the shipped field: ${r.wrong.slice(0, 3).join("; ")}`);
+  test.assert(r.right === 156, `expected all 156 cells of the field, found ${r.right}; missing: ${r.missing.slice(0, 3).join("; ")}`);
+  test.assert(chestTotal16(test) === 0, `expected the field's materials all taken, ${chestTotal16(test)} item(s) left`);
+  test.getDimension().runCommand(`scriptevent builder:remove ${o.x + 4} ${o.y} ${o.z + 4} 1`);
+  await test.idle(5);
+  test.assert(last(test).startsWith("builder:remove ok"), `expected the removal to start, got "${last(test)}"`);
+  test.succeedWhen(() => {
+    const after = compareAt(test, "builder:tallfolk_field", FIELD, ORIGIN, StructureRotation.None);
+    test.assert(after.placed === 0, `expected the field gone, ${after.placed} block(s) still stand`);
+    for (const [item, n] of Object.entries(FIELD_MATERIALS)) test.assert(count(test, CHEST16, item) === n, `expected ${n} ${item} back in the chest, found ${count(test, CHEST16, item)}`);
+    const want = Object.values(FIELD_MATERIALS).reduce((a, b) => a + b, 0);
+    test.assert(chestTotal16(test) === want, `expected exactly ${want} items in the chest, found ${chestTotal16(test)}`);
+  });
+}).maxTicks(3000).structureName(ARENA16);
+
 // The larder comes down whole: its door is two cells and one item, and its
 // five chests stand in rows that pair into double chests. Everything that
 // went in comes back and nothing more, so a popped door half or a merged

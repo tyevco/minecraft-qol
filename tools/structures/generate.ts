@@ -9,6 +9,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Blueprint } from "./blueprint";
+import { builderBlueprint } from "./builder";
 import { BUILDINGS } from "./buildings";
 import { uniformStructure } from "./mcstructure";
 import { showcase } from "./showcase";
@@ -46,7 +47,7 @@ for (const bp of BUILDINGS) {
 // three blueprints a builder raises from the table, shipped in the builder
 // pack as `builder:<key>`. Small, and no stand-ins; the rest of the
 // catalogue follows once the placer is measured against these.
-export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall"] as const;
+export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall", "shared_bridge", "tallfolk_field"] as const;
 const BUILDER = resolve(ROOT, "packages/builder/behavior_pack/structures/builder");
 mkdirSync(BUILDER, { recursive: true });
 for (const key of BUILDER_KEYS) {
@@ -55,20 +56,6 @@ for (const key of BUILDER_KEYS) {
   console.log(`packages/builder/behavior_pack/structures/builder/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
 }
 
-/**
- * A catalogue building as the builder pack ships it: the job post left out,
- * since the post is the villages pack's block and the builder stands alone
- * for now (a block the world does not know is dropped from a structure on
- * load, silently). The post comes back when the builder moves into villages.
- */
-export function builderBlueprint(key: string): Blueprint {
-  const src = BUILDINGS.find((b) => b.key === key);
-  if (!src) throw new Error(`no building ${key} for the builder pack`);
-  const out = new Blueprint(src.key, src.title, src.size, src.people, src.notes);
-  for (const b of src.blocks()) if (b.name !== "villages:post") out.set(b.x, b.y, b.z, b.name, b.states);
-  for (const [x, y, z] of src.waterloggedCells()) out.waterlog(x, y, z);
-  return out;
-}
 
 
 // The jigsaw probe (docs/design/villages.md §7.1, issue #38): the tallfolk

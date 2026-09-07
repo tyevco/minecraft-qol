@@ -67,6 +67,14 @@ measurements: `docs/villages-jigsaw-results.md`.
   outside the world) is **skipped, never evicted** - a post nobody is
   standing near is out of sight, not gone. `villages:debug` counts what has
   been swept, and `villages_stale_post_record_is_swept` pins it.
+- **`/scriptevent villages:forget x y z [radius]`**: retire the post
+  record(s) there - the record and its person - with the block left
+  standing. The GameTests' sweep, and the same escape hatch
+  `builder:forget` and `bulwark:forget` are. A test needs it because a
+  record outlives the session that wrote it and test cells repeat across
+  sessions: a post the kids placed, remembered on a cell a later test
+  uses, is kept by the "same post" check and spawns nobody, so the test
+  waits for a person that never comes (docs/gametest-structure-results.md).
 - **Trades** (design §5.1, `scripts/core/trades.ts` decides,
   `scripts/engine/trades.ts` acts): a **worker's** post surveys the blocks
   within sixteen of it on the first tick its person is present, and again

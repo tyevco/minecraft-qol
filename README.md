@@ -81,6 +81,7 @@ want to disturb them.
 | `npm run local-deploy` | Deploy, then watch and repeat on save. |
 | `npm run mcaddon` | Produce `dist/packages/<pack>.mcaddon` per shipped pack. |
 | `npm run assets` | Regenerate textures, models and GameTest structures from `tools/`. |
+| `npm run pages` | Build the model viewer and the T-pose sheets into `dist/viewer`; what GitHub Pages publishes. |
 
 Per-pack variants exist for everything: `npx just-scripts build:qol_times`,
 `deploy:qol_times`, `mcaddon:qol_times`, `clean:qol_times`.
@@ -211,9 +212,40 @@ fetches the ones the blueprints use from Mojang's public bedrock-samples
 into `.cache/` and `dist/viewer/vanilla/` (never committed), mapped through
 the game's `blocks.json`, so an unknown block identifier is reported there.
 Offline, it warns and draws coloured cubes. Serve the folder with any static server
-(`npx http-server dist/viewer`). GitHub Pages publishes the same page from
-`main` via `.github/workflows/pages.yml`, so the live page always shows what
-the repo generates.
+(`npx http-server dist/viewer`).
+
+**T-pose sheets.** `npm run sheets` writes a three-view reference sheet for
+every entity that can be posed into `dist/viewer/sheets`, plus a gallery page
+and a `sheets.json` index. Each sheet draws the model front, right and top over
+a grid in model units, in its **reference pose**: the bind pose - every
+rotation the model was authored with cleared, so the pack mule's forward lean
+and the hatchling's folded wings do not hide the rig - with the arms and wings
+taken out to the sides. Every sheet shares one scale and one frame, so two of
+them held side by side compare directly: the tallfolk really is a head taller
+than the hobbit.
+
+The set is discovered from the geometry on disk, not from a list, so a new
+entity model gets a sheet the run after it is generated. A model with no limb
+bones has nothing to pose - a gravestone, a waypoint marker, an egg, the turret
+head - and is skipped with its reason, printed by the run and listed on the
+page. A person's four job textures each get their own sheet, wearing that job's
+outfit bones (guard: helmet; worker: hat; trader: pack; builder: tool and
+pack); the others are hidden, since they share a head.
+
+The renderer is its own small orthographic rasteriser under `tools/sheets`, on
+the same footing as the texture generator: no browser, no GPU, no dependency,
+so a sheet builds in CI exactly as it does locally. It follows the same
+conventions `tools/viewer/viewer.js` does - Blockbench's Bedrock codec, x
+mirrored, bone rotations negated in x and y - so a sheet and the viewer show
+the same model. `decode.ts` is the PNG decoder that reads the textures back,
+the counterpart to the generator's `png.ts`. The pose rules, the bone maths and
+the discovery are pure and unit-tested under `tools/sheets/tests`.
+
+**Publishing.** `npm run pages` is `npm run viewer` then `npm run sheets`, in
+that order - the viewer build clears `dist/viewer`, and the sheets are written
+inside it. GitHub Pages publishes that folder from `main` via
+`.github/workflows/pages.yml`, so the live page always shows what the repo
+generates, sheets included.
 
 **Why we don't use the library's `copyTask`.** It reads `PROJECT_NAME` from
 `process.env` inside its returned closure, making the deploy destination a

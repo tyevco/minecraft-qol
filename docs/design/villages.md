@@ -149,7 +149,7 @@ outfits, buildings and a village style:
 
 | People | Rig | Dress | Village |
 | --- | --- | --- | --- |
-| **Hobbits** | small (body 8×9, legs 6), barefoot, curly brown hair, no hat | earthy: leather, green, gold, rust; brass trim | grass mounds with round oak doors, stepped so flowers grow on the roof; gardens of carrots and potatoes; an inn at the centre with a bounder outside |
+| **Hobbits** | small (body 8×9, legs 6), big bare feet with a tuft of hair, a mop of brown curls standing off the head, rosy cheeks, no hat | earthy: leather, green, gold, rust; brass trim | grass mounds with round oak doors, stepped so flowers grow on the roof; gardens of carrots and potatoes; an inn at the centre with a bounder outside |
 | **Wood elves** | tall and lean, pointed ears, a green hood | forest greens and bark brown, leaf-green trim | platforms in the canopy: a deck six blocks up on dark oak trunks hung with leaves, spruce huts under leaf roofs, a hearth round a great tree; glades of moss and fern below |
 | **High elves** | tall, pointed ears, gold hair, a gold circlet | white and sky blue, gold trim | quartz on diorite under prismarine roofs, light blue glass, sea lanterns on quartz pillars, a hall with a fountain, a library, cherry gardens and reflecting pools |
 | **Drow** | tall, pointed ears, dusky skin, white hair, a dark hood | black, violet, magenta, slate; silver trim | deepslate brick and blackstone on mycelium, purple glass, soul lanterns, webs; a sanctum with an amethyst altar; mushroom groves, web hollows and a mine |

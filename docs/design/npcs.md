@@ -46,9 +46,9 @@ concepted in `design/furfolk.md`.
 | --- | --- | --- | --- |
 | **Stonefolk** | short and broad (head 8×7, body 10×10, legs 8) | beard | hillside halls; ore, stone, the Bulwark turrets |
 | **Reedfolk** | tall and lean (head 7×8, body 8×14, legs 14) | conical reed hat | marsh and river, stilt houses; fish, boats, dye and glass |
-| **Tinker** | small and quick (head 7×6, body 6×8, legs 7) | goggles pushed up on the forehead | workshops with steam; copper, redstone, Fluidworks parts |
+| **Tinker** | small and quick (head 7×6, body 6×8, legs 7) | a leather skullcap with brass goggles pushed up on it, a tool belt, soot-black hair (the hobbit's brown made the two one figure) | workshops with steam; copper, redstone, Fluidworks parts |
 | **Tallfolk** | a head taller than a player (body 8×13, legs 13) | straw hat | open ground; bread, wool, horses |
-| **Hobbits** | small and round (body 8×9, legs 6), barefoot | curly hair, no hat | flowery hills; gardens, pantries, an inn |
+| **Hobbits** | small and round (body 8×9, legs 6), big bare hairy feet | a mop of curls, rosy cheeks, no hat | flowery hills; gardens, pantries, an inn |
 | **Wood elves** | tall and lean (body 7×13, legs 13) | pointed ears, a green hood | the canopy; platforms on dark oak trunks |
 | **High elves** | tall (body 8×14, legs 14) | pointed ears, a gold circlet | cherry groves and meadows; quartz halls |
 | **Drow** | tall and lean (body 7×13, legs 13) | pointed ears, white hair, a dark hood | the dark forest; deepslate, webs, amethyst |

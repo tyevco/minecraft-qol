@@ -54,7 +54,9 @@ under `packages/shared`.
    `npm run assets`, and are committed. A changed PNG, `.geo.json` or
    `.animation.json` in a diff must correspond to a change under `tools/`.
    (The two particle-only idle animations in Bulwark and Graves predate the
-   animation generator and are still hand-written.)
+   animation generator and are still hand-written.) The page build's own
+   output - `dist/viewer`, the model viewer and the T-pose sheets - is
+   regenerated on every push to `main` and is never committed.
 6. **Per-block state lives in a world dynamic property keyed by position**
    (`packages/shared/engine/positionIndex.ts`), registered on
    `playerPlaceBlock` and removed on `playerBreakBlock`, with a schema version.
@@ -67,6 +69,7 @@ npm test              vitest over every pure layer; no game needed
 npx tsc --noEmit      typecheck, including tools/
 npm run build         typecheck + esbuild bundle per pack into dist/<pack>/
 npm run assets        regenerate textures, models, animations and GameTest structures
+npm run pages         the GitHub Pages build: model viewer, then T-pose sheets
 npm run deploy        build, then copy packs into development_behavior_packs
 npm run mcaddon       .mcaddon per shipped pack (dev-only packs excluded)
 

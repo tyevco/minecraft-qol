@@ -13,17 +13,25 @@ measurements: `docs/villages-jigsaw-results.md`.
   with `villages:people` (0–18) and `villages:job` properties that pick the
   rig, the outfit and the accessory bones (helmet for a guard, hat for a
   worker, for every elf and for every drover but the guard, pack for a
-  trader and builder, tool for a builder). The second four (design §3.3)
-  have their own dress per job, pointed ears on the elves, a hood for the
-  wood elves and the drow, a circlet for the high elves, bare feet for the
-  hobbits. The **drovers** (index 8) are the desert's cattle people, a
+  trader and builder, tool for a builder). The **tinker** wears a leather
+  skullcap with brass goggles strapped over it on every job (they ride the
+  head bone, so its hat bone carries nothing), a tool belt with a brass
+  buckle, and soot-black hair: it and the hobbit were two small, fair,
+  brown-haired figures nobody could tell apart at ten blocks. The second
+  four (design §3.3) have their own dress per job, pointed ears on the
+  elves, a hood for the wood elves and the drow, a circlet for the high
+  elves, and for the hobbits a mop of curls standing off the head, rosy
+  cheeks, and big bare feet with a tuft of hair on each (the trousers used
+  to end in the job's boots, which no hobbit wears). The **drovers** (index 8) are the desert's cattle people, a
   western look without any one film's character: player-sized, a braid
   down the back, a red neckerchief, and a wide-brimmed red hat. A guard fights monsters within
   twelve blocks; nobody targets players. Every person has a
   `minecraft:home` where it spawned and strolls within ten blocks of it.
   The **furfolk** (indices 9–18, `docs/design/furfolk.md` §2–3) are animals
   in the same job outfits on the same rig, in toy proportions: a muzzle, two
-  ears on bones of their own that flick, a tail that swishes (a tip segment
+  ears on bones of their own that flick (the cat's a stair of cubes that
+  reads as a triangle, at the head's corners and leaning out; the slab it
+  had made it a small grey wolf), a tail that swishes (a tip segment
   for the cat and the squirrel), antlers on the deer, each at its own scale
   from the mouse at 0.65 to the bear at 1.15 (and the bear walks slowest).
   The ears stand up through the worker's cap. One animation set serves all
@@ -701,6 +709,17 @@ own ring.
 
 ## To confirm in game
 
+- **The cat's triangle ears** on a real client. Each row of the stair is a
+  unit narrower than the one below and centred, so the odd rows' front
+  faces start half a pixel into the ear tile: `"uv": [70.5, 23]` in
+  `catfolk.geo.json`. The viewer draws it; if the client shows a smeared
+  or shifted pink on those rows, give the triangle even rows only (widths
+  4 and 2, heights 3 and 2) in `furred()` in `tools/models/generate.ts`,
+  which keeps every window on the pixel grid.
+- **The tinker's cap and the hobbit's mop** sit half a unit proud of the
+  head, and the hobbit's foot a unit and a half in front of the leg; if
+  either z-fights the head or the leg on a client, the cubes are in
+  `bipedRig()` (`goggles`, `curls`, `bare`), a quarter unit further out.
 - **The builder's hammer**, on every people: the biped rig now grips it at
   the handle's foot with the head above the fist. The old grip hung it
   head-down along the forearm, which read as a weird angle the first time

@@ -60,7 +60,16 @@ idle animation emits `graves:wisp` at the `wisp` locator, engine-driven.
 See §5 of the design doc. Two things the design rests on, measured by
 `qolprobe:death` in the probe pack: that a dead player's inventory is still
 readable inside `entityDie`, and that a script-set `keepOnDeath` really stops
-the drop. Plus one thing about the panel: that a dropdown reads back as its
+the drop. **The second one now needs a person**, and that is a finding rather
+than an oversight: `keep_on_death_stops_the_drop` in the GameTest suite flags
+one stack, leaves a second unflagged as a control, kills a simulated player and
+gets **both** back — so a headless run cannot tell the flag working from a
+world that never drops, and it is a known failure saying exactly that. It also
+means `death_keeps_items`, which passes, is not evidence that Graves works.
+What the suite does pin is the stone itself
+(`gravestone_holds_a_full_inventory`): 45 slots, more than the 36 + 5 a player
+can carry, so `planTransfer` never has leftovers to leave behind, and it
+refuses damage. Plus one thing about the panel: that a dropdown reads back as its
 option name (`"grave"`), which `graves:debug` shows.
 
 The locator-bar marker is unmeasured; `qolprobe:waypoint` covers the engine

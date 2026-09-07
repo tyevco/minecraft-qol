@@ -612,3 +612,12 @@ exactly as it does for one that is gone (`core/visitors.ts` `visitLost`):
 ```
 
 Both visitor tests then pass on a world that had just failed one of them.
+
+What remains for those two is **not** contamination, and is issue #108: an
+arriving visitor is put on the ground under `edgeSpot(settlement.centre)`, a
+settlement's radius is 48 blocks, and the rig's `floor()` paints 8x8 - so an
+edge spot off that square finds the world's own terrain about a hundred blocks
+down. Measured: the settlement was right (`2 posts` at y = 44, the test's own
+cell) and the visitor arrived correctly at **y = -60**, outside the test's
+40-block search. It passes alone because the random draw sometimes lands on
+the painted square, which is luck rather than isolation.

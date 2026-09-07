@@ -21,8 +21,26 @@ function people(test: Test) {
   return test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 4 });
 }
 
+/**
+ * Ask the pack to forget every post record near this cell before one is set
+ * on it (issue #104's other half).
+ *
+ * A structure reload restores blocks but not records, and test cells repeat
+ * across server sessions - measured: a session booted with "1 post(s) known"
+ * and the test on that cell found no person. The record left there was a
+ * post the KIDS had placed, and `tick`'s "same post" check keeps such a
+ * record when a post of the same people and job is set over it, which is
+ * right for a plaque being turned and wrong here. A kids' post spawns
+ * nobody, so the test waited for a person that was never coming.
+ */
+function forgetPosts(test: Test): void {
+  const w = test.worldBlockLocation(AT);
+  test.getDimension().runCommand(`scriptevent villages:forget ${w.x} ${w.y} ${w.z} 12`);
+}
+
 function placePost(test: Test, peopleIndex: number, job: number): void {
   floor(test);
+  forgetPosts(test);
   // A structure reload restores blocks, not entities: a person left by an
   // earlier test (or an earlier run, since persons persist) would be counted
   // here. Sweep the spot first.

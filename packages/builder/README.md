@@ -9,21 +9,21 @@ job in the villages pack takes it over. Measurements:
 
 ## What is built
 
-- **Eight blueprints**, written by the structure generator into
+- **Ten blueprints**, written by the structure generator into
   `behavior_pack/structures/builder/` as `builder:<key>` from the same
   source as the catalogue (`tools/structures/buildings.ts`,
-  `builderBlueprint` in `generate.ts`): the tallfolk well, gatehouse,
-  farmhouse and barn, the shared larder, wall segment and inn, and the
-  tinker market stall, the trader's stall for every people once its
-  stripes take their colour (below). Each
+  `builderBlueprint` in `tools/structures/builder.ts`): the tallfolk well,
+  gatehouse, farmhouse, barn and field, the shared larder, wall segment,
+  inn and bridge span, and the tinker market stall, the trader's stall for
+  every people once its stripes take their colour (below). Each
   building's job post is left out: it is the villages pack's block, and a
-  block the world does not know is dropped from a structure on load. One
+  block the world does not know is dropped from a structure on load. The
+  bridge ships without the river it was drawn standing in: the water is
+  where a span is placed, not part of it, so the builder neither charges
+  for it nor pours it. One
   **blueprint item** per building (`builder:blueprint_<key>`, a plain item
   with the `builder:blueprint` custom component naming the key), in the
-  creative menu under crafting. The trader will sell them (#73). Not
-  shipped yet: the bridge span, whose footing is water (`grounded` refuses
-  water under a footing until the reedfolk's stilts get their own rule), and
-  the field, whose farmland and wheat have no item of their own to charge.
+  creative menu under crafting. The trader will sell them (#73).
 - **The blueprint table** (`builder:blueprint_table`): an oak table with a
   drafting sheet on it, the `builder:table` custom component. Tap it
   **holding a blueprint** and a form shows the building, its size after
@@ -39,9 +39,13 @@ job in the villages pack takes it over. Measurements:
   design's order, each naming the first offender: **fits** (every cell of
   the whole box is air, a plant, snow or water; the footing layer may also
   be natural ground, or no field could ever be built on), **grounded** (a
-  solid block under every footing cell; water is refused for these three),
+  solid block under every footing cell, or water too for a building the
+  catalogue marks as standing on stilts, the bridge span; never air),
   **not overlapping** another recorded building (boxes may touch), a chest
-  beside the table, and **paid for** (what is short, listed).
+  beside the table, and **paid for** (what is short, listed). A block with
+  no item of its own costs what it is made from and gives that back:
+  farmland and a path cost dirt, a crop costs its seed (`ITEM_FOR` in
+  `core/blueprint.ts`), so the field is dirt and seeds.
 - **The builder** (`builder:builder`, a tallfolk biped in the builder's
   outfit on the villages' rig, spawned on the table when a job starts if
   none is tagged for that table). It is sent to each cell by a
@@ -176,7 +180,11 @@ The rest of the catalogue waits on that.
   build it goes up from a chest of stone bricks and deepslate tiles alone,
   matches the shipped well through the swap table cell for cell (67 cells
   swapped, the 24 stairs keeping their direction) and comes down into the
-  stonefolk blocks, none of the tallfolk's; the same as the high elves
+  stonefolk blocks, none of the tallfolk's; the bridge is accepted over a
+  pool the well is refused over by name, and goes up 55 of 55 with the
+  pool still full beneath it; the field goes up 156 of 156 from dirt,
+  seeds, turf and fences, farmland moist and wheat grown as the file has
+  them, and comes down into the same items; the same as the high elves
   build it, whose roof stairs go by a legacy name (`prismarine_bricks_stairs`),
   from polished diorite and prismarine; the stall raised as the reedfolk
   build it goes up from mangrove logs and green and white wool, its awning
@@ -197,6 +205,18 @@ issue #79; paste what you see there.
   (yaw 0 is taken as south).
 - **The empty-hand form** lists this table's buildings with "Take down" and
   "Carry on", and a visitor is turned away with the panel at its default.
+- **The bridge on a real river.** Stand in the shallows and tap the table:
+  the origin is the block under your feet, so the posts go down from one
+  below the surface and the deck comes one above it. On the bank the whole
+  span sits two higher, and a span that reaches the far bank is refused by
+  whatever ground stands in its box. Spans join end to end; if placing from
+  the water reads wrong, the origin for a stilt building could drop to the
+  water's surface in `blueprintForm` (`engine/table.ts`), one line.
+- **The field's farmland** stays moist from its channel and the wheat
+  stands at full growth. A trampled cell turns to dirt, which repair leaves
+  alone as somebody else's block; if that should count as a gap,
+  `repairStatus` in `core/job.ts` would treat natural ground under a
+  footing cell as missing.
 - **The palette buttons** on the blueprint form: "As the Stonefolk build
   it" reopens the form with stone bricks and deepslate in the materials
   list, and the well raised from it looks stonefolk. Whether the swapped

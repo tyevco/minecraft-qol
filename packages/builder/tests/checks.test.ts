@@ -75,6 +75,12 @@ describe("grounded", () => {
   it("refuses a footing over water for a ground building", () => {
     expect(grounded(10, footing, flatWorld({ "100,9,200": WATER })).ok).toBe(false);
   });
+  it("lets a building on stilts stand on water, but never on air", () => {
+    expect(grounded(10, footing, flatWorld({ "100,9,200": WATER }), true)).toEqual({ ok: true });
+    const v = grounded(10, footing, flatWorld({ "100,9,200": AIR }), true);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe("nothing to stand on at 100,9,200 (air)");
+  });
   it("only looks under the bottom layer", () => {
     // The fence at y = 11 stands on the footing, not the ground; nothing under it is checked.
     expect(grounded(10, footing, flatWorld({ "101,10,200": AIR })).ok).toBe(true);

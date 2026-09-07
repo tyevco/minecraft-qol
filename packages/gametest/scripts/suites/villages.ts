@@ -21,8 +21,21 @@ function people(test: Test) {
   return test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 4 });
 }
 
+/**
+ * The pack's own records survive a structure reload as its persons do: a
+ * post placed by an earlier test in this column (a building's own post,
+ * raised by the builder tests, is the kids' own) would join a settlement or
+ * take a settler. Ask the pack to retire every post record within the
+ * column before a rig is built.
+ */
+function sweep(test: Test): void {
+  const at = test.worldBlockLocation(AT);
+  test.getDimension().runCommand(`scriptevent villages:forget ${at.x} ${at.y} ${at.z} 128`);
+}
+
 function placePost(test: Test, peopleIndex: number, job: number): void {
   floor(test);
+  sweep(test);
   // A structure reload restores blocks, not entities: a person left by an
   // earlier test (or an earlier run, since persons persist) would be counted
   // here. Sweep the spot first.
@@ -431,6 +444,7 @@ const tagged = (test: Test, tag: string, near: Vector3, r: number) =>
 // is every other test here, whose structure-style posts spawn at once.
 registerAsync("qol", "villages_player_post_waits_for_settler", async (test) => {
   floor(test);
+  sweep(test);
   for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 8 })) e.remove();
   const player = test.spawnSimulatedPlayer({ x: 2, y: 1, z: 2 }, "vl_placer", GameMode.Survival);
   const at = await placeByHand(test, player, { x: AT.x, y: 0, z: AT.z });
@@ -446,6 +460,7 @@ registerAsync("qol", "villages_player_post_waits_for_settler", async (test) => {
 // stands at one of the posts, of the visitor's people.
 registerAsync("qol", "villages_visitor_settles", async (test) => {
   floor(test);
+  sweep(test);
   for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 48 })) e.remove();
   const player = test.spawnSimulatedPlayer({ x: 6, y: 1, z: 6 }, "vl_host", GameMode.Survival);
   const a = await placeByHand(test, player, { x: 4, y: 0, z: 3 });
@@ -473,6 +488,7 @@ registerAsync("qol", "villages_visitor_settles", async (test) => {
 // A visitor stays a day: at the next dawn (the clock pushed across midnight) it is gone.
 registerAsync("qol", "villages_visitor_leaves_at_dawn", async (test) => {
   floor(test);
+  sweep(test);
   for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(AT), maxDistance: 48 })) e.remove();
   const player = test.spawnSimulatedPlayer({ x: 6, y: 1, z: 6 }, "vl_host2", GameMode.Survival);
   await placeByHand(test, player, { x: 4, y: 0, z: 3 });

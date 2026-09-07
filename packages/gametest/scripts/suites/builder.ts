@@ -662,7 +662,10 @@ registerAsync("qol", "builder_larder_comes_down_whole", async (test) => {
   const built = compareAt(test, "villages:shared_larder", LARDER, ORIGIN, StructureRotation.None);
   test.assert(built.right === 164, `expected the larder finished before taking it down, ${built.right} of 164 cells stand: ${built.wrong.slice(0, 3).join("; ")}`);
   test.assert(chestTotal16(test) === 0, `expected the chest emptied by the build, ${chestTotal16(test)} item(s) left`);
-  test.assert(persons(test, 32) === 1, `expected only the builder about: the larder's own post is the kids' and spawns nobody, found ${persons(test, 32)} person(s)`);
+  // The larder's own post (its cell 3,1,4) is the kids' and spawns nobody: no person wears its tag.
+  const larderPost = test.worldBlockLocation({ x: ORIGIN.x + 3, y: ORIGIN.y + 1, z: ORIGIN.z + 4 });
+  const atLarderPost = dim.getEntities({ type: PERSON, tags: [`villages:post:${larderPost.x},${larderPost.y},${larderPost.z}`] });
+  test.assert(atLarderPost.length === 0, `expected nobody spawned by the larder's own post at ${larderPost.x},${larderPost.y},${larderPost.z}, found ${atLarderPost.length}`);
   dim.runCommand(`scriptevent villages:remove ${o.x + 3} ${o.y + 1} ${o.z + 3} 1`);
   await test.idle(5);
   test.assert(last(test).startsWith("villages:remove ok"), `expected the removal to start, got "${last(test)}"`);

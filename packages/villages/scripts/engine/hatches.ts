@@ -9,7 +9,7 @@
  *   /scriptevent villages:remove x y z [ticksPerBlock]
  *   /scriptevent villages:resume x y z [ticksPerBlock]
  *   /scriptevent villages:repair x y z [ticksPerBlock]
- *   /scriptevent villages:forget x y z [radius]
+ *   /scriptevent villages:forget x y z [radius]   (with a radius, the job posts within it too)
  *   /scriptevent villages:survey x1 y1 z1 x2 y2 z2
  *
  * Console and operators only; `x y z` is the building's origin (its
@@ -25,6 +25,8 @@ import { contains } from "../core/building";
 import { parseRotation } from "../core/rotate";
 import * as jobs from "./jobs";
 import * as placing from "./placing";
+import { retire } from "./post";
+import * as posts from "./storage";
 import * as settings from "./settings";
 import * as storage from "./buildings";
 import * as survey from "./survey";
@@ -150,7 +152,19 @@ export function install(): void {
       const at = { x: x!, y: y!, z: z! };
       const hits = storage.all().filter((r) => r.dimId === dim.id && (radius ? Math.hypot(r.x - at.x, r.z - at.z) <= radius : contains(r, at)));
       for (const r of hits) jobs.forget(r);
-      verdict(hits.length ? `villages:forget ok: ${hits.map((r) => `${r.key} at ${r.x},${r.y},${r.z}`).join(", ")}` : `villages:forget: no building stands at ${x},${y},${z}`);
+      // With a radius, the job posts within it go too (their persons with
+      // them): a building's own post is a record of this pack as well, and a
+      // reload that takes the block leaves a post nobody placed, which the
+      // kids' settlements would count and a visitor might settle on.
+      let gone = 0;
+      if (radius) {
+        for (const p of posts.all()) {
+          if (p.dimId !== dim.id || Math.hypot(p.x - at.x, p.y - at.y, p.z - at.z) > radius) continue;
+          retire(dim, p);
+          gone++;
+        }
+      }
+      verdict(hits.length || gone ? `villages:forget ok: ${hits.map((r) => `${r.key} at ${r.x},${r.y},${r.z}`).join(", ") || "no building"}${gone ? `; ${gone} post record(s) retired` : ""}` : `villages:forget: no building stands at ${x},${y},${z}`);
       return;
     }
 

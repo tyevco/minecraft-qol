@@ -17,11 +17,12 @@ describe("findEntities", () => {
       expect(entry.reason, entry.id).toMatch(/no limb bones to pose|no texture found/);
   });
 
-  it("finds the nineteen peoples, the builder and the hatchling", () => {
+  it("finds the nineteen peoples and the hatchling", () => {
     const ids = new Set(models.map((m) => m.id));
     for (const people of ["stonefolk", "reedfolk", "tinker", "tallfolk", "hobbit", "wood_elf", "high_elf", "drow", "drover", "foxfolk", "catfolk", "wolffolk", "rabbitfolk", "bearfolk", "fennecfolk", "mousefolk", "squirrelfolk", "otterfolk", "deerfolk"])
       expect(ids.has(`villages_${people}`), people).toBe(true);
-    expect(ids.has("builder_builder")).toBe(true);
+    // The builder is one of the peoples now (issue #80): no entity of its own.
+    expect(ids.has("builder_builder")).toBe(false);
     expect(ids.has("hatchling_hatchling")).toBe(true);
   });
 

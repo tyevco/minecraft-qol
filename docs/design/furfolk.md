@@ -75,7 +75,7 @@ own, since nothing moves them.
 | `head` cube | skin sides, `face` front, `hair` on top | `fur` all round, `muzzleFace` front (bead eyes, no mouth); markings per people |
 | `beard` / `goggles` | optional cubes on the head | not used; the `muzzle` takes the same slot |
 | **`muzzle`** | — | a cube on the head's front, low: 4×3×2 for most, 4×3×3 for wolf, bear and deer, 3×2×2 for cat, rabbit, fennec and squirrel, 3×2×3 for the mouse; nose on the up-front edge |
-| **`left_ear`, `right_ear`** | — | children of `head`, pivot at the head top so a flick rotates them; shape per people (§3). On the top edge for most, on the sides for bear, mouse and otter |
+| **`left_ear`, `right_ear`** | — | children of `head`, pivot at the head top so a flick rotates them; shape per people (§3). On the top edge for most, on the sides for bear, mouse and otter. A slab for all but the cat, whose ear is a stair of cubes each a unit narrower than the one below, a triangle in the block style |
 | **`tail`** | — | child of `body`, pivot at the hip's back; a kind per people: bushy (fox), brush (fennec), thin (cat) and plume (squirrel) with a `tail_tip` segment, whip (mouse), rudder (otter), straight (wolf), puff (rabbit, deer), stub (bear) |
 | **antlers** | — | deer only: an upright, a beam and a prong per side, on the head, through the hat |
 | `helmet`, `hat`, `pack`, `tool` | accessory bones by job | unchanged; ears stand through the hat and helmet |
@@ -206,7 +206,9 @@ code is what was judged in the viewer.
 ### 3.2 Catfolk — the weavers
 
 - **Look:** a grey tabby with darker stripes across the top of the head and
-  down the tail; a cream muzzle; small ears (3×5×1). A thin tail in
+  down the tail; a cream muzzle; triangular ears (a 4×5 stair of cubes,
+  pink inside, at the head's corners and leaning out; they were 3×5 slabs,
+  which is a wolf's ear, and the cat read as a small grey wolf). A thin tail in
   two segments (1×1×4 and 1×1×3) so the tip can curl up. The smallest
   muzzle: cats are flat-faced in the figures.
 - **Where:** cherry grove and flower forest (the tallfolk's filter excludes

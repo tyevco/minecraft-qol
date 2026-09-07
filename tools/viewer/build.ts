@@ -47,7 +47,7 @@ interface Particle {
 
 const FURFOLK: [id: string, name: string, notes: string][] = [
   ["foxfolk", "Foxfolk", "Rust coat, white cheeks and tail tip, dark socks; a berry-picking people of the taiga."],
-  ["catfolk", "Catfolk", "A grey tabby with a cream muzzle and a two-segment tail that curls; a weaving people of the cherry groves."],
+  ["catfolk", "Catfolk", "A grey tabby with triangle ears, a cream muzzle and a two-segment tail that curls; a weaving people of the cherry groves."],
   ["wolffolk", "Wolffolk", "Grey with a pale muzzle, wide-set ears and a level tail; a lodge people of the snowy taiga."],
   ["rabbitfolk", "Rabbitfolk", "Chocolate brown with a white blaze, tall ears and a puff tail; a baking people of the birch woods."],
   ["bearfolk", "Bearfolk", "Brown all over, round ears on the sides, a stub tail, the broadest of all; a beekeeping people of the dark forest."],

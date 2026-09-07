@@ -582,6 +582,33 @@ chest, the pickaxe untouched (not produce, so unpriced), and dropped
 the sixteen at the trader's post. The form, the emeralds and the
 put-back on a chest that emptied in between need a real player (#84).
 
+## The showcase (`tools/structures/showcase.ts`, `packages/villages`)
+
+One structure, 47 by 7 by 59, with a fenced plot and four job posts for
+every people, placed whole by `structureManager.place` in the GameTest
+`villages_showcase_peoples_every_plot` (forty blocks over the arena, under
+a ticking area of its own, and taken down after). Two things it measured:
+
+- **A structure placed into a chunk that is not loaded loses that part,
+  silently.** Placed in the same tick as `tickingarea add`, whose chunks
+  load lazily, every post the test looked for was there (the checked
+  cells were in loaded chunks) and yet only 68 of 76 persons came; the
+  test now waits for `getBlock` at all four corners of the field before
+  placing. No error and no content-log line either way.
+- **Sand and gravel in a placed structure fall if there is air under
+  them.** The eight persons that never came were the two south posts of
+  the drovers' and the fennecfolk's plots and all four of the otterfolk's,
+  the three plots whose verge is sand (and the otters' paving gravel): a
+  block update after placing sent the floor down and the persons with it,
+  and the same test passed at once on a second boot where nothing nudged
+  the sand. The field now stands on a base layer of stone bricks, and a
+  unit test keeps every gravity block on something. On the ground this
+  only matters where the ground is uneven or hollow, which is exactly
+  where `/place structure` leaves a floor over air.
+
+With both fixed the test passes first time, twice in a row: 76 persons
+within four seconds of placing, each inside its own ring.
+
 ## The gap at a deck joint (design §3)
 
 "Blocks missing where the jigsaw blocks were", seen in game, chased on

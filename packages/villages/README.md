@@ -408,6 +408,44 @@ measurements: `docs/villages-jigsaw-results.md`.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
 
+## The showcase: every people at once
+
+`villages:showcase` (`tools/structures/showcase.ts`) is one structure with a
+fenced plot for every people, in `PEOPLES` order read left to right, north
+to south: the nine humans in the first two rows and a bit, then the ten
+furfolk, and a stone lookout with steps in the twentieth slot. Each plot
+stands on its people's verge with its paving through the middle, its own
+lamp post, its plant where it has one instead of a tree (the mousefolk's
+toadstool, the otterfolk's driftwood), and four job posts, so once placed
+the pack peoples it with a guard, a worker, a trader and a builder of that
+people, 76 persons in a field 47 by 59. The fences keep each people to its
+plot (a person strolls ten blocks from where it spawned, and cannot jump a
+fence or a wall), and a gate on the south side of each lets a player in.
+The whole field stands on a base layer of stone bricks, so a sand or gravel
+verge never has air under it (measured: placed in the air, the three
+sand-floored plots lost their ground and their persons) and a field placed
+on a slope stands on a plinth.
+
+In a creative world with cheats on, with the Villages pack and its resource
+pack enabled, stand where the field's north-west corner should be and:
+
+```
+/place structure villages:showcase ~ ~-2 ~
+```
+
+`~-2` sinks the base into the ground and sets the verges level with it;
+`~-1` leaves the field one block up, on its plinth. The posts take a few seconds to
+tick and spawn; every person is named for its people, so looking at one says
+who it is. Nothing in the field starts a trade (no trees, water, crops or
+cactus, on purpose), so every worker just lives there in its hat. A trade
+needs a village, or a chest and something to work: the sections above.
+Cheats disable achievements for that world, so raise it in a world made for
+showing rather than on the Realm.
+
+Pinned by `villages_showcase_peoples_every_plot` in the GameTest pack: the
+placed structure is peopled by every people in every job, each inside its
+own ring.
+
 ## Measured
 
 - The two GameTests (`villages_post_spawns_person`, `villages_post_break_removes_person`)

@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { Blueprint } from "./blueprint";
 import { BUILDINGS } from "./buildings";
 import { uniformStructure } from "./mcstructure";
+import { showcase } from "./showcase";
 import { PEOPLES, villagePreview, villageSet, villageWorldgen } from "./villages";
 
 const ROOT = resolve(__dirname, "../..");
@@ -154,6 +155,17 @@ for (const people of PEOPLES) {
   const { expansion, blueprint } = villagePreview(set, 1);
   writeFileSync(resolve(VILLAGES, `${people.key}.json`), JSON.stringify(blueprint.toPreview()) + "\n");
   console.log(`concepts/villages/${people.key}  ${blueprint.size.join("x")}  ${expansion.placements.length} pieces, ${expansion.open.length} open`);
+}
+
+// The showcase (showcase.ts): every people in one field, one .mcstructure
+// in the villages pack for `/place structure villages:showcase`, and a
+// preview beside the whole villages for the viewer.
+{
+  const bp = showcase();
+  const dir = resolve(ROOT, "packages/villages/behavior_pack/structures/villages");
+  writeFileSync(resolve(dir, "showcase.mcstructure"), bp.toMcstructure());
+  writeFileSync(resolve(VILLAGES, "showcase.json"), JSON.stringify(bp.toPreview()) + "\n");
+  console.log(`packages/villages/behavior_pack/structures/villages/showcase.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} blocks`);
 }
 
 // The processor probe (docs/villages-jigsaw-results.md): a pad with a

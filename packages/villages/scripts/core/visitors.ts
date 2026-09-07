@@ -266,6 +266,35 @@ export function nextSettlement(all: readonly Settlement[], last: string | undefi
   return all[(i + 1) % all.length];
 }
 
+/**
+ * A recorded visit whose visitor cannot be found is forgotten after this many
+ * consecutive polls (issue #104's family: state outliving the thing it names).
+ *
+ * `world.getEntity` returns nothing for an entity in an unloaded chunk just as
+ * it does for one that is gone, so a single miss proves nothing - the same
+ * reason the post sweep skips an unloaded chunk rather than evicting on it.
+ * At a 20-tick poll this is a second of consecutive misses, which no chunk
+ * boundary survives while a settlement is loaded.
+ */
+export const VISIT_MISSES_BEFORE_LOST = 3;
+
+/**
+ * Whether a recorded visit should be given up on, given whether its visitor
+ * was found this poll and how many polls in a row have missed it.
+ *
+ * Without this the flag dangles for good: `state.visit` is cleared only when
+ * the visitor leaves at dawn, so a visitor removed by anything else - killed,
+ * despawned, or taken by a structure reload on a test world - leaves the
+ * settlement occupied by nobody and every later arrival is refused with
+ * "no visitor comes: visiting". Measured on the headless suite, where the
+ * clock is set per test so the leaving dawn may never come.
+ */
+export function visitLost(found: boolean, misses: number): { lost: boolean; misses: number } {
+  if (found) return { lost: false, misses: 0 };
+  const next = misses + 1;
+  return { lost: next >= VISIT_MISSES_BEFORE_LOST, misses: next };
+}
+
 export type ArrivalPlan = { kind: "none"; reason: "visiting" | "not due" | "no settlement" } | { kind: "arrive"; settlement: Settlement; people: number; face: Face; spot: Vec };
 
 /** What dawn brings: a visitor, if one is due and there is somewhere for it to go. */

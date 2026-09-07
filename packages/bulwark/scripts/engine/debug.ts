@@ -179,8 +179,16 @@ function forget(message: string, player: Player | undefined): void {
   }
   const at = { x: x!, y: y!, z: z! };
   const within = radius !== undefined && Number.isFinite(radius) ? radius : undefined;
+  // The caller's dimension, or the overworld for a console command - which
+  // has no sourceEntity to ask (the same default builder:* uses). Without
+  // this the radius would reach a turret standing at the same x/z in the
+  // Nether.
+  const dimId = player?.dimension.id ?? "minecraft:overworld";
+  // The radius is x/z only: records in one column share an x/z and differ
+  // by y, which is exactly the set a GameTest needs cleared.
   const hits = storage
     .all()
+    .filter((r) => r.dimId === dimId)
     .filter((r) => (within !== undefined ? Math.hypot(r.x - at.x, r.z - at.z) <= within : r.x === at.x && r.y === at.y && r.z === at.z));
   let forgotten = 0;
   for (const r of hits) {
@@ -195,7 +203,7 @@ function forget(message: string, player: Player | undefined): void {
   }
   say(
     forgotten > 0
-      ? `bulwark:forget ok: ${forgotten} turret(s) forgotten near ${at.x},${at.y},${at.z}; ${storage.count()} record(s) left`
+      ? `bulwark:forget ok: ${forgotten} turret(s) forgotten near ${at.x},${at.y},${at.z} in ${dimId}; ${storage.count()} record(s) left`
       : `bulwark:forget: no turret record at ${at.x},${at.y},${at.z}${within !== undefined ? ` within ${within}` : ""}`,
   );
 }

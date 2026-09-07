@@ -493,14 +493,19 @@ function dropItems(dim: Dimension, pos: Position, typeId: string, count: number)
 }
 
 /**
- * Forget a turret: record, head, and any other head claiming the block.
- * Idempotent, so it is safe to call from every removal path at once.
- * Special ammo was never taken from its hopper, so there is nothing of it to
- * give back.
+ * Drop everything the pack remembers about the block at `pos`: the record,
+ * its head, and any other head claiming the block. Nothing is given back and
+ * nothing is dropped, which is what separates this from `retire`.
+ *
+ * Idempotent, and the escape hatch behind `bulwark:forget` (CLAUDE.md rule 3).
+ * The GameTests need it because a structure reload restores blocks but not a
+ * pack's position-keyed records, and the runner's re-run-alone boots a fresh
+ * server that puts the test back on the column's first spot - the one the
+ * most previous tests have already written a record to. Returns the record
+ * that was there, for the caller that wants to give its contents back.
  */
-export function retire(dim: Dimension, pos: Position, player?: Player): void {
+export function forget(dim: Dimension, pos: Position): TurretRecord | undefined {
   const record = storage.remove(pos);
-
   const linked = linkedEntity(record?.entityId, pos.dimId);
   if (linked) removeHead(linked);
   for (const entity of headsAt(dim, pos)) {
@@ -508,7 +513,17 @@ export function retire(dim: Dimension, pos: Position, player?: Player): void {
     if (link && samePosition(link, pos)) removeHead(entity);
   }
   misses.delete(linkKey(pos));
+  return record;
+}
 
+/**
+ * Forget a turret: record, head, and any other head claiming the block.
+ * Idempotent, so it is safe to call from every removal path at once.
+ * Special ammo was never taken from its hopper, so there is nothing of it to
+ * give back.
+ */
+export function retire(dim: Dimension, pos: Position, player?: Player): void {
+  const record = forget(dim, pos);
   if (!record) return;
   stats.retired++;
   // Buffered ammo and fed upgrades are the player's; a broken turret gives

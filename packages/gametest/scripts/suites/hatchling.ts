@@ -36,6 +36,32 @@ function near(test: Test, type: string) {
 }
 
 /**
+ * Take away every egg and hatchling around the spot before a test starts
+ * (issue #99).
+ *
+ * `near` searches world space, and sequential tests sit in the same x/z
+ * column one block higher each time - so a four-block radius reaches the
+ * cells of the tests just below. A structure reload restores blocks but not
+ * entities, and `gametest clearall` does not touch them either, so an egg
+ * left by the previous hatchling test was still standing in this one's
+ * radius: `hatchling_egg_hatches_into_its_variant` failed with "egg still
+ * present after the hatch (1)" in the sequence and passed alone. The radius
+ * here is wider than `near`'s on purpose - it has to reach every cell that
+ * `near` can see, from either side.
+ */
+function clearSpot(test: Test): void {
+  for (const type of [EGG, PET]) {
+    for (const e of test.getDimension().getEntities({ type, location: test.worldBlockLocation(SPOT), maxDistance: 12 })) {
+      try {
+        e.remove();
+      } catch {
+        // Already gone, or in a chunk that went away: either way, not here.
+      }
+    }
+  }
+}
+
+/**
  * Spawn, then set the variant - deliberately NOT via `spawnEvent`.
  *
  * A spawnEvent REPLACES minecraft:entity_spawned rather than running alongside
@@ -60,6 +86,7 @@ function spawn(test: Test, type: string, variant: number) {
 
 registerAsync("qol", "hatchling_egg_keeps_variant_and_shell", async (test) => {
   floor(test);
+  clearSpot(test);
   const egg = spawn(test, EGG, 2);
   await test.idle(5);
   const variant = egg.getProperty("hatchling:variant");
@@ -81,6 +108,7 @@ registerAsync("qol", "hatchling_egg_keeps_variant_and_shell", async (test) => {
 
 registerAsync("qol", "hatchling_egg_hatches_into_its_variant", async (test) => {
   floor(test);
+  clearSpot(test);
   const egg = spawn(test, EGG, 1);
   await test.idle(5);
   egg.triggerEvent("hatchling:hatch");
@@ -105,6 +133,7 @@ registerAsync("qol", "hatchling_egg_hatches_into_its_variant", async (test) => {
 
 registerAsync("qol", "hatchling_grows_by_stage_event", async (test) => {
   floor(test);
+  clearSpot(test);
   const pet = spawn(test, PET, 0);
   await test.idle(5);
   const scale0 = pet.getComponent(EntityComponentTypes.Scale)?.value;
@@ -144,6 +173,7 @@ registerAsync("qol", "hatchling_grows_by_stage_event", async (test) => {
  */
 registerAsync("qol", "hatchling_tames_with_berries", async (test) => {
   floor(test);
+  clearSpot(test);
   const pet = spawn(test, PET, 0);
   await test.idle(10);
 
@@ -204,6 +234,7 @@ registerAsync("qol", "hatchling_tames_with_berries", async (test) => {
  */
 registerAsync("qol", "hatchling_ignores_fall_damage", async (test) => {
   floor(test);
+  clearSpot(test);
   const pet = spawn(test, PET, 1);
   await test.idle(5);
   const health = pet.getComponent(EntityComponentTypes.Health);
@@ -237,6 +268,7 @@ registerAsync("qol", "hatchling_ignores_fall_damage", async (test) => {
  */
 registerAsync("qol", "hatchling_glides_down_a_drop", async (test) => {
   floor(test);
+  clearSpot(test);
   const pet = spawn(test, PET, 1);
   await test.idle(5);
   const health = pet.getComponent(EntityComponentTypes.Health);
@@ -302,6 +334,7 @@ registerAsync("qol", "hatchling_glides_down_a_drop", async (test) => {
  */
 registerAsync("qol", "hatchling_shell_cracks_while_warming", async (test) => {
   floor(test);
+  clearSpot(test);
   const egg = spawn(test, EGG, 2);
   await test.idle(5);
 

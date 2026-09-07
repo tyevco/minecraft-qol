@@ -7,6 +7,7 @@ import {
 } from "@qol/shared/core/fluids";
 import {
   applyWear,
+  choose,
   fillOne,
   isStuck,
   plan,
@@ -310,5 +311,86 @@ describe("idle reasons", () => {
       off,
     );
     expect(p.kind).toBe("process");
+  });
+});
+
+describe("choose", () => {
+  const ctx = { raining: false, wear: 0 };
+  const source: Endpoint = { kind: "source", fluid: "water" };
+  const nothing: Endpoint = { kind: "other" };
+  const dests = (c: ReturnType<typeof choose>) =>
+    c.plan.kind === "fill" ? c.plan.dest : undefined;
+
+  it("with one mouth and one spout is plan()", () => {
+    const c = choose([source], [tank(water(2))], ctx, ALL, CAULDRON_RULES);
+    expect(c).toEqual({
+      plan: plan(source, tank(water(2)), ctx, ALL, CAULDRON_RULES),
+      input: 0,
+      output: 0,
+    });
+  });
+
+  it("deals a stream to two tanks in turn, so a T fills both", () => {
+    const tanks = [tank(empty), tank(empty)];
+    const first = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 0);
+    const second = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 1);
+    const third = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 2);
+    expect([first.output, second.output, third.output]).toEqual([0, 1, 0]);
+    expect(dests(first)).toEqual(water(1));
+    expect(dests(second)).toEqual(water(1));
+  });
+
+  it("passes over a full tank to the next one", () => {
+    const tanks = [tank(water(MAX_LEVEL)), tank(water(3))];
+    for (const turn of [0, 1, 2, 3]) {
+      const c = choose([source], tanks, ctx, ALL, CAULDRON_RULES, turn);
+      expect(c.output, `turn ${turn}`).toBe(1);
+      expect(dests(c)).toEqual(water(4));
+    }
+  });
+
+  it("passes over a tank of the wrong fluid", () => {
+    const tanks = [tank(lava(2)), tank(water(1))];
+    const c = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 0);
+    expect(c.output).toBe(1);
+    expect(dests(c)).toEqual(water(2));
+  });
+
+  it("draws from two mouths in turn as well", () => {
+    const mouths = [tank(water(3)), tank(water(3))];
+    const a = choose(mouths, [tank(empty)], ctx, ALL, CAULDRON_RULES, 0);
+    const b = choose(mouths, [tank(empty)], ctx, ALL, CAULDRON_RULES, 1);
+    expect([a.input, b.input]).toEqual([0, 1]);
+    expect(a.plan.kind).toBe("move");
+  });
+
+  it("is merely waiting while every tank is full", () => {
+    const tanks = [tank(water(MAX_LEVEL)), tank(water(MAX_LEVEL))];
+    const c = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 1);
+    expect(c.plan).toEqual({ kind: "idle", reason: "tank_full" });
+    expect(isStuck((c.plan as { reason: IdleReason }).reason)).toBe(false);
+  });
+
+  it("reports waiting over stuck when one arm could still take the stream", () => {
+    const tanks = [tank(lava(2)), tank(water(MAX_LEVEL))];
+    const c = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 0);
+    expect(c.plan).toEqual({ kind: "idle", reason: "tank_full" });
+  });
+
+  it("reports the nearest pair's reason when every arm is stuck", () => {
+    const tanks = [tank(lava(2)), nothing];
+    const c = choose([source], tanks, ctx, ALL, CAULDRON_RULES, 1);
+    expect(c.plan).toEqual({ kind: "idle", reason: "fluid_mismatch" });
+  });
+
+  it("says no_tank when a run reaches nothing at all", () => {
+    expect(choose([source], [], ctx, ALL, CAULDRON_RULES).plan).toEqual({
+      kind: "idle",
+      reason: "no_tank",
+    });
+    expect(choose([], [tank(empty)], ctx, ALL, CAULDRON_RULES).plan).toEqual({
+      kind: "idle",
+      reason: "no_input",
+    });
   });
 });

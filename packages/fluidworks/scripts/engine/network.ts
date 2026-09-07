@@ -2,7 +2,7 @@ import type { Block, Dimension } from "@minecraft/server";
 import { isCauldron } from "@qol/shared/engine/cauldron";
 import { safeGetBlock } from "@qol/shared/engine/safeBlock";
 import type { Vec3 } from "../core/facing";
-import { route } from "../core/network";
+import { routes } from "../core/network";
 import { PIPE } from "../core/pipes";
 
 export interface Resolved {
@@ -16,23 +16,26 @@ export interface Resolved {
 /**
  * Resolve what a funnel's mouth or spout actually meets, through pipes.
  *
- * If the adjacent block is a pipe, the nearest cauldron or source block next
- * to the connected run stands in for it; otherwise the adjacent block itself.
- * Returns the block to describe, whether pipes were involved (for diagnostics
- * and labels), and the pipes the fluid is shown travelling through.
+ * If the adjacent block is a pipe, every cauldron or source block next to the
+ * connected run stands in for it, nearest first; otherwise the adjacent block
+ * itself, alone. Never empty: a run that reaches nothing resolves to one entry
+ * with no block, so the planner reports the pipe end as unusable the way it
+ * would an empty cell. Each entry says whether pipes were involved (for
+ * diagnostics and labels) and lists the pipes the fluid is shown travelling
+ * through.
  */
 export function resolveThroughPipes(
   dim: Dimension,
   funnel: Vec3,
   adjacent: Vec3,
   usePipes: boolean,
-): Resolved {
+): Resolved[] {
   const direct = safeGetBlock(dim, adjacent);
   if (!usePipes || !direct || !direct.isValid || direct.typeId !== PIPE) {
-    return { block: direct, pos: adjacent, viaPipes: false, path: [] };
+    return [{ block: direct, pos: adjacent, viaPipes: false, path: [] }];
   }
 
-  const found = route(adjacent, funnel, {
+  const found = routes(adjacent, funnel, {
     isPipe: (p) => safeGetBlock(dim, p)?.typeId === PIPE,
     isTerminal: (p) => {
       const b = safeGetBlock(dim, p);
@@ -44,11 +47,12 @@ export function resolveThroughPipes(
       );
     },
   });
-  if (!found) return { block: undefined, pos: adjacent, viaPipes: true, path: [] };
-  return {
-    block: safeGetBlock(dim, found.terminal),
-    pos: found.terminal,
+  if (found.length === 0)
+    return [{ block: undefined, pos: adjacent, viaPipes: true, path: [] }];
+  return found.map((r) => ({
+    block: safeGetBlock(dim, r.terminal),
+    pos: r.terminal,
     viaPipes: true,
-    path: found.path,
-  };
+    path: r.path,
+  }));
 }

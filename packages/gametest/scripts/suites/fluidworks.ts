@@ -154,6 +154,41 @@ registerAsync("qol", "funnel_through_pipes", async (test) => {
   .maxTicks(400);
 
 /**
+ * A stream splits at a T: a run of pipes with a tank on each arm fills both,
+ * dealt to in turn. Both at 1 within a level of each other is the deal; a
+ * walk that stopped at the first tank would fill one to the brim and leave
+ * the other empty, and the nearest-first fallback alone would be six levels
+ * apart when the second tank got its first.
+ */
+registerAsync("qol", "funnel_splits_through_pipes", async (test) => {
+  floor(test);
+  test.setBlockType("minecraft:water", { x: 1, y: 1, z: 3 });
+  funnel(test, { x: 2, y: 1, z: 3 }, "east");
+  test.setBlockType("fluidworks:pipe", { x: 3, y: 1, z: 3 });
+  test.setBlockType("fluidworks:pipe", { x: 4, y: 1, z: 3 });
+  const north = { x: 4, y: 1, z: 2 };
+  const south = { x: 4, y: 1, z: 4 };
+  cauldron(test, north, 0);
+  cauldron(test, south, 0);
+  await rescan(test);
+
+  test.succeedWhen(() => {
+    const a = cauldronLevel(test, north);
+    const b = cauldronLevel(test, south);
+    test.assert(
+      a >= 1 && b >= 1,
+      `tanks on the T's arms are at ${a} (north) and ${b} (south); want both filling`,
+    );
+    test.assert(
+      Math.abs(a - b) <= 1,
+      `tanks on the T's arms are at ${a} and ${b}; a split deals to them in turn`,
+    );
+  });
+})
+  .structureName(STRUCTURE)
+  .maxTicks(400);
+
+/**
  * A mature crop at the mouth is harvested into the container at the spout
  * and replanted. Wheat needs farmland under it, so the rig is laid out
  * sideways: farmland and wheat, then the funnel, then the chest.

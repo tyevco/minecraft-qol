@@ -91,7 +91,7 @@ function debug(player: Player): void {
     } catch {
       h = undefined;
     }
-    const kind = isTurretEntity(h) ? (readArmed(h) ? (readKind(h) ?? "arrow") : "idle") : "no head";
+    const kind = isTurretEntity(h) ? (r.held ? "holding fire" : readArmed(h) ? (readKind(h) ?? "arrow") : "idle") : "no head";
     player.sendMessage(
       `§7  ${linkKey(r)} ammo §f${r.ammo}§7 kills §f${r.kills}§7 tiers §f${describeTiers(r.tiers)}§7 firing §f${kind}`,
     );

@@ -117,17 +117,21 @@ function attributeShot(projectile: Entity, retry: boolean): void {
   } catch {
     return;
   }
+  // Charge the shot. Re-arming is the block tick's job (it reconciles the
+  // whole state within a second or two); the per-shot path does it only
+  // when the supply just ran out, the one case where waiting a tick would
+  // fire free: the buffer hit zero, or the hopper emptied between the tick
+  // and this shot.
   const kind = readKind(owner) ?? "arrow";
+  let ranOut: boolean;
   if (kind === "arrow") {
     record.ammo = consumeShot(record.ammo);
     storage.put(record);
-  } else if (!chargeSpecial(dim, link, kind)) {
-    // The hopper emptied between the block's tick and this shot. Nothing to
-    // charge; re-arm now rather than fire free until the next tick.
-    syncArming(owner, armingFor(dim, record));
-    return;
+    ranOut = record.ammo === 0;
+  } else {
+    ranOut = !chargeSpecial(dim, link, kind);
   }
-  syncArming(owner, armingFor(dim, record));
+  if (ranOut) syncArming(owner, armingFor(dim, record));
 }
 
 /**

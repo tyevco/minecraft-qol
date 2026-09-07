@@ -286,7 +286,8 @@ filter on an entry, and that a second group's selector replaces the first's.
 on the head, one per selector (any, wounded, healthy) and range; each block
 tick a turret set to weakest or strongest counts the monsters in range and
 wears the filtered selector while any qualify. Chosen on the turret's form
-(sneak, right-click, empty hand), the one per-turret setting. Schema 3.
+(sneak, right-click, empty hand), which also carries a hold-fire switch:
+the two per-turret settings. Schema 4.
 
 ## 5. Feeding with more than one ammo
 

@@ -161,6 +161,17 @@ Reading a headless run:
   time, and a structure reload restores blocks but not entities, item drops, or
   a pack's own position-keyed records. Two "Bulwark bugs" were this. The runner
   re-runs a failure alone before believing it; do the same by hand.
+- **But a re-run alone is a clean room for blocks only, never for records.**
+  Each re-run is a fresh *server session* against the *same world*, and test
+  cells repeat across sessions, so a record a pack wrote last session is still
+  there and the test is handed it. Measured: `turret_gate_holds_tipped_until_upgraded`
+  and `turret_throws_splash_from_hopper` failed identically on four such
+  sessions, each booting with `[Bulwark] 1 turret(s) known`, and passed in the
+  one that booted with `0` — same test, same packs, same world file. So a
+  failure that survives the re-run is *still* not proof of a pack bug: read the
+  pack's own "N known" line at boot first. A rig that places a block a pack
+  records asks the pack to forget the cell first (`bulwark:forget`,
+  `villages:forget`, `builder:forget`); that is what these hatches are for.
 - `packages/gametest/known-failures.json` lists tests that fail for a reason
   that is not a bug, with the reason. A listed test that **passes** fails the
   run — the reason has expired and the entry should go. A test that fails

@@ -83,9 +83,17 @@ probing, or its own writes show up in the numbers.
    before armour reduces it further, so the kids are slightly *better* off
    than the label says. Either way the table is the same; only the README
    wording changes.
-2. **Does the void fire `entityHurt`, and with what cause?** Expected: `none`,
-   or not at all. If it arrives as some other cause, add it to `PASS_THROUGH`
-   in `rules.ts` so nobody is left falling forever with the catch off.
+2. **Does the void fire `entityHurt`, and with what cause?** Half answered
+   since, and not the half expected: there **is** a `void` member in the 2.9.0
+   runtime enum, though the published typings have none. Measured by
+   `guardian_causes_match_the_engine` and confirmed from a stable-only pack
+   with `/scriptevent qolprobe:causes` (36 causes, `void` among them). It is in
+   `CAUSES` and in `PASS_THROUGH` now — until it was, a void hit fell through
+   `decide` to the role's scale, so a role at 0% was cancelled out of damage it
+   cannot escape. What is still unmeasured is whether a real void death
+   actually **arrives** with that cause rather than `none`; both are
+   pass-through, so nothing depends on the answer, and `qolprobe:hurt` reports
+   it the next time somebody jumps.
 3. **Does a fractional `damage` land as a fraction?** 25% of a 1-damage cactus
    tick is 0.25. If the engine rounds it to 0, the smallest hits vanish for
    the 25% roles, which is fine, but worth knowing.
@@ -97,4 +105,15 @@ probing, or its own writes show up in the numbers.
    what was read.
 
 The GameTest pack pins the invariants: `guardian_never_adds_damage` and
-`guardian_void_catch`.
+`guardian_void_catch` — neither of which measures the pack on a headless
+server, since Guardian cannot see a simulated player (issue #31) — plus two
+that do:
+
+- `guardian_causes_match_the_engine` walks `EntityDamageCause` itself against
+  the hand-written `CAUSES`, both ways, and every hazard switch's members with
+  it. The table is copied by hand so `core/` stays free of `@minecraft/*`, and
+  this is the only thing in the repo that would notice the engine drifting from
+  it. It has already caught one: `void`.
+- `guardian_hurt_event_softens_and_cancels` proves the two writes the whole
+  pack is built on — a reduced `ev.damage` is honoured, `ev.cancel` stops the
+  hit — on a cow, so the pack's own player filter cannot interfere.

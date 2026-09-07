@@ -375,3 +375,124 @@ facing state names the **spout's** direction, not the mouth's.
   the collector works in a real session is on the Fluidworks in-game list
   (#33). The corrections table in `docs/README.md` has the row.
 - `harvester_funnel` — passes alone, intermittent in sequence.
+
+## The suite reaches every pack (2026-09)
+
+Lens had no in-game test at all, QOL Times had one of its four cauldron
+machines covered, and Graves, Guardian and Hearthstone had one or two apiece —
+each of them a test that a simulated player cannot make measure anything. The
+suite grew by twenty tests, run on BDS 1.26.45.1. What follows is what they
+measured; the tests themselves carry the numbers in their assertion messages,
+so a future failure reads as a measurement rather than a shrug.
+
+### The strategy for a pack a SimulatedPlayer cannot drive
+
+Lens, Graves, Guardian and Hearthstone all hang off a player, and a
+SimulatedPlayer marshals as `undefined` into every one of them (above). Driving
+them through one measures the harness — that is what `anchor_sets_spawn` and
+`guardian_void_catch` do.
+
+What is worth pinning instead is the layer underneath: each of those packs is a
+**pure decision applied to a handful of engine readings**, the pure half is
+already exhaustively unit-tested with no game, and the engine half had never
+been tested at all. So the new tests read the engine the way the pack reads it
+and hand the answer to the pack's own `core/` function. The GameTest pack binds
+`@minecraft/server-gametest`, so a SimulatedPlayer is an ordinary `Player` to
+**it** even while being invisible to the pack under test, which is what makes
+the equipment and respawn legs possible.
+
+### What was measured
+
+- **Light is what Lens says it is.** A sealed cell reads total 0, sky 0. A
+  torch's own cell reads 14, and light down a sealed corridor is exactly
+  `14 - d` at every step from 0 to 4 — a 6-connected flood losing one per step,
+  not a radius and not a falloff curve. That is the model `core/lighting`'s
+  `TORCH_EMISSION`, `TORCH_REACH` and every tier 2 torch suggestion are built
+  on, and it had never been measured on a server.
+- **The surface flags still read as `core/surface`'s header says.**
+  `isLiquidBlocking(Water)` is true for dirt, a bottom slab and glass, false for
+  a torch; water reads `isLiquid`. Glass is the block the three predicates
+  disagree about in both directions, and they still disagree correctly: not a
+  mob floor, passes light.
+- **An item's dynamic property and its lore survive both a chest and an
+  equipment slot.** That write-back is the Lens upgrade ritual's whole
+  mechanism.
+- **`ev.damage` and `ev.cancel` are honoured.** Measured on a cow, so Guardian's
+  own player filter cannot interfere: a 4-damage hit halved in the handler costs
+  exactly 2, and a cancelled hit costs nothing. Every scale on Guardian's panel
+  rests on those two writes, and neither had been tested.
+- **`setSpawnPoint` is honoured by vanilla respawn**, and setting one below the
+  dimension floor throws. Hearthstone's entire mechanic is the first; its
+  `try`/`catch` around `assignSpawn` is the second.
+- **A water bottle built by script really is the water variant**
+  (`potionEffectType.id === "minecraft:water"`), so the bottle rule's match on
+  the potion component fires — two levels in, a glass bottle back, and two
+  levels out again the other way.
+- **A dye reaches `addDye` and moves the water's colour without costing a
+  level**, which is the one cauldron effect the rules layer cannot express as a
+  state change.
+- **The gravestone holds 45 slots** — more than the 36 + 5 a player can carry,
+  so `planTransfer` never has leftovers to leave on a corpse — and refuses
+  damage.
+
+### `EntityDamageCause` has a member the typings do not
+
+`guardian_causes_match_the_engine` walks `Object.values(EntityDamageCause)`
+against Guardian's hand-written table, and found exactly one difference:
+**`void`**, which is in the 2.9.0 runtime and not in the published 2.9.0
+typings. `docs/README.md` had a correction saying there is no such cause,
+written from the d.ts. Reading a d.ts is not a measurement.
+
+Confirmed from a pack that binds nothing but `@minecraft/server` 2.9.0 — the
+probe's new `qolprobe:causes`, so the beta gametest binding cannot be what
+conjures it:
+
+```
+G4 EntityDamageCause holds 36: anvil,...,temperature,thorns,void,wither
+G4 has "void": true
+```
+
+This was a live bug, not a documentation tidy-up. While the table did not name
+the cause, a void hit fell through `decide` to the role's scale: a role at 0%
+was **cancelled out of void damage while still falling through the void**, and a
+visitor at 25% was made harder to kill by it — the exact failure the `none`
+pass-through was written to prevent. `void` is now in `CAUSES` and in
+`PASS_THROUGH`.
+
+### A SimulatedPlayer's death drops nothing
+
+`keep_on_death_stops_the_drop` carries two stacks and flags only one, so that a
+world which never drops cannot pass for the flag working. **Both come back.**
+Twice, run alone. The world's `level.dat` reads `keepinventory` byte 0, so it is
+not the gamerule and nothing the harness can set makes it measurable.
+
+That is a harness finding, so the test is in `known-failures.json` — but it also
+means **`death_keeps_items` is green for a reason that is not Graves working**,
+the same way `guardian_void_catch` passes vacuously. Two tests in this suite now
+prove nothing about their pack; both say so in their own text, and a green line
+from either is not evidence.
+
+### `Could not setBlock 'stone'` is still only a chunk-loading artefact
+
+Six of the twenty new tests failed inside `rig.floor()` with
+`gameTest.assert.couldNotSetBlock` on their first pass, in a strict alternating
+pattern, and **every one passed when the runner re-ran it alone**. It is the
+same unloaded-chunk artefact documented above under "Run tests one at a time",
+and it now shows up in sequential runs too, not just `runset`. It moves between
+runs and it is not a fact about any pack: read a first-pass `couldNotSetBlock`
+as "not yet run", which is what the runner's re-run-alone rule is for.
+
+### A leather item built by script has no colour to wash off
+
+`new ItemStack("minecraft:leather_helmet")` carries **no
+`minecraft:dyeable` component**, the same shape as the food components only
+data-driven items have. `readItemColor` reads that component, so a script-built
+helmet always looks undyed and the wash rule correctly refuses it — which is its
+own test (`dispenser_leaves_undyed_leather_alone`, no level spent on a no-op).
+Reaching the wash path at all would mean dyeing the helmet **in the world**
+first, and that does not work either: `dispenser_washes_leather` uses a helmet
+on a cauldron of dyed water four times and the component stays `undefined` —
+the cauldron swallowing a simulated player's click, the same way it swallows a
+placement (corrections table). So the happy path is unreachable headlessly and
+the test is in `known-failures.json` with both halves of the reason; the
+refusal half is measured and passing.

@@ -15,6 +15,7 @@
  * suite file rather than locked in a binary.
  */
 import "./suites/qoltimes";
+import "./suites/lens";
 import "./suites/fluidworks";
 import "./suites/graves";
 import "./suites/guardian";

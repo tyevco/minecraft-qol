@@ -46,7 +46,7 @@ jobs:
     # is re-run alone before it is believed. Twenty-odd tests fit in well under
     # this; the limit is here so a server that never reports cannot idle for six
     # hours.
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -142,8 +142,16 @@ describe("the cause list", () => {
     for (const c of PASS_THROUGH) expect(hazardOf(c)).toBeUndefined();
   });
 
-  it("has no void cause - the void catch exists because of this", () => {
-    expect(CAUSES).not.toContain("void");
+  it("names the void cause and never touches it", () => {
+    // The published 2.9.0 typings have no `void` member; the 2.9.0 RUNTIME
+    // does, which the GameTest `guardian_causes_match_the_engine` measured on
+    // BDS 1.26.45.1. Before it was listed, a void hit fell through decide() to
+    // the role's scale - so a role at 0% was made immune to the void while
+    // still falling through it. It must always be vanilla.
+    expect(CAUSES).toContain("void");
+    expect(PASS_THROUGH).toContain("void");
+    for (const role of ROLES)
+      expect(decide(role, "void", DEFAULT_POLICY)).toEqual({ kind: "vanilla" });
   });
 });
 

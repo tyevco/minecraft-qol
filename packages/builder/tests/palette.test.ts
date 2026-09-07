@@ -5,7 +5,7 @@ import { PEOPLES } from "../../../tools/structures/villages";
 import { materials, type Cell } from "../scripts/core/blueprint";
 import { applyPalette, FAMILIES, PALETTES, paletteByKey, paletteTable, ROLES, shapeStates, sourcePaletteOf, swapTable } from "../scripts/core/palette";
 
-/** A catalogue building's cells as the builder pack ships them: the villages' job post left out (`builderBlueprint` in tools/structures/generate.ts). */
+/** A catalogue building's cells as the builder pack ships them: the villages' job post left out (`builderBlueprint` in tools/structures/builder.ts). */
 const cells = (key: string): Cell[] =>
   BUILDINGS.find((b) => b.key === key)!
     .blocks()

@@ -60,6 +60,8 @@ export const DARK_STONE: Ramp = {
   deep: 0x2c2c33,
 };
 export const GOLD: Ramp = { light: 0xfff0a0, mid: 0xe8c14a, dark: 0xb08a2a, deep: 0x6e5416 };
+/** Brass: gold gone dull, for a workshop's fittings. */
+export const BRASS: Ramp = { light: 0xf0d67a, mid: 0xc9a24a, dark: 0x8f6e2a, deep: 0x5a4418 };
 
 export const COAL: Ramp = { light: 0x4a4a4a, mid: 0x2b2b2b, dark: 0x1a1a1a, deep: 0x0d0d0d };
 
@@ -1384,6 +1386,8 @@ export interface Look {
   boot: Color;
   /** What the shirt front shows: nothing, an iron plate, an apron, or a coat's buttons. */
   front: "plain" | "plate" | "apron" | "coat";
+  /** A spot of colour under each eye. Hobbits. */
+  cheeks?: Color;
 }
 
 const win = (w: number, h: number) => [Math.floor((16 - w) / 2), Math.floor((16 - h) / 2)] as const;
@@ -1406,6 +1410,7 @@ export function faceTile(look: Look, w: number, h: number, beard = false): Canva
     c.set(ex, ey, GLINT).set(ex + 1, ey, look.eye);
   }
   c.fill(x0 + Math.round(w / 2) - 1, y0 + Math.round(h * 0.75), 2, 1, shade(look.skin, 0.65));
+  if (look.cheeks !== undefined) c.set(ex1, ey + 1, look.cheeks).set(ex2 + 1, ey + 1, look.cheeks);
   if (beard) {
     c.fill(x0, y0 + Math.round(h * 0.7), w, h - Math.round(h * 0.7), look.hair);
     c.fill(x0 + Math.round(w / 2) - 1, y0 + Math.round(h * 0.75), 2, 1, shade(look.hair, 0.6));
@@ -1415,6 +1420,30 @@ export function faceTile(look: Look, w: number, h: number, beard = false): Canva
 
 export function hairTile(hair: Color): Canvas {
   return tile().fill(0, 0, 16, 16, hair).grain(0, 0, 16, 16, hair, mix(hair, GLINT, 0.25), shade(hair, 0.75), 0.5, 602, 3);
+}
+
+/** Curls: the hair colour under a lattice of little rings, a light crown and a dark hollow to each, offset row by row. */
+export function curlsTile(hair: Color): Canvas {
+  const c = tile().fill(0, 0, 16, 16, hair);
+  const light = mix(hair, GLINT, 0.32), dark = shade(hair, 0.62);
+  const r = prng(616);
+  for (let y = 0; y < 16; y += 3) {
+    for (let x = (y / 3) % 2 === 0 ? 0 : 2; x < 16; x += 4) {
+      if (r() < 0.15) continue;
+      c.set(x, y, light).set((x + 1) % 16, y, light).set(x, (y + 1) % 16, light);
+      c.set((x + 2) % 16, (y + 1) % 16, dark).set((x + 1) % 16, (y + 2) % 16, dark).set((x + 2) % 16, (y + 2) % 16, dark);
+    }
+  }
+  return c;
+}
+
+/** The tinker's gear, on the hat slot: leather for the skullcap, the goggles' lens (brass round glass) at the top-left corner, brass at the top-right. */
+export function gearTile(): Canvas {
+  const c = tile().fill(0, 0, 16, 16, LEATHER.mid).grain(0, 0, 16, 16, LEATHER.mid, LEATHER.light, LEATHER.dark, 0.4, 617, 4);
+  c.fill(0, 0, 4, 3, BRASS.mid).fill(0, 0, 4, 1, BRASS.light).fill(0, 2, 4, 1, BRASS.dark);
+  c.fill(1, 1, 2, 1, 0x9fdcec).set(1, 1, 0xe6f8ff);
+  c.fill(12, 0, 4, 3, BRASS.mid).fill(12, 0, 4, 1, BRASS.light).fill(12, 2, 4, 1, BRASS.dark);
+  return c;
 }
 
 /** Shirt front for a w x h window: cloth, then what the job wears over it. */
@@ -1464,11 +1493,16 @@ export function sleeveTile(look: Look, w: number, h: number): Canvas {
   return c;
 }
 
-/** Trousers for a leg h tall, with boots in the bottom rows. */
-export function trousersTile(look: Look, w: number, h: number): Canvas {
+/** Trousers for a leg h tall, with boots in the bottom rows; or, barefoot, the ankle's skin there under a rolled hem. */
+export function trousersTile(look: Look, w: number, h: number, bare = false): Canvas {
   const c = tile().fill(0, 0, 16, 16, look.trousers).grain(0, 0, 16, 16, look.trousers, mix(look.trousers, GLINT, 0.2), shade(look.trousers, 0.8), 0.35, 607, 4);
   const [x0, y0] = win(w, h);
   const boot = Math.max(2, Math.round(h * 0.25));
+  if (bare) {
+    c.fill(x0, y0 + h - boot, w, boot, look.skin);
+    c.fill(x0, y0 + h - boot - 1, w, 1, mix(look.trousers, GLINT, 0.2));
+    return c;
+  }
   c.fill(x0, y0 + h - boot, w, boot, look.boot);
   c.fill(x0, y0 + h - boot, w, 1, mix(look.boot, GLINT, 0.25));
   return c;
@@ -1569,11 +1603,25 @@ export function muzzleTile(fur: Fur, w: number, h: number): Canvas {
   return c;
 }
 
-/** An ear's front for a w x h window: the coat round a pink inside; a dark tip if asked. */
-export function earTile(fur: Fur, w: number, h: number): Canvas {
+/**
+ * An ear's front for a w x h window: the coat round a pink inside; a dark tip
+ * if asked. A triangle ear is a stair of cubes (tools/models/generate.ts),
+ * each row a unit narrower and centred, so its rows straddle half pixels;
+ * the pink is kept to the pixels wholly inside a row with half a unit of
+ * coat to spare, which leaves the tip and the edges in the coat.
+ */
+export function earTile(fur: Fur, w: number, h: number, shape: "slab" | "triangle" = "slab"): Canvas {
   const c = furTile(fur.coat, 625);
   const [x0, y0] = win(w, h);
-  if (w >= 3 && h >= 3) c.fill(x0 + 1, y0 + 1, w - 2, h - 2, fur.inner);
+  if (shape === "triangle") {
+    let y = 0;
+    for (let rw = w; rw >= 1; rw--) {
+      const rh = rw === w ? h - (w - 1) : 1;
+      const left = x0 + (w - rw) / 2 + 0.5, right = x0 + (w + rw) / 2 - 0.5;
+      for (let x = Math.ceil(left); x + 1 <= right; x++) c.fill(x, y0 + h - y - rh, 1, rh, fur.inner);
+      y += rh;
+    }
+  } else if (w >= 3 && h >= 3) c.fill(x0 + 1, y0 + 1, w - 2, h - 2, fur.inner);
   if (fur.markings.includes("earTips")) c.fill(x0, y0, w, 1, stripeColour(fur.coat));
   return c;
 }

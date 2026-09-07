@@ -60,7 +60,7 @@ export function plan(dim: Dimension, key: string, origin: Vector3, rotation: Rot
   const lookup = lookupIn(dim);
   const fit = out.refused ? { ok: true as const } : fits(origin, size, lookup);
   if (!fit.ok) out.refused = fit.reason;
-  const ground = out.refused ? { ok: true as const } : grounded(origin.y, cells, lookup);
+  const ground = out.refused ? { ok: true as const } : grounded(origin.y, cells, lookup, entry.stilts === true);
   if (!ground.ok) out.refused = ground.reason;
   if (!out.refused && !c && !free) out.refused = "there is no chest beside the table";
   if (!out.refused && !paid.ok) out.refused = `the chest is ${paid.reason}`;

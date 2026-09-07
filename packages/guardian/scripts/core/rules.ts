@@ -29,11 +29,14 @@ export const SCALES: readonly Scale[] = [100, 75, 50, 25, 0];
 /**
  * Every damage cause in `EntityDamageCause` as of @minecraft/server 2.9.0,
  * spelled as the engine spells them. Listed here rather than imported so the
- * table stays pure; `tests/rules.test.ts` walks all of them.
+ * table stays pure; `tests/rules.test.ts` walks all of them, and the GameTest
+ * `guardian_causes_match_the_engine` walks the engine's own enum against this
+ * list so drift fails a run rather than going unnoticed.
  *
- * Note what is NOT here: there is no `void` cause in 2.9.0. Falling out of the
- * world cannot be matched by cause, which is why the void catch is a teleport
- * and a separate switch.
+ * `void` is in the list because the RUNTIME has it, though the published 2.9.0
+ * typings do not - measured by that test on BDS 1.26.45.1, which is why it
+ * exists. It is in `PASS_THROUGH`: see the note there. The void catch is still
+ * a teleport on its own switch and is not built on this cause.
  */
 export const CAUSES = [
   "anvil",
@@ -70,6 +73,9 @@ export const CAUSES = [
   "suffocation",
   "temperature",
   "thorns",
+  // Not in the 2.9.0 typings, present in the 2.9.0 runtime. Never touched:
+  // see PASS_THROUGH.
+  "void",
   "wither",
 ] as const;
 
@@ -98,11 +104,19 @@ export const HAZARD_CAUSES: Readonly<Record<Hazard, readonly Cause[]>> = {
  *
  * `override` is the /kill and /damage commands: an operator who runs them
  * means it. `none` is damage with no attributable cause, which is where an
- * unmodelled source such as the void may land; cancelling it for a player
- * falling through the End would leave them falling forever, and the void
- * catch is that case's cover.
+ * unmodelled source may land; cancelling it for a player falling through the
+ * End would leave them falling forever, and the void catch is that case's
+ * cover.
+ *
+ * `void` is here for exactly that reason, and it is a correction rather than a
+ * refinement: while the table did not name the cause, a void hit fell through
+ * `decide` to the role's scale, so a role at 0% - or a visitor at 25% taking
+ * less than a full heart of it - was being made harder to kill by the void
+ * while still falling through it. Nothing may cancel that hit; only the
+ * teleport gets a player out. Measured from the engine's own enum by
+ * `guardian_causes_match_the_engine`.
  */
-export const PASS_THROUGH: readonly Cause[] = ["override", "none"];
+export const PASS_THROUGH: readonly Cause[] = ["override", "none", "void"];
 
 /**
  * The pet switches. A pet has no permission role - it belongs to a player but

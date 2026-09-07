@@ -184,5 +184,10 @@ The probe pack has `qolprobe:egg <variant>`, `qolprobe:pet <variant>` and
 
 The GameTest pack pins what does not need a player:
 `hatchling_egg_keeps_variant_and_shell`, `hatchling_egg_hatches_into_its_variant`,
-`hatchling_grows_by_stage_event`, `hatchling_tames_with_berries`,
-`hatchling_ignores_fall_damage` and `hatchling_glides_down_a_drop`.
+`hatchling_grows_by_stage_event`, `hatchling_tames_with_berries` (taming is
+vanilla, so the engine does it without the pack seeing anyone),
+`hatchling_shell_cracks_while_warming` — each `crack_N` moves the shell, keeps
+the variant, and does not hatch the egg early, which matters because the shell
+is the only thing a player watching a half-hour warming has to go on — and the
+two about falling, `hatchling_ignores_fall_damage` and
+`hatchling_glides_down_a_drop`.

@@ -15,11 +15,13 @@
  * suite file rather than locked in a binary.
  */
 import "./suites/qoltimes";
+import "./suites/lens";
 import "./suites/fluidworks";
 import "./suites/graves";
 import "./suites/guardian";
 import "./suites/hearthstone";
 import "./suites/bulwark";
+import "./suites/bulwark_ammo";
 import "./suites/hatchling";
 import "./suites/villages";
 import "./suites/builder";

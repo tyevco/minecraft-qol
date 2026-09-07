@@ -1,0 +1,26 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "qol:bolt",
+      "is_spawnable": false,
+      "is_summonable": true
+    },
+    "components": {
+      "minecraft:collision_box": { "width": 0.25, "height": 0.25 },
+      "minecraft:projectile": {
+        "anchor": 1,
+        "offset": [0, -0.1, 0],
+        "gravity": 0.05,
+        "power": 1.6,
+        "uncertainty_base": 1,
+        "uncertainty_multiplier": 0,
+        "on_hit": {
+          "impact_damage": { "damage": 10, "knockback": true },
+          "remove_on_hit": {}
+        }
+      },
+      "minecraft:physics": {}
+    }
+  }
+}

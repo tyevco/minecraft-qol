@@ -323,6 +323,14 @@ interface People {
   leg: [number, number];
   /** What the hat bone wears: straw for the first four, a cloth hood or a gold circlet for the elves, red felt for the drovers (and their neckerchief). */
   hat?: "straw" | "hood" | "circlet" | "felt";
+  /** The hat slot carries the tinker's gear instead (leather, a lens, brass), worn on the head bone whatever the job. */
+  goggles?: boolean;
+  /** Curls for hair, on the hobbit's mop. */
+  curls?: boolean;
+  /** Bare feet: skin at the ankles instead of boots. */
+  bare?: boolean;
+  /** A spot of colour under each eye. */
+  cheeks?: number;
   /** Cloth and trim per job, where a people dresses its own way. */
   cloth?: Partial<Record<string, { cloth: T.Ramp; trim: number }>>;
 }
@@ -337,10 +345,12 @@ const dress = (guard: number, worker: number, trader: number, builder: number, t
 const PEOPLES: People[] = [
   { key: "stonefolk", skin: 0xc98f6f, hair: 0xb5442b, eye: 0x3a2a1a, beard: true, head: [8, 7], body: [10, 10], arm: [4, 10], leg: [4, 8] },
   { key: "reedfolk", skin: 0x9fb08f, hair: 0x2f3a2a, eye: 0x1f4a3a, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14] },
-  { key: "tinker", skin: 0xd9a877, hair: 0x6a4a2a, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7] },
+  // Soot-black hair under the skullcap and a deeper tan: the tinker and the
+  // hobbit were both small, fair and brown-haired, one figure at a distance.
+  { key: "tinker", skin: 0xcf9a66, hair: 0x2f2826, eye: 0x2a2a2e, beard: false, head: [7, 6], body: [6, 8], arm: [3, 8], leg: [3, 7], goggles: true },
   { key: "tallfolk", skin: 0xa0714f, hair: 0x3a2a1a, eye: 0x2a2a2e, beard: false, head: [8, 8], body: [8, 13], arm: [4, 13], leg: [4, 13] },
   // The second four (docs/design/villages.md §3.3). Each dresses its own way.
-  { key: "hobbit", skin: 0xe6b894, hair: 0x6b4426, eye: 0x3a6a3a, beard: false, head: [8, 7], body: [8, 9], arm: [3, 9], leg: [3, 6], cloth: dress(0x7a5a3a, 0x4f7a3a, 0xd9a83a, 0x9c4a3a, 0xb8862b) },
+  { key: "hobbit", skin: 0xe6b894, hair: 0x6b4426, eye: 0x3a6a3a, beard: false, head: [8, 7], body: [8, 9], arm: [3, 9], leg: [3, 6], curls: true, bare: true, cheeks: 0xe0907c, cloth: dress(0x7a5a3a, 0x4f7a3a, 0xd9a83a, 0x9c4a3a, 0xb8862b) },
   { key: "wood_elf", skin: 0xd8b894, hair: 0x8a4f26, eye: 0x2f7a3a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x2f5a2a, 0x5a7a3a, 0xa0622a, 0x5a4a2a, 0x8fbf4a) },
   { key: "high_elf", skin: 0xf2dcc8, hair: 0xf0e2a8, eye: 0x3a6ab8, beard: false, head: [7, 8], body: [8, 14], arm: [3, 14], leg: [4, 14], hat: "circlet", cloth: dress(0x8fa8c8, 0xe8e6dc, 0x6aa0d8, 0xd8c890, 0xe8c14a) },
   { key: "drow", skin: 0x4a3f6a, hair: 0xf0f0f8, eye: 0xff5a8a, beard: false, head: [7, 8], body: [7, 13], arm: [3, 13], leg: [3, 13], hat: "hood", cloth: dress(0x1e1a2e, 0x4a2f6a, 0x7a2a6a, 0x3a3a4e, 0xc0c0d0) },
@@ -371,21 +381,22 @@ for (const people of PEOPLES) {
   for (const job of JOBS) {
     const own = people.cloth?.[job.key];
     const cloth = own?.cloth ?? job.cloth, trim = own?.trim ?? job.trim;
-    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth, trim, trousers: own ? cloth.deep : job.trousers, boot: job.boot, front: job.front };
-    const hat = people.hat === "hood" ? T.clothTile(cloth, 615) : people.hat === "circlet" ? T.circletTile() : people.hat === "felt" ? T.clothTile(FELT, 613) : T.straw(T.STRAW, 613);
+    const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth, trim, trousers: own ? cloth.deep : job.trousers, boot: job.boot, front: job.front, cheeks: people.cheeks };
+    const hat = people.goggles ? T.gearTile() : people.hat === "hood" ? T.clothTile(cloth, 615) : people.hat === "circlet" ? T.circletTile() : people.hat === "felt" ? T.clothTile(FELT, 613) : T.straw(T.STRAW, 613);
+    const hair = people.curls ? T.curlsTile(people.hair) : T.hairTile(people.hair);
     write(
       `${VILLAGES_RP}/entity/${people.key}_${job.key}.png`,
       atlas(A.BIPED, {
         skin: T.skinTile(people.skin),
         face: T.faceTile(look, people.head[0], people.head[1], people.beard),
-        hair: T.hairTile(people.hair),
-        hairTop: T.hairTile(people.hair),
+        hair,
+        hairTop: hair,
         shirt: T.shirtTile(look, people.body[0], people.body[1]),
         shirtBack: T.clothTile(cloth, 611),
         shirtSide: T.clothTile(cloth, 612),
         sleeve: T.sleeveTile(look, people.arm[0], people.arm[1]),
         hand: T.skinTile(people.skin),
-        trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
+        trousers: T.trousersTile(look, people.leg[0], people.leg[1], people.bare),
         helmet: T.helmetTile(),
         hat,
         pack: T.packTile(),
@@ -443,10 +454,12 @@ interface Furfolk {
   leg: [number, number];
   muzzle: [number, number];
   ear: [number, number];
+  /** The ear's outline: one slab, or the cat's stair of narrowing rows. */
+  earShape?: "slab" | "triangle";
 }
 const FURFOLK: Furfolk[] = [
   { key: "foxfolk", fur: { coat: 0xd9702c, pale: 0xf3e9d9, inner: 0xe8a3a3, eye: 0x1a1410, paw: 0x3a2824, markings: ["cheeks", "earTips"] }, head: [8, 8], body: [6, 8], arm: [3, 8], leg: [3, 6], muzzle: [4, 3], ear: [3, 6] },
-  { key: "catfolk", fur: { coat: 0x8f8f97, pale: 0xebe3d7, inner: 0xd9a3a8, eye: 0x1a1410, markings: ["stripes", "mask"] }, head: [8, 7], body: [6, 8], arm: [3, 8], leg: [3, 6], muzzle: [3, 2], ear: [3, 5] },
+  { key: "catfolk", fur: { coat: 0x8f8f97, pale: 0xebe3d7, inner: 0xd9a3a8, eye: 0x1a1410, markings: ["stripes", "mask"] }, head: [8, 7], body: [6, 8], arm: [3, 8], leg: [3, 6], muzzle: [3, 2], ear: [4, 5], earShape: "triangle" },
   { key: "wolffolk", fur: { coat: 0x6e727a, pale: 0xd9dbdf, inner: 0xc4a0a8, eye: 0x1a1410, markings: ["mask", "brow"] }, head: [8, 8], body: [8, 10], arm: [4, 10], leg: [4, 8], muzzle: [4, 3], ear: [3, 5] },
   { key: "rabbitfolk", fur: { coat: 0x8a5a3a, pale: 0xf5ede1, inner: 0xf0b9c1, eye: 0x1a1410, markings: ["blaze"] }, head: [8, 8], body: [6, 7], arm: [3, 7], leg: [3, 5], muzzle: [3, 2], ear: [3, 7] },
   { key: "bearfolk", fur: { coat: 0x6b4a2e, pale: 0xb38b62, inner: 0x8a6a4a, eye: 0x1a1410, markings: [] }, head: [9, 8], body: [10, 10], arm: [4, 10], leg: [4, 7], muzzle: [4, 3], ear: [3, 3] },
@@ -480,7 +493,7 @@ for (const people of FURFOLK) {
         toolWood: T.plankV(T.OAK, 614),
         dark: T.flatDark(T.DARK_STONE),
         muzzle: T.muzzleTile(people.fur, people.muzzle[0], people.muzzle[1]),
-        ear: T.earTile(people.fur, people.ear[0], people.ear[1]),
+        ear: T.earTile(people.fur, people.ear[0], people.ear[1], people.earShape),
         tail: T.tailTile(people.fur),
         tailTip: T.furTile(people.fur.tip ?? people.fur.pale, 628),
         antler: T.antlerTile(),

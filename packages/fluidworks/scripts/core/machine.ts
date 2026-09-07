@@ -262,3 +262,69 @@ export function plan(
       return idle("no_input");
   }
 }
+
+/**
+ * A plan chosen among several mouths and spouts.
+ *
+ * Through pipes a funnel can reach more than one block at either end - a T
+ * with a tank on each arm, a run past two sources. `choose` plans the pairs
+ * and takes the first that does something. Which pair is tried first turns
+ * with `turn`, a count of the operations the funnel has completed, so a
+ * stream reaching two tanks is dealt to them alternately and fills both,
+ * rather than the nearer one getting everything. A tank that refuses (full,
+ * wrong fluid) is passed over and the next is tried, so the split degrades to
+ * a fallback when one arm stops taking.
+ *
+ * Candidates are given nearest first, as the pipe walk lists them. Indices
+ * in the result are into the lists as given.
+ */
+export interface Choice {
+  plan: Plan;
+  /** Index into `inputs` of the mouth the plan is for. Meaningful only when the plan is not idle. */
+  input: number;
+  /** Index into `outputs` of the spout the plan is for. Meaningful only when the plan is not idle. */
+  output: number;
+}
+
+/** `list` rotated left by `by`, so a different entry comes first each turn. */
+function rotated<T>(list: readonly T[], by: number): { item: T; index: number }[] {
+  const n = list.length;
+  const out: { item: T; index: number }[] = [];
+  if (n === 0) return out;
+  const start = ((by % n) + n) % n;
+  for (let i = 0; i < n; i++) {
+    const index = (start + i) % n;
+    out.push({ item: list[index]!, index });
+  }
+  return out;
+}
+
+export function choose(
+  inputs: readonly Endpoint[],
+  outputs: readonly Endpoint[],
+  ctx: Context,
+  policy: Policy,
+  rules: Readonly<Record<string, Rule>>,
+  turn = 0,
+): Choice {
+  // The reason reported when nothing applies. A pair that is merely waiting
+  // (tank full, hopper empty) beats one that is stuck (wrong fluid on the
+  // other arm): the build is not wrong while some arm could take the stream
+  // once the world catches up. Among equals, the nearest pair's reason.
+  let waiting: IdleReason | undefined;
+  let stuck: IdleReason | undefined;
+  for (const o of rotated(outputs, turn)) {
+    for (const i of rotated(inputs, turn)) {
+      const p = plan(i.item, o.item, ctx, policy, rules);
+      if (p.kind !== "idle") return { plan: p, input: i.index, output: o.index };
+      if (isStuck(p.reason)) {
+        if (o.index === 0 && i.index === 0) stuck = p.reason;
+        else stuck ??= p.reason;
+      } else if (o.index === 0 && i.index === 0) waiting = p.reason;
+      else waiting ??= p.reason;
+    }
+  }
+  const reason =
+    waiting ?? stuck ?? (outputs.length === 0 ? "no_tank" : "no_input");
+  return { plan: idle(reason), input: 0, output: 0 };
+}

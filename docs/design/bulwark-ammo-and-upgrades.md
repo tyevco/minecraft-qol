@@ -6,11 +6,34 @@ Companion to `design/bulwark-turret.md` §4–5 · Draft v0.1
 
 > Research, not a build. The evidence is the vanilla 1.26.45 entity
 > definitions on the test server, the `@minecraft/server` 2.9.0 typings, and
-> one measurement, [`docs/bulwark-ammo-results.md`](../bulwark-ammo-results.md).
-> Nothing here is pinned by a GameTest yet; §8 lists what must be prototyped
-> before any of it is built. Where this document and the original design
-> disagree, the original was written from preview builds and this one from
-> the installed engine.
+> the measurements in [`docs/bulwark-ammo-results.md`](../bulwark-ammo-results.md).
+> §8 lists what had to be prototyped before any of it is built; those
+> prototypes are the `rig_*` tests in `packages/gametest/scripts/suites/bulwark_ammo.ts`.
+> Where this document and the original design disagree, the original was
+> written from preview builds and this one from the installed engine.
+
+**Decisions taken (2026-09-06), which override the recommendations below
+where they differ:**
+
+1. Prototype §8 before building anything. **Done**: all nine `rig_*` tests pass.
+2. First-cut ammo: **tipped arrows, snowballs and splash potions.** The
+   custom ember is deferred, not rejected. **Built as Phase 3a** (§7):
+   hopper-direct for every kind, tints slowness, weakness and decay, and the
+   spawn-time kill map, with five `turret_*` GameTests.
+3. **Keep the original design's four upgrade axes** (damage, fire rate,
+   range, projectile) rather than collapsing to one tier. §4.5 is rewritten
+   for that; the group-count cost it carries is stated there so it is chosen
+   with eyes open. **Built as Phase 3b**: damage as a script multiplier
+   (not `shooter.power`), one item per tier, on the same branch.
+
+Two choices made while building 3b, not put as questions, and worth a
+second look: the **ammo gate's materials** are a fire charge for tier II and
+dragon's breath for tier III (the design's projectile axis named a fire
+charge, and dragon's breath is what brews the potions the top tier
+unlocks); and **materials are accepted from a feeding hopper as well as by
+right-click**, one per block tick, because a simulated player's right-click
+never reaches a pack and the hopper path is the only one a GameTest can
+drive. It is also a real path a player can automate.
 
 ---
 
@@ -142,9 +165,9 @@ that, whether a buffered one can be given back on break (rule 4 of
 | Arrow | `minecraft:arrow` | is `AMMO_ITEM` | yes (built) | none | built |
 | Tipped arrow | `minecraft:arrow` with `aux_val` = tint index + 1 | `localizationKey` `tipped_arrow.effect.*` | **no** — cannot be constructed | a healing or regeneration tint heals the target; harming heals the undead | **first addition**, hopper-direct (§5) |
 | Snowball | `minecraft:snowball` | type id | yes | none; no damage, knockback only | cheap; this *is* the design's repeller variant |
-| Fire charge | a custom `bulwark:ember`, not `small_fireball` | type id | yes | vanilla `small_fireball` sets the block it hits on fire; the custom one must not | second addition, behind a world toggle |
+| Fire charge | a custom `bulwark:ember`, not `small_fireball` | type id | yes | vanilla `small_fireball` sets the block it hits on fire; the custom one must not | **deferred** (decision 2); would sit behind a world toggle |
 | Wind charge | `minecraft:wind_charge_projectile` | type id | yes | the burst presses buttons and opens doors and trapdoors near the impact | repeller alternative; the door thing argues against it near a base |
-| Splash potion | `minecraft:splash_potion` with `aux_val` | `ItemPotionComponent` reads effect and delivery | yes, via `Potions.resolve` (unmeasured) | slow (`power` 0.5); a lingering cloud hurts players too | later; fully readable, so the cleanest to gate |
+| Splash potion | `minecraft:splash_potion` with `aux_val` | `ItemPotionComponent` reads effect and delivery | yes, via `Potions.resolve` | slow (`power` 0.5); a lingering cloud hurts players too | **first cut** (decision 2); fully readable, so the cleanest to gate, and the only special ammo that can be buffered and given back |
 | Trident | `minecraft:thrown_trident` | type id | yes | 8 damage; the item is a tool, one per throw, and the projectile sticks and must be returned | no |
 | Egg, firework rocket, ender pearl | — | — | — | chickens; needs a crossbow's explosion data; teleports the head | no |
 | Homing bolt | a custom `bulwark:bolt` with `homing: true` | not an item | n/a | none if it carries no levitation | not ammo: a **tier reward** (§4) |
@@ -196,39 +219,75 @@ use scales by itself, because every spawned projectile costs one.
 `look_at_target.look_distance` all move together. But `ranged_attack` is one
 component holding both rate and radius, so rate × range as independent tiers
 is nine `ranged_attack` groups, and `must_see` means a longer range is only
-as good as the line of sight. Recommendation: **range is a world setting, not
-a turret upgrade** — a dropdown of 16 / 24 / 32 on the settings panel, which
-also lets an operator keep every turret short on a crowded Realm.
+as good as the line of sight. The research's recommendation was that range
+be a world setting rather than a turret upgrade — a dropdown of 16 / 24 / 32
+on the settings panel, which also lets an operator keep every turret short on
+a crowded Realm. **Decision 3 keeps it as an axis**; §4.5 pays the group
+cost. A world-level cap on the panel is still worth having on top, for the
+crowded-Realm case.
 
 ### 4.4 Projectile
 
-With §3 in place this axis is not an upgrade at all: the projectile is
-whatever the hopper holds. Drop it from the upgrade tree.
+With §3 in place the projectile itself is whatever the hopper holds, so this
+axis cannot *choose* a projectile. What it can do, and what decision 3 keeps
+it for, is gate **what the turret is able to fire**: tier 1 plain arrows
+only, tier 2 adds tipped arrows, tier 3 adds snowballs and splash potions.
+A turret below the tier leaves the ammo in the hopper and says so in its
+status text. That is a rule in `core/`, not a component group, so it costs
+nothing on the entity.
 
-### 4.5 So: one tier axis
+### 4.5 Four axes, and what they cost on the entity
 
-Collapse to a single tier, 1–3, the one the head already draws. Each tier
-raises fire rate and damage together and is fed with the material its
-texture shows: iron ingots to reach tier 2, diamonds for tier 3, netherite
-for a fourth if the appetite is there (the property's range would grow). Tier
-3 could also switch the plain-arrow shooter to the homing `bulwark:bolt`,
-which is the "netherite turret does something a bow cannot" moment the design
-wanted from `CustomForm.image`. The groups are then `bulwark:tier_1..3`
-(each a `ranged_attack`), plus one `bulwark:ammo_<kind>` group per ammo
-(each a `shooter`), plus `disarmed`: six or seven groups, not twenty-seven.
+Per decision 3 the four axes stay: damage, fire rate, range, and the
+projectile gate above. The engine cost is in component groups, because
+`ranged_attack` carries both interval and radius and `shooter` carries both
+the projectile and `power`:
 
-Tier state goes in the record (schema 2: `tier`, and the count of material
-fed, so a broken turret drops its ingots back — rule 4). The head is
-re-tiered by `triggerEvent("bulwark:tier_N")` whenever the block reconciles
-it, the same place `syncArming` runs. Per the design, the group swap must
-happen on the live entity: never respawn a head to change its tier.
+| Axis | Lives in | Groups if done in engine | Cheaper route |
+| --- | --- | --- | --- |
+| Damage | `shooter.power` | one per damage tier × ammo kind | the `entityHurt` multiplier (§4.1 route 2): **zero** groups |
+| Fire rate | `ranged_attack.attack_interval` | rate × range combined | — |
+| Range | `ranged_attack.attack_radius` plus `nearest_attackable_target.max_dist`, `follow_range`, `look_distance` | rate × range combined | — |
+| Projectile gate | `core/` rule | none | — |
+
+So the recommended shape under decision 3: **damage in script** (Guardian's
+pattern, exact, no groups), **rate × range as nine `bulwark:aim_<rate>_<range>`
+groups** (each one `ranged_attack` plus its target and follow ranges),
+**one `bulwark:ammo_<kind>` group per ammo kind** (each one `shooter`), the
+projectile gate in `core/ammo.ts`, and `disarmed`. Groups are additive, so an
+armed head holds exactly one aim group and one ammo group; `syncArming`
+grows into `syncGroups(entity, record)` and fires the events whose group is
+not the one the record wants. Fourteen groups instead of the original's
+implied eighty-one, and the record's four small integers are what the
+original design asked for in §4.2.
+
+Feeding follows the original table: iron / diamond / netherite for damage,
+redstone / redstone block / quartz for fire rate, ender pearl / eye of ender
+/ ender chest for range, and the projectile gate paid in the ammo it unlocks
+(a stack of tipped arrows for tier 2, a splash potion for tier 3). Every
+material fed is counted in the record (schema 2) so a broken turret drops it
+back — rule 4. The head's `bulwark:tier` property, and its three textures,
+should follow the *damage* axis, which is the one the design paired with
+`minecraft:variant`.
+
+The head is re-tiered by `triggerEvent` whenever the block reconciles it,
+the same place `syncArming` runs. Per the design, the group swap must happen
+on the live entity: never respawn a head to change its tier. §8.2 measures
+that a `ranged_attack` swap keeps firing.
 
 ### 4.6 Targeting priority
 
-The design's fifth axis (nearest / weakest / strongest) is expressible with
-ordered `nearest_attackable_target.entity_types` and filters. It needs a
-config form, which is server-ui and a per-turret setting rather than a world
-one. Leave it for after the form exists.
+The design's fifth axis (nearest / weakest / strongest). The research
+assumed it was expressible with ordered `nearest_attackable_target.entity_types`
+entries; **measured, it is not** (`rig_target_order_is_not_priority`): the
+nearest match across every entry wins. What does hold is an `actor_health`
+filter on an entry, and that a second group's selector replaces the first's.
+**Built** (#91) as script ranking over engine selecting: nine target groups
+on the head, one per selector (any, wounded, healthy) and range; each block
+tick a turret set to weakest or strongest counts the monsters in range and
+wears the filtered selector while any qualify. Chosen on the turret's form
+(sneak, right-click, empty hand), which also carries a hold-fire switch:
+the two per-turret settings. Schema 4.
 
 ## 5. Feeding with more than one ammo
 
@@ -283,28 +342,55 @@ the shooter for every kind, which is measured for arrows only (§8).
 
 ## 7. Proposal, phased
 
-**3a — ammo from the hopper.** Tipped arrows (four tints), snowballs, and the
-custom ember behind a toggle. Hopper-direct consumption (§5). `bulwark:ammo_*`
-groups on the head. The attribution set. Status text names the ammo and where
-it comes from. **No record schema change.**
+**3a — ammo from the hopper. Built.** Tipped arrows of slowness, weakness
+and decay, snowballs, and splash potions of the same three effects
+(decision 2; poison and harming were dropped because they do nothing to the
+undead, measured). Hopper-direct consumption (§5) for every kind, splash
+potions included, by decision. `bulwark:ammo_*` groups on the head, one per
+kind, additive with `bulwark:armed`. The attribution set and the spawn-time
+kill map. Status text names the ammo and where it comes from; a special
+stack offered by hand is refused with the reason. **No record schema
+change.** Pinned by `turret_fires_tipped_from_hopper`,
+`turret_leaves_healing_tint_alone`, `turret_throws_snowballs_from_hopper`,
+`turret_throws_splash_from_hopper` and `turret_prefers_special_over_buffer`.
 
-**3b — one tier.** `bulwark:tier` set from a record column, fed with ingots
-by right-click, materials returned on break. `tier_1..3` groups with
-`attack_interval` and `shooter.power` (or the script multiplier). Schema 2.
-The homing bolt at tier 3 if §8 item 4 measures clean.
+**3b — the four axes. Built.** Schema 2 with four tier columns; the
+materials fed are the tiers themselves (tier N on an axis is N−1 items) and
+come back on break. Nine aim groups (`bulwark:aim_r<rate>_g<range>`, each
+with its `ranged_attack`, target range, look distance and `follow_range`),
+damage as an `entityHurt` multiplier of 1 / 1.5 / 2, the projectile gate in
+`core/tiers.ts`. One item per tier by right-click or from a feeding hopper.
+`bulwark:tier` follows the damage axis. Pinned by
+`turret_rate_upgrade_fires_faster`, `turret_damage_upgrade_hits_harder`,
+`turret_gate_holds_tipped_until_upgraded` and `turret_break_returns_upgrades`;
+range tiers need a person (the arena is eight blocks).
 
-**3c — the panel.** Range dropdown; incendiary toggle; a `bulwark:debug`
-line per turret reporting kind, tier and source.
+**3c — the panel. Built.** A format-3 manifest with three Realm-wide
+switches: a range cap (16 / 24 / 32, default 32; a tier above the cap aims
+at the cap's tier and keeps its material), special ammo on or off, and
+upgrades on or off. Polled every five seconds through the shared settings
+poller. `bulwark:debug` prints the policy and a line per turret within 64
+blocks: ammo, kills, tiers, and what its head is set to fire. No GameTest
+can flip a setting (`getPackSettings` has no setter), so the panel is an
+in-game check in the pack README. The per-turret config form for targeting
+priority is deferred to #91.
 
 Each phase gets its GameTests before the next starts: a hopper of poison
 arrows leaves the husk with the poison effect; a hopper of snowballs leaves
-its health untouched and its position moved; an ember leaves it on fire and
-the block behind it not; a tier-3 head shoots faster and harder, measured
-through `entityHurt.damage`.
+its health untouched and its position moved; a splash potion leaves the
+effect; a damage-tier head hits harder, measured through `entityHurt.damage`.
 
 ## 8. Must prototype before building
 
 Each is one GameTest or one `qolprobe:*` event; the answer changes the build.
+Items 1–6 are the `rig_*` tests in `packages/gametest/scripts/suites/bulwark_ammo.ts`,
+built on a test-only `qol:shooter_rig` entity and a `qol:bolt` projectile
+that ship in the GameTest pack; their readings are in
+`docs/bulwark-ammo-results.md`. **All six pass.** Two things they changed:
+a poison tint does nothing to the undead (the tests use slowness and
+weakness), and a kill by a custom projectile names the *projectile* as
+`damagingEntity`, so kill counting must fall back to `damagingProjectile`'s
+owner (item 4). Item 7 needs a person.
 
 1. **Group swap changes the next shot.** Arm a head with a `shooter` group of
    `aux_val` 26, spawn a husk, assert it gains `poison`. Then `triggerEvent`
@@ -330,13 +416,17 @@ Each is one GameTest or one `qolprobe:*` event; the answer changes the build.
 
 ## 9. What this changes in the original design
 
-- §4.2's four axes become one tier plus world settings; the projectile axis
-  is replaced by ammo. The `bulwark:tier` property, events and textures the
-  pack already carries are the scaffolding for it.
+- §4.2's four axes stay (decision 3), but the projectile axis becomes a gate
+  on what the turret will accept from the hopper rather than a choice of
+  projectile, damage moves into script, and rate × range share nine aim
+  groups. The `bulwark:tier` property, events and textures the pack already
+  carries follow the damage axis.
 - §5.3's "store ammo count with a modest cap" holds for plain arrows only.
   Special ammo is not stored, because the API cannot give it back.
 - §12's Phase 5 "repeller variant" is a snowball in the hopper, and arrives
   with 3a.
+- §4.2's fire-charge projectile tier is deferred (decision 2); when it comes
+  it is the custom ember of §3, never vanilla `small_fireball`.
 - The corrections table in `docs/README.md` should gain the tipped-arrow row
   once the localization key has been read for a fifth tint, and a `Potions.resolve`
   row once someone has called it.

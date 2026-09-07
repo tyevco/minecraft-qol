@@ -32,17 +32,70 @@ describe("link keys", () => {
 });
 
 describe("row packing", () => {
-  const full: TurretRecord = { ...pos, entityId: "-4294967295", ammo: 17, kills: 3 };
+  const full: TurretRecord = {
+    ...pos,
+    entityId: "-4294967295",
+    ammo: 17,
+    kills: 3,
+    tiers: { damage: 2, rate: 3, range: 1, gate: 2 },
+    priority: "strongest",
+    held: true,
+  };
 
   it("round-trips a full record", () => {
     expect(unpackRecord(packRecord(full))).toEqual(full);
   });
 
   it("round-trips an unlinked record with the entity absent, not empty", () => {
-    const unlinked: TurretRecord = { ...pos, ammo: 0, kills: 0 };
+    const unlinked: TurretRecord = {
+      ...pos,
+      ammo: 0,
+      kills: 0,
+      tiers: { damage: 1, rate: 1, range: 1, gate: 1 },
+      priority: "nearest",
+      held: false,
+    };
     const back = unpackRecord(packRecord(unlinked));
     expect(back).toBeDefined();
     expect(back!.entityId).toBeUndefined();
+  });
+
+  it("reads a schema-1 row (no tiers) as the base tier on every axis", () => {
+    const old = ["minecraft:overworld", 1, 2, 3, "-4294967295", 17, 3];
+    const back = unpackRecord(old);
+    expect(back).toBeDefined();
+    expect(back!.ammo).toBe(17);
+    expect(back!.tiers).toEqual({ damage: 1, rate: 1, range: 1, gate: 1 });
+    expect(back!.priority).toBe("nearest");
+  });
+
+  it("reads a schema-2 row (tiers, no priority) as nearest", () => {
+    const row = ["minecraft:overworld", 1, 2, 3, "", 0, 0, 2, 1, 1, 1];
+    expect(unpackRecord(row)!.priority).toBe("nearest");
+    expect(unpackRecord(row)!.tiers.damage).toBe(2);
+  });
+
+  it("reads a schema-3 row (no hold flag) as not held, and the flag as 0/1", () => {
+    const row = ["minecraft:overworld", 1, 2, 3, "", 0, 0, 1, 1, 1, 1, 2];
+    expect(unpackRecord(row)!.held).toBe(false);
+    expect(unpackRecord(row)!.priority).toBe("strongest");
+    expect(packRecord(full)[12]).toBe(1);
+    expect(unpackRecord([...packRecord(full).slice(0, 12), "yes"])!.held).toBe(false);
+  });
+
+  it("treats a malformed priority as nearest", () => {
+    const row = [...packRecord(full)];
+    row[11] = 7;
+    expect(unpackRecord(row)!.priority).toBe("nearest");
+  });
+
+  it("treats a malformed tier as the base, never a guess", () => {
+    const row = [...packRecord(full)];
+    row[7] = 9;
+    row[8] = "3";
+    row[9] = 2.5;
+    const back = unpackRecord(row);
+    expect(back!.tiers).toEqual({ damage: 1, rate: 1, range: 1, gate: 2 });
   });
 
   it("packs to plain JSON values only", () => {

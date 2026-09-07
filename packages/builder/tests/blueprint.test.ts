@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { builderBlueprint, STILTS } from "../../../tools/structures/builder";
 import { BUILDINGS } from "../../../tools/structures/buildings";
 import { blueprintItemId, CATALOGUE, itemFor, keyOfBlueprintItem, materials, plainName, structureId, type Cell } from "../scripts/core/blueprint";
 import { countItems, nextPlacement, nextRemoval, nextRepair, repairStatus, stillOurs, ticksPerBlock } from "../scripts/core/job";
@@ -9,6 +10,12 @@ describe("itemFor", () => {
   it("charges one item of the block's own name", () => {
     expect(itemFor(cell("minecraft:dark_oak_stairs", { weirdo_direction: 1 }))).toBe("minecraft:dark_oak_stairs");
     expect(itemFor(cell("minecraft:chest"))).toBe("minecraft:chest");
+  });
+  it("charges dirt for farmland and a path, and seeds for a crop", () => {
+    expect(itemFor(cell("minecraft:farmland", { moisturized_amount: 7 }))).toBe("minecraft:dirt");
+    expect(itemFor(cell("minecraft:grass_path"))).toBe("minecraft:dirt");
+    expect(itemFor(cell("minecraft:wheat", { growth: 7 }))).toBe("minecraft:wheat_seeds");
+    expect(itemFor(cell("minecraft:carrots", { growth: 7 }))).toBe("minecraft:carrot");
   });
   it("charges nothing for water, a door's upper half or a bed's head", () => {
     expect(itemFor(cell("minecraft:water"))).toBeUndefined();
@@ -25,6 +32,19 @@ describe("materials", () => {
     expect(m).toEqual({ "minecraft:cobblestone": 32, "minecraft:dark_oak_stairs": 24, "minecraft:dark_oak_planks": 10, "minecraft:oak_fence": 8, "minecraft:dark_oak_slab": 1, "minecraft:lantern": 1 });
     expect(Object.keys(m)[0]).toBe("minecraft:cobblestone");
   });
+  it("asks for the field in dirt and seeds, the channel's water free", () => {
+    const field = builderBlueprint("tallfolk_field");
+    const m = materials(field.blocks().map((b) => ({ x: b.x, y: b.y, z: b.z, name: b.name, states: b.states })));
+    expect(m).toEqual({ "minecraft:dirt": 45, "minecraft:wheat_seeds": 42, "minecraft:grass": 32, "minecraft:oak_fence": 31, "minecraft:chest": 1, "minecraft:fence_gate": 1 });
+    expect(field.blocks().filter((b) => b.name === "minecraft:water")).toHaveLength(4);
+  });
+  it("ships the bridge without the river it stands in", () => {
+    const bridge = builderBlueprint("shared_bridge");
+    expect(bridge.blocks().some((b) => b.name === "minecraft:water")).toBe(false);
+    const m = materials(bridge.blocks().map((b) => ({ x: b.x, y: b.y, z: b.z, name: b.name, states: b.states })));
+    expect(m).toEqual({ "minecraft:oak_planks": 21, "minecraft:oak_log": 18, "minecraft:oak_fence": 14, "minecraft:lantern": 2 });
+    expect(BUILDINGS.find((b) => b.key === "shared_bridge")!.blocks().some((b) => b.name === "minecraft:water")).toBe(true);
+  });
   it("asks for one door, not two halves", () => {
     const larder = BUILDINGS.find((b) => b.key === "shared_larder")!;
     const m = materials(larder.blocks().map((b) => ({ x: b.x, y: b.y, z: b.z, name: b.name, states: b.states })));
@@ -40,6 +60,8 @@ describe("the catalogue", () => {
       expect(keyOfBlueprintItem(blueprintItemId(e.key))).toBe(e.key);
       expect(BUILDINGS.some((b) => b.key === e.key), `${e.key} is not a generated building`).toBe(true);
     }
+    // The pack and the generator agree on who stands in water.
+    for (const e of CATALOGUE) expect(e.stilts === true, `${e.key} stilts`).toBe(STILTS.has(e.key));
     expect(keyOfBlueprintItem("minecraft:paper")).toBeUndefined();
     expect(keyOfBlueprintItem("builder:blueprint_castle")).toBeUndefined();
   });

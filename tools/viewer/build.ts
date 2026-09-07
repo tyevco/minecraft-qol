@@ -47,7 +47,7 @@ interface Particle {
 
 const FURFOLK: [id: string, name: string, notes: string][] = [
   ["foxfolk", "Foxfolk", "Rust coat, white cheeks and tail tip, dark socks; a berry-picking people of the taiga."],
-  ["catfolk", "Catfolk", "A grey tabby with a cream muzzle and a two-segment tail that curls; a weaving people of the cherry groves."],
+  ["catfolk", "Catfolk", "A grey tabby with triangle ears, a cream muzzle and a two-segment tail that curls; a weaving people of the cherry groves."],
   ["wolffolk", "Wolffolk", "Grey with a pale muzzle, wide-set ears and a level tail; a lodge people of the snowy taiga."],
   ["rabbitfolk", "Rabbitfolk", "Chocolate brown with a white blaze, tall ears and a puff tail; a baking people of the birch woods."],
   ["bearfolk", "Bearfolk", "Brown all over, round ears on the sides, a stub tail, the broadest of all; a beekeeping people of the dark forest."],
@@ -585,6 +585,14 @@ const MODELS: Model[] = [
     kind: "structure",
     structure: `concepts/villages/${id}.json`,
   })),
+  {
+    id: "village_showcase",
+    name: "Showcase (every people)",
+    pack: "concept · villages",
+    kind: "structure",
+    structure: "concepts/villages/showcase.json",
+    notes: "Every people in one field: a fenced plot each with a guard, a worker, a trader and a builder, and a lookout. Shipped in the villages pack; `/place structure villages:showcase` raises it.",
+  },
 ];
 
 rmSync(OUT, { recursive: true, force: true });

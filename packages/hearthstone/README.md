@@ -75,3 +75,14 @@ anchor:
 
 The GameTest pack cannot observe these: a pack can only query the waypoints it
 added itself.
+
+What it does observe, since none of it needs the pack to see the player:
+`hearthstone_spawn_point_is_honoured` sets a spawn point on a simulated player,
+kills them and finds them awake beside it — the mechanic the whole pack is
+built on, measured on a server for the first time;
+`hearthstone_spawn_point_out_of_the_world_throws` proves the `try`/`catch` in
+`assignSpawn` is not dead code; and
+`hearthstone_anchor_places_a_player_beside_it` confirms the custom block loads
+at all (one whose JSON fails is silently air) and runs `chooseRespawn` against
+real blocks — a standable neighbour, never the anchor's own cell, and nothing
+at all when it is walled in.

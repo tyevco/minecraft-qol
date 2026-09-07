@@ -34,6 +34,9 @@
  *   /scriptevent qolprobe:keepflag   set keepOnDeath on everything you carry
  *   /scriptevent qolprobe:hurt       watch your own hurt events for 60s: before-event
  *                                    damage vs after-event damage vs health lost
+ *   /scriptevent qolprobe:causes     what EntityDamageCause holds at runtime, from a
+ *                                    pack that binds nothing but @minecraft/server
+ *                                    2.9.0 - the typings and the runtime disagree (G4)
  *   /scriptevent qolprobe:sky        getTopmostBlock for your column (Fluidworks rain)
  *   /scriptevent qolprobe:waypoint   add a locator-bar marker 16 blocks north of you;
  *                                    run again to remove it. Reports maxCount and what
@@ -87,7 +90,7 @@
  *                                         tipped arrow is readable from script (Bulwark ammo
  *                                         types, A1), plus the Potions registry (A2).
  */
-import { world, system, BlockPermutation, BlockVolume, ItemStack, LocationWaypoint, Potions } from "@minecraft/server";
+import { world, system, BlockPermutation, BlockVolume, EntityDamageCause, ItemStack, LocationWaypoint, Potions } from "@minecraft/server";
 
 const P = "[QOLPROBE]";
 const log = (...a) => console.warn(P, ...a);
@@ -1553,6 +1556,30 @@ world.afterEvents.worldLoad.subscribe(() => {
 //   replaceitem block 0 100 0 slot.container 0 arrow 1 18
 //   scriptevent qolprobe:item-at 0 100 0 20
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//   /scriptevent qolprobe:causes   G4: what EntityDamageCause actually holds
+//
+// Guardian's table lists every cause by hand so core/ stays free of
+// @minecraft/*, and the design notes say there is no `void` member in 2.9.0 -
+// which is true of the published TYPINGS. The GameTest pack read the enum at
+// runtime and found one. That pack also binds @minecraft/server-gametest
+// (beta), so this asks the same question from a pack that binds nothing but
+// @minecraft/server 2.9.0: whatever this logs is what a shipped pack sees.
+//
+// Needs no player and no world state, so the server console can run it:
+//   scriptevent qolprobe:causes
+// ---------------------------------------------------------------------------
+system.afterEvents.scriptEventReceive.subscribe((ev) => {
+  if (ev.id !== "qolprobe:causes") return;
+  try {
+    const causes = Object.values(EntityDamageCause).map(String).sort();
+    log(`G4 EntityDamageCause holds ${causes.length}: ${causes.join(",")}`);
+    log(`G4 has "void": ${causes.includes("void")}`);
+  } catch (e) {
+    log(`G4 THREW: ${e}`);
+  }
+});
+
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "qolprobe:item-at") return;
   const [x = 0, y = 100, z = 0, delay = 0] = (ev.message || "").split(/\s+/).filter(Boolean).map(Number);

@@ -285,3 +285,59 @@ registerAsync("qol", "hatchling_glides_down_a_drop", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(400);
+
+/**
+ * The shell cracks as the egg is warmed, and a crack is not a hatch.
+ *
+ * Warming is the pack's longest-running state: three warmings ten minutes
+ * apart by default, with the shell showing how far along it is. Script drives
+ * that entirely through `hatchling:crack_N`, and a player watching an egg for
+ * half an hour has nothing but the shell to tell them it is working - so a
+ * crack event that silently did nothing, or that hatched the egg early, would
+ * be a bad way to find out.
+ *
+ * The variant is re-read after each crack because the two are separate
+ * properties set by separate events, and a crack event that reset the variant
+ * would hand the player the wrong dragon at the end of it.
+ */
+registerAsync("qol", "hatchling_shell_cracks_while_warming", async (test) => {
+  floor(test);
+  const egg = spawn(test, EGG, 2);
+  await test.idle(5);
+
+  test.assert(
+    egg.getProperty("hatchling:cracks") === 0,
+    `a fresh egg starts at ${String(egg.getProperty("hatchling:cracks"))} crack(s), expected 0`,
+  );
+
+  for (const cracks of [1, 2]) {
+    egg.triggerEvent(`hatchling:crack_${cracks}`);
+    // An entity event lands on the next tick, never in this one.
+    await test.idle(5);
+    test.assert(
+      egg.getProperty("hatchling:cracks") === cracks,
+      `after hatchling:crack_${cracks} the shell reads ${String(egg.getProperty("hatchling:cracks"))} crack(s)`,
+    );
+    test.assert(
+      egg.isValid,
+      `the egg was removed by hatchling:crack_${cracks}; a warming must not hatch it`,
+    );
+    test.assert(
+      egg.getProperty("hatchling:hatching") === false,
+      `hatchling:crack_${cracks} set hatching, so the egg would hatch a warming early`,
+    );
+    test.assert(
+      egg.getProperty("hatchling:variant") === 2,
+      `the egg's variant is ${String(egg.getProperty("hatchling:variant"))} after crack_${cracks}, was 2`,
+    );
+  }
+
+  test.assert(
+    near(test, PET).length === 0,
+    "a cracked egg has already produced a hatchling",
+  );
+  test.print("cracks 0 -> 1 -> 2 with the variant intact and no hatchling yet");
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(200);

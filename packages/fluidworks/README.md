@@ -52,7 +52,8 @@ placement trait chose. Without the component the trait's rule still applies.
 - **Drips** at the spout after every completed operation.
 - **Flow**: a drop sets off from the funnel, and from every pipe on the way,
   travelling the way the fluid went - so a run of pipes shows which way it
-  carries and where it ends.
+  carries and where it ends. On a branching run the drops follow the arm
+  that took this cycle's fluid, so a split shows as the flow alternating.
 - **Smoke** at the spout, every cycle, means the build is wrong: nothing
   usable at the spout or the mouth, the mouth's fluid does not match the
   tank's, an open mouth under a roof, or the machine this needs is off in
@@ -71,7 +72,8 @@ wherever the caller wants), `addDye` became a structured `CauldronEffect`, and
 
 | Rig | What happens |
 | --- | --- |
-| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: the nearest cauldron (or water/lava source) next to any pipe in the run stands in for the adjacent block. Up to 64 pipes. Pipes carry nothing themselves; they extend a funnel's reach, and the flow drops show which way. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. The arm bones are named for the world face they reach, not the geometry axis: Bedrock renders block geometry with x mirrored, so the east arm is authored on -x (`docs/block-geometry-results.md`). |
+| a **pipe** at the mouth or spout | the funnel reads or writes through the connected run of pipes: every cauldron (or water/lava source) next to any pipe in the run is something it can use, nearest first. Up to 64 pipes. Pipes carry nothing themselves; they extend a funnel's reach, and the flow drops show which way. Placing a pipe, funnel or cauldron next to a pipe sets its arm states so it joins up visually. The arm bones are named for the world face they reach, not the geometry axis: Bedrock renders block geometry with x mirrored, so the east arm is authored on -x (`docs/block-geometry-results.md`). |
+| a pipe run that **branches** - a T, a cross - with a tank on each arm | the stream **splits**: each completed operation goes to the next tank in turn, so both arms fill together. A tank that will not take it (full, the wrong fluid) is passed over and the next is tried, so a split degrades to a fallback when one arm stops taking, and the funnel only idles when every arm refuses. Two sources or tanks at the mouth's end are drawn from in turn the same way. The deal is runtime state: after a reload it starts again from the nearest tank. `core/machine.ts`'s `choose`, pinned by `qol:funnel_splits_through_pipes`. |
 | a mature **crop** at the mouth, a container at the spout | the **Harvester**: the crop is harvested with the engine's own loot table, one seed is withheld to replant it, the rest goes into the container. Wheat, carrots, potatoes, beetroot, nether wart, cocoa. Crops need farmland, so the rig lies sideways: farmland and crop, funnel, chest. |
 | an **open** mouth, a container at the spout | the **Collector**: dropped items within two and a half blocks of the mouth go into the container. An item entity is removed only once the container took all of it. |
 | any tank a funnel uses | a floating **label** over it with the fluid and level, visible to everyone, refreshed each cycle. |

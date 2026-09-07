@@ -13,17 +13,25 @@ measurements: `docs/villages-jigsaw-results.md`.
   with `villages:people` (0–18) and `villages:job` properties that pick the
   rig, the outfit and the accessory bones (helmet for a guard, hat for a
   worker, for every elf and for every drover but the guard, pack for a
-  trader and builder, tool for a builder). The second four (design §3.3)
-  have their own dress per job, pointed ears on the elves, a hood for the
-  wood elves and the drow, a circlet for the high elves, bare feet for the
-  hobbits. The **drovers** (index 8) are the desert's cattle people, a
+  trader and builder, tool for a builder). The **tinker** wears a leather
+  skullcap with brass goggles strapped over it on every job (they ride the
+  head bone, so its hat bone carries nothing), a tool belt with a brass
+  buckle, and soot-black hair: it and the hobbit were two small, fair,
+  brown-haired figures nobody could tell apart at ten blocks. The second
+  four (design §3.3) have their own dress per job, pointed ears on the
+  elves, a hood for the wood elves and the drow, a circlet for the high
+  elves, and for the hobbits a mop of curls standing off the head, rosy
+  cheeks, and big bare feet with a tuft of hair on each (the trousers used
+  to end in the job's boots, which no hobbit wears). The **drovers** (index 8) are the desert's cattle people, a
   western look without any one film's character: player-sized, a braid
   down the back, a red neckerchief, and a wide-brimmed red hat. A guard fights monsters within
   twelve blocks; nobody targets players. Every person has a
   `minecraft:home` where it spawned and strolls within ten blocks of it.
   The **furfolk** (indices 9–18, `docs/design/furfolk.md` §2–3) are animals
   in the same job outfits on the same rig, in toy proportions: a muzzle, two
-  ears on bones of their own that flick, a tail that swishes (a tip segment
+  ears on bones of their own that flick (the cat's a stair of cubes that
+  reads as a triangle, at the head's corners and leaning out; the slab it
+  had made it a small grey wolf), a tail that swishes (a tip segment
   for the cat and the squirrel), antlers on the deer, each at its own scale
   from the mouse at 0.65 to the bear at 1.15 (and the bear walks slowest).
   The ears stand up through the worker's cap. One animation set serves all
@@ -160,8 +168,8 @@ measurements: `docs/villages-jigsaw-results.md`.
   and `/setblock` too, so it cannot tell them apart). Registration happens
   in `onPlace` and the first spawn waits for the block's own tick, so the
   mark always lands before anyone is spawned. Such a post is peopled only
-  by a visitor who chooses to stay (below) or, later, an invited villager
-  (design §6, not built); its person carries the `villages:kin` tag and
+  by a visitor who chooses to stay (below) or an invited villager
+  (design §6, "Invite" below); its person carries the `villages:kin` tag and
   works its trade like any other.
 - **Visitors** (design §6.1, `scripts/core/visitors.ts` decides,
   `scripts/engine/visitors.ts` acts). A **settlement** is two or more of
@@ -186,7 +194,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   "Stay with us" once three errands have been paid, and "Not now". Paying
   takes the items out of the player's inventory first, then adds five to
   the player's **standing** with that people (`villages:standing.<people>`,
-  a player dynamic property; design §5's tiers are not built) and hands
+  a player dynamic property; design §5's tiers are "Standing" below) and hands
   over the people's gift (a stack of what it sells); the next errand is
   drawn at once. The visitor **leaves at the next dawn** whether paid or
   not (an unpaid errand waits for its next visit). **Staying**: the visitor
@@ -408,6 +416,44 @@ measurements: `docs/villages-jigsaw-results.md`.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
 
+## The showcase: every people at once
+
+`villages:showcase` (`tools/structures/showcase.ts`) is one structure with a
+fenced plot for every people, in `PEOPLES` order read left to right, north
+to south: the nine humans in the first two rows and a bit, then the ten
+furfolk, and a stone lookout with steps in the twentieth slot. Each plot
+stands on its people's verge with its paving through the middle, its own
+lamp post, its plant where it has one instead of a tree (the mousefolk's
+toadstool, the otterfolk's driftwood), and four job posts, so once placed
+the pack peoples it with a guard, a worker, a trader and a builder of that
+people, 76 persons in a field 47 by 59. The fences keep each people to its
+plot (a person strolls ten blocks from where it spawned, and cannot jump a
+fence or a wall), and a gate on the south side of each lets a player in.
+The whole field stands on a base layer of stone bricks, so a sand or gravel
+verge never has air under it (measured: placed in the air, the three
+sand-floored plots lost their ground and their persons) and a field placed
+on a slope stands on a plinth.
+
+In a creative world with cheats on, with the Villages pack and its resource
+pack enabled, stand where the field's north-west corner should be and:
+
+```
+/place structure villages:showcase ~ ~-2 ~
+```
+
+`~-2` sinks the base into the ground and sets the verges level with it;
+`~-1` leaves the field one block up, on its plinth. The posts take a few seconds to
+tick and spawn; every person is named for its people, so looking at one says
+who it is. Nothing in the field starts a trade (no trees, water, crops or
+cactus, on purpose), so every worker just lives there in its hat. A trade
+needs a village, or a chest and something to work: the sections above.
+Cheats disable achievements for that world, so raise it in a world made for
+showing rather than on the Realm.
+
+Pinned by `villages_showcase_peoples_every_plot` in the GameTest pack: the
+placed structure is peopled by every people in every job, each inside its
+own ring.
+
 ## Measured
 
 - The two GameTests (`villages_post_spawns_person`, `villages_post_break_removes_person`)
@@ -541,6 +587,17 @@ measurements: `docs/villages-jigsaw-results.md`.
 
 ## To confirm in game
 
+- **The cat's triangle ears** on a real client. Each row of the stair is a
+  unit narrower than the one below and centred, so the odd rows' front
+  faces start half a pixel into the ear tile: `"uv": [70.5, 23]` in
+  `catfolk.geo.json`. The viewer draws it; if the client shows a smeared
+  or shifted pink on those rows, give the triangle even rows only (widths
+  4 and 2, heights 3 and 2) in `furred()` in `tools/models/generate.ts`,
+  which keeps every window on the pixel grid.
+- **The tinker's cap and the hobbit's mop** sit half a unit proud of the
+  head, and the hobbit's foot a unit and a half in front of the leg; if
+  either z-fights the head or the leg on a client, the cubes are in
+  `bipedRig()` (`goggles`, `curls`, `bare`), a quarter unit further out.
 - **The builder's hammer**, on every people: the biped rig now grips it at
   the handle's foot with the head above the fist. The old grip hung it
   head-down along the forearm, which read as a weird angle the first time

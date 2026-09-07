@@ -205,6 +205,119 @@
           }
         }
       }
+    },
+    "animation.hatchling.glide": {
+      "loop": true,
+      "animation_length": 1.2,
+      "bones": {
+        "body": {
+          "rotation": {
+            "0.0": [
+              -8,
+              0,
+              0
+            ],
+            "0.6": [
+              -14,
+              0,
+              0
+            ],
+            "1.2": [
+              -8,
+              0,
+              0
+            ]
+          }
+        },
+        "left_wing": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              -18
+            ],
+            "0.6": [
+              0,
+              0,
+              -52
+            ],
+            "1.2": [
+              0,
+              0,
+              -18
+            ]
+          }
+        },
+        "right_wing": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              18
+            ],
+            "0.6": [
+              0,
+              0,
+              52
+            ],
+            "1.2": [
+              0,
+              0,
+              18
+            ]
+          }
+        },
+        "front_left_leg": {
+          "rotation": {
+            "0.0": [
+              -35,
+              0,
+              0
+            ]
+          }
+        },
+        "front_right_leg": {
+          "rotation": {
+            "0.0": [
+              -35,
+              0,
+              0
+            ]
+          }
+        },
+        "back_left_leg": {
+          "rotation": {
+            "0.0": [
+              25,
+              0,
+              0
+            ]
+          }
+        },
+        "back_right_leg": {
+          "rotation": {
+            "0.0": [
+              25,
+              0,
+              0
+            ]
+          }
+        },
+        "tail": {
+          "rotation": [
+            0,
+            "math.sin(query.life_time * 200) * 8",
+            10
+          ]
+        },
+        "tail_tip": {
+          "rotation": [
+            0,
+            "math.sin(query.life_time * 200 - 70) * 14",
+            0
+          ]
+        }
+      }
     }
   }
 }

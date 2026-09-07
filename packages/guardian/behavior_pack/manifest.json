@@ -150,6 +150,22 @@
       "text": "Tell a player when Guardian softened a hit",
       "name": "guardian:announce",
       "default": false
+    },
+    {
+      "type": "label",
+      "text": "Tamed pets. A pet has no role of its own, so these apply to every tamed animal in the world. A hostile mob can still hurt a pet: only the deaths nobody chose are taken away."
+    },
+    {
+      "type": "toggle",
+      "text": "Pets never take fall, fire or drowning damage",
+      "name": "guardian:pets_safe",
+      "default": true
+    },
+    {
+      "type": "toggle",
+      "text": "Players cannot hurt a tamed pet",
+      "name": "guardian:pets_players",
+      "default": true
     }
   ]
 }

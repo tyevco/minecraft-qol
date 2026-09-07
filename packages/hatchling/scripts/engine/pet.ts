@@ -2,9 +2,10 @@
  * The hatchling: bonded by vanilla, fed and grown by script.
  *
  * Bonding is `minecraft:tameable` with sweet berries at probability 1.0, and
- * the interaction is left alone so the engine does it: 2.9.0's
- * EntityTameableComponent is read-only, so script could not tame if it
- * wanted to. Once bonded, the same berries are food: each feeding is decided
+ * the interaction is left alone so the engine does it - the hatch and the
+ * bond being two moments rather than one. (`EntityTameableComponent.tame()`
+ * does exist in 2.9.0, unlike what the docs used to say; nothing here needs
+ * it.) Once bonded, the same berries are food: each feeding is decided
  * by `core/rules` (owner, rest, stage) in the before-event and applied on the
  * next tick, growing the hatchling a size every `feedingsPerStage` feedings by
  * swapping its stage component group. Anything that is not food is left to
@@ -40,6 +41,11 @@ type Log = (...parts: unknown[]) => void;
 let log: Log = () => {};
 
 export function readPet(pet: Entity): PetState {
+  // The owner is only readable while the tameable component is there, which
+  // for a bonded hatchling it is not (see `isBonded`). `ownerId` is therefore
+  // undefined for every bonded hatchling today, and `feed` treats an unknown
+  // owner as "anyone may": the panel's owner-only switch cannot be enforced
+  // until the pack records the owner itself. Tracked in issue #98.
   const tameable = pet.getComponent(EntityComponentTypes.Tameable);
   return {
     stage: intProperty(pet, "hatchling:stage", 0) as Stage,
@@ -49,8 +55,26 @@ export function readPet(pet: Entity): PetState {
   };
 }
 
+/**
+ * Bonded, i.e. somebody's hatchling rather than a wild one.
+ *
+ * Read from the `minecraft:is_tamed` MARKER, not from the tameable component:
+ * `hatchling:on_tame` removes the `hatchling:wild` group, and
+ * `minecraft:tameable` is inside it, so a bonded hatchling has no tameable
+ * component at all. Measured in the suite (`hatchling_tames_with_berries`):
+ * tameable=true / is_tamed=false before the berries, tameable=false /
+ * is_tamed=true after. Asking the tameable component said "still wild" for
+ * every bonded hatchling, which is what stopped feeding - and so growth -
+ * working once it was somebody's.
+ *
+ * The tameable component is still consulted, for the case where it survives
+ * the swap on some future engine build.
+ */
 export function isBonded(pet: Entity): boolean {
-  return pet.getComponent(EntityComponentTypes.Tameable)?.isTamed === true;
+  return (
+    pet.getComponent(EntityComponentTypes.IsTamed) !== undefined ||
+    pet.getComponent(EntityComponentTypes.Tameable)?.isTamed === true
+  );
 }
 
 function happy(pet: Entity): void {

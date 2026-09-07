@@ -7,6 +7,9 @@
  * berries to make friends, then keep feeding it and it grows through two more
  * sizes. It follows, sits, takes a name and a lead, and never fights.
  *
+ * It cannot fall to its death either: the entity refuses fall damage outright,
+ * and on the way down it spreads its wings and glides (engine/flight.ts).
+ *
  * Every number is on the settings panel: warmings to hatch, feedings per
  * size, the rest between each, and whether anyone or only the owner may tend.
  * No commands; the only script event is `hatchling:debug`.
@@ -17,6 +20,7 @@ import { system, world } from "@minecraft/server";
 import { describePolicy } from "./core/rules";
 import * as debug from "./engine/debug";
 import * as egg from "./engine/egg";
+import * as flight from "./engine/flight";
 import * as pet from "./engine/pet";
 import * as settings from "./engine/settings";
 
@@ -46,6 +50,10 @@ world.afterEvents.worldLoad.subscribe(() => {
   pet.install(log);
   debug.install();
   system.runInterval(() => settings.refresh(), SETTINGS_TICKS);
+  // A hatchling has wings: it drifts down instead of dropping. Fall damage is
+  // refused by the entity itself, so this is the look of a fall, never the
+  // safety of one.
+  system.runInterval(() => flight.sweep(log), flight.SWEEP_TICKS);
 
   log(
     `ready at tick ${system.currentTick}: ${describePolicy(settings.policy())}; egg item ` +

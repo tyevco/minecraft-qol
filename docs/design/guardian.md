@@ -6,7 +6,7 @@ Target: `@minecraft/server` 2.9.0 · no experiments · pack settings panel, no c
 
 > **Status:** Phases 1 and 2 are built (`packages/guardian`). Sections marked
 > *as built* record where the implementation settled a question this proposal
-> left open. Pets (§4) remain Phase 3.
+> left open. The pet shield (§4) is **built**; pet insurance is still open.
 
 ---
 
@@ -104,17 +104,27 @@ Graves does; a malformed value falls back to its default, never to vanilla.
 Tamed animals dying is the other thing that ends a session, and the same
 before-event covers the first half:
 
-**Pet shield.** If `hurtEntity` has `minecraft:tameable` with a
-`tamedToPlayerId`, and the damage source is a player, or a fall, or fire, or
-the owner's own arrow — cancel. Hostile mobs still hurt pets: a wolf that could
-not die would break the wolf.
+**Pet shield.** *Built, with one correction.* The design said to look for
+`minecraft:tameable` with a `tamedToPlayerId`. There is no such thing on a
+bonded pet: a tame event swaps the wild group away and the tameable component
+goes with it, so what says "somebody's pet" is the `minecraft:is_tamed`
+marker, and the owner's id is not readable at all. That is why the two panel
+switches are about pets rather than about whose pet it is — falls, fire and
+drowning off, and a player's blow off. Hostile mobs still hurt pets: a wolf
+that could not die would break the wolf. One extra `entityHurt` subscription,
+filtered to the causes the rules can act on; `decidePet` in `core/rules.ts` is
+the decision, walked exhaustively by the unit tests, and
+`guardian_shields_a_tamed_pet` pins it in game.
 
 **Pet insurance** (phase 2, probe first). On a tamed pet's `entityDie`, spawn a
 fresh one of the same type at the spot, call `tameable.tame(owner)`, restore
-`nameTag` and the `minecraft:color` value (collar colour). Both are stable and
-writable. Unknown until measured: whether `tame()` accepts an offline owner,
-and whether a respawned cat or parrot keeps its variant (`minecraft:variant` is
-read-only from script, so the answer decides the scope).
+`nameTag` and the `minecraft:color` value (collar colour). `tame(player)` does
+exist in 2.9.0 after all (the corrections table in `docs/README.md` used to say
+otherwise), but the owner is the problem now: it cannot be read off a bonded
+pet, so insurance needs a pack that recorded its own owner, as Hatchling will
+have to (issue #98). Also unknown until measured: whether `tame()` accepts an
+offline owner, and whether a respawned cat or parrot keeps its variant
+(`minecraft:variant` is read-only from script, so the answer decides scope).
 
 ---
 
@@ -173,4 +183,5 @@ three dropdowns and three immunity toggles. Shippable alone. *Built.*
 **Phase 2 — Void catch.** Extract the ground tracker to shared; teleport.
 *Built.*
 
-**Phase 3 — Pets.** Pet shield, then pet insurance once probed.
+**Phase 3 — Pets.** Pet shield *built*; pet insurance once the owner can be
+recovered and `tame()` is probed.

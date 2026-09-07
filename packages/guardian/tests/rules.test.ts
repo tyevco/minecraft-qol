@@ -5,6 +5,7 @@ import {
   CAUSES,
   DEFAULT_POLICY,
   decide,
+  decidePet,
   describePolicy,
   HAZARD_CAUSES,
   HAZARDS,
@@ -13,6 +14,7 @@ import {
   parsePolicy,
   parseScale,
   PASS_THROUGH,
+  PET_CAUSES,
   ROLES,
   samePolicy,
   SCALES,
@@ -26,6 +28,7 @@ const vanillaEverywhere: Policy = {
   immune: { fall: false, burn: false, drown: false },
   voidCatch: false,
   announce: false,
+  pets: { hazards: false, fromPlayers: false },
 };
 
 describe("parseScale", () => {
@@ -55,12 +58,15 @@ describe("parsePolicy", () => {
       [SETTING.drown]: true,
       [SETTING.voidCatch]: false,
       [SETTING.announce]: true,
+      [SETTING.petHazards]: false,
+      [SETTING.petFromPlayers]: false,
     });
     expect(p).toEqual({
       scale: { visitor: 0, member: 75, operator: 50 },
       immune: { fall: false, burn: false, drown: true },
       voidCatch: false,
       announce: true,
+      pets: { hazards: false, fromPlayers: false },
     });
   });
 
@@ -83,7 +89,15 @@ describe("samePolicy", () => {
     // or a change to it would never be noticed by the poller.
     for (const role of ROLES)
       expect(samePolicy(base, parsePolicy({ [SETTING[role]]: "0" }))).toBe(false);
-    for (const key of [SETTING.fall, SETTING.burn, SETTING.drown, SETTING.voidCatch, SETTING.announce])
+    for (const key of [
+      SETTING.fall,
+      SETTING.burn,
+      SETTING.drown,
+      SETTING.voidCatch,
+      SETTING.announce,
+      SETTING.petHazards,
+      SETTING.petFromPlayers,
+    ])
       expect(samePolicy(base, parsePolicy({ [key]: !boolAt(base, key) }))).toBe(false);
   });
 });
@@ -100,6 +114,10 @@ function boolAt(p: Policy, key: string): boolean {
       return p.voidCatch;
     case SETTING.announce:
       return p.announce;
+    case SETTING.petHazards:
+      return p.pets.hazards;
+    case SETTING.petFromPlayers:
+      return p.pets.fromPlayers;
   }
   throw new Error(`not a boolean setting: ${key}`);
 }
@@ -174,6 +192,7 @@ describe("decide", () => {
       immune: { fall: true, burn: true, drown: true },
       voidCatch: true,
       announce: false,
+      pets: DEFAULT_POLICY.pets,
     };
     for (const h of HAZARDS)
       for (const cause of HAZARD_CAUSES[h])
@@ -196,6 +215,7 @@ describe("decide", () => {
       immune: { fall: true, burn: true, drown: true },
       voidCatch: true,
       announce: true,
+      pets: { hazards: true, fromPlayers: true },
     };
     for (const role of ROLES)
       for (const cause of PASS_THROUGH)
@@ -224,6 +244,7 @@ describe("decide", () => {
         immune: { fall: s < 50, burn: s < 75, drown: s === 0 },
         voidCatch: true,
         announce: false,
+        pets: { hazards: s < 100, fromPlayers: s < 100 },
       });
     for (const p of policies)
       for (const role of ROLES)
@@ -280,5 +301,82 @@ describe("describePolicy", () => {
     expect(s).toContain("operators=100%");
     expect(s).toContain("fall+burn");
     expect(s).toContain("void=true");
+    expect(s).toContain("pets=hazards+players");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The pet shield
+// ---------------------------------------------------------------------------
+
+describe("decidePet", () => {
+  const both = DEFAULT_POLICY;
+  const off: Policy = { ...DEFAULT_POLICY, pets: { hazards: false, fromPlayers: false } };
+  const hazardsOnly: Policy = { ...DEFAULT_POLICY, pets: { hazards: true, fromPlayers: false } };
+  const playersOnly: Policy = { ...DEFAULT_POLICY, pets: { hazards: false, fromPlayers: true } };
+
+  it("takes every hazard cause off a pet when that switch is on", () => {
+    for (const hazard of HAZARDS)
+      for (const cause of HAZARD_CAUSES[hazard]) {
+        expect(decidePet(cause, false, both)).toEqual({ kind: "immune", why: hazard });
+        expect(decidePet(cause, false, hazardsOnly)).toEqual({ kind: "immune", why: hazard });
+      }
+  });
+
+  it("covers drowning, unlike the player table", () => {
+    // A pet has no dropdown of its own and follows its player underwater; the
+    // player switch for drowning starts off, this one does not.
+    expect(DEFAULT_POLICY.immune.drown).toBe(false);
+    expect(decidePet("drowning", false, DEFAULT_POLICY)).toEqual({ kind: "immune", why: "drown" });
+  });
+
+  it("takes a player's hit off a pet when that switch is on", () => {
+    for (const cause of ["entityAttack", "projectile"]) {
+      expect(decidePet(cause, true, both)).toEqual({ kind: "immune", why: "player" });
+      expect(decidePet(cause, true, playersOnly)).toEqual({ kind: "immune", why: "player" });
+      // The same blow from a zombie still lands: a pet that cannot lose a
+      // fight is not a pet anyone has to look after.
+      expect(decidePet(cause, false, both)).toEqual({ kind: "vanilla" });
+    }
+  });
+
+  it("leaves a pet entirely alone with both switches off", () => {
+    for (const cause of CAUSES) {
+      expect(decidePet(cause, false, off)).toEqual({ kind: "vanilla" });
+      expect(decidePet(cause, true, off)).toEqual({ kind: "vanilla" });
+    }
+  });
+
+  it("never touches a command, so /kill still works on a pet", () => {
+    for (const cause of PASS_THROUGH) {
+      expect(decidePet(cause, false, both)).toEqual({ kind: "vanilla" });
+      expect(decidePet(cause, true, both)).toEqual({ kind: "vanilla" });
+    }
+  });
+
+  it("only ever cancels or passes - a pet has no percentage", () => {
+    for (const cause of CAUSES)
+      for (const byPlayer of [true, false])
+        for (const policy of [both, off, hazardsOnly, playersOnly])
+          expect(["vanilla", "immune"]).toContain(decidePet(cause, byPlayer, policy).kind);
+  });
+
+  it("leaves every cause it cannot act on to the engine", () => {
+    // Whatever is not in PET_CAUSES never reaches script, so nothing outside
+    // that list may have a verdict other than vanilla.
+    for (const cause of CAUSES)
+      if (!(PET_CAUSES as readonly string[]).includes(cause))
+        expect(decidePet(cause, false, both)).toEqual({ kind: "vanilla" });
+  });
+});
+
+describe("PET_CAUSES", () => {
+  it("is the exact set of causes the pet rules can act on", () => {
+    for (const cause of PET_CAUSES) expect(CAUSES).toContain(cause);
+    for (const hazard of HAZARDS)
+      for (const cause of HAZARD_CAUSES[hazard]) expect(PET_CAUSES).toContain(cause);
+    // A hit a player lands arrives as one of these two.
+    expect(PET_CAUSES).toContain("entityAttack");
+    expect(PET_CAUSES).toContain("projectile");
   });
 });

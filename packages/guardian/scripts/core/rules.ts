@@ -104,6 +104,19 @@ export const HAZARD_CAUSES: Readonly<Record<Hazard, readonly Cause[]>> = {
  */
 export const PASS_THROUGH: readonly Cause[] = ["override", "none"];
 
+/**
+ * The pet switches. A pet has no permission role - it belongs to a player but
+ * it is not one - so these are about pets rather than about whose pet it is:
+ * a hatchling that walks off a ledge and a wolf that follows its player into a
+ * campfire end somebody's session either way.
+ */
+export interface PetPolicy {
+  /** Falls, fire and drowning never hurt a tamed pet. */
+  hazards: boolean;
+  /** A player cannot hurt a tamed pet - theirs or anyone else's. */
+  fromPlayers: boolean;
+}
+
 export interface Policy {
   /** Percent of vanilla damage each role takes. */
   scale: Record<Role, Scale>;
@@ -113,6 +126,8 @@ export interface Policy {
   voidCatch: boolean;
   /** Show a brief action-bar line when a hit was softened or cancelled. */
   announce: boolean;
+  /** What protects tamed pets. */
+  pets: PetPolicy;
 }
 
 /**
@@ -126,6 +141,9 @@ export const DEFAULT_POLICY: Policy = {
   immune: { fall: true, burn: true, drown: false },
   voidCatch: true,
   announce: false,
+  // Both on: a pet dying is the same lost session as a player dying, and it is
+  // the one the player could not have prevented.
+  pets: { hazards: true, fromPlayers: true },
 };
 
 /** Setting names as declared in behavior_pack/manifest.json. */
@@ -138,6 +156,8 @@ export const SETTING = {
   drown: "guardian:no_drown",
   voidCatch: "guardian:void_catch",
   announce: "guardian:announce",
+  petHazards: "guardian:pets_safe",
+  petFromPlayers: "guardian:pets_players",
 } as const;
 
 /**
@@ -180,6 +200,10 @@ export function parsePolicy(raw: Readonly<Record<string, unknown>>): Policy {
     immune,
     voidCatch: bool(SETTING.voidCatch, DEFAULT_POLICY.voidCatch),
     announce: bool(SETTING.announce, DEFAULT_POLICY.announce),
+    pets: {
+      hazards: bool(SETTING.petHazards, DEFAULT_POLICY.pets.hazards),
+      fromPlayers: bool(SETTING.petFromPlayers, DEFAULT_POLICY.pets.fromPlayers),
+    },
   };
 }
 
@@ -187,6 +211,8 @@ export function samePolicy(a: Policy, b: Policy): boolean {
   return (
     a.voidCatch === b.voidCatch &&
     a.announce === b.announce &&
+    a.pets.hazards === b.pets.hazards &&
+    a.pets.fromPlayers === b.pets.fromPlayers &&
     ROLES.every((r) => a.scale[r] === b.scale[r]) &&
     HAZARDS.every((h) => a.immune[h] === b.immune[h])
   );
@@ -194,9 +220,13 @@ export function samePolicy(a: Policy, b: Policy): boolean {
 
 export function describePolicy(p: Policy): string {
   const on = HAZARDS.filter((h) => p.immune[h]).join("+") || "none";
+  const pets =
+    [p.pets.hazards ? "hazards" : undefined, p.pets.fromPlayers ? "players" : undefined]
+      .filter((x) => x !== undefined)
+      .join("+") || "off";
   return (
     `visitors=${p.scale.visitor}% members=${p.scale.member}% operators=${p.scale.operator}%` +
-    ` immune=${on} void=${p.voidCatch} announce=${p.announce}`
+    ` immune=${on} void=${p.voidCatch} announce=${p.announce} pets=${pets}`
   );
 }
 
@@ -251,6 +281,46 @@ export function decide(
   if (scale <= 0) return { kind: "immune", why: "scale" };
   return { kind: "scale", multiplier: scale / 100 };
 }
+
+/** What a hit on a tamed pet is allowed to do. */
+export type PetVerdict = { kind: "vanilla" } | { kind: "immune"; why: Hazard | "player" };
+
+/**
+ * What to do about one hit on a tamed pet.
+ *
+ * The shape is the same as `decide`, and so is the stance: cancel or leave
+ * alone, never anything in between (a pet has no percentage on the panel).
+ * What it deliberately does NOT cover is a hostile mob: a wolf that cannot be
+ * hurt by the zombie it is fighting is not a wolf any more, and a pet that
+ * cannot lose is not one a player has to look after. What it does cover is
+ * every way a pet dies that nobody chose:
+ *
+ *   hazards   the ledge, the campfire, the water it followed you into
+ *   players   a sibling's sword, a stray arrow, a swing meant for the zombie
+ *
+ * Commands stay untouched (`PASS_THROUGH`), so `/kill` still works on a pet
+ * that must go.
+ */
+export function decidePet(cause: string, byPlayer: boolean, policy: Policy): PetVerdict {
+  if ((PASS_THROUGH as readonly string[]).includes(cause)) return { kind: "vanilla" };
+  const hazard = hazardOf(cause);
+  if (hazard && policy.pets.hazards) return { kind: "immune", why: hazard };
+  if (byPlayer && policy.pets.fromPlayers) return { kind: "immune", why: "player" };
+  return { kind: "vanilla" };
+}
+
+/**
+ * The causes the pet shield can ever act on, for the event subscription's
+ * filter: everything else never reaches script at all. `entityAttack` and
+ * `projectile` are here for the player rules; the rest are the hazards.
+ */
+export const PET_CAUSES: readonly Cause[] = [
+  ...HAZARD_CAUSES.fall,
+  ...HAZARD_CAUSES.burn,
+  ...HAZARD_CAUSES.drown,
+  "entityAttack",
+  "projectile",
+];
 
 /**
  * Apply a verdict to the number the engine proposed. Never returns more than

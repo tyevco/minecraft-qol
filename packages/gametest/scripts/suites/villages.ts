@@ -463,8 +463,20 @@ registerAsync("qol", "villages_visitor_settles", async (test) => {
   test.succeedWhen(() => {
     const left = tagged(test, VISITOR, AT, 48).length;
     test.assert(left === 0, `expected the visitor gone once settled, found ${left}`);
-    const kin = [...tagged(test, KIN, a, 3), ...tagged(test, KIN, b, 3)];
-    test.assert(kin.length === 1, `expected one settler at a post, found ${kin.length}`);
+    // One settler standing between the two posts is within 3 of BOTH, and
+    // concatenating the two searches counted it twice - measured, as a "found
+    // 2" failure with one name in the list below.
+    const kin = [...new Set([...tagged(test, KIN, a, 3), ...tagged(test, KIN, b, 3)])];
+    // Say where the settlers actually are when there is none at a post: the
+    // walk out here fails and ends in a teleport, so "none at a post" and
+    // "none anywhere" are different failures and only one of them is the pack's.
+    const anywhere = tagged(test, KIN, AT, 48).map(
+      (k) => `${k.nameTag} at ${k.location.x.toFixed(1)},${k.location.y.toFixed(1)},${k.location.z.toFixed(1)}`,
+    );
+    test.assert(
+      kin.length === 1,
+      `expected one settler at a post, found ${kin.length}; posts at ${a.x},${a.y},${a.z} and ${b.x},${b.y},${b.z} (test-relative); kin within 48: ${anywhere.join("; ") || "none"}`,
+    );
     const settled = kin[0]!.getProperty("villages:people");
     test.assert(settled === people, `expected the settler to be the visitor's people ${String(people)}, got ${String(settled)}`);
   });

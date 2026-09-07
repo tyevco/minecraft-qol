@@ -218,6 +218,7 @@ registerAsync("qol", "hatchling_ignores_fall_damage", async (test) => {
     health!.currentValue === before,
     `fall damage took the hatchling ${before} -> ${health!.currentValue} (applyDamage returned ${applied}); the damage sensor should refuse it`,
   );
+  pet.remove();
   test.succeed();
 })
   .structureName(STRUCTURE)
@@ -262,11 +263,16 @@ registerAsync("qol", "hatchling_glides_down_a_drop", async (test) => {
   // test.print goes to chat, which nobody reads on a headless server: every
   // measurement below is in an assertion message instead.
   const measured = `fell from y=${from.toFixed(1)} to y=${pet.location.y.toFixed(1)} over ${samples} sample(s), fastest ${fastest.toFixed(2)} blocks/tick, gliding seen: ${gliding}`;
+  // Take it away BEFORE the assertions, which throw. This one starts its fall
+  // above the structure, and GameTest only cleans up inside it: a hatchling
+  // left drifting outside the test volume is persistent, survives the run, and
+  // moves where later tests get placed. That is not hypothetical - it is what
+  // made villages_visitor_settles fail three runs in a row.
+  const after = health?.currentValue ?? NaN;
+  const alive = pet.isValid && after === before;
+  pet.remove();
   test.assert(samples > 0, `the hatchling never left the ground: ${measured}`);
-  test.assert(
-    pet.isValid && (health?.currentValue ?? 0) === before,
-    `hatchling took damage falling 20 blocks (${before} -> ${health?.currentValue}); ${measured}`,
-  );
+  test.assert(alive, `hatchling took damage falling 20 blocks (${before} -> ${after}); ${measured}`);
   test.assert(
     gliding,
     `hatchling:gliding was never set, so the wings never came out; ${measured}`,

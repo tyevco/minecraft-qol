@@ -153,10 +153,15 @@ registerAsync("qol", "guardian_shields_a_tamed_pet", async (test) => {
   const wolfBefore = wolfHealth.currentValue;
   wolf.applyDamage(4, { cause: EntityDamageCause.fall });
   await until(test, () => wolfHealth.currentValue < wolfBefore, 20);
-  test.assert(
-    wolfHealth.currentValue < wolfBefore,
-    `a WILD wolf took no fall damage (${wolfBefore} -> ${wolfHealth.currentValue}); Guardian is shielding animals nobody has tamed`,
-  );
+  const wolfAfter = wolfHealth.currentValue;
+  if (!(wolfAfter < wolfBefore)) {
+    pet.remove();
+    wolf.remove();
+    test.assert(
+      false,
+      `a WILD wolf took no fall damage (${wolfBefore} -> ${wolfAfter}); Guardian is shielding animals nobody has tamed`,
+    );
+  }
 
   // Bond the hatchling: berries from a player's hand, as a child would.
   const player = test.spawnSimulatedPlayer(
@@ -182,10 +187,15 @@ registerAsync("qol", "guardian_shields_a_tamed_pet", async (test) => {
   const applied = pet.applyDamage(4, { cause: EntityDamageCause.lava });
   await test.idle(10);
 
-  test.print(`tamed hatchling in lava: ${before} -> ${petHealth.currentValue} (applyDamage returned ${applied})`);
+  // Both animals go before the assertions, which throw: a pet left behind is
+  // persistent, outlives the run, and moves where later tests are placed.
+  const after = petHealth.currentValue;
+  pet.remove();
+  wolf.remove();
+  test.print(`tamed hatchling in lava: ${before} -> ${after} (applyDamage returned ${applied})`);
   test.assert(
-    petHealth.currentValue === before,
-    `a tamed pet lost ${(before - petHealth.currentValue).toFixed(2)} health to lava; with the panel default ("Pets never take fall, fire or drowning damage") Guardian should have cancelled it`,
+    after === before,
+    `a tamed pet lost ${(before - after).toFixed(2)} health to lava; with the panel default ("Pets never take fall, fire or drowning damage") Guardian should have cancelled it`,
   );
   test.succeed();
 })

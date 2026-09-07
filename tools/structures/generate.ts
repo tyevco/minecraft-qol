@@ -31,6 +31,33 @@ for (const [name, size] of Object.entries(STRUCTURES)) {
   );
 }
 
+// The chest-pair rigs (suites/villages.ts, villages_chest_pair_is_a_double_chest):
+// two chests side by side, faced and paired by the blueprint the way a
+// larder's are, one rig per facing (south and north from the wall behind
+// them, east and west set by hand), plus the pair with the wrong half
+// leading and one with no pairing data, so one test reads what the game
+// makes of each.
+for (const [name, facing, pairing] of [
+  ["chestpair", "south", "lead"],
+  ["chestpair_north", "north", "lead"],
+  ["chestpair_east", "east", "lead"],
+  ["chestpair_west", "west", "lead"],
+  ["chestpair_swapped", "south", "swapped"],
+  ["chestpair_none", "south", "none"],
+] as const) {
+  const bp = new Blueprint(name, "Chest Pair", [3, 2, 3], "gametest", "");
+  bp.fill(0, 0, 0, 3, 1, 3, "stone_bricks");
+  if (facing === "south" || facing === "north") {
+    bp.fill(0, 1, facing === "south" ? 0 : 2, 3, 1, 1, "stone_bricks");
+    for (const x of [0, 1]) bp.set(x, 1, 1, "chest");
+  } else {
+    for (const z of [0, 1]) bp.set(1, 1, z, "chest", { "minecraft:cardinal_direction": facing });
+  }
+  const rig = bp.trimmed();
+  writeFileSync(resolve(OUT, `${name}.mcstructure`), rig.toMcstructure(pairing));
+  console.log(`packages/gametest/behavior_pack/structures/qol/${name}.mcstructure  ${rig.size.join("x")}  facing ${facing}, ${pairing}`);
+}
+
 // Concept buildings (docs/design/settlements.md): the .mcstructure a builder
 // would place, and a preview the viewer draws. Nothing ships these.
 const CONCEPTS = resolve(ROOT, "concepts/structures");

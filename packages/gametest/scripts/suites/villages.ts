@@ -1,7 +1,7 @@
 import { BlockPermutation, BlockVolume, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
 import { WARES } from "../../../villages/scripts/core/standing";
-import { count, floor, put, until } from "./rig";
+import { container, count, floor, put, until } from "./rig";
 
 /**
  * Villages: a job post keeps one person.
@@ -734,3 +734,115 @@ registerAsync("qol", "villages_showcase_peoples_every_plot", async (test) => {
   }
   test.succeed();
 }).maxTicks(2400).structureName("qol:arena");
+
+/**
+ * Two chests side by side in a placed structure are one double chest.
+ * The blueprints write the pairing as block-entity data (blueprint.ts
+ * chestPairs); a village's larder placed by the world came up as single
+ * chests in game. Six rigs of two chests, read by the container the game
+ * gives each (54 slots for a half of a double chest, 27 for a single).
+ * Measured: `structureManager.place` pairs two chests on its own (the
+ * rig with no data), the pairing data is read all the same (the swapped
+ * rig comes out otherwise), and a pair led by its west half comes apart,
+ * whichever way it faces; the lead is the east or south half.
+ */
+registerAsync("qol", "villages_chest_pair_is_a_double_chest", async (test) => {
+  floor(test);
+  const dim = test.getDimension();
+  const rigs: [string, Vector3, "x" | "z", string, number[] | undefined][] = [
+    ["qol:chestpair", { x: 0, y: 1, z: 0 }, "x", "south", [54, 54]],
+    ["qol:chestpair_north", { x: 4, y: 1, z: 0 }, "x", "north", [54, 54]],
+    ["qol:chestpair_east", { x: 8, y: 1, z: 0 }, "z", "east", [54, 54]],
+    ["qol:chestpair_west", { x: 12, y: 1, z: 0 }, "z", "west", [54, 54]],
+    ["qol:chestpair_none", { x: 0, y: 1, z: 4 }, "x", "south", [54, 54]],
+    ["qol:chestpair_swapped", { x: 4, y: 1, z: 4 }, "x", "south", undefined],
+  ];
+  for (const [id, at] of rigs) world.structureManager.place(id, dim, test.worldBlockLocation(at));
+  await test.idle(10);
+  const report: string[] = [];
+  const wrong: string[] = [];
+  for (const [id, at, along, facing, want] of rigs) {
+    const cells = [0, 1].map((i) => (along === "x" ? { x: at.x + i, y: at.y + 1, z: at.z + 1 } : { x: at.x + 1, y: at.y + 1, z: at.z + i }));
+    const sizes = cells.map((c) => container(test, c)?.size ?? -1);
+    const facings = cells.map((c) => String(test.getBlock(c).permutation.getState("minecraft:cardinal_direction" as never)));
+    report.push(`${id.replace("qol:", "")}: ${sizes.join(",")} (${facings.join(",")})`);
+    if (want && sizes.join() !== want.join()) wrong.push(id);
+    if (facings.some((f) => f !== facing)) wrong.push(`${id} facing`);
+  }
+  test.assert(wrong.length === 0, `slots per chest, then facings: ${report.join("; ")}`);
+  test.succeed();
+}).maxTicks(100).structureName("qol:arena16");
+
+/**
+ * A person goes through a closed door. Same rig as the doorway, with a
+ * door in the gap. The high elves stood inside their houses in game, and
+ * this failed about one run in two: the elf stood at the door, opened or
+ * not, and did not go through. `minecraft:scale` scales the collision box
+ * with the model (1.15 makes a 0.6 box 0.69 wide, too wide to fit the gap
+ * an open door leaves without lining up exactly), so the peoples scaled
+ * past 1 carry a collision box that scales back to 0.6 by 1.9; with it
+ * the elf went through every run, with the door opened by the navigation's
+ * own `can_open_doors` (no door behaviour or annotation was needed:
+ * measured with and without). Opening the door from script did not help
+ * before the box was fixed, which is what told the width from the door.
+ */
+registerAsync("qol", "villages_person_opens_a_door", async (test) => {
+  floor(test);
+  for (let x = 0; x < 8; x++) for (let y = 1; y <= 3; y++) if (!(x === 4 && y <= 2)) test.setBlockType("minecraft:stone_bricks", { x, y, z: 4 });
+  const door = { "minecraft:cardinal_direction": "south", door_hinge_bit: false, open_bit: false };
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:wooden_door", { ...door, upper_block_bit: false }), { x: 4, y: 1, z: 4 });
+  test.setBlockPermutation(BlockPermutation.resolve("minecraft:wooden_door", { ...door, upper_block_bit: true }), { x: 4, y: 2, z: 4 });
+  const at: Vector3 = { x: 4, y: 1, z: 1 };
+  for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(at), maxDistance: 12 })) e.remove();
+  test.setBlockPermutation(BlockPermutation.resolve(POST, { "villages:people": 6, "villages:page": 0, "villages:job": 0 }), at); // a high elf guard
+  const near = () => test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(at), maxDistance: 4 });
+  test.assert(await until(test, () => near().length === 1, 300, 5), `expected the post's high elf, found ${near().length}`);
+  const dim = test.getDimension();
+  const w = test.worldBlockLocation(at);
+  dim.runCommand(`scriptevent villages:invite ${w.x} ${w.y} ${w.z}`);
+  test.assert(await until(test, () => tagged(test, INVITED, at, 8).length === 1, 100, 5), `expected one invited person, found ${tagged(test, INVITED, at, 8).length}`);
+  const spot: Vector3 = { x: 4, y: 1, z: 6 };
+  const ws = test.worldBlockLocation(spot);
+  dim.runCommand(`scriptevent villages:follow ${ws.x} ${ws.y} ${ws.z}`);
+  const where = () => {
+    const e = tagged(test, INVITED, at, 16)[0];
+    return e ? test.relativeLocation(e.location) : undefined;
+  };
+  const through = await until(test, () => (where()?.z ?? 0) > 4.5, 600, 10);
+  const l = where();
+  const open = test.getBlock({ x: 4, y: 1, z: 4 }).permutation.getState("open_bit" as never);
+  test.assert(through, `expected the high elf through the door to z > 4.5 within 600 ticks; it stands at ${l ? `${l.x.toFixed(1)},${l.z.toFixed(1)}` : "nowhere (gone)"}, the door open=${String(open)}`);
+  test.succeed();
+}).maxTicks(1200).structureName("qol:arena");
+
+/**
+ * A tall people fits through a doorway: a high elf is invited and sent
+ * across a wall with a two-high, one-wide gap in it. This passed before
+ * the fix below as well (a scaled box 2.19 tall still walked a two-high
+ * gap), so height was not what kept the high elves in their houses in
+ * game; the next test, with a door in the gap, is what found it.
+ */
+registerAsync("qol", "villages_tall_person_passes_a_doorway", async (test) => {
+  floor(test);
+  for (let x = 0; x < 8; x++) for (let y = 1; y <= 3; y++) if (!(x === 4 && y <= 2)) test.setBlockType("minecraft:stone_bricks", { x, y, z: 4 });
+  const at: Vector3 = { x: 4, y: 1, z: 1 };
+  for (const e of test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(at), maxDistance: 12 })) e.remove();
+  test.setBlockPermutation(BlockPermutation.resolve(POST, { "villages:people": 6, "villages:page": 0, "villages:job": 0 }), at); // a high elf guard
+  const near = () => test.getDimension().getEntities({ type: PERSON, location: test.worldBlockLocation(at), maxDistance: 4 });
+  test.assert(await until(test, () => near().length === 1, 300, 5), `expected the post's high elf, found ${near().length}`);
+  const dim = test.getDimension();
+  const w = test.worldBlockLocation(at);
+  dim.runCommand(`scriptevent villages:invite ${w.x} ${w.y} ${w.z}`);
+  test.assert(await until(test, () => tagged(test, INVITED, at, 8).length === 1, 100, 5), `expected one invited person, found ${tagged(test, INVITED, at, 8).length}`);
+  const spot: Vector3 = { x: 4, y: 1, z: 6 };
+  const ws = test.worldBlockLocation(spot);
+  dim.runCommand(`scriptevent villages:follow ${ws.x} ${ws.y} ${ws.z}`);
+  const where = () => {
+    const e = tagged(test, INVITED, at, 16)[0];
+    return e ? test.relativeLocation(e.location) : undefined;
+  };
+  const through = await until(test, () => (where()?.z ?? 0) > 4.5, 600, 10);
+  const l = where();
+  test.assert(through, `expected the high elf through the doorway to z > 4.5 within 600 ticks; it stands at ${l ? `${l.x.toFixed(1)},${l.z.toFixed(1)}` : "nowhere (gone)"}`);
+  test.succeed();
+}).maxTicks(1200).structureName("qol:arena");

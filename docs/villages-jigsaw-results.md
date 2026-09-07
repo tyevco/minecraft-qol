@@ -609,6 +609,50 @@ a ticking area of its own, and taken down after). Two things it measured:
 With both fixed the test passes first time, twice in a row: 76 persons
 within four seconds of placing, each inside its own ring.
 
+## From the first session in game: chests, doors and hammers
+
+Three things seen in a real session with the showcase and a placed village,
+each taken back to the headless server (`docs/design/furfolk.md` §4 item 3
+is the second):
+
+- **Chests side by side came up as single chests.** A structure carries
+  a double chest as block-entity data on each half (`id "Chest"`,
+  `pairx`, `pairz`, `pairlead`), and the pieces carried none. The blueprint
+  writer now pairs any two chests side by side facing the same way and
+  writes both halves; `villages_chest_pair_is_a_double_chest` places six
+  two-chest rigs and reads the container each chest gets (54 slots for a
+  half of a double chest, 27 for a single). Measured: `structureManager.place`
+  pairs two adjacent chests **on its own** (the rig with no data came up
+  54, 54), the data is read all the same (a pair with the west half
+  leading came up 27, 54, 54 among three chests: the pair came apart and
+  the loose half took the third), and the lead must be the **east half of
+  a row along x, the south half of one along z**, whichever way the pair
+  faces (rigs facing south, north, east and west all 54, 54). Three chests
+  in a row are a trap under `place`: with the first two paired by data the
+  third paired itself to a half already paired (54, 54, 54), so the shared
+  larder's third chest is a barrel and a unit test keeps rows to two.
+  Positions in the data are the structure's own, as the jigsaws' are, with
+  the world origin at zero; the loader moves them with the structure.
+- **The high elves stood inside their houses.** Not the height: a high elf
+  (scale 1.15, box 0.6 by 1.9) walked a two-high, one-wide gap every run
+  (`villages_tall_person_passes_a_doorway`). With a closed door in the gap
+  (`villages_person_opens_a_door`) it went through about one run in two,
+  and stood at the door the rest, with the door open or shut: opening the
+  door from script made no difference. **`minecraft:scale` scales the
+  collision box**: 0.6 at 1.15 is 0.69, and the gap an open door leaves is
+  about 0.8, so the elf fit only when it lined up exactly. With a
+  `minecraft:collision_box` of 0.52 by 1.65 in the high elves' group (and
+  the like for every people scaled past 1) it went through **eight runs of
+  eight**, four with `minecraft:behavior.open_door` and its annotation on
+  the person and four without; the navigation's `can_open_doors` opens the
+  door by itself, so neither shipped. The high elves' cottages got a
+  doorway three high as well, for the look: the model is 2.6 blocks at
+  their scale.
+- **The hammer was held the wrong way round.** The grip had the head
+  above the fist; the rig now hangs it head-down from the fist in front of
+  the arm, its handle as long as the arm allows so a toy rig's hammer
+  clears the ground. Not measurable headlessly; in the README to confirm.
+
 ## The gap at a deck joint (design §3)
 
 "Blocks missing where the jigsaw blocks were", seen in game, chased on

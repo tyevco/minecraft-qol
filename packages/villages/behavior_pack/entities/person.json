@@ -40,6 +40,10 @@
       "villages:people_1": {
         "minecraft:scale": {
           "value": 1.1
+        },
+        "minecraft:collision_box": {
+          "width": 0.54,
+          "height": 1.72
         }
       },
       "villages:people_2": {
@@ -50,6 +54,10 @@
       "villages:people_3": {
         "minecraft:scale": {
           "value": 1.15
+        },
+        "minecraft:collision_box": {
+          "width": 0.52,
+          "height": 1.65
         }
       },
       "villages:guard": {
@@ -100,16 +108,28 @@
       "villages:people_5": {
         "minecraft:scale": {
           "value": 1.1
+        },
+        "minecraft:collision_box": {
+          "width": 0.54,
+          "height": 1.72
         }
       },
       "villages:people_6": {
         "minecraft:scale": {
           "value": 1.15
+        },
+        "minecraft:collision_box": {
+          "width": 0.52,
+          "height": 1.65
         }
       },
       "villages:people_7": {
         "minecraft:scale": {
           "value": 1.05
+        },
+        "minecraft:collision_box": {
+          "width": 0.57,
+          "height": 1.8
         }
       },
       "villages:people_8": {
@@ -130,6 +150,10 @@
       "villages:people_11": {
         "minecraft:scale": {
           "value": 1.05
+        },
+        "minecraft:collision_box": {
+          "width": 0.57,
+          "height": 1.8
         }
       },
       "villages:people_12": {
@@ -143,6 +167,10 @@
         },
         "minecraft:movement": {
           "value": 0.22
+        },
+        "minecraft:collision_box": {
+          "width": 0.52,
+          "height": 1.65
         }
       },
       "villages:people_14": {
@@ -168,6 +196,10 @@
       "villages:people_18": {
         "minecraft:scale": {
           "value": 1.1
+        },
+        "minecraft:collision_box": {
+          "width": 0.54,
+          "height": 1.72
         }
       },
       "villages:visitor": {

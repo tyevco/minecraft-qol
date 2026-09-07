@@ -1203,6 +1203,8 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
   const shoulder = hip + bh;
   const top = shoulder + hh;
   const handY = shoulder - ah;
+  /** How far the hammer's handle hangs below the fist: a hand's breadth short of the ground on the shortest rig, seven on a tall one. */
+  const hammerHandle = Math.max(1.5, Math.min(7, handY - 2.5));
   const rightArmX = -bw / 2 - aw;
   const armSpec = (name: string, x: number): Bone<BP> => ({
     name,
@@ -1302,14 +1304,18 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
       name: "tool",
       parent: "right_arm",
       pivot: [rightArmX + aw / 2, shoulder - 1, 0],
-      // The hammer gripped at the handle's foot, just below the hand, its
-      // head above the fist in front of the arm. It hung head-down along
-      // the forearm before, which read as a weird angle the first time a
-      // person was seen holding one in game (the builder); everyone holds
-      // it upright now.
+      // The hammer carried at the side: gripped near the top of its handle,
+      // hanging head-down from the fist in front of the arm, so the work
+      // swing (the arm up and forward) brings the head forward and up into
+      // the blow. The head is long in the swing's plane. It was held upright
+      // before, head above the fist, which in game read as held the wrong
+      // way round (nineteen builders at once in the showcase); and before
+      // that head-down along the forearm at an angle, which read as odd
+      // too. The handle follows the arm's length, so a toy rig's hammer
+      // still clears the ground.
       cubes: [
-        { origin: [rightArmX + aw / 2 - 0.5, handY - 1, -ad / 2 - 1.5], size: [1, 8, 1], faces: { all: "toolWood" } },
-        { origin: [rightArmX + aw / 2 - 2, handY + 6.5, -ad / 2 - 2.5], size: [4, 2.5, 3], faces: { all: "tool" } },
+        { origin: [rightArmX + aw / 2 - 0.5, handY - hammerHandle, -ad / 2 - 1.5], size: [1, hammerHandle + 1.5, 1], faces: { all: "toolWood" } },
+        { origin: [rightArmX + aw / 2 - 1.5, handY - hammerHandle - 2, -ad / 2 - 3], size: [3, 2, 4], faces: { all: "tool" } },
       ],
     },
   ];

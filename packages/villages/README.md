@@ -407,6 +407,32 @@ measurements: `docs/villages-jigsaw-results.md`.
   sharing a biome fall on different cells.
 - `/scriptevent villages:debug` lists every post and whether its person is
   present.
+- **Chests in a row are double chests.** Two chests side by side facing
+  the same way in a piece are written into the `.mcstructure` as a pair
+  (`tools/structures/blueprint.ts` `chestPairs`: the `pairx`, `pairz` and
+  `pairlead` block-entity data the game itself saves), since a village
+  placed by the world came up with its larder as so many single chests. A
+  chest with no facing faces into the room, away from the wall behind it,
+  and a row along x faces alike so it can pair. The lead is the east or
+  south half, measured: a pair led by its west half came apart and the
+  loose half took the next chest instead. No building has three chests in
+  a row (a unit test keeps it so), because `structureManager.place` pairs
+  chests on its own too, and a third took up with a half already paired.
+- **The tall peoples fit through doors.** `minecraft:scale` scales the
+  collision box with the model (measured, `villages_person_opens_a_door`:
+  at 1.15 the 0.6 box is 0.69 wide, too wide for the gap an open door
+  leaves unless the person lines up exactly, so the high elves stood at
+  their doors about one time in two), so every people scaled past 1 carries
+  a `minecraft:collision_box` in its group that scales back to 0.6 by 1.9.
+  Opening the door is the navigation's own `can_open_doors`; no door
+  behaviour or annotation was needed (measured with and without). The high
+  elves' cottages have a doorway three high besides, since their model
+  stands 2.6 blocks at their scale and its head went through the lintel.
+- **The builder's hammer** hangs head-down from the fist, in front of the
+  arm, the way a hammer is carried at the side, its handle as long as the
+  rig's arm allows; the work swing brings the head forward and up. It was
+  held upright, head above the fist, which read as the wrong way round in
+  game.
 
 ## The showcase: every people at once
 
@@ -579,13 +605,18 @@ own ring.
 
 ## To confirm in game
 
-- **The builder's hammer**, on every people: the biped rig now grips it at
-  the handle's foot with the head above the fist. The old grip hung it
-  head-down along the forearm, which read as a weird angle the first time
-  a person was seen holding one on a client (the builder pack's builder,
-  which shares the rig). If it clips the arm or the pack on a small people
-  (the mousefolk, the tinker), the `tool` bone's cubes in
-  `tools/models/generate.ts` are the two numbers to move.
+- **The builder's hammer**, on every people: it now hangs head-down from
+  the fist in front of the arm (the upright grip, head above the fist, was
+  the wrong way round in game; the grip before that hung it along the
+  forearm at an angle). If it clips the arm or the pack on a small people
+  (the mousefolk, the tinker), or the head touches the ground on the
+  shortest rigs, `hammerHandle` and the `tool` bone's cubes in
+  `tools/models/generate.ts` are the numbers to move.
+
+- **Double chests**: a larder's pair should show as one wide chest with
+  one lid. If the latch sits on the wrong half, the lead is the other one:
+  swap `lead` and `other` in `chestPairs` (`tools/structures/blueprint.ts`).
+  The pairing is measured by the container's 54 slots, not by its look.
 
 - **People stay by their posts** across a chunk unload and reload and a
   long session (the post keeps its record; the person is `persistent`). If
@@ -645,10 +676,10 @@ own ring.
   per people, as the concepts had) and give the client entity one
   `animations` map per geometry. **Ears through the cap**: the ear cube
   rises through the hat crown; if they z-fight, shrink the crown by half a
-  unit where the ears pass. **Scale and the collision box**: a mouse at
-  0.65 that is hard to click, or a bear at 1.15 that cannot pass its own
-  door, means a per-people `minecraft:collision_box` in the component
-  group. **The names**: each person's name tag shows only while looked at;
+  unit where the ears pass. **Scale and the collision box**: measured, it
+  does scale it (the high elves at their doors), and every people scaled
+  past 1 has its own `minecraft:collision_box`; a mouse at 0.65 that is
+  hard to click would want one the other way. **The names**: each person's name tag shows only while looked at;
   if it shows always, `minecraft:nameable` needs `always_show: false` set
   explicitly.
 - **The furfolk villages placed and generated**: none has been placed on

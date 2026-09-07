@@ -549,16 +549,18 @@ registerAsync("qol", "builder_stall_as_the_reedfolk_build_it", async (test) => {
   });
 }).maxTicks(3000).structureName(ARENA16);
 
-// The larder comes down whole: its door is two cells and one item, and its
-// five chests stand in rows that pair into double chests. Everything that
-// went in comes back and nothing more, so a popped door half or a merged
-// chest would show as a count.
+// The larder comes down whole: its door is two cells and one item, and two
+// of its four chests stand side by side and pair into a double chest (the
+// fifth of the row is a barrel, since three in a row pair badly). Everything
+// that went in comes back and nothing more, so a popped door half or a
+// merged chest would show as a count.
 const LARDER_MATERIALS: Record<string, number> = {
   "minecraft:spruce_planks": 69,
   "minecraft:spruce_stairs": 48,
   "minecraft:stone_bricks": 25,
   "minecraft:spruce_log": 12,
-  "minecraft:chest": 5,
+  "minecraft:chest": 4,
+  "minecraft:barrel": 1,
   "minecraft:spruce_door": 1,
   "minecraft:lantern": 1,
   "minecraft:spruce_slab": 1,

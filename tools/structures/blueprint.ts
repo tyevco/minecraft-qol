@@ -399,7 +399,26 @@ export class Blueprint {
     };
     for (const b of this.blocks()) {
       const short = b.name.replace("minecraft:", "");
-      if (short === "lantern" || short === "soul_lantern") {
+      if ((short === "chest" || short === "trapped_chest") && typeof b.states["minecraft:cardinal_direction"] !== "string") {
+        // A chest set down with no facing faces the room: the first open
+        // side, south first. A row of chests along x faces the same way,
+        // across the row, open for any of them, which is what lets them
+        // pair (chestPairs): the game pairs only chests that face alike.
+        // Two one behind the other are two chests; an author who wants
+        // them paired faces them east or west.
+        const open = (x: number, z: number, f: Facing): boolean => {
+          const [dx, dz] = STEP[f];
+          const n = this.at(x + dx, b.y, z + dz);
+          return n === undefined || /lantern|torch|carpet|_slab$|flower_pot/.test(n);
+        };
+        const mate = (dx: number, dz: number): boolean => this.at(b.x + dx, b.y, b.z + dz) === b.name;
+        const row = mate(1, 0) || mate(-1, 0);
+        const cells: [number, number][] = [[b.x, b.z]];
+        if (row) for (const dx of [-1, 1]) if (mate(dx, 0)) cells.push([b.x + dx, b.z]);
+        const candidates: Facing[] = row ? ["south", "north"] : ["south", "north", "east", "west"];
+        const facing = candidates.find((f) => cells.some(([x, z]) => open(x, z, f))) ?? candidates[0]!;
+        this.set(b.x, b.y, b.z, short, { ...b.states, "minecraft:cardinal_direction": facing });
+      } else if (short === "lantern" || short === "soul_lantern") {
         const above = this.at(b.x, b.y + 1, b.z);
         this.set(b.x, b.y, b.z, short, { hanging: above !== undefined && !/lantern/.test(above) });
       } else if (/_wall$/.test(short)) {
@@ -525,6 +544,44 @@ export class Blueprint {
     return out;
   }
 
+  /**
+   * The double chests: two chests (or two trapped chests) side by side,
+   * facing the same way, the pair lying across their facing, as the game
+   * pairs a chest set down beside another. The first of a row takes the
+   * next; a third stands alone, as it would if a player set them down in
+   * turn. The lead is the east half of a row along x and the south half of
+   * one along z, whichever way the pair faces: measured in
+   * `villages_chest_pair_is_a_double_chest` for rows facing south and
+   * north, where a pair led by its west half came apart and the loose half
+   * took the next chest instead. A structure carries pairing as
+   * block-entity data (`pairx`, `pairz`, `pairlead`), which toMcstructure
+   * writes; without it a village's larder came up as so many single chests
+   * in game. Three in a row are never authored (chests.test.ts): placed by
+   * `structureManager.place`, which pairs chests on its own as well, the
+   * third took up with a half that was already paired.
+   */
+  chestPairs(): { lead: [number, number, number]; other: [number, number, number] }[] {
+    const out: { lead: [number, number, number]; other: [number, number, number] }[] = [];
+    const used = new Set<number>();
+    for (const b of this.blocks()) {
+      if (!/^minecraft:(trapped_)?chest$/.test(b.name)) continue;
+      const i = this.index(b.x, b.y, b.z);
+      if (used.has(i)) continue;
+      const facing = (b.states["minecraft:cardinal_direction"] as string | undefined) ?? "south";
+      const [dx, dz] = facing === "north" || facing === "south" ? [1, 0] : [0, 1];
+      const nx = b.x + dx, nz = b.z + dz;
+      if (nx >= this.sx || nz >= this.sz) continue;
+      const j = this.index(nx, b.y, nz);
+      const n = this.cells[j]!;
+      if (n < 0 || used.has(j)) continue;
+      const other = this.palette[n]!;
+      if (other.name !== b.name || ((other.states["minecraft:cardinal_direction"] as string | undefined) ?? "south") !== facing) continue;
+      used.add(i).add(j);
+      out.push({ lead: [nx, b.y, nz], other: [b.x, b.y, b.z] });
+    }
+    return out;
+  }
+
   /** Material count by block name, what a blueprint table would ask for. */
   materials(): Record<string, number> {
     const m: Record<string, number> = {};
@@ -535,7 +592,12 @@ export class Blueprint {
     return m;
   }
 
-  toMcstructure(): Buffer {
+  /**
+   * The .mcstructure. `pairing` is for the rigs that measure double chests:
+   * "lead" writes each pair as chestPairs has it, "swapped" with the other
+   * half leading (which the game refuses), "none" no pairing data at all.
+   */
+  toMcstructure(pairing: "lead" | "swapped" | "none" = "lead"): Buffer {
     const [sx, sy, sz] = this.size;
     const count = sx * sy * sz;
     const indices: Tag[] = new Array<Tag>(count);
@@ -572,6 +634,26 @@ export class Blueprint {
           z: int(z),
         }),
       });
+    }
+    // Double chests: each half names the other, the lead half says so.
+    // Positions are the structure's own, as the jigsaws' are, with the
+    // world origin at zero; the loader moves them with the structure.
+    for (const { lead, other } of pairing === "none" ? [] : this.chestPairs()) {
+      const [a, b] = pairing === "lead" ? [lead, other] : [other, lead];
+      for (const [self, partner, isLead] of [[a, b, 1], [b, a, 0]] as const) {
+        positionData[String(this.index(...self))] = compound({
+          block_entity_data: compound({
+            id: string("Chest"),
+            isMovable: byte(1),
+            pairlead: byte(isLead),
+            pairx: int(partner[0]),
+            pairz: int(partner[2]),
+            x: int(self[0]),
+            y: int(self[1]),
+            z: int(self[2]),
+          }),
+        });
+      }
     }
     return encodeRoot(
       compound({

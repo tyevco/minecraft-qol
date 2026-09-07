@@ -109,6 +109,7 @@ describe("palettes", () => {
     expect(m["minecraft:brick_block"]).toBe(25 + 69); // footing and walls, and the larder's spruce roof planks swap as wall
     expect(m["minecraft:copper_block"]).toBe(12);
     expect(m["minecraft:brick_stairs"]).toBe(48);
-    expect(m["minecraft:chest"]).toBe(5);
+    expect(m["minecraft:chest"]).toBe(4); // a double chest and two singles; the fifth is a barrel, since three in a row pair badly
+    expect(m["minecraft:barrel"]).toBe(1);
   });
 });

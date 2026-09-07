@@ -29,7 +29,8 @@ describe("materials", () => {
     const larder = BUILDINGS.find((b) => b.key === "shared_larder")!;
     const m = materials(larder.blocks().map((b) => ({ x: b.x, y: b.y, z: b.z, name: b.name, states: b.states })));
     expect(m["minecraft:spruce_door"]).toBe(1);
-    expect(m["minecraft:chest"]).toBe(5);
+    expect(m["minecraft:chest"]).toBe(4); // a double chest and two singles; the fifth is a barrel, since three in a row pair badly
+    expect(m["minecraft:barrel"]).toBe(1);
   });
 });
 

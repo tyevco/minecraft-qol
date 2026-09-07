@@ -24,6 +24,13 @@ export interface Cottage {
   door: string;
   ridge?: string;
   window?: string;
+  /**
+   * A doorway three high: the door and an open block over it. For a people
+   * whose model stands taller than two blocks (the high elves are 2.6 at
+   * their scale), whose head went through the lintel of a two-high door
+   * in game and read as a door too small for them.
+   */
+  tallDoor?: boolean;
 }
 
 /**
@@ -43,6 +50,7 @@ export function cottage(bp: Blueprint, x: number, z: number, w: number, d: numbe
     bp.fill(cx, 1, cz, 1, wallH, 1, m.corner);
   const doorX = x + Math.floor(w / 2);
   bp.door(doorX, 1, z + d - 1, m.door, "south");
+  if (m.tallDoor && wallH >= 3) bp.set(doorX, 3, z + d - 1, "air");
   const glass = m.window ?? "glass_pane";
   const wy = Math.min(2, wallH);
   if (w >= 5) {
@@ -440,7 +448,9 @@ building("shared_larder", "Larder", "shared", "A stone-floored hut of chests. Wh
   for (const [cx, cz] of [[1, 1], [5, 1], [1, 5], [5, 5]] as const) bp.fill(cx, 1, cz, 1, 3, 1, "spruce_log");
   bp.door(3, 1, 5, "spruce", "south");
   bp.hipRoof(1, 4, 1, 5, 5, "spruce_planks");
-  for (const [x, z] of [[2, 2], [3, 2], [4, 2], [2, 4], [4, 4]] as const) bp.set(x, 1, z, "chest");
+  // A double chest and a barrel along the back, two chests by the walls: never three chests in a row (blueprint.ts chestPairs).
+  for (const [x, z] of [[2, 2], [3, 2], [2, 4], [4, 4]] as const) bp.set(x, 1, z, "chest");
+  bp.set(4, 1, 2, "barrel");
   bp.set(3, 3, 3, "lantern");
   post(bp, 3, 1, 4, "builder");
 });
@@ -668,7 +678,7 @@ building("wood_elf_larder", "Larder", "wood_elf", "A hut of barrels and chests o
 
 // High elves: quartz and diorite, prismarine roofs, sea lanterns, cherry trees.
 
-const HIGH: Cottage = { floor: "polished_diorite", wall: "quartz_block", corner: "quartz_pillar", roof: "prismarine_bricks", door: "birch", ridge: "smooth_quartz", window: "light_blue_stained_glass_pane" };
+const HIGH: Cottage = { tallDoor: true, floor: "polished_diorite", wall: "quartz_block", corner: "quartz_pillar", roof: "prismarine_bricks", door: "birch", ridge: "smooth_quartz", window: "light_blue_stained_glass_pane" };
 
 building("high_elf_hall", "Hall of Arches", "high_elf", "A long quartz hall under a prismarine roof: pillars, a fountain in the middle, sea lanterns in the walls, the trader's and the guard's posts. The heart of a high elf village.", (bp) => {
   cottage(bp, 1, 1, 13, 9, 4, HIGH);

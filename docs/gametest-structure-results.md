@@ -474,9 +474,11 @@ from either is not evidence.
 
 ### `Could not setBlock 'stone'` is still only a chunk-loading artefact
 
-Six of the twenty new tests failed inside `rig.floor()` with
-`gameTest.assert.couldNotSetBlock` on their first pass, in a strict alternating
-pattern, and **every one passed when the runner re-ran it alone**. It is the
+Four of the twenty new tests failed inside `rig.floor()` with
+`gameTest.assert.couldNotSetBlock` on their first pass, three of them in a
+strict alternating pattern, and **all three passed when the runner re-ran them
+alone**. (The fourth, `keep_on_death_stops_the_drop`, re-ran to a different and
+real result — the one below.) It is the
 same unloaded-chunk artefact documented above under "Run tests one at a time",
 and it now shows up in sequential runs too, not just `runset`. It moves between
 runs and it is not a fact about any pack: read a first-pass `couldNotSetBlock`

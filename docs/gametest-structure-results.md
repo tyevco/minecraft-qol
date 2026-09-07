@@ -594,3 +594,21 @@ starts from a world that does not exist yet. Locally, a suite result from a
 world that has been run against before is worth exactly as much as a re-run in
 sequence — read the pack's own log lines before believing it, and re-run
 `--fresh` before reporting a failure that CI does not have.
+
+**Since fixed in the pack, and `--fresh` is no longer the answer to this one.**
+The dangling flag was a real bug, of the same family as the stale post records
+(issue #104): `state.visit` was cleared only when the visitor left at dawn, so
+a visitor removed by anything else — killed, despawned, or taken by a structure
+reload — left the settlement occupied by nobody for good. On the suite, where
+the clock is set per test, the leaving dawn may never come, so
+`villages_visitor_leaves_at_dawn` failed with "expected a visitor before dawn"
+on a world booting `0 post(s) known`. The visitor poll now gives a visit up
+after three consecutive polls that cannot find its visitor — three, not one,
+because `world.getEntity` returns nothing for an entity in an unloaded chunk
+exactly as it does for one that is gone (`core/visitors.ts` `visitLost`):
+
+```
+[Villages] the visitor (-124554051208) is no longer in the world; the visit is given up and the next comes on day 2
+```
+
+Both visitor tests then pass on a world that had just failed one of them.

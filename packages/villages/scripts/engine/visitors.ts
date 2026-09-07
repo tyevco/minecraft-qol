@@ -48,6 +48,8 @@ import * as walk from "./walk";
 const PROPERTY = "vl:visitors";
 export const VISITOR_TAG = "villages:visitor";
 const POLL_TICKS = 20;
+/** Consecutive polls that have failed to find the recorded visitor (core `visitLost`). */
+let visitMisses = 0;
 
 let log: (...parts: unknown[]) => void = () => undefined;
 let state: core.VisitorsState = core.parseState(undefined);
@@ -131,6 +133,25 @@ function tick(): void {
     else if (was !== undefined && state.lockedTick === undefined) log("the daylight cycle runs again; dawn is the time of day");
     else if (locked.dawn) log(`dawn on the locked clock: day ${today()}`);
   }
+  // A recorded visit whose visitor no longer exists blocks every later
+  // arrival, since `state.visit` is otherwise cleared only by leaving at
+  // dawn. Give up on it after a few consecutive misses - one proves nothing,
+  // because an entity in an unloaded chunk reads the same as one that is
+  // gone (core/visitors.ts `visitLost`).
+  if (state.visit) {
+    const verdict = core.visitLost(visitor() !== undefined, visitMisses);
+    visitMisses = verdict.misses;
+    if (verdict.lost) {
+      const name = state.visit.entityId;
+      state = core.left(state, today(), Math.random);
+      save();
+      visitMisses = 0;
+      log(`the visitor (${name}) is no longer in the world; the visit is given up and the next comes on day ${state.nextDay}`);
+    }
+  } else if (visitMisses !== 0) {
+    visitMisses = 0;
+  }
+
   if (!byTime && !locked.dawn) return;
   const day = today();
   if (core.leavesAt(state, day)) leave(day);

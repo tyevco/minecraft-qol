@@ -11,6 +11,7 @@ import {
   type Entity,
   type EntityEquippableComponent,
   type Player,
+  type Vector3,
 } from "@minecraft/server";
 import { NEIGHBOURS } from "@qol/shared/core/facing";
 import { safeGetBlock } from "@qol/shared/engine/safeBlock";
@@ -45,7 +46,7 @@ import {
 } from "../core/tiers";
 import { hopperFeeds } from "../core/hopper";
 import { linkKey, samePosition, type Position, type TurretRecord } from "../core/record";
-import { reconcileBlock, spawnAllowed } from "../core/reconcile";
+import { HEAD_SEAT, reconcileBlock, spawnAllowed } from "../core/reconcile";
 import {
   headsAt,
   isTurretEntity,
@@ -118,7 +119,7 @@ export function positionOf(block: Block): Position {
 }
 
 function fresh(pos: Position): TurretRecord {
-  return { ...pos, ammo: 0, kills: 0, tiers: { ...BASE_TIERS }, priority: "nearest" };
+  return { ...pos, ammo: 0, kills: 0, tiers: { ...BASE_TIERS }, priority: "nearest", held: false };
 }
 
 /** A friendly item name for a message: `minecraft:redstone_block` -> `redstone block`. */
@@ -145,6 +146,23 @@ export function viewOf(item: ItemStack | undefined): StackView | undefined {
     // Not a potion, or the component threw; either way no effect id.
   }
   return view;
+}
+
+/**
+ * Take one item from a container slot, clearing the slot at one. Returns
+ * false, taking nothing, when the slot no longer holds what was expected:
+ * a hopper may have moved the stack between the snapshot and the take.
+ */
+function takeOneFrom(container: Container, slot: number, expectTypeId: string): boolean {
+  const item = container.getItem(slot);
+  if (!item || item.typeId !== expectTypeId) return false;
+  if (item.amount > 1) {
+    item.amount -= 1;
+    container.setItem(slot, item);
+  } else {
+    container.setItem(slot, undefined);
+  }
+  return true;
 }
 
 function snapshot(container: Container): Slot[] {
@@ -237,14 +255,7 @@ function upgradeFromHoppers(hoppers: Feeder[], tiers: Tiers): Tiers | undefined 
       const verdict = feedUpgrade(tiers, s.typeId);
       if (verdict.kind !== "upgrade") continue;
       try {
-        const item = container.getItem(i);
-        if (!item || item.typeId !== s.typeId) continue;
-        if (item.amount > 1) {
-          item.amount -= 1;
-          container.setItem(i, item);
-        } else {
-          container.setItem(i, undefined);
-        }
+        if (!takeOneFrom(container, i, s.typeId)) continue;
       } catch (e) {
         console.warn(`${TAG} could not take an upgrade from a hopper: ${e}`);
         continue;
@@ -267,14 +278,7 @@ export function chargeSpecial(dim: Dimension, pos: Position, kind: Kind): boolea
     const i = findKind(slots, kind);
     if (i === undefined) continue;
     try {
-      const item = container.getItem(i);
-      if (!item) continue;
-      if (item.amount > 1) {
-        item.amount -= 1;
-        container.setItem(i, item);
-      } else {
-        container.setItem(i, undefined);
-      }
+      if (!takeOneFrom(container, i, slots[i]!.typeId)) continue;
       stats.charged++;
       return true;
     } catch (e) {
@@ -295,22 +299,48 @@ function aimFor(record: TurretRecord): string {
   return aimEvent(record.tiers.rate, rangeFor(record));
 }
 
+/** Where the head's eye is: the barrel, 0.4 above the seat (docs/bulwark-turret-results.md). */
+function eyeOf(record: Position): Vector3 {
+  return { x: record.x + 0.5, y: record.y + HEAD_SEAT + 0.4, z: record.z + 0.5 };
+}
+
+/**
+ * Whether a straight line from the head's eye to a mob's middle crosses a
+ * block. The filtered selector groups carry `must_see`, so a mob the head
+ * cannot see must not be counted either: counting a wounded zombie in a
+ * cave below would put the head in the wounded-only group with nothing it
+ * may shoot, and it would stand idle beside a healthy one at the door.
+ */
+function canSee(dim: Dimension, eye: Vector3, mob: Entity): boolean {
+  try {
+    const at = mob.location;
+    const to = { x: at.x - eye.x, y: at.y + 0.9 - eye.y, z: at.z - eye.z };
+    const dist = Math.hypot(to.x, to.y, to.z);
+    if (dist < 0.5) return true;
+    const dir = { x: to.x / dist, y: to.y / dist, z: to.z / dist };
+    return dim.getBlockFromRay(eye, dir, { maxDistance: dist, includePassableBlocks: false }) === undefined;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The target selector group for a record's priority and what is in range
  * right now. Nearest needs no look; the other two count the monsters the
- * head could see and prefer the wounded or the healthy while any are there
- * (core/targeting.ts, measured on the rig). One filtered query per block
- * tick per turret that asked for it.
+ * head can see and prefer the wounded or the healthy while any are there
+ * (core/targeting.ts, measured on the rig). One filtered query and one
+ * block raycast per visible candidate, per block tick, per turret that
+ * asked for it.
  */
 function targetFor(dim: Dimension, record: TurretRecord): string {
   const range = rangeFor(record);
   if (record.priority === "nearest") return targetEvent("any", range);
   const healths: number[] = [];
   try {
-    const at = { x: record.x + 0.5, y: record.y + 1, z: record.z + 0.5 };
-    for (const e of dim.getEntities({ location: at, maxDistance: RANGE_BLOCKS[range], families: ["monster"] })) {
+    const eye = eyeOf(record);
+    for (const e of dim.getEntities({ location: eye, maxDistance: RANGE_BLOCKS[range], families: ["monster"] })) {
       const h = e.getComponent(EntityComponentTypes.Health)?.currentValue;
-      if (typeof h === "number") healths.push(h);
+      if (typeof h === "number" && canSee(dim, eye, e)) healths.push(h);
     }
   } catch {
     // An unloaded edge or a vanished mob: prefer nothing this tick.
@@ -325,6 +355,7 @@ export function armingFor(dim: Dimension, record: TurretRecord): ReturnType<type
     specialOffered(feeders(dim, record), record.tiers.gate),
     aimFor(record),
     targetFor(dim, record),
+    record.held,
   );
 }
 
@@ -433,7 +464,11 @@ export function tick(block: Block): void {
   if (head) {
     const link = readLink(head);
     if (!link || !samePosition(link, pos)) writeLink(head, pos);
-    syncArming(head, arming(record.ammo, special, aimFor(record), targetFor(dim, record)), record.tiers.damage);
+    syncArming(
+      head,
+      arming(record.ammo, special, aimFor(record), targetFor(dim, record), record.held),
+      record.tiers.damage,
+    );
   }
 
   if (dirty) storage.put(record);
@@ -492,7 +527,7 @@ export function retire(dim: Dimension, pos: Position, player?: Player): void {
 function statusLine(dim: Dimension, record: TurretRecord, head: Entity | undefined): string {
   const armed = head ? readArmed(head) : undefined;
   const kind = head ? readKind(head) : undefined;
-  const headState = !head ? "§cmissing" : armed ? "§aarmed" : "§eidle";
+  const headState = !head ? "§cmissing" : record.held ? "§eholding fire" : armed ? "§aarmed" : "§eidle";
   const firing = armed && kind && kind !== "arrow" ? ` §7firing §f${KIND_LABEL[kind]}§7 from a hopper.` : "";
   const base =
     `§6Bulwark Turret §7ammo §f${record.ammo}/${AMMO_CAP}§7, kills §f${record.kills}§7, ` +
@@ -503,8 +538,8 @@ function statusLine(dim: Dimension, record: TurretRecord, head: Entity | undefin
   if (capped) notes.push(`§7Range is capped at §f${pol.rangeCap}§7 blocks by the pack settings.`);
   if (!pol.specialAmmo) notes.push("§7Special ammo is switched off in the pack settings.");
   if (!pol.upgrades) notes.push("§7Upgrades are switched off in the pack settings.");
-  const gated = pol.specialAmmo ? specialGated(feeders(dim, record), record.tiers.gate) : undefined;
   if (notes.length > 0) return `${base} ${notes.join(" ")}`;
+  const gated = specialGated(feeders(dim, record), record.tiers.gate);
   if (gated) {
     const need = gateFor(gated);
     return (
@@ -528,11 +563,12 @@ function takeOne(equippable: EntityEquippableComponent, held: ItemStack): void {
   }
 }
 
-/** Set a turret's targeting priority, from the form. */
-export function setPriority(pos: Position, priority: Priority, player?: Player): void {
+/** Apply the turret's form: targeting priority and hold fire. */
+export function applyForm(pos: Position, choice: { priority: Priority; held: boolean }, player?: Player): void {
   const record = storage.get(pos);
   if (!record) return;
-  record.priority = priority;
+  record.priority = choice.priority;
+  record.held = choice.held;
   storage.put(record);
   let dim: Dimension | undefined;
   try {
@@ -542,7 +578,9 @@ export function setPriority(pos: Position, priority: Priority, player?: Player):
   }
   const head = linkedEntity(record.entityId, pos.dimId);
   if (dim && head) syncArming(head, armingFor(dim, record), record.tiers.damage);
-  player?.sendMessage(`§7Target: §f${PRIORITY_LABEL[priority]}§7.`);
+  player?.sendMessage(
+    `§7Target: §f${PRIORITY_LABEL[record.priority]}§7.` + (record.held ? " §eHolding fire§7 until switched back." : ""),
+  );
 }
 
 /**
@@ -560,7 +598,7 @@ export function interact(player: Player, block: Block): void {
 
     if (player.isSneaking && !held) {
       if (!storage.get(pos)) storage.put(record);
-      openTurretForm(player, record, (priority) => setPriority(pos, priority, player));
+      openTurretForm(player, record, (choice) => applyForm(pos, choice, player));
       return;
     }
 

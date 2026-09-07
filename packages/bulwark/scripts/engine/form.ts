@@ -8,19 +8,19 @@ import { describeTiers } from "../core/tiers";
 /**
  * The per-turret form: sneak and right-click the block with an empty hand.
  *
- * One choice lives here, the targeting priority, because it is per turret
- * and the settings panel is per world (CLAUDE.md rule 3). The rest of the
- * form is a read-out. `ModalFormData` is stable in server-ui 2.1.0;
+ * Two choices live here, the targeting priority and a hold-fire switch,
+ * because they are per turret and the settings panel is per world (CLAUDE.md
+ * rule 3). The rest of the form is a read-out. `ModalFormData` is stable in server-ui 2.1.0;
  * `CustomForm.image`, which the design wanted for an upgrade grid, is not.
  *
- * The dropdown is the first element so its value is `formValues[0]`, and
- * the read still looks for the first number in case labels take slots in
- * a later runtime.
+ * The dropdown and the toggle are the first two elements, and the read still
+ * looks for the first number and the first boolean in case labels take
+ * slots in a later runtime.
  */
 export function openTurretForm(
   player: Player,
   record: TurretRecord,
-  onPriority: (priority: Priority) => void,
+  onSubmit: (choice: { priority: Priority; held: boolean }) => void,
 ): void {
   const form = new ModalFormData()
     .title("Bulwark Turret")
@@ -34,6 +34,10 @@ export function openTurretForm(
           "(three hearts or less) while any are in range; strongest first prefers healthy ones.",
       },
     )
+    .toggle("Hold fire", {
+      defaultValue: record.held,
+      tooltip: "Disarms this turret until switched back. Nothing is taken from it.",
+    })
     .divider()
     .label(`Ammo ${record.ammo}/${AMMO_CAP}, kills ${record.kills}`)
     .label(`Tiers: ${describeTiers(record.tiers)}`)
@@ -44,8 +48,9 @@ export function openTurretForm(
     .then((r) => {
       if (r.canceled || !r.formValues) return;
       const idx = r.formValues.find((v) => typeof v === "number");
+      const held = r.formValues.find((v) => typeof v === "boolean");
       const priority = typeof idx === "number" ? PRIORITIES[idx] : undefined;
-      if (priority) onPriority(priority);
+      if (priority) onSubmit({ priority, held: held === true });
     })
     .catch((e) => {
       console.warn(`[Bulwark] turret form failed: ${e}`);

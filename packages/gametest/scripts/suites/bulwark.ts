@@ -416,7 +416,6 @@ registerAsync("qol", "turret_throws_snowballs_from_hopper", async (test) => {
 registerAsync("qol", "turret_throws_splash_from_hopper", async (test) => {
   placeTurret(test);
   feedingHopper(test);
-  // Splash potions do not stack: one per slot.
   // Splash potions do not stack: one per slot. Slots 3-4 carry the gate.
   for (let slot = 0; slot < 3; slot++) fillHopper(test, slot, "splash_potion", 1, 34); // weakness
   const head = await headReady(test);

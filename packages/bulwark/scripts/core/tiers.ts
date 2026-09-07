@@ -124,25 +124,26 @@ export function materialsToReturn(tiers: Readonly<Tiers>): string[] {
   return out;
 }
 
+/** The gate tier each ammo kind needs: plain, then tints, then the rest. */
+export const GATE_FOR: Readonly<Record<Kind, Tier>> = {
+  arrow: 1,
+  slowness: 2,
+  weakness: 2,
+  decay: 2,
+  snowball: 3,
+  splash_slowness: 3,
+  splash_weakness: 3,
+  splash_decay: 3,
+};
+
 /** Which ammo kinds a gate tier lets the hopper feed. */
 export function gateAllows(gate: Tier, kind: Kind): boolean {
-  switch (kind) {
-    case "arrow":
-      return true;
-    case "slowness":
-    case "weakness":
-    case "decay":
-      return gate >= 2;
-    default:
-      return gate >= 3;
-  }
+  return gate >= GATE_FOR[kind];
 }
 
 /** The gate tier a kind needs, for the message when it is refused. */
 export function gateFor(kind: Kind): Tier {
-  if (kind === "arrow") return 1;
-  if (kind === "slowness" || kind === "weakness" || kind === "decay") return 2;
-  return 3;
+  return GATE_FOR[kind];
 }
 
 export function describeTiers(tiers: Readonly<Tiers>): string {

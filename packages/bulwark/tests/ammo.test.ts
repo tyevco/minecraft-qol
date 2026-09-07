@@ -131,6 +131,22 @@ describe("planPull", () => {
     expect(plan).toEqual({ takes: [{ slot: 0, amount: 16 }], ammo: 16 });
   });
 
+  it("never overshoots when the buffer is somehow over the cap", () => {
+    expect(planPull(AMMO_CAP + 10, [arrows(64)])).toEqual({ takes: [], ammo: AMMO_CAP + 10 });
+  });
+
+  it("always takes exactly min(available, room), for every buffer level", () => {
+    for (let ammo = 0; ammo <= AMMO_CAP; ammo++) {
+      for (const stacks of [[arrows(3), arrows(64)], [arrows(64), arrows(64)]]) {
+        const available = stacks.reduce((n, s) => n + s!.amount, 0);
+        const plan = planPull(ammo, stacks);
+        const taken = plan.takes.reduce((n, t) => n + t.amount, 0);
+        expect(taken, `ammo ${ammo}`).toBe(Math.min(available, AMMO_CAP - ammo));
+        expect(plan.ammo).toBe(ammo + taken);
+      }
+    }
+  });
+
   it("skips empty and foreign slots to reach arrows further along", () => {
     const plan = planPull(0, [null, other(3), null, arrows(2), arrows(3)]);
     expect(plan.takes).toEqual([
@@ -198,6 +214,12 @@ describe("shots and arming", () => {
       aim: "bulwark:aim_r2_g3",
       target: "bulwark:target_wounded_g3",
     });
+  });
+
+  it("holds fire whatever the supply says, keeping the kind for the status line", () => {
+    expect(arming(10, undefined, EVENT_ARM, EVENT_TARGET, true)).toMatchObject({ armed: false, kind: "arrow" });
+    expect(arming(0, "snowball", EVENT_ARM, EVENT_TARGET, true)).toMatchObject({ armed: false, kind: "snowball" });
+    expect(arming(10, undefined, EVENT_ARM, EVENT_TARGET, false).armed).toBe(true);
   });
 
   it("lets a gate keep a special kind out of the search", () => {

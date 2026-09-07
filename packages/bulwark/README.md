@@ -130,8 +130,9 @@ groups, `bulwark:target_<any|wounded|healthy>_g<range>`, and a turret set to
 wounded-only selector (three hearts or under) while any are there, the plain
 one otherwise; "strongest first" the same at seven and a half hearts or
 over. Nearest is the plain selector always. The choice lives in the record
-(schema 3; older rows read as nearest) and is made on the turret's form,
-which is the one per-turret setting: the panel is per world.
+(schema 4, with the hold-fire flag; older rows read as nearest and not
+held) and is made on the turret's form, the per-turret settings: the panel
+is per world.
 
 **Ammo gates the AI.** `ranged_attack` fires whenever it has a target and
 knows nothing about ammo. So the entity has two component groups —
@@ -191,8 +192,9 @@ height in `tools/models/generate.ts` and this number moves with it;
   remembered by id, because a kill by a custom projectile names the
   projectile, not the shooter (measured).
 - **Sneak and right-click with an empty hand opens the turret's form**: the
-  targeting dropdown and a read-out of ammo, kills and tiers. Nothing else
-  is on it yet.
+  targeting dropdown, a **hold fire** switch that disarms this one turret
+  until switched back (nothing is taken from it; the status line says
+  "holding fire"), and a read-out of ammo, kills and tiers.
 - **Right-click with an upgrade material spends it**, or says why not
   (already that tier; needs the previous material first). A material in the
   feeding hopper does the same, one per block tick. The status line lists

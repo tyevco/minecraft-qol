@@ -17,9 +17,10 @@ import { BASE_TIERS, isTier, type Tiers } from "./tiers";
  * and reads older ones through `unpackRecord`, so a reader that accepts the
  * previous shape is the whole migration. Schema 2 added the four tiers;
  * a schema-1 row reads as tier 1 on every axis. Schema 3 added the targeting
- * priority; an older row reads as nearest.
+ * priority; an older row reads as nearest. Schema 4 added the hold-fire
+ * flag; an older row reads as not held.
  */
-export const SCHEMA = 3;
+export const SCHEMA = 4;
 
 export interface Position {
   dimId: string;
@@ -39,6 +40,8 @@ export interface TurretRecord extends Position {
   tiers: Tiers;
   /** Targeting priority, chosen on the turret's form (core/targeting.ts). */
   priority: Priority;
+  /** Hold fire: disarmed by choice, on the form, until switched back. */
+  held: boolean;
 }
 
 /** Compact row form. Short: one property holds every turret. */
@@ -55,6 +58,7 @@ export type Row = [
   range: number,
   gate: number,
   priority: number,
+  held: 0 | 1,
 ];
 
 export function packRecord(r: TurretRecord): Row {
@@ -71,6 +75,7 @@ export function packRecord(r: TurretRecord): Row {
     r.tiers.range,
     r.tiers.gate,
     priorityIndex(r.priority),
+    r.held ? 1 : 0,
   ];
 }
 
@@ -80,7 +85,7 @@ export function packRecord(r: TurretRecord): Row {
  */
 export function unpackRecord(packed: unknown): TurretRecord | undefined {
   if (!Array.isArray(packed) || packed.length < 7) return undefined;
-  const [dimId, x, y, z, entityId, ammo, kills, damage, rate, range, gate, priority] = packed as unknown[];
+  const [dimId, x, y, z, entityId, ammo, kills, damage, rate, range, gate, priority, held] = packed as unknown[];
   if (typeof dimId !== "string" || dimId === "") return undefined;
   if (![x, y, z].every((n) => typeof n === "number" && Number.isInteger(n))) return undefined;
   if (typeof entityId !== "string" || typeof ammo !== "number" || typeof kills !== "number") {
@@ -102,6 +107,7 @@ export function unpackRecord(packed: unknown): TurretRecord | undefined {
       gate: isTier(gate) ? gate : BASE_TIERS.gate,
     },
     priority: priorityFromIndex(priority),
+    held: held === 1 || held === true,
   };
 }
 

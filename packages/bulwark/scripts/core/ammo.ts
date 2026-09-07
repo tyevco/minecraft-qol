@@ -138,7 +138,8 @@ export function classify(stack: StackView | undefined): Kind | undefined {
   if (!stack || stack.amount <= 0) return undefined;
   if (stack.typeId === AMMO_ITEM) {
     const key = stack.localizationKey;
-    if (key === undefined || key === PLAIN_ARROW_KEY) return key === undefined ? undefined : "arrow";
+    if (key === undefined) return undefined;
+    if (key === PLAIN_ARROW_KEY) return "arrow";
     if (key.startsWith(TIP_PREFIX)) return TIP_KINDS[key.slice(TIP_PREFIX.length)];
     return undefined;
   }
@@ -276,9 +277,12 @@ export function arming(
   special: Kind | undefined,
   aim: string = EVENT_ARM,
   target: string = EVENT_TARGET,
+  held = false,
 ): Arming {
-  if (isSpecial(special)) return { armed: true, kind: special, aim, target };
-  return { armed: isArmed(ammo), kind: "arrow", aim, target };
+  // Holding fire disarms whatever the supply says; the kind is still what it
+  // would fire, for the status line.
+  if (isSpecial(special)) return { armed: !held, kind: special, aim, target };
+  return { armed: !held && isArmed(ammo), kind: "arrow", aim, target };
 }
 
 /**

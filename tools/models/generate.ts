@@ -1181,11 +1181,21 @@ interface BipedSpec {
   arm: [number, number, number];
   leg: [number, number, number];
   beard?: boolean;
+  /**
+   * A leather skullcap with brass goggles strapped over it, pushed up off the
+   * eyes; worn on every job, since it rides the head bone. The lenses sample
+   * the `hat` tile, which the texture paints as brass and glass for this
+   * people (its hat bone carries nothing). Tinkers.
+   */
   goggles?: boolean;
+  /** A tool belt round the hips with a brass buckle (from the goggles' tile, so `goggles` too). Tinkers. */
+  belt?: boolean;
   /** Pointed ears, for the elves. */
   ears?: boolean;
-  /** Bare feet: the legs' underside is skin, not boot. Hobbits. */
+  /** Bare feet: skin under the legs, and a big hairy foot in front of each. Hobbits. */
   bare?: boolean;
+  /** A mop of curls standing off the head, down over the brow, the ears and the nape. Hobbits. */
+  curls?: boolean;
   /** A plait down the back of the head. Drovers. */
   braid?: boolean;
   /** A neckerchief round the collar, in the hat's cloth. Drovers. */
@@ -1210,12 +1220,12 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
     pivot: [x + aw / 2, shoulder - 1, 0],
     cubes: [{ origin: [x, shoulder - ah, -ad / 2], size: [aw, ah, ad], faces: { sides: "sleeve", up: "sleeve", down: "hand" } }],
   });
-  const legSpec = (name: string, x: number): Bone<BP> => ({
-    name,
-    parent: "body",
-    pivot: [x + lw / 2, hip, 0],
-    cubes: [{ origin: [x, 0, -ld / 2], size: [lw, lh, ld], faces: { sides: "trousers", up: "dark", down: spec.bare ? "hand" : "dark" } }],
-  });
+  const legSpec = (name: string, x: number): Bone<BP> => {
+    const cubes: Cube<BP>[] = [{ origin: [x, 0, -ld / 2], size: [lw, lh, ld], faces: { sides: "trousers", up: "dark", down: spec.bare ? "hand" : "dark" } }];
+    // A bare foot: wider than the leg and out in front of it, the hair tile on top for the tuft.
+    if (spec.bare) cubes.push({ origin: [x - 0.5, 0, -ld / 2 - 2], size: [lw + 1, 1.5, 2.5], faces: { all: "hand", up: "hair" } });
+    return { name, parent: "body", pivot: [x + lw / 2, hip, 0], cubes };
+  };
   const headCubes: Cube<BP>[] = [
     { origin: [-hw / 2, shoulder, -hd / 2], size: [hw, hh, hd], faces: { sides: "hair", north: "face", up: "hairTop", down: "skin" } },
   ];
@@ -1226,14 +1236,36 @@ function bipedRig(spec: BipedSpec): { bones: Bone<BP>[]; hip: number; shoulder: 
     headCubes.push({ origin: [hw / 2, top - 4, -0.5], size: [1, 4, 1], faces: { all: "hand" } });
   }
   if (spec.goggles) {
-    headCubes.push({ origin: [-hw / 2 + 1, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
-    headCubes.push({ origin: [hw / 2 - 3, top - 2, -hd / 2 - 1], size: [2, 2, 1], faces: { all: "tool" } });
-    headCubes.push({ origin: [-hw / 2, top - 1.5, -hd / 2 - 0.5], size: [hw, 1, 1], faces: { all: "pack" } });
+    // The skullcap: leather over the top of the head, hugging it, half a unit
+    // proud of the crown. The tinker's hat tile is leather with the goggles'
+    // lens painted in its top-left corner and brass in its top-right (the
+    // texture generator's gearTile); a centred window lands on the leather.
+    headCubes.push({ origin: [-hw / 2 - 0.5, top - 2.5, -hd / 2 - 0.5], size: [hw + 1, 3, hd + 1], faces: { all: "hat" } });
+    // The strap round the cap, and two lenses on its front: brass round glass,
+    // the pair meeting over the bridge of the nose. They were two iron pips
+    // before, hard to see; the tinker and the hobbit read the same at any distance.
+    headCubes.push({ origin: [-hw / 2 - 0.75, top - 1.25, -hd / 2 - 0.75], size: [hw + 1.5, 1, hd + 1.5], faces: { all: "dark" } });
+    const lens = { tile: "hat", at: [0, 0] } as const;
+    const brass = { tile: "hat", at: [12, 0] } as const;
+    for (const x of [-4, 0]) headCubes.push({ origin: [x, top - 2.25, -hd / 2 - 1.5], size: [4, 3, 1], faces: { north: lens, all: brass } });
+  }
+  if (spec.curls) {
+    // The mop: hair standing half a unit off the head all round and above it,
+    // down over the brow to just above the eyes; curls over the ears and at
+    // the nape below that, so the head reads as round.
+    headCubes.push({ origin: [-hw / 2 - 0.5, top - 2.5, -hd / 2 - 0.5], size: [hw + 1, 3, hd + 1], faces: { all: "hair", up: "hairTop" } });
+    for (const x of [-hw / 2 - 0.5, hw / 2 - 0.5]) headCubes.push({ origin: [x, top - 4.5, -hd / 2 + 1], size: [1, 2, hd - 1], faces: { all: "hair" } });
+    headCubes.push({ origin: [-hw / 2 + 0.5, top - 4.5, hd / 2 - 0.5], size: [hw - 1, 2, 1], faces: { all: "hair" } });
   }
   if (spec.braid) headCubes.push({ origin: [-1, shoulder - 5, hd / 2 - 0.5], size: [2, hh - 1 + 5, 1.5], faces: { all: "hair" } });
   const bodyCubes: Cube<BP>[] = [
     { origin: [-bw / 2, hip, -bd / 2], size: [bw, bh, bd], faces: { north: "shirt", south: "shirtBack", east: "shirtSide", west: "shirtSide", up: "dark", down: "dark" } },
   ];
+  if (spec.belt) {
+    if (!spec.goggles) throw new Error(`${spec.file}: a belt's buckle is brass from the goggles' tile; set goggles too`);
+    bodyCubes.push({ origin: [-bw / 2 - 0.5, hip + 1, -bd / 2 - 0.5], size: [bw + 1, 1.5, bd + 1], faces: { all: "dark" } });
+    bodyCubes.push({ origin: [-1, hip + 0.75, -bd / 2 - 1], size: [2, 2, 0.5], faces: { all: { tile: "hat", at: [12, 0] } } });
+  }
   if (spec.kerchief) {
     bodyCubes.push({ origin: [-bw / 2 - 0.5, shoulder - 2, -bd / 2 - 0.5], size: [bw + 1, 2, bd + 1], faces: { all: "hat" } });
     bodyCubes.push({ origin: [-1, shoulder - 4, -bd / 2 - 1], size: [2, 2, 1], faces: { all: "hat" } });
@@ -1328,11 +1360,15 @@ function biped(spec: BipedSpec, dir = VILLAGES_MODELS): void {
 biped({ file: "stonefolk", identifier: "geometry.villages_stonefolk", head: [8, 7, 8], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 8, 4], beard: true, hat: "cap" });
 // Tall and lean, not a stick: a player-width body on legs a block long.
 biped({ file: "reedfolk", identifier: "geometry.villages_reedfolk", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], hat: "reed" });
-biped({ file: "tinker", identifier: "geometry.villages_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, hat: "cap" });
+// The tinker wears its skullcap and goggles on every job (they ride the head
+// bone), so the hat bone carries nothing: a worker's cap over the skullcap
+// would stack two hats.
+biped({ file: "tinker", identifier: "geometry.villages_tinker", head: [7, 6, 7], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 7, 3], goggles: true, belt: true, hat: "none" });
 biped({ file: "tallfolk", identifier: "geometry.villages_tallfolk", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" });
-// The second four (docs/design/villages.md §3.3): hobbits, small and barefoot;
-// three kinds of elf, tall and pointed-eared, told apart by colour and hat.
-biped({ file: "hobbit", identifier: "geometry.villages_hobbit", head: [8, 7, 8], body: [8, 9, 4], arm: [3, 9, 3], leg: [3, 6, 4], bare: true, hat: "none" });
+// The second four (docs/design/villages.md §3.3): hobbits, small and barefoot,
+// under a mop of curls; three kinds of elf, tall and pointed-eared, told apart
+// by colour and hat.
+biped({ file: "hobbit", identifier: "geometry.villages_hobbit", head: [8, 7, 8], body: [8, 9, 4], arm: [3, 9, 3], leg: [3, 6, 4], bare: true, curls: true, hat: "none" });
 biped({ file: "wood_elf", identifier: "geometry.villages_wood_elf", head: [7, 8, 7], body: [7, 13, 4], arm: [3, 13, 3], leg: [3, 13, 3], ears: true, hat: "hood" });
 biped({ file: "high_elf", identifier: "geometry.villages_high_elf", head: [7, 8, 7], body: [8, 14, 4], arm: [3, 14, 3], leg: [4, 14, 4], ears: true, hat: "circlet" });
 biped({ file: "drow", identifier: "geometry.villages_drow", head: [7, 8, 7], body: [7, 13, 4], arm: [3, 13, 3], leg: [3, 13, 3], ears: true, hat: "hood" });
@@ -1354,8 +1390,13 @@ type FR = keyof typeof A.FURRED.tiles;
 interface FurredSpec extends Omit<BipedSpec, "hat" | "beard" | "goggles"> {
   /** Muzzle cube, on the head's front just above the chin. */
   muzzle: [number, number, number];
-  /** Ear cube, width x height x depth; where it sits (a side ear may be lifted so it shows above the head) and how it tilts. */
-  ear: { size: [number, number, number]; on: "top" | "side"; splay: number; pitch?: number; lift?: number };
+  /**
+   * Ear, width x height x depth; where it sits (a side ear may be lifted so
+   * it shows above the head) and how it tilts. A slab is one cube; a
+   * triangle is a stair of cubes each a unit narrower than the one below,
+   * the front of each sampling its own row of the ear tile (the cat's).
+   */
+  ear: { size: [number, number, number]; on: "top" | "side"; splay: number; pitch?: number; lift?: number; shape?: "slab" | "triangle" };
   /** Two antlers through the hat: an upright, a beam outward and a prong forward, on the head bone. */
   antlers?: boolean;
   tail: "bushy" | "brush" | "thin" | "whip" | "plume" | "rudder" | "straight" | "puff" | "stub";
@@ -1380,6 +1421,23 @@ function furred(spec: FurredSpec): void {
   // Top ears sit a unit in from the head's edge, or at the edge when they are too wide for that (the fennec's).
   const earX = spec.ear.on === "top" ? Math.max(hw / 2 - ew - 1, 0.5) : hw / 2 - 1;
   const earY = (spec.ear.on === "top" ? top - 1 : top - eh + 0.5) + (spec.ear.lift ?? 0);
+  // The ear tile's front window is centred, as every face painter's is; a
+  // triangle's rows each take the slice of it their step covers.
+  const [earU, earV] = [Math.floor((16 - ew) / 2), Math.floor((16 - eh) / 2)];
+  const earCubes = (x: number): Cube<FR>[] => {
+    const rest = { south: "hair", east: "hair", west: "hair", up: "hair", down: "hair" } as const;
+    if (spec.ear.shape !== "triangle") return [{ origin: [x, earY, -ed / 2], size: [ew, eh, ed], faces: { north: "ear", ...rest } }];
+    if (eh < ew) throw new Error(`${spec.file}: a triangle ear needs to be at least as tall as it is wide (${ew}x${eh})`);
+    const cubes: Cube<FR>[] = [];
+    let y = 0;
+    for (let w = ew; w >= 1; w--) {
+      const h = w === ew ? eh - (ew - 1) : 1;
+      const inset = (ew - w) / 2;
+      cubes.push({ origin: [x + inset, earY + y, -ed / 2], size: [w, h, ed], faces: { north: { tile: "ear", at: [earU + inset, earV + eh - y - h] }, ...rest } });
+      y += h;
+    }
+    return cubes;
+  };
   const ear = (name: string, sign: 1 | -1): Bone<FR> => {
     const x = sign > 0 ? earX : -earX - ew;
     return {
@@ -1387,7 +1445,7 @@ function furred(spec: FurredSpec): void {
       parent: "head",
       pivot: [x + ew / 2, earY, 0],
       rotation: [spec.ear.pitch ?? 0, 0, sign * spec.ear.splay],
-      cubes: [{ origin: [x, earY, -ed / 2], size: [ew, eh, ed], faces: { north: "ear", south: "hair", east: "hair", west: "hair", up: "hair", down: "hair" } }],
+      cubes: earCubes(x),
     };
   };
   bones.push(ear("left_ear", 1), ear("right_ear", -1));
@@ -1486,7 +1544,9 @@ function furred(spec: FurredSpec): void {
 }
 
 furred({ file: "foxfolk", identifier: "geometry.villages_foxfolk", head: [8, 8, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [4, 3, 2], ear: { size: [3, 6, 1], on: "top", splay: 12 }, tail: "bushy" });
-furred({ file: "catfolk", identifier: "geometry.villages_catfolk", head: [8, 7, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [3, 2, 2], ear: { size: [3, 5, 1], on: "top", splay: 8 }, tail: "thin" });
+// The cat's ears are triangles, at the head's corners and leaning out: the
+// slab it had made it a small grey wolf from any distance.
+furred({ file: "catfolk", identifier: "geometry.villages_catfolk", head: [8, 7, 8], body: [6, 8, 4], arm: [3, 8, 3], leg: [3, 6, 3], muzzle: [3, 2, 2], ear: { size: [4, 5, 1], on: "top", splay: 14, shape: "triangle" }, tail: "thin" });
 furred({ file: "wolffolk", identifier: "geometry.villages_wolffolk", head: [8, 8, 9], body: [8, 10, 4], arm: [4, 10, 4], leg: [4, 8, 4], muzzle: [4, 3, 3], ear: { size: [3, 5, 1], on: "top", splay: 10, pitch: -10 }, tail: "straight" });
 furred({ file: "rabbitfolk", identifier: "geometry.villages_rabbitfolk", head: [8, 8, 8], body: [6, 7, 4], arm: [3, 7, 3], leg: [3, 5, 3], muzzle: [3, 2, 2], ear: { size: [3, 7, 1], on: "top", splay: 5 }, tail: "puff" });
 furred({ file: "bearfolk", identifier: "geometry.villages_bearfolk", head: [9, 8, 9], body: [10, 10, 5], arm: [4, 10, 4], leg: [4, 7, 4], muzzle: [4, 3, 3], ear: { size: [3, 3, 1], on: "side", splay: 0 }, tail: "stub" });

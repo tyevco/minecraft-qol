@@ -746,3 +746,40 @@ registerAsync("qol", "villages_showcase_peoples_every_plot", async (test) => {
   }
   test.succeed();
 }).maxTicks(2400).structureName("qol:arena");
+
+/**
+ * A post record must not outlive its block (issue #104).
+ *
+ * `playerBreakBlock` is the only event that drops a record, so a post taken
+ * by an explosion, `/fill`, `/setblock`, a piston or a structure load over it
+ * left a row behind for good - and settlements cluster on x/z, so a stale row
+ * joined a live one and dragged the settlement's middle to wherever the old
+ * post used to be. That is what put a visitor sixty blocks under this arena
+ * and failed `villages_visitor_settles` on a re-used world.
+ *
+ * The record itself is unreadable from here (a dynamic property belongs to the
+ * pack that wrote it - docs/README.md corrections), so the test watches the
+ * one thing the world does show: retiring a record removes its person. Take
+ * the block away without a break event, and the person must follow within a
+ * sweep or two of the pack's ten-second interval.
+ */
+registerAsync("qol", "villages_stale_post_record_is_swept", async (test) => {
+  placePost(test, 0, 0);
+  const spawned = await until(test, () => people(test).length === 1, 400, 5);
+  test.assert(spawned, `expected a person at the post before the sweep, found ${people(test).length}`);
+
+  // setBlockType, not breakBlock: this is the /setblock and structure-load
+  // path, the one that leaves no event behind for the pack to hear.
+  test.setBlockType("minecraft:air", AT);
+  test.assertBlockPresent(POST, AT, false);
+
+  // The sweep runs on the pack's ten-second interval, sixteen records a pass,
+  // so a contaminated world needs a few passes to reach this row.
+  const swept = await until(test, () => people(test).length === 0, 1000, 10);
+  test.assert(
+    swept,
+    `the post's block was taken by setblock, but ${people(test).length} person(s) are still there: ` +
+      `the record outlived its block (issue #104)`,
+  );
+  test.succeed();
+}).maxTicks(1600).structureName("qol:arena");

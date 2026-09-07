@@ -184,7 +184,7 @@ function tick(block: Block, placed = false): void {
 }
 
 /** The post is gone: so is its person (the design: take the block away and the person leaves). */
-function retire(dim: Dimension, pos: Position): void {
+export function retire(dim: Dimension, pos: Position): void {
   const record = storage.remove(pos);
   if (!record) return;
   const person = personOf(dim, record);

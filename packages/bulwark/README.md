@@ -263,6 +263,7 @@ not being filled and `shots` in the same line says whether attribution ran.
 | --- | --- |
 | `/scriptevent bulwark:debug` | counters, loaded heads per dimension, and the nearest record with both halves of its pairing |
 | `/scriptevent bulwark:reconcile` | tick every recorded turret in a loaded chunk now — the escape hatch after `/reload` or `/fill` |
+| `/scriptevent bulwark:forget x y z [radius]` | drop what the pack remembers about the turret(s) there: record and head, blocks left standing, nothing given back. `retire` gives the buffer and the fed upgrades back as items; this does not, which is what a test wants. The GameTests call it before every placement (issue #106) |
 | `/scriptevent qolprobe:turret-*` | the probe pack's turret probes; see the protocol doc |
 
 ## Layout
@@ -279,7 +280,7 @@ scripts/engine/storage.ts                 the storage seam over the shared posit
 scripts/engine/head.ts                    entity link helpers
 scripts/engine/turret.ts                  the block component: tick, feed, retire
 scripts/engine/hooks.ts                   shots, kills, orphans, sweep
-scripts/engine/debug.ts                   bulwark:debug and bulwark:reconcile
+scripts/engine/debug.ts                   bulwark:debug, bulwark:reconcile and bulwark:forget
 ```
 
 ## What the design doc gets wrong

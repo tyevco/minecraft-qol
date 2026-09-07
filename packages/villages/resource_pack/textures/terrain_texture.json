@@ -18,6 +18,9 @@
     },
     "villages_vein_copper": {
       "textures": "textures/blocks/vein_copper"
+    },
+    "villages_blueprint_table": {
+      "textures": "textures/blocks/blueprint_table"
     }
   }
 }

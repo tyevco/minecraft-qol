@@ -418,7 +418,9 @@ builder pack's GameTests; struck through as answered.
    test, and a builder that places from the chest. Three blueprints to
    start: well, larder, wall segment. They are small and have no stand-ins.~~
    Built as `packages/builder`, a pack of its own until the villages'
-   builder job takes it over; remove too, repair and survey filed as issues.
+   builder job took it over (issue #80; now `packages/villages`, the
+   builder the person of the nearest builder's post, eight blueprints,
+   remove, repair and survey, the trader selling blueprints at friend).
 3. ~~Confirm the state meanings in §6 with the well, larder and wall segment
    placed by `/structure load`; fix any that read wrong.~~ None read wrong.
 4. The rest of the catalogue, one people at a time, in the order the kids

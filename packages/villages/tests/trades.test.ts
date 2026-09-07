@@ -369,8 +369,8 @@ describe("the furfolk's trades", () => {
 describe("settings", () => {
   it("defaults, clamps and ignores junk", () => {
     expect(parsePolicy({})).toEqual(DEFAULT_POLICY);
-    expect(parsePolicy({ "villages:cycle_minutes": 3, "villages:wages": false })).toEqual({ cycleMinutes: 3, wages: false });
-    expect(parsePolicy({ "villages:cycle_minutes": 900, "villages:wages": "no" })).toEqual({ cycleMinutes: 60, wages: true });
+    expect(parsePolicy({ "villages:cycle_minutes": 3, "villages:wages": false })).toMatchObject({ cycleMinutes: 3, wages: false });
+    expect(parsePolicy({ "villages:cycle_minutes": 900, "villages:wages": "no" })).toMatchObject({ cycleMinutes: 60, wages: true });
     expect(parsePolicy({ "villages:cycle_minutes": 0 }).cycleMinutes).toBe(1);
   });
 });

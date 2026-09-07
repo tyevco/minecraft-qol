@@ -1533,17 +1533,16 @@ write("packages/villages/resource_pack/models/blocks/post.geo.json", {
 });
 
 // ---------------------------------------------------------------------------
-// Builder (packages/builder): the blueprint table, the builder's own biped
-// (the tallfolk rig in the builder's outfit; the villages person takes the
-// job over later) and the waypoint it walks to.
+// The blueprint table and the survey stake (packages/villages, the builder
+// job): the person who builds is the villages' own biped above.
 // ---------------------------------------------------------------------------
 
 type BT = keyof typeof A.BLUEPRINT_TABLE.tiles;
 
-const BUILDER_MODELS = "packages/builder/resource_pack/models";
+const BUILDER_MODELS = "packages/villages/resource_pack/models";
 
 write(`${BUILDER_MODELS}/blocks/blueprint_table.geo.json`, {
-  identifier: "geometry.builder_blueprint_table",
+  identifier: "geometry.villages_blueprint_table",
   atlas: A.BLUEPRINT_TABLE,
   visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
   bones: [
@@ -1563,7 +1562,7 @@ write(`${BUILDER_MODELS}/blocks/blueprint_table.geo.json`, {
 // A survey stake: a post with a blue flag, two of which mark the box a
 // survey saves (settlements.md §5.4). Drawn off the table's own atlas.
 write(`${BUILDER_MODELS}/blocks/survey_stake.geo.json`, {
-  identifier: "geometry.builder_survey_stake",
+  identifier: "geometry.villages_survey_stake",
   atlas: A.BLUEPRINT_TABLE,
   visibleBounds: { width: 1, height: 1, offset: [0, 0.5, 0] },
   bones: [
@@ -1578,11 +1577,3 @@ write(`${BUILDER_MODELS}/blocks/survey_stake.geo.json`, {
   ],
 });
 
-biped({ file: "builder", identifier: "geometry.builder_person", head: [8, 8, 8], body: [8, 13, 4], arm: [4, 13, 4], leg: [4, 13, 4], hat: "straw" }, `${BUILDER_MODELS}/entity`);
-
-write(`${BUILDER_MODELS}/entity/waypoint.geo.json`, {
-  identifier: "geometry.builder_waypoint",
-  atlas: A.BLUEPRINT_TABLE,
-  visibleBounds: { width: 0.1, height: 0.1, offset: [0, 0, 0] },
-  bones: [{ name: "root", pivot: [0, 0, 0], cubes: [] }],
-});

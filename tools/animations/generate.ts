@@ -756,5 +756,3 @@ const PEOPLE_GEOMETRIES = [
 ].map((k) => `packages/villages/resource_pack/models/entity/${k}.geo.json`);
 bipedSet("packages/villages/resource_pack", "person", "villages_person", PEOPLE_GEOMETRIES, "villages:working");
 
-// The builder prototype (packages/builder): the same set on its one biped.
-bipedSet("packages/builder/resource_pack", "builder", "builder_person", ["packages/builder/resource_pack/models/entity/builder.geo.json"], "builder:working");

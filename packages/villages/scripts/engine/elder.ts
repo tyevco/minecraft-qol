@@ -12,6 +12,7 @@
  */
 import { Player, type Entity } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
+import { blueprintItemId } from "../core/blueprint";
 import { itemName, peopleName } from "../core/record";
 import * as core from "../core/standing";
 import { pickErrand } from "../core/visitors";
@@ -132,6 +133,8 @@ async function trade(player: Player, elder: Entity, people: number, tier: number
   const form = new ActionFormData().title(`${elder.nameTag || peopleName(people)}'s wares`).body(`You carry ${emeralds} emerald${emeralds === 1 ? "" : "s"}.`);
   for (const w of wares) form.button(`${describe(w)} for ${w.price} emerald${w.price === 1 ? "" : "s"}`);
   for (const s of stock) form.button(`${describe(s)} for ${s.price} emerald${s.price === 1 ? "" : "s"} (the storehouse has ${s.available})`);
+  const blueprints = core.blueprintsFor(people, tier);
+  for (const b of blueprints) form.button(`Blueprint: ${b.title} for ${core.BLUEPRINT_PRICE} emeralds`);
   form.button("Nothing today");
   let r;
   try {
@@ -140,7 +143,11 @@ async function trade(player: Player, elder: Entity, people: number, tier: number
     console.warn("[Villages]", `the wares form failed: ${e}`);
     return;
   }
-  if (r.canceled || r.selection === undefined || r.selection >= wares.length + stock.length) return;
+  if (r.canceled || r.selection === undefined || r.selection >= wares.length + stock.length + blueprints.length) return;
+  if (r.selection >= wares.length + stock.length) {
+    buyBlueprint(player, people, blueprints[r.selection - wares.length - stock.length]!);
+    return;
+  }
   const fromStore = r.selection >= wares.length;
   const w = fromStore ? stock[r.selection - wares.length]! : wares[r.selection]!;
   const inv = standing.inventoryOf(player);
@@ -170,6 +177,25 @@ async function trade(player: Player, elder: Entity, people: number, tier: number
   const after = standing.recordTrade(player, people);
   player.sendMessage(after.earned ? `${describe(w)}, yours. ${core.standingWords(people, after.standing)}` : `${describe(w)}, yours.`);
   console.warn("[Villages]", `${player.name} bought ${describe(w)} from the ${peopleName(people)}${fromStore ? "' storehouse" : ""} for ${w.price}: standing ${after.standing}${after.earned ? "" : " (the day's trades are counted)"}`);
+}
+
+/** A blueprint of the people's own buildings, or a shared one, at Friend (design §5): the item for the table. */
+function buyBlueprint(player: Player, people: number, entry: { key: string; title: string }): void {
+  const c = standing.inventoryOf(player);
+  if (!c || standing.countCarried(c, core.EMERALD) < core.BLUEPRINT_PRICE) {
+    player.sendMessage(`That is ${core.BLUEPRINT_PRICE} emeralds.`);
+    return;
+  }
+  const taken = standing.takeCarried(c, core.EMERALD, core.BLUEPRINT_PRICE);
+  if (taken < core.BLUEPRINT_PRICE) {
+    if (taken > 0) standing.give(player, core.EMERALD, taken);
+    player.sendMessage("Not enough, on a second count.");
+    return;
+  }
+  standing.give(player, blueprintItemId(entry.key), 1);
+  const after = standing.recordTrade(player, people);
+  player.sendMessage(`The plans for the ${entry.title}. Hold them and tap a blueprint table. ${after.earned ? core.standingWords(people, after.standing) : ""}`.trim());
+  console.warn("[Villages]", `${player.name} bought the ${entry.title} blueprint from the ${peopleName(people)} for ${core.BLUEPRINT_PRICE}`);
 }
 
 /** A guard of the elder's village walks with the player for a day (design §5, Friend). */

@@ -1,8 +1,16 @@
 # The builder prototype — findings
 
 **Measured on Bedrock Dedicated Server 1.26.45.1, headless**, with the
-builder pack (`packages/builder`) and the probe pack loaded in the GameTest
-world. Answers `docs/design/settlements.md` §8 (the must-prototype list) and
+builder prototype (`packages/builder`, since moved into the villages pack:
+issue #80) and the probe pack loaded in the GameTest world. The paths and
+identifiers below are the prototype's as measured; today the same code is
+`packages/villages/scripts/core/{blueprint,checks,job,order,palette,rotate,survey,building}.ts`
+and `engine/{jobs,table,placing,chest,structures,survey,outline,beacon,buildings,hatches}.ts`,
+the structures are `villages:<key>`, the hatches `villages:place` and the
+rest, and the builder is the person of the nearest builder's post rather
+than an entity of the pack's own. The fourteen GameTests pass unchanged in
+substance after the move, with a builder's post in every rig, the larder
+at 164 cells and the inn at 689 now that each keeps its job post. Answers `docs/design/settlements.md` §8 (the must-prototype list) and
 records what the pack's own GameTests pinned. The probe is
 `qolprobe:blueprint <id> [x y z]` in `packages/probe/scripts/main.js`; the
 offline diff of its rotation lines against the generator is

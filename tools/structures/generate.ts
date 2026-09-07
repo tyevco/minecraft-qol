@@ -41,30 +41,30 @@ for (const bp of BUILDINGS) {
   console.log(`concepts/structures/${bp.key}  ${bp.size.join("x")}  ${blocks} blocks`);
 }
 
-// The builder prototype (docs/design/settlements.md §5, §9 step 2): the
-// three blueprints a builder raises from the table, shipped in the builder
-// pack as `builder:<key>`. Small, and no stand-ins; the rest of the
-// catalogue follows once the placer is measured against these.
+// The blueprints (docs/design/settlements.md §5): the buildings a builder
+// raises from the blueprint table, shipped in the villages pack as
+// `villages:<key>` beside the village pieces. Small, and no stand-ins; the
+// rest of the catalogue follows as the placer is measured against these.
 export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall"] as const;
-const BUILDER = resolve(ROOT, "packages/builder/behavior_pack/structures/builder");
+const BUILDER = resolve(ROOT, "packages/villages/behavior_pack/structures/villages");
 mkdirSync(BUILDER, { recursive: true });
 for (const key of BUILDER_KEYS) {
   const bp = builderBlueprint(key);
   writeFileSync(resolve(BUILDER, `${key}.mcstructure`), bp.toMcstructure());
-  console.log(`packages/builder/behavior_pack/structures/builder/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
+  console.log(`packages/villages/behavior_pack/structures/villages/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
 }
 
 /**
- * A catalogue building as the builder pack ships it: the job post left out,
- * since the post is the villages pack's block and the builder stands alone
- * for now (a block the world does not know is dropped from a structure on
- * load, silently). The post comes back when the builder moves into villages.
+ * A catalogue building as the villages pack ships it for the table: every
+ * block as authored, its job post included (the post the builder places is
+ * the kids' own, engine/jobs.ts). The prototype pack left the post out
+ * because it did not know the block; now the same pack owns both.
  */
 export function builderBlueprint(key: string): Blueprint {
   const src = BUILDINGS.find((b) => b.key === key);
-  if (!src) throw new Error(`no building ${key} for the builder pack`);
+  if (!src) throw new Error(`no building ${key} for the blueprints`);
   const out = new Blueprint(src.key, src.title, src.size, src.people, src.notes);
-  for (const b of src.blocks()) if (b.name !== "villages:post") out.set(b.x, b.y, b.z, b.name, b.states);
+  for (const b of src.blocks()) out.set(b.x, b.y, b.z, b.name, b.states);
   for (const [x, y, z] of src.waterloggedCells()) out.waterlog(x, y, z);
   return out;
 }

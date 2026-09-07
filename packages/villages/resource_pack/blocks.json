@@ -9,5 +9,11 @@
   },
   "villages:vein": {
     "sound": "stone"
+  },
+  "villages:blueprint_table": {
+    "sound": "wood"
+  },
+  "villages:survey_stake": {
+    "sound": "wood"
   }
 }

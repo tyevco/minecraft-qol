@@ -22,6 +22,7 @@ import * as trades from "./trades";
 
 export const COMPONENT_ID = "villages:post";
 export const PERSON = "villages:person";
+export const POST_BLOCK = "villages:post";
 /** The tag a person carries when it lives on a post the kids placed: a settler, not a villager. */
 export const KIN_TAG = "villages:kin";
 const TAG = "[Villages]";
@@ -184,7 +185,7 @@ function tick(block: Block, placed = false): void {
 }
 
 /** The post is gone: so is its person (the design: take the block away and the person leaves). */
-function retire(dim: Dimension, pos: Position): void {
+export function retire(dim: Dimension, pos: Position): void {
   const record = storage.remove(pos);
   if (!record) return;
   const person = personOf(dim, record);

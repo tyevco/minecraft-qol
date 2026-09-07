@@ -322,8 +322,106 @@ measurements: `docs/villages-jigsaw-results.md`.
   record's waits are ended (`afterRestart`), so a worker re-surveys and a
   lost person is replaced at once rather than a day later. A `/reload`
   keeps the clock running and is not a restart.
+- **The blueprint table and the builder** (design `settlements.md` §5,
+  `npcs.md` §4; issue #80 brought the prototype pack in). Eight
+  **blueprints**, written by the structure generator into
+  `behavior_pack/structures/villages/` as `villages:<key>` beside the
+  village pieces, from the same source as the catalogue
+  (`tools/structures/buildings.ts`, `builderBlueprint` in `generate.ts`):
+  the tallfolk well, gatehouse, farmhouse and barn, the shared larder, wall
+  segment and inn, and the tinker market stall. Each building keeps its
+  **job post** now that one pack owns both. One **blueprint item** per
+  building (`villages:blueprint_<key>`, the `villages:blueprint` custom
+  component), in the creative menu under crafting, and **sold by the
+  trader at friend** (twelve emeralds: the people's own buildings and the
+  shared ones, on the wares form). Not shipped yet: the bridge span
+  (water under a footing) and the field (farmland and wheat have no item).
+  - **The table** (`villages:blueprint_table`, the `villages:table`
+    component): tap it **holding a blueprint** and a form shows the
+    building, its size after turning, the way the door will face, every
+    material against the chest beside the table, and "Place here" if it
+    can go ahead. The building goes at your feet: its minimum corner is
+    the block you stand on (the footing replaces that block), it runs
+    **east and south**, turned so the door faces the way you face, to the
+    nearest quarter. Tap it **empty-handed** for what it has raised: take a
+    building down, repair one, carry on with one the builder stopped on,
+    or survey the box between two stakes.
+  - **The checks** (`core/checks.ts`, pure), in the design's order, each
+    naming the first offender: fits (every cell of the box is air, a
+    plant, snow or water; the footing layer may also be natural ground),
+    grounded (a solid block under every footing cell), not overlapping
+    another recorded building, **a builder about**, a chest beside the
+    table, and paid for (what is short, listed).
+  - **The builder is one of the peoples**: the person of the nearest
+    **builder's post** (job 3) within sixty-four blocks of the table,
+    present and not off following someone (`engine/builderPerson.ts`);
+    nobody is spawned for a table. A found village's builder, or the one a
+    kids' post got from a visitor settling or an invite; a settlement with
+    no builder cannot raise a building and the form says so, and a job
+    whose builder goes away waits and says so. It is sent to each cell by
+    the walk's own waypoint (`engine/beacon.ts`, the `villages:walking`
+    group) and puts one block down every N seconds (the panel's slider,
+    default 4), **bottom layer up, far corner toward the door, water last
+    in its layer**, a ladder after the wall it leans on and the second
+    half of a door or a bed straight after the first. Each block costs one
+    item taken from the chest in the same step. The walk is best effort: a
+    cell out of reach waits two beats and is then placed regardless.
+  - **A building's own post** is placed as the kids' own (it spawns nobody
+    and waits for a settler, as a hand-placed post does), with the people
+    the building is raised as: its palette's, else the one it was authored
+    for, so a farmhouse raised as the reedfolk build it has a reedfolk
+    post. It comes down with its record when the building does.
+  - **Building for a people** (design §5): a blueprint of a people raised
+    inside that people's village (the hull round its posts) is **+10**
+    standing for whoever placed it, when the builder finishes.
+  - **Remove**: the same list backwards, an attached block before its
+    support, a door's or a bed's two halves in one tick with their one
+    item banked first, each block's item into the chest **before** the
+    block goes; a block that is no longer the building's is left alone. If
+    the chest is gone, short or full the job stops where it is and says
+    so; the record keeps its progress.
+  - **Repair** (§5.4): the builder goes over the building in placement
+    order and fills every cell that is air, a plant or missing water, one
+    item from the chest each; a cell that holds another kind of block is
+    somebody else's now and is left.
+  - **Survey** (§5.4): two **survey stakes** (`villages:survey_stake`) mark
+    a box, at most sixteen each way; the table's "Survey" saves what
+    stands between them, stakes left out, as `villages:survey_<n>` (a
+    fresh name every time, since a world caches a structure at first use)
+    and hands you a blueprint item carrying the key. It places like any
+    other.
+  - **Palette swaps** (§4): "As another people build it" on the blueprint
+    form asks whose way and reopens the form with that people's blocks
+    for the building's roles (footing, wall, corner, roof, ridge, window,
+    awning stripe for stripe), stairs and slabs following their material;
+    fences, chests, lanterns, doors, beds and hay stay as authored
+    (`core/palette.ts`, a unit test holds every role block to a generated
+    building). The record remembers the palette, so a building is repaired
+    and taken down in the blocks it stands in.
+  - **Records** in the shared position index (`vl:buildings`, schema 4),
+    keyed by the building's origin: key, rotation, box, phase, how far it
+    got, the table, whether it was free, its palette, and its owner. Jobs
+    saved mid-way resume a few seconds after the world loads. The records
+    of the prototype pack (`bd:buildings`) are not carried over: a world
+    dynamic property belongs to the pack that set it.
+  - **Script events** (console or operator): `villages:buildings` lists
+    the records and jobs; `villages:place <key> x y z <rotation>
+    [ticksPerBlock] [free] [palette]` is the form's path from a command
+    (the origin is the footing corner, the table the nearest within
+    sixteen); `villages:remove`, `villages:resume` and `villages:repair x y
+    z [ticksPerBlock]` for the building at a spot; `villages:forget x y z
+    [radius]` drops records and leaves the world as it is (the test
+    harness's sweep); `villages:survey x1 y1 z1 x2 y2 z2`. Each leaves its
+    verdict as the name tag of a `villages:verdict`-tagged waypoint at the
+    spot, which is how the GameTests read it.
 - **Settings panel** (manifest format 3): minutes between a worker's cycles
-  (1–60, default 10) and whether workers are paid.
+  (1–60, default 10) and whether workers are paid; for the builder, seconds
+  between one block and the next (1–30, default 4), who may use the table
+  (operators; members and operators, the default; everyone), and whether
+  **buildings are free** (off by default: the table takes nothing from the
+  chest and needs none, and a building raised free returns nothing when
+  taken down; the record remembers which it was, so turning the toggle off
+  cannot turn a free building into a chest of materials).
 - **Pieces that carry the trades**: the tallfolk field has the farmer's
   post and a chest at the end of its channel; stonefolk and tallfolk
   villages grow a **grove** (three trees, a lumberjack's post, a chest)
@@ -333,7 +431,7 @@ measurements: `docs/villages-jigsaw-results.md`.
   the reedfolk dock's worker fishes from the pier into its barrel. Tree
   leaves in every piece are no longer persistent, so a felled crown decays.
 - `/scriptevent villages:debug` lists every post, its trade and whether its
-  person is present, working or idle.
+  person is present, working or idle; `villages:buildings` the buildings.
   - the rancher shears up to eight grown, woolly sheep within twelve,
     nearest first, one every second: the sheep's own `minecraft:on_sheared`
     event marks it shorn (so it regrows its wool by eating grass, as after a
@@ -539,6 +637,21 @@ measurements: `docs/villages-jigsaw-results.md`.
   apple carry the component); every food carries the `minecraft:is_food`
   item tag, which is what the wage uses.
 
+- **The builder, pinned** (`suites/builder.ts`, fourteen GameTests, the
+  prototype's, moved with it; `docs/settlements-results.md` has each): the
+  well goes up block by block from the villages' tallfolk builder (a
+  builder's post beside the table spawns it) and matches the structure
+  cell for cell, materials gone from the chest; a stone in the way and a
+  short chest are refused by name; remove puts exactly the items back; the
+  turned well and the turned inn (689 cells, with its post) equal the
+  game's `Rotate90`; a free well moves nothing; the well as the stonefolk
+  and the high elves build it and the stall as the reedfolk build it go up
+  from their blocks and come down into them; repair fills four gaps and
+  leaves a stone; a survey between two stakes raises again cell for cell;
+  the larder (164 cells, its builder's post now inside) and a surveyed bed
+  and door come down whole, and **the larder's own post spawned nobody**:
+  it went up as the kids' and came down with its record.
+
 ## To confirm in game
 
 - **The builder's hammer**, on every people: the biped rig now grips it at
@@ -596,6 +709,20 @@ measurements: `docs/villages-jigsaw-results.md`.
   If visitors still never come with `dodaylightcycle false`, the status
   line is the first thing to read: it names the locked clock only if the
   pack saw `world.gameRules.doDayLightCycle` false.
+- **The blueprint table on a real client** (issue #79 is the list): the
+  form opens on tapping the table with a blueprint in hand and the building
+  starts where you stand, the door facing the way you faced (if the door
+  faces wrong, `rotationFromYaw` in `core/rotate.ts` is the one line); the
+  empty-hand form lists the table's buildings; the palette buttons reopen
+  the form in another people's blocks; the sparks round the box every
+  second while a job runs; **the builder is a village person now**, so the
+  swing while placing is `villages:working` on the peoples' rig; the walk
+  reads as building at four seconds a block (if it lags, `PATIENCE` in
+  `engine/jobs.ts`; if it walks into the well, the waypoint should stand
+  outside the box); a survey of your own house; water in the well placed
+  last for nothing; a footing on a real slope accepted where the higher
+  cells are air and the lower turf; and the trader's blueprints at friend
+  (twelve emeralds) arriving as the item the table reads.
 - **The look**: rigs, outfits and the walk cycle on a real client; the
   concept viewer is the reference (`npm run viewer`, pack `villages`).
 - **The furfolk on a real client** (`docs/design/furfolk.md` §7 items 3–5,
@@ -692,7 +819,8 @@ measurements: `docs/villages-jigsaw-results.md`.
   should bed it in. If the adit floods or the mouth hangs in the air,
   lower the mound or move the piece to the square's pool.
 
-Not yet built (design §5–6): building for a people, and the trader's
-blueprints, which wait for the builder (`docs/design/settlements.md`).
+Not yet built: the rest of the settlement catalogue as blueprints
+(`docs/design/settlements.md` §3; eight of twenty-five ship), the bridge
+span and the field.
 A kid's own house within twenty blocks of a village's plaques is inside
 the hull, so build a little further off or expect the village to mind.

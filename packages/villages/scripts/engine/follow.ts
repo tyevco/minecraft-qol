@@ -384,3 +384,5 @@ export function install(logger: (...parts: unknown[]) => void): void {
 
 /** For the debug listing. */
 export const count = (): number => followers.size;
+/** Whether a person is following someone (invited or an escort), and so not free for other work. */
+export const isFollowing = (entityId: string): boolean => followers.has(entityId);

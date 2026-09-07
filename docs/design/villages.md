@@ -457,4 +457,6 @@ found, in buildings they raised. That is the whole loop.
    a stranger is turned away, a guest sleeps and the game sets the respawn
    point. At friend a guard walks with the player for a day on the
    invite's bond, keeping its post, and walks home after. Building for
-   standing is still open (issue #73, #80).
+   standing is built with the builder job (#80): a blueprint of a people
+   raised inside its village is +10, and the trader sells blueprints at
+   friend.

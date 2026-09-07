@@ -1,0 +1,18 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:item": {
+    "description": {
+      "identifier": "villages:blueprint_tinker_stall",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.crafting"
+      }
+    },
+    "components": {
+      "villages:blueprint": { "key": "tinker_stall" },
+      "minecraft:display_name": { "value": "Blueprint: Market Stall" },
+      "minecraft:icon": { "textures": { "default": "villages:blueprint" } },
+      "minecraft:max_stack_size": 16
+    }
+  }
+}

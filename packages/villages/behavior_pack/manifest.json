@@ -2,9 +2,9 @@
   "format_version": 3,
   "header": {
     "name": "Villages",
-    "description": "Nineteen peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains, hobbits, elves and drow in their woods, drovers in the desert, and ten furfolk - foxes, cats, wolves, rabbits, bears, fennecs, mice, squirrels, otters and deer - each in its own biome. Every person is anchored to a job post in their village, and every worker takes a trade from what stands round its post.",
+    "description": "Nineteen peoples with villages of their own that generate in the world: stonefolk in the hills, reedfolk on stilts in the marsh, tinkers on the savanna, tallfolk on the plains, hobbits, elves and drow in their woods, drovers in the desert, and ten furfolk - foxes, cats, wolves, rabbits, bears, fennecs, mice, squirrels, otters and deer - each in its own biome. Every person is anchored to a job post in their village, and every worker takes a trade from what stands round its post. The blueprint table: a builder raises a building block by block from the chest beside it, and takes it down again.",
     "uuid": "c3c3f8ed-ae70-4d6f-9f17-6d845624cac4",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "min_engine_version": "1.26.40"
   },
   "modules": [
@@ -12,14 +12,14 @@
       "description": "Villages: peoples, job posts, structures and worldgen",
       "type": "data",
       "uuid": "ec7fe108-4ebb-4863-a752-1415042d24b3",
-      "version": "0.3.0"
+      "version": "0.4.0"
     },
     {
       "description": "Villages scripts",
       "type": "script",
       "language": "javascript",
       "uuid": "a86a813f-1d58-49c3-b388-212fb81c59e7",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "entry": "scripts/main.js"
     }
   ],
@@ -34,7 +34,7 @@
     },
     {
       "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
-      "version": "0.3.0"
+      "version": "0.4.0"
     }
   ],
   "metadata": {
@@ -67,6 +67,45 @@
       "text": "Workers are paid from their chest",
       "name": "villages:wages",
       "default": true
+    },
+    {
+      "type": "label",
+      "text": "The blueprint table: hold a blueprint and tap the table, and it shows the building, its size and the materials it needs, and places it from where you stand, toward the east and south, facing the way you face. The chest beside the table pays for it. The nearest builder walks to each spot and puts one block down at a time, from the ground up; taking a building down puts every block back in the chest."
+    },
+    {
+      "type": "slider",
+      "text": "Seconds between one block and the next",
+      "name": "villages:seconds_per_block",
+      "min": 1,
+      "max": 30,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "toggle",
+      "text": "Buildings are free: nothing is taken from the chest, and a building raised free returns nothing when it is taken down",
+      "name": "villages:free_build",
+      "default": false
+    },
+    {
+      "type": "dropdown",
+      "text": "Who may use the blueprint table",
+      "name": "villages:who_may_build",
+      "options": [
+        {
+          "name": "operators",
+          "text": "Operators"
+        },
+        {
+          "name": "members",
+          "text": "Members and operators"
+        },
+        {
+          "name": "everyone",
+          "text": "Everyone, visitors too"
+        }
+      ],
+      "default": "members"
     }
   ]
 }

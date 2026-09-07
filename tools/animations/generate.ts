@@ -282,6 +282,9 @@ emit(CONCEPTS, "runner", {
 // Shipped: packages/hatchling. Property names are the pack's.
 const HATCHLING_RP = "packages/hatchling/resource_pack";
 
+/** In the air with the wings out; the pack's glide sweep raises the property. */
+const GLIDING = "query.property('hatchling:gliding')";
+
 emit(HATCHLING_RP, "hatchling", {
   name: "hatchling",
   bones: bonesOf(`${HATCHLING_RP}/models/entity/hatchling.geo.json`),
@@ -356,25 +359,80 @@ emit(HATCHLING_RP, "hatchling", {
         },
       },
     },
+    // Falling with the wings out: a deep, slow beat, the legs tucked back and
+    // the tail streaming, so a drop off a ledge reads as flight rather than as
+    // an accident. The pack raises `hatchling:gliding` while it is in the air
+    // (packages/hatchling/scripts/engine/flight.ts).
+    {
+      key: "glide",
+      loop: true,
+      length: 1.2,
+      bones: {
+        body: {
+          rotation: [
+            [0, [-8, 0, 0]],
+            [0.6, [-14, 0, 0]],
+            [1.2, [-8, 0, 0]],
+          ],
+        },
+        left_wing: {
+          rotation: [
+            [0, [0, 0, -18]],
+            [0.6, [0, 0, -52]],
+            [1.2, [0, 0, -18]],
+          ],
+        },
+        right_wing: {
+          rotation: [
+            [0, [0, 0, 18]],
+            [0.6, [0, 0, 52]],
+            [1.2, [0, 0, 18]],
+          ],
+        },
+        front_left_leg: { rotation: [[0, [-35, 0, 0]]] },
+        front_right_leg: { rotation: [[0, [-35, 0, 0]]] },
+        back_left_leg: { rotation: [[0, [25, 0, 0]]] },
+        back_right_leg: { rotation: [[0, [25, 0, 0]]] },
+        tail: { rotation: [0, "math.sin(query.life_time * 200) * 8", 10] },
+        tail_tip: { rotation: [0, "math.sin(query.life_time * 200 - 70) * 14", 0] },
+      },
+    },
   ],
   controllers: [
     {
       key: "general",
       initial: "idle",
       states: {
+        // Gliding wins over every other state: it is the only one that says
+        // anything about where the hatchling is, rather than what it is doing.
         idle: {
           animations: ["idle"],
           transitions: [
+            ["glide", GLIDING],
             ["flap", "query.property('hatchling:happy')"],
             ["walk", MOVING],
           ],
         },
         walk: {
           animations: ["idle", "walk"],
-          transitions: [["idle", STOPPED]],
+          transitions: [
+            ["glide", GLIDING],
+            ["idle", STOPPED],
+          ],
           blendTransition: 0.2,
         },
-        flap: { animations: ["idle", "flap"], transitions: [["idle", FINISHED]] },
+        flap: {
+          animations: ["idle", "flap"],
+          transitions: [
+            ["glide", GLIDING],
+            ["idle", FINISHED],
+          ],
+        },
+        glide: {
+          animations: ["glide"],
+          transitions: [["idle", `!${GLIDING}`]],
+          blendTransition: 0.2,
+        },
       },
     },
   ],

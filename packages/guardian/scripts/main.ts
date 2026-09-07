@@ -10,6 +10,8 @@
  *   Visitors / Members / Operators take   100% / 75% / 50% / 25% / no damage
  *   Visitors and Members                  no fall, no burn, no drowning
  *   Void catch                            a faller is put back where they stood
+ *   Pets                                  no fall, fire or drowning; no player
+ *                                         may hurt one
  *
  * Guardian only ever reduces what would have happened. It never adds damage,
  * never touches a role at 100% with no switches on, and never changes what
@@ -21,6 +23,7 @@
  */
 import { Player, system, world } from "@minecraft/server";
 import { describePolicy, isProtectedRole } from "./core/rules";
+import * as petShield from "./engine/petShield";
 import * as settings from "./engine/settings";
 import * as shield from "./engine/shield";
 import * as voidCatch from "./engine/voidCatch";
@@ -34,6 +37,7 @@ const SETTINGS_TICKS = 100;
 world.afterEvents.worldLoad.subscribe(() => {
   settings.install(log);
   shield.install(log);
+  petShield.install(log);
 
   system.runInterval(() => settings.refresh(), SETTINGS_TICKS);
   system.runInterval(() => voidCatch.sweep(log), voidCatch.SWEEP_TICKS);
@@ -65,6 +69,25 @@ world.afterEvents.worldLoad.subscribe(() => {
         v.kind === "vanilla" ? "vanilla" : v.kind === "immune" ? `immune (${v.why})` : `x${v.multiplier}`;
       player.sendMessage(`§7- ${cause}: §f${what}`);
     }
+    const petLines = [
+      ["fall", false],
+      ["lava", false],
+      ["entityAttack", true],
+    ] as const;
+    player.sendMessage(
+      `§7pets: ${pol.pets.hazards ? "§ano hazards" : "§8hazards land"}§7, ${
+        pol.pets.fromPlayers ? "§asafe from players" : "§8players can hurt them"
+      }`,
+    );
+    for (const [cause, byPlayer] of petLines) {
+      const v = petShield.verdictFor(cause, byPlayer);
+      player.sendMessage(
+        `§7- a tamed pet, ${cause}${byPlayer ? " by a player" : ""}: §f${
+          v.kind === "vanilla" ? "vanilla" : `immune (${v.why})`
+        }`,
+      );
+    }
+
     const ground = voidCatch.tracker.get(player.id);
     player.sendMessage(
       ground

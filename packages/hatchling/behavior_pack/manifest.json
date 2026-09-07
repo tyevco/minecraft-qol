@@ -88,6 +88,16 @@
       "text": "Anyone can warm eggs and feed hatchlings, not only the owner",
       "name": "hatchling:anyone_tends",
       "default": true
+    },
+    {
+      "type": "label",
+      "text": "A hatchling never takes fall damage, whatever this panel says: it has wings. This switch is only about whether it uses them on the way down."
+    },
+    {
+      "type": "toggle",
+      "text": "Hatchlings glide when they fall",
+      "name": "hatchling:glide",
+      "default": true
     }
   ]
 }

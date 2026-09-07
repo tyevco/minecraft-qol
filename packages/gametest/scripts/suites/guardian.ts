@@ -2,6 +2,7 @@ import {
   EntityComponentTypes,
   EntityDamageCause,
   GameMode,
+  ItemStack,
   PlayerPermissionLevel,
   world,
 } from "@minecraft/server";
@@ -114,6 +115,94 @@ registerAsync("qol", "guardian_void_catch", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(200);
+
+/**
+ * Guardian: a hazard that would kill somebody's pet does not land, and a wild
+ * animal is left exactly as vanilla left it.
+ *
+ * The pet used is a moss hatchling, tamed the way a player tames one (berries;
+ * probability 1.0, the engine does the taming), because that is the one bonded
+ * pet this suite can make reliably. Lava is the cause, not a fall: a hatchling
+ * refuses fall damage itself, so a fall would prove nothing about Guardian.
+ * Moss, not ember: the ember variant is fire-immune.
+ *
+ * The other half of the shield - that a PLAYER cannot hurt a pet - cannot be
+ * measured here. A SimulatedPlayer marshals as undefined into every pack that
+ * does not bind @minecraft/server-gametest, so `damagingEntity instanceof
+ * Player` is false inside Guardian however the blow was struck. It is in the
+ * pack README's confirm list instead.
+ *
+ * Reads against the panel defaults (pets protected). With
+ * "Pets never take fall, fire or drowning damage" turned off, this test is
+ * expected to fail, and says so.
+ */
+registerAsync("qol", "guardian_shields_a_tamed_pet", async (test) => {
+  floor(test);
+  const at = test.worldBlockLocation({ x: 4, y: 1, z: 4 });
+  const pet = test
+    .getDimension()
+    .spawnEntity("hatchling:hatchling", { x: at.x + 0.5, y: at.y, z: at.z + 0.5 });
+  pet.triggerEvent("hatchling:variant_1");
+  await test.idle(10);
+
+  const wolf = test
+    .getDimension()
+    .spawnEntity("minecraft:wolf", { x: at.x + 2.5, y: at.y, z: at.z + 0.5 });
+  await test.idle(5);
+
+  // A wild animal is nobody's pet: Guardian must leave it alone.
+  const wolfHealth = wolf.getComponent(EntityComponentTypes.Health)!;
+  const wolfBefore = wolfHealth.currentValue;
+  wolf.applyDamage(4, { cause: EntityDamageCause.fall });
+  await until(test, () => wolfHealth.currentValue < wolfBefore, 20);
+  const wolfAfter = wolfHealth.currentValue;
+  if (!(wolfAfter < wolfBefore)) {
+    pet.remove();
+    wolf.remove();
+    test.assert(
+      false,
+      `a WILD wolf took no fall damage (${wolfBefore} -> ${wolfAfter}); Guardian is shielding animals nobody has tamed`,
+    );
+  }
+
+  // Bond the hatchling: berries from a player's hand, as a child would.
+  const player = test.spawnSimulatedPlayer(
+    { x: 2, y: 1, z: 4 },
+    "pet_tester",
+    GameMode.Creative,
+  );
+  await test.idle(10);
+  player.setItem(new ItemStack("minecraft:sweet_berries", 16), 0, true);
+  await test.idle(5);
+  let tamed = false;
+  for (let i = 0; i < 12 && !tamed; i++) {
+    player.lookAtEntity(pet);
+    await test.idle(3);
+    player.interactWithEntity(pet);
+    await test.idle(5);
+    tamed = pet.getComponent(EntityComponentTypes.IsTamed) !== undefined;
+  }
+  test.assert(tamed, "could not bond the hatchling with berries, so there is no pet to shield");
+
+  const petHealth = pet.getComponent(EntityComponentTypes.Health)!;
+  const before = petHealth.currentValue;
+  const applied = pet.applyDamage(4, { cause: EntityDamageCause.lava });
+  await test.idle(10);
+
+  // Both animals go before the assertions, which throw: a pet left behind is
+  // persistent, outlives the run, and moves where later tests are placed.
+  const after = petHealth.currentValue;
+  pet.remove();
+  wolf.remove();
+  test.print(`tamed hatchling in lava: ${before} -> ${after} (applyDamage returned ${applied})`);
+  test.assert(
+    after === before,
+    `a tamed pet lost ${(before - after).toFixed(2)} health to lava; with the panel default ("Pets never take fall, fire or drowning damage") Guardian should have cancelled it`,
+  );
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(600);
 
 /**
  * Guardian: the damage table names every cause the engine has.

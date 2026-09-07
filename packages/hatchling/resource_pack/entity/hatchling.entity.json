@@ -15,6 +15,7 @@
         "idle": "animation.hatchling.idle",
         "walk": "animation.hatchling.walk",
         "flap": "animation.hatchling.flap",
+        "glide": "animation.hatchling.glide",
         "general": "controller.animation.hatchling.general"
       },
       "scripts": { "animate": ["look_at_target", "general"] },

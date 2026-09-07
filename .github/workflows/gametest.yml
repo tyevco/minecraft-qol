@@ -43,10 +43,14 @@ jobs:
   gametest:
     runs-on: ubuntu-latest
     # A test costs the harness a 12s settling gap plus its own run, and a failure
-    # is re-run alone before it is believed. Twenty-odd tests fit in well under
-    # this; the limit is here so a server that never reports cannot idle for six
-    # hours.
-    timeout-minutes: 45
+    # is re-run alone before it is believed - a re-run is a whole server boot.
+    # The suite is 112 tests now and the run takes a little over forty minutes,
+    # so the old 45 was not a ceiling any more, it was the next test's tripwire:
+    # the run before this one was cancelled mid-suite with everything passing.
+    # The limit is here so a server that never reports cannot idle for six
+    # hours, not to budget the suite - raise it again rather than trimming
+    # tests, and if it ever needs to double, the gap is the thing to look at.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

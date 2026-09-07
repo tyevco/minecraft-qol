@@ -43,9 +43,9 @@ jobs:
   gametest:
     runs-on: ubuntu-latest
     # A test costs the harness a 12s settling gap plus its own run, and a failure
-    # is re-run alone before it is believed. Twenty-odd tests fit in well under
-    # this; the limit is here so a server that never reports cannot idle for six
-    # hours.
+    # is re-run alone before it is believed. A hundred-odd tests took forty-two
+    # minutes on a runner (run 90); the limit is here so a server that never
+    # reports cannot idle for six hours, not to hurry the suite.
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4

@@ -67,24 +67,29 @@ function presenceAt(record: PostRecord): Presence {
  * sweep that did something and stay quiet on the many that do not.
  */
 export function sweep(): number {
-  const rows = storage.all();
-  const plan = planSweep(rows, cursor, SWEEP_BUDGET, presenceAt);
+  // `storage.all()` hands back the index's own array and `retire` replaces it,
+  // so the plan is made against this snapshot and read from `plan.retire`,
+  // never from the index while it is being changed. A cursor left past the
+  // end of a now-shorter index simply starts the next sweep over (planSweep).
+  const plan = planSweep(storage.all(), cursor, SWEEP_BUDGET, presenceAt);
   cursor = plan.next;
 
+  let done = 0;
   for (const row of plan.retire) {
     try {
-      const dim = world.getDimension(row.dimId);
-      retire(dim, row);
+      retire(world.getDimension(row.dimId), row);
+      done++;
       retired++;
       console.warn(
         `${TAG} retired the record of a post that is no longer there at ${row.x},${row.y},${row.z} ` +
           `(${row.dimId}); ${storage.count()} post(s) left`,
       );
     } catch (e) {
+      // The row stays, and the next sweep round will try it again.
       console.warn(`${TAG} could not retire the stale post record at ${row.x},${row.y},${row.z}: ${e}`);
     }
   }
-  return plan.retire.length;
+  return done;
 }
 
 /** Install nothing of its own: main.ts calls `sweep` on the ten-second interval. */

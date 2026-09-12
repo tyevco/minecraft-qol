@@ -859,53 +859,6 @@ function buildStructure(preview, maxY) {
   return root;
 }
 
-async function showStructure(entry) {
-  const preview = await (await fetch(entry.structure)).json();
-  await loadVanilla();
-  if (vanilla)
-    for (const p of preview.palette) {
-      const v = vanilla.blocks[p.name];
-      if (v) {
-        const files = [...Object.values(v.faces), ...Object.values(v.overlay?.faces ?? {})];
-        for (const alt of Object.values(v.variants ?? {})) files.push(...Object.values(alt));
-        for (const file of files) await vanillaTexture(file);
-      }
-    }
-  let root = buildStructure(preview, preview.size[1]);
-  scene.add(root);
-  frame(root, "block");
-  current = { entry, root, groups: new Map() };
-
-  const slider = document.getElementById("cutaway");
-  const label = document.getElementById("cutaway-label");
-  slider.min = 1;
-  slider.max = preview.size[1];
-  slider.value = preview.size[1];
-  const relabel = () => (label.textContent = `showing ${slider.value} of ${preview.size[1]} layers`);
-  relabel();
-  slider.oninput = () => {
-    scene.remove(root);
-    root = buildStructure(preview, Number(slider.value));
-    scene.add(root);
-    current.root = root;
-    relabel();
-  };
-
-  const materials = Object.entries(preview.materials)
-    .sort((a, b) => b[1] - a[1])
-    .map(([n, c]) => `${c} ${n.replace("minecraft:", "")}`)
-    .join(", ");
-  const blocks = preview.blocks.length;
-  const missing = vanilla ? preview.palette.filter((p) => !vanilla.blocks[p.name]).map((p) => p.name.replace("minecraft:", "")) : [];
-  const textures = !vanilla
-    ? "coloured cubes: the build had no vanilla textures"
-    : missing.length
-      ? `vanilla textures; no texture for: ${missing.join(", ")}`
-      : "vanilla textures";
-  document.getElementById("info").textContent =
-    `${entry.pack} · building\n${preview.size.join("×")}, ${blocks} blocks · ${textures}\n\n${preview.notes}\n\nmaterials: ${materials}`;
-}
-
 /** World-space point for a catalogue particle entry, honouring the x mirror. */
 function particleOrigin(entry, geo, spec) {
   let at = spec.at;
@@ -919,12 +872,228 @@ function particleOrigin(entry, geo, spec) {
   return new THREE.Vector3(-at[0] / 16, at[1] / 16, at[2] / 16);
 }
 
-let emitters = [];
+
+// ---------------------------------------------------------------------------
+// Loading and switching.
+//
+// A switch is a load, then a swap. Everything the next model needs is fetched
+// and built before the scene changes, so the model on screen stays up until
+// its replacement is ready; then, in one frame, the old one comes out and is
+// disposed and the new one goes in. A click during a load starts a newer load,
+// and an older one that finishes later is thrown away: the scene only ever
+// takes the latest request. Each load returns a "staged" model: `present()`
+// puts it in the scene and fills the sidebar, `dispose()` frees what it built.
+//
+// (The viewer once removed the old root first and added the new one after its
+// fetches, and set location.hash before them. The hashchange handler then saw
+// the old model still current and started a second load of the same entry, so
+// two roots went in and one was left behind on every switch.)
+// ---------------------------------------------------------------------------
+
+/** Free a subtree's GPU buffers. Textures are freed by whoever loaded them. */
+function disposeObject(obj) {
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+}
+
+const el = (id) => document.getElementById(id);
+
+/** Show the sidebar sections a kind of model has. */
+function layoutSidebar(isStructure) {
+  el("structure").hidden = el("structure-h").hidden = !isStructure;
+  for (const id of ["texture", "bones", "animation", "animation-h"]) el(id).hidden = isStructure;
+  for (const h of document.querySelectorAll("aside h2")) if (["Texture", "Bones"].includes(h.textContent)) h.hidden = isStructure;
+}
+
+async function loadStructure(entry) {
+  const preview = await (await fetch(entry.structure)).json();
+  await loadVanilla();
+  if (vanilla)
+    for (const p of preview.palette) {
+      const v = vanilla.blocks[p.name];
+      if (v) {
+        const files = [...Object.values(v.faces), ...Object.values(v.overlay?.faces ?? {})];
+        for (const alt of Object.values(v.variants ?? {})) files.push(...Object.values(alt));
+        for (const file of files) await vanillaTexture(file);
+      }
+    }
+  const staged = {
+    entry,
+    root: buildStructure(preview, preview.size[1]),
+    groups: new Map(),
+    emitters: [],
+    animator: null,
+    present() {
+      scene.add(this.root);
+      frame(this.root, "block");
+      layoutSidebar(true);
+
+      const slider = el("cutaway");
+      const label = el("cutaway-label");
+      slider.min = 1;
+      slider.max = preview.size[1];
+      slider.value = preview.size[1];
+      const relabel = () => (label.textContent = `showing ${slider.value} of ${preview.size[1]} layers`);
+      relabel();
+      slider.oninput = () => {
+        scene.remove(this.root);
+        disposeObject(this.root);
+        this.root = buildStructure(preview, Number(slider.value));
+        scene.add(this.root);
+        relabel();
+      };
+
+      const materials = Object.entries(preview.materials)
+        .sort((a, b) => b[1] - a[1])
+        .map(([n, c]) => `${c} ${n.replace("minecraft:", "")}`)
+        .join(", ");
+      const blocks = preview.blocks.length;
+      const missing = vanilla ? preview.palette.filter((p) => !vanilla.blocks[p.name]).map((p) => p.name.replace("minecraft:", "")) : [];
+      const textures = !vanilla
+        ? "coloured cubes: the build had no vanilla textures"
+        : missing.length
+          ? `vanilla textures; no texture for: ${missing.join(", ")}`
+          : "vanilla textures";
+      el("info").textContent =
+        `${entry.pack} · building\n${preview.size.join("×")}, ${blocks} blocks · ${textures}\n\n${preview.notes}\n\nmaterials: ${materials}`;
+    },
+    dispose() {
+      el("cutaway").oninput = null;
+      scene.remove(this.root);
+      disposeObject(this.root);
+    },
+  };
+  return staged;
+}
+
+async function loadModel(entry) {
+  const geoFile = await (await fetch(entry.geometry)).json();
+  const geo = geoFile["minecraft:geometry"][0];
+  const textures = new Map();
+  await Promise.all(Object.entries(entry.textures).map(async ([name, url]) => textures.set(name, await loadTexture(url))));
+  // The map keeps insertion order, and loads finish in any order: take the
+  // catalogue's first texture as the one shown.
+  const first = Object.keys(entry.textures)[0];
+  const { root, groups } = buildModel(geo, textures.get(first));
+
+  const emitters = [];
+  for (const spec of entry.particles ?? []) {
+    try {
+      const def = await (await fetch(spec.definition)).json();
+      const tex = await loadTexture(spec.texture);
+      emitters.push(new Emitter(def, tex, particleOrigin(entry, geo, spec), spec.every));
+    } catch (err) {
+      console.warn("particle failed", spec, err);
+    }
+  }
+
+  let animator = null;
+  if (entry.animations) {
+    try {
+      const file = await (await fetch(entry.animations.file)).json();
+      const ctl = entry.animations.controller ? await (await fetch(entry.animations.controller)).json() : null;
+      animator = new Animator(file.animations, ctl?.animation_controllers ?? null, groups);
+    } catch (err) {
+      console.warn("animation failed", entry.animations, err);
+    }
+  }
+
+  return {
+    entry,
+    geo,
+    root,
+    groups,
+    textures,
+    emitters,
+    animator,
+    present() {
+      scene.add(root);
+      for (const e of emitters) scene.add(e.points);
+      frame(root, entry.kind);
+      layoutSidebar(false);
+
+      // Animations
+      const animSel = el("anim");
+      const stateLine = el("anim-state");
+      animSel.innerHTML = "";
+      stateLine.textContent = "";
+      if (animator) {
+        for (const mode of animator.modes) {
+          const o = document.createElement("option");
+          o.value = mode;
+          o.textContent = mode === "controller" ? "controller (auto)" : mode;
+          animSel.appendChild(o);
+        }
+        animSel.onchange = () => animator.setMode(animSel.value);
+        const moving = el("moving");
+        const airborne = el("airborne");
+        moving.checked = airborne.checked = false;
+        moving.onchange = () => (animator.moving = moving.checked);
+        airborne.onchange = () => (animator.airborne = airborne.checked);
+      }
+      el("animation").hidden = el("animation-h").hidden = !animator;
+
+      // Texture variants
+      const sel = el("texture");
+      sel.innerHTML = "";
+      for (const name of Object.keys(entry.textures)) {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        sel.appendChild(o);
+      }
+      sel.onchange = () => {
+        const t = textures.get(sel.value);
+        root.traverse((m) => { if (m.isMesh) { m.material.map = t; m.material.needsUpdate = true; } });
+      };
+
+      // Bones
+      const bones = el("bones");
+      bones.innerHTML = "";
+      const defaults = new Set(entry.defaultVisible ?? [...groups.keys()]);
+      for (const [name, { group }] of groups) {
+        group.visible = defaults.has(name);
+        const label = document.createElement("label");
+        label.className = "row";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = group.visible;
+        cb.onchange = () => (group.visible = cb.checked);
+        label.append(cb, document.createTextNode(name));
+        bones.appendChild(label);
+      }
+
+      const cubes = geo.bones.reduce((n, b) => n + (b.cubes?.length ?? 0), 0);
+      el("info").textContent =
+        `${entry.pack} · ${entry.kind}\n${geo.description.identifier}\n` +
+        `${geo.bones.length} bones, ${cubes} cubes\natlas ${geo.description.texture_width}×${geo.description.texture_height}` +
+        (entry.particles?.length ? `\nparticles: ${entry.particles.map((p) => p.effect).join(", ")}` : "") +
+        (animator ? `\nanimations: ${[...animator.anims.keys()].join(", ")}` : "") +
+        (entry.notes ? `\n\n${entry.notes}` : "");
+    },
+    dispose() {
+      scene.remove(root);
+      disposeObject(root);
+      for (const t of textures.values()) t.dispose();
+      for (const e of emitters) {
+        scene.remove(e.points);
+        e.points.geometry.dispose();
+        e.points.material.map?.dispose();
+        e.points.material.dispose();
+      }
+    },
+  };
+}
+
+let current = null; // the staged model on screen, from loadModel or loadStructure
+let requested = null; // the id of the latest show() call; an older load that finishes is dropped
 const clock = new THREE.Clock();
 
 // ---------------------------------------------------------------------------
 
-const canvas = document.getElementById("c");
+const canvas = el("c");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 const scene = new THREE.Scene();
@@ -939,15 +1108,18 @@ scene.add(sun);
 const grid = new THREE.GridHelper(4, 16, 0x3a3c48, 0x2a2b33);
 scene.add(grid);
 
-let current = null; // { entry, geo, textures: Map<name, THREE.Texture>, root, groups }
-let animator = null;
-// Screenshot tooling can freeze the clock and step it: viewer.pause(); viewer.step(1 / 12).
+// Screenshot and test tooling: viewer.pause(); viewer.step(1 / 12); viewer.show("pipe").
 let paused = false;
+let catalog = null;
 window.viewer = {
   pause: () => (paused = true),
   resume: () => (paused = false),
   step: (dt) => { advance(dt); renderer.render(scene, camera); },
-  get animator() { return animator; },
+  show: (id) => { const m = catalog?.models.find((x) => x.id === id); if (!m) throw new Error(`no model ${id}`); return show(m); },
+  get animator() { return current?.animator ?? null; },
+  get scene() { return scene; },
+  get current() { return current?.entry.id ?? null; },
+  get loading() { return requested !== null && requested !== current?.entry.id; },
 };
 const loader = new THREE.TextureLoader();
 
@@ -984,137 +1156,80 @@ async function loadTexture(url) {
 }
 
 async function show(entry) {
-  if (current) scene.remove(current.root);
-  for (const e of emitters) scene.remove(e.points);
-  emitters = [];
-  animator = null;
-  const isStructure = entry.kind === "structure";
-  document.getElementById("structure").hidden = document.getElementById("structure-h").hidden = !isStructure;
-  for (const id of ["texture", "bones", "animation", "animation-h"]) document.getElementById(id).hidden = isStructure;
-  for (const h of document.querySelectorAll("aside h2")) if (["Texture", "Bones"].includes(h.textContent)) h.hidden = isStructure;
+  requested = entry.id;
   for (const b of document.querySelectorAll("#models button")) b.classList.toggle("active", b.dataset.id === entry.id);
-  location.hash = entry.id;
-  if (isStructure) return showStructure(entry);
-  const geoFile = await (await fetch(entry.geometry)).json();
-  const geo = geoFile["minecraft:geometry"][0];
-  const textures = new Map();
-  for (const [name, url] of Object.entries(entry.textures)) textures.set(name, await loadTexture(url));
-  const first = textures.keys().next().value;
-  const { root, groups } = buildModel(geo, textures.get(first));
-  scene.add(root);
-  current = { entry, geo, textures, root, groups };
-  frame(root, entry.kind);
+  // Deep link. Setting the hash fires hashchange later; the listener ignores
+  // the id it has already been asked for.
+  if (location.hash.slice(1) !== entry.id) location.hash = entry.id;
+  el("loading").hidden = false;
 
-  // Particles
-  for (const spec of entry.particles ?? []) {
-    try {
-      const def = await (await fetch(spec.definition)).json();
-      const tex = await loadTexture(spec.texture);
-      const em = new Emitter(def, tex, particleOrigin(entry, geo, spec), spec.every);
-      scene.add(em.points);
-      emitters.push(em);
-    } catch (err) {
-      console.warn("particle failed", spec, err);
-    }
+  let staged;
+  try {
+    staged = entry.kind === "structure" ? await loadStructure(entry) : await loadModel(entry);
+  } catch (err) {
+    if (requested !== entry.id) return;
+    requested = current?.entry.id ?? null; // what is on screen stays current
+    el("loading").hidden = true;
+    el("info").textContent = `failed to load ${entry.name}: ${err}`;
+    console.error(err);
+    return;
   }
-
-  // Animations
-  animator = null;
-  const animBox = document.getElementById("animation");
-  const animSel = document.getElementById("anim");
-  const stateLine = document.getElementById("anim-state");
-  animSel.innerHTML = "";
-  stateLine.textContent = "";
-  if (entry.animations) {
-    try {
-      const file = await (await fetch(entry.animations.file)).json();
-      const ctl = entry.animations.controller ? await (await fetch(entry.animations.controller)).json() : null;
-      animator = new Animator(file.animations, ctl?.animation_controllers ?? null, groups);
-      for (const mode of animator.modes) {
-        const o = document.createElement("option");
-        o.value = mode;
-        o.textContent = mode === "controller" ? "controller (auto)" : mode;
-        animSel.appendChild(o);
-      }
-      animSel.onchange = () => animator.setMode(animSel.value);
-      const moving = document.getElementById("moving");
-      const airborne = document.getElementById("airborne");
-      moving.checked = airborne.checked = false;
-      moving.onchange = () => (animator.moving = moving.checked);
-      airborne.onchange = () => (animator.airborne = airborne.checked);
-    } catch (err) {
-      console.warn("animation failed", entry.animations, err);
-    }
+  if (requested !== entry.id) {
+    // A newer request has been made while this one loaded.
+    staged.dispose();
+    return;
   }
-  animBox.hidden = document.getElementById("animation-h").hidden = !animator;
-
-  // Texture variants
-  const sel = document.getElementById("texture");
-  sel.innerHTML = "";
-  for (const name of textures.keys()) {
-    const o = document.createElement("option");
-    o.value = name;
-    o.textContent = name;
-    sel.appendChild(o);
-  }
-  sel.onchange = () => {
-    const t = textures.get(sel.value);
-    root.traverse((m) => { if (m.isMesh) { m.material.map = t; m.material.needsUpdate = true; } });
-  };
-
-  // Bones
-  const bones = document.getElementById("bones");
-  bones.innerHTML = "";
-  const defaults = new Set(entry.defaultVisible ?? [...groups.keys()]);
-  for (const [name, { group }] of groups) {
-    group.visible = defaults.has(name);
-    const label = document.createElement("label");
-    label.className = "row";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = group.visible;
-    cb.onchange = () => (group.visible = cb.checked);
-    label.append(cb, document.createTextNode(name));
-    bones.appendChild(label);
-  }
-
-  const cubes = geo.bones.reduce((n, b) => n + (b.cubes?.length ?? 0), 0);
-  document.getElementById("info").textContent =
-    `${entry.pack} · ${entry.kind}\n${geo.description.identifier}\n` +
-    `${geo.bones.length} bones, ${cubes} cubes\natlas ${geo.description.texture_width}×${geo.description.texture_height}` +
-    (entry.particles?.length ? `\nparticles: ${entry.particles.map((p) => p.effect).join(", ")}` : "") +
-    (animator ? `\nanimations: ${[...animator.anims.keys()].join(", ")}` : "") +
-    (entry.notes ? `\n\n${entry.notes}` : "");
-
-  for (const b of document.querySelectorAll("#models button")) b.classList.toggle("active", b.dataset.id === entry.id);
-  location.hash = entry.id;
+  if (current) current.dispose();
+  current = staged;
+  staged.present();
+  el("loading").hidden = true;
 }
 
 function advance(dt) {
-  for (const e of emitters) e.update(dt);
+  if (!current) return;
+  for (const e of current.emitters) e.update(dt);
+  const animator = current.animator;
   if (animator) {
     animator.update(dt);
-    const line = document.getElementById("anim-state");
-    line.textContent = animator.mode === "controller" ? `state: ${animator.state}` : "";
+    el("anim-state").textContent = animator.mode === "controller" ? `state: ${animator.state}` : "";
   }
 }
 
 async function main() {
-  const catalog = await (await fetch("catalog.json")).json();
-  const list = document.getElementById("models");
+  catalog = await (await fetch("catalog.json")).json();
+  const list = el("models");
+  const buttons = [];
   for (const entry of catalog.models) {
     const b = document.createElement("button");
     b.dataset.id = entry.id;
     b.innerHTML = `${entry.name}<small>${entry.pack}</small>`;
     b.onclick = () => show(entry);
     list.appendChild(b);
+    buttons.push({ b, text: `${entry.name} ${entry.pack} ${entry.id}`.toLowerCase() });
   }
+
+  // The list is long (every building, street and village piece): a filter.
+  const filter = el("filter");
+  const count = el("filter-count");
+  const applyFilter = () => {
+    const q = filter.value.trim().toLowerCase();
+    let shown = 0;
+    for (const { b, text } of buttons) {
+      const hit = !q || text.includes(q);
+      b.hidden = !hit;
+      if (hit) shown++;
+    }
+    count.textContent = q ? `${shown} of ${buttons.length}` : `${buttons.length} models`;
+  };
+  filter.oninput = applyFilter;
+  applyFilter();
+
   const byHash = () => catalog.models.find((m) => m.id === location.hash.slice(1));
   await show(byHash() ?? catalog.models[0]);
   // Deep links: #pipe, #turret_head. A hash change is not a navigation, so listen.
   window.addEventListener("hashchange", () => {
     const m = byHash();
-    if (m && m.id !== current?.entry.id) show(m);
+    if (m && m.id !== requested) show(m);
   });
   renderer.setAnimationLoop(() => {
     resize();
@@ -1126,6 +1241,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  document.getElementById("info").textContent = `failed: ${e}`;
+  el("info").textContent = `failed: ${e}`;
   console.error(e);
 });

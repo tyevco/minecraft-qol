@@ -212,7 +212,12 @@ fetches the ones the blueprints use from Mojang's public bedrock-samples
 into `.cache/` and `dist/viewer/vanilla/` (never committed), mapped through
 the game's `blocks.json`, so an unknown block identifier is reported there.
 Offline, it warns and draws coloured cubes. Serve the folder with any static server
-(`npx http-server dist/viewer`).
+(`npx http-server dist/viewer`). The list is long, so there is a filter over
+name and pack, and `#<id>` deep-links a model. Switching models is a load and
+then a swap: the model on screen stays until its replacement is built, the two
+change places in one frame, and the old one's buffers are freed. A click while
+a load is in flight starts a newer load and the older one is dropped when it
+finishes, so the scene only ever holds the latest request.
 
 **T-pose sheets.** `npm run sheets` writes a three-view reference sheet for
 every entity that can be posed into `dist/viewer/sheets`, plus a gallery page
@@ -240,6 +245,19 @@ mirrored, bone rotations negated in x and y - so a sheet and the viewer show
 the same model. `decode.ts` is the PNG decoder that reads the textures back,
 the counterpart to the generator's `png.ts`. The pose rules, the bone maths and
 the discovery are pure and unit-tested under `tools/sheets/tests`.
+
+**The site.** The viewer and the sheets are two sections of one site, and
+what they share lives in `tools/pages/site.ts`: the list of sections, the
+navigation bar every page carries, and the palette (one source for the CSS
+custom properties and for the sheet rasteriser's ink). A page is a template
+with two markers, `<!-- @site-css -->` and `<!-- @site-nav -->`, that its
+generator fills with `fillTemplate` (the viewer) or `siteCss()` and `nav()`
+(the sheets, which build their page as a string). Links are relative, so the
+folder serves from any base path. To add a section: one entry in `SECTIONS`,
+a generator that writes into `dist/viewer/<dir>/` after the viewer build and
+calls `nav("<id>", "<dir>")`, and its step appended to `npm run pages`; the bar
+on every other page picks it up. `tools/pages/tests` checks the links and the
+markers.
 
 **Publishing.** `npm run pages` is `npm run viewer` then `npm run sheets`, in
 that order - the viewer build clears `dist/viewer`, and the sheets are written

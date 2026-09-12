@@ -53,6 +53,15 @@ export function numberProperty(entity: Entity, id: string): number | undefined {
   }
 }
 
+export function stringProperty(entity: Entity, id: string): string | undefined {
+  try {
+    const v = entity.getDynamicProperty(id);
+    return typeof v === "string" && v.length > 0 ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function intProperty(entity: Entity, id: string, fallback: number): number {
   try {
     const v = entity.getProperty(id);

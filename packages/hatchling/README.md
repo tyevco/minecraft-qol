@@ -33,7 +33,7 @@ Open it from the world's pack list, or in game from Settings → Behavior Packs
 | Rest between warmings | 10 min | wall-clock minutes before the egg takes another warming (0–60) |
 | Feedings per growth stage | 4 | feedings to reach the next size (1–10); there are two sizes to grow into |
 | Rest between feedings | 15 min | wall-clock minutes before a hatchling is hungry again (0–60) |
-| Anyone can warm eggs and feed hatchlings | on | off: only the owner may feed a bonded hatchling. Eggs are always shared. **Not enforceable yet** - see issue #98 |
+| Anyone can warm eggs and feed hatchlings | on | off: only the owner may feed a bonded hatchling. Eggs are always shared. The owner is whoever offered the berries that bonded it; a hatchling bonded before the pack kept owners (issue #98) stays anyone's |
 | Hatchlings glide when they fall | on | off: they drop the vanilla way. Either way they take no fall damage - that is the entity, not this switch |
 
 No commands. `/scriptevent hatchling:debug` prints what the pack read from the
@@ -69,9 +69,28 @@ bonded hatchling has **no tameable component**: measured in
 `hatchling_tames_with_berries` as tameable=true / is_tamed=false before the
 berries and tameable=false / is_tamed=true after. So "somebody's hatchling" is
 the `minecraft:is_tamed` marker (`isBonded`), and the owner's id is not
-readable at all - which is why the panel's owner-only switch cannot be
-enforced yet (issue #98). Asking the tameable component was also what stopped
-a bonded hatchling being fed, and so from ever growing.
+readable from the engine at all. **The pack records the owner itself**
+(issue #98): the berry offer to a wild hatchling arrives at the same
+`playerInteractWithEntity` before-event with the player on it, the pack
+leaves that offer alone for the engine to bond, and on the ticks after,
+once `is_tamed` has appeared, writes the offerer's id to the entity dynamic
+property `hatchling:owner` (and the name beside it, for "That is X's
+hatchling" while X is away). `readPet` reads the owner from there, with the
+tameable component as a fallback for an engine build where it survives the
+swap. That is what the panel's owner-only switch keys on; a hatchling bonded
+before the pack kept owners has no record and stays anyone's, which
+`hatchling:debug` says in so many words. Asking the tameable component for
+"bonded" was also what stopped a bonded hatchling being fed, and so from
+ever growing.
+
+What a headless run can and cannot see of this: the bond itself, yes
+(`hatchling_tames_with_berries`); the record, no. A SimulatedPlayer's
+`interactWithEntity` bonds the hatchling through the engine's tameable but
+raises **no** `playerInteractWithEntity` before-event in the pack - measured
+with a log line at the top of the handler, which printed nothing across the
+offers of four runs while `is_tamed` appeared every time. So
+`hatchling_records_its_owner` fails headlessly for a reason that is the
+harness's (`known-failures.json`), and the record is item 6 below.
 
 **Feeding and growth are script.** The same before-event decides
 (`feed`): not food is left to the engine (that is the sit/stand toggle),
@@ -149,12 +168,21 @@ The probe pack has `qolprobe:egg <variant>`, `qolprobe:pet <variant>` and
    `hatch_scheduled` guard did not hold; no hatchling and no egg means the
    remove ran without the spawn, which the code orders against, so read the
    log for the spawn error.
-6. **Does bonding work?** Measured: berries bond it
-   (`hatchling_tames_with_berries`). What is left to see on a real client is
-   whether a bonded hatchling then feeds and grows - the pack was asking the
-   wrong component for "is this bonded" and never got that far. The probe's
-   log will say `tamed=false` even for a bonded one: the tameable component
-   is gone by then, and `is_tamed` is the marker to read.
+6. **Does bonding work, and is the owner written down?** Measured: berries
+   bond it (`hatchling_tames_with_berries`). What is left to see on a real
+   client is whether a bonded hatchling then feeds and grows - the pack was
+   asking the wrong component for "is this bonded" and never got that far -
+   and whether the bond is recorded: offer the berries yourself, then
+   `/scriptevent hatchling:debug` should read `owner <your name> (<id>)`,
+   and the content log `bonded to <your name>`. If it reads `unrecorded`,
+   the `playerInteractWithEntity` before-event did not carry the offer for
+   a real player either (it is measured not to for a simulated one), and
+   the record would have to move to the `entityHurt`-style after-event the
+   engine does raise, or to the first feeding. Then turn the panel's
+   "Anyone can ... feed" off and have someone else offer berries: "That is
+   <your name>'s hatchling." The probe's log will say `tamed=false` even
+   for a bonded one: the tameable component is gone by then, and `is_tamed`
+   is the marker to read.
 7. **Does feeding grow it without a pop?** Four berries at a zero rest
    (panel) should scale it up smoothly; a visible flash means the group swap
    resets the entity's render state, which is cosmetic and can be hidden
@@ -185,7 +213,9 @@ The probe pack has `qolprobe:egg <variant>`, `qolprobe:pet <variant>` and
 The GameTest pack pins what does not need a player:
 `hatchling_egg_keeps_variant_and_shell`, `hatchling_egg_hatches_into_its_variant`,
 `hatchling_grows_by_stage_event`, `hatchling_tames_with_berries` (taming is
-vanilla, so the engine does it without the pack seeing anyone),
+vanilla, so the engine does it without the pack seeing anyone - literally:
+the pack's before-event never fires for the simulated offer, which is why
+`hatchling_records_its_owner` is listed in `known-failures.json`),
 `hatchling_shell_cracks_while_warming` — each `crack_N` moves the shell, keeps
 the variant, and does not hatch the egg early, which matters because the shell
 is the only thing a player watching a half-hour warming has to go on — and the

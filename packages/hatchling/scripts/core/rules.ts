@@ -221,7 +221,12 @@ export interface PetState {
   /** Feedings towards the next stage. */
   feedings: number;
   lastFedAt: number | undefined;
-  /** The bonded player, from the vanilla tameable component. */
+  /**
+   * The bonded player: the pack's own record at the bond (`hatchling:owner`),
+   * since the vanilla tameable component leaves with the wild group and its
+   * `tamedToPlayerId` with it. Undefined for a wild hatchling, and for one
+   * bonded before the pack kept owners - which `feed` lets anyone tend.
+   */
   ownerId: string | undefined;
 }
 

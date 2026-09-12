@@ -6,7 +6,7 @@ import {
   type Vector3,
 } from "@minecraft/server";
 import { registerAsync, type Test } from "@minecraft/server-gametest";
-import { floor, STRUCTURE } from "./rig";
+import { floor, STRUCTURE, until } from "./rig";
 
 /**
  * Hatchling: the egg and the pet, in an arena.
@@ -216,6 +216,11 @@ registerAsync("qol", "hatchling_tames_with_berries", async (test) => {
       pet.getComponent(EntityComponentTypes.IsTamed) !== undefined
     }`,
   );
+
+  // Whose it is - the pack's own record, issue #98 - is the next test's
+  // question, and one this harness cannot answer (see it). Print what is
+  // there so the run shows it.
+  test.print(`owner record after the bond: ${String(pet.getDynamicProperty("hatchling:owner"))}`);
   test.succeed();
 })
   .structureName(STRUCTURE)
@@ -374,3 +379,49 @@ registerAsync("qol", "hatchling_shell_cracks_while_warming", async (test) => {
 })
   .structureName(STRUCTURE)
   .maxTicks(200);
+
+/**
+ * The pack records who bonded a hatchling (issue #98): `hatchling:owner` is
+ * the offerer's id, written on the ticks after the berry offer once
+ * `minecraft:is_tamed` has appeared, because the tameable component - and its
+ * `tamedToPlayerId` - leaves with the wild group at the bond.
+ *
+ * Fails on a headless server, and is listed in known-failures.json for it:
+ * a SimulatedPlayer's `interactWithEntity` bonds the hatchling through the
+ * engine's tameable, but raises NO `playerInteractWithEntity` before-event
+ * in the pack - measured with a log line at the top of the pack's handler,
+ * which printed nothing across the offers of four runs while `is_tamed`
+ * appeared every time (docs/README.md corrections). So there is no moment at
+ * which the pack could see the offerer, and the record stays unwritten. The
+ * assertion carries the measurement, and the test starts passing the day
+ * the engine delivers the event for a simulated player.
+ */
+registerAsync("qol", "hatchling_records_its_owner", async (test) => {
+  floor(test);
+  clearSpot(test);
+  const pet = spawn(test, PET, 0);
+  await test.idle(10);
+  const player = test.spawnSimulatedPlayer({ x: 2, y: 1, z: 4 }, "owner_tester", GameMode.Creative);
+  await test.idle(10);
+  player.setItem(new ItemStack("minecraft:sweet_berries", 16), 0, true);
+  await test.idle(5);
+  let tamed = false;
+  for (let i = 0; i < 12 && !tamed; i++) {
+    player.lookAtEntity(pet);
+    await test.idle(3);
+    player.interactWithEntity(pet);
+    await test.idle(5);
+    tamed = pet.getComponent(EntityComponentTypes.IsTamed) !== undefined;
+  }
+  test.assert(tamed, "sweet berries did not tame the hatchling after 12 offers, so there was no bond to record");
+
+  const owner = () => pet.getDynamicProperty("hatchling:owner");
+  await until(test, () => owner() !== undefined, 40, 2);
+  test.assert(
+    owner() === player.id,
+    `expected hatchling:owner to be the offerer's id ${player.id}, read ${String(owner())} ` +
+      `(owner_name ${String(pet.getDynamicProperty("hatchling:owner_name"))}): the bond happened but the pack ` +
+      `saw no playerInteractWithEntity before-event for the simulated player's offer`,
+  );
+  test.succeed();
+}).maxTicks(400).structureName(STRUCTURE);

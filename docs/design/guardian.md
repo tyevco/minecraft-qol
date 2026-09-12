@@ -121,8 +121,9 @@ fresh one of the same type at the spot, call `tameable.tame(owner)`, restore
 `nameTag` and the `minecraft:color` value (collar colour). `tame(player)` does
 exist in 2.9.0 after all (the corrections table in `docs/README.md` used to say
 otherwise), but the owner is the problem now: it cannot be read off a bonded
-pet, so insurance needs a pack that recorded its own owner, as Hatchling will
-have to (issue #98). Also unknown until measured: whether `tame()` accepts an
+pet, so insurance needs a pack that recorded its own owner, as Hatchling now
+does at the bond (`hatchling:owner`, issue #98); vanilla pets have no such
+record, which bounds what insurance can cover. Also unknown until measured: whether `tame()` accepts an
 offline owner, and whether a respawned cat or parrot keeps its variant
 (`minecraft:variant` is read-only from script, so the answer decides scope).
 

@@ -2,7 +2,8 @@
  * `/scriptevent villages:forget x y z [radius]` - drop what the pack
  * remembers about the post(s) there: the record and its person, with the
  * block left standing. The GameTests' sweep, and the same escape hatch
- * `builder:forget` and `bulwark:forget` are (CLAUDE.md rule 3).
+ * `bulwark:forget` is (CLAUDE.md rule 3); engine/hatches.ts hears the same
+ * event for the building records.
  *
  * A test needs it because a record can outlive the session that made it. A
  * post the kids placed is marked in its record, and `tick`'s "same post"

@@ -18,9 +18,8 @@ Packs: `qol-times` (dispensers use cauldrons), `lens` (spawn-proofing overlay),
 `guardian` (per-role damage scaling and safety switches),
 `fluidworks` (funnels and tanks), `bulwark` (turret: block, head, hopper ammo),
 `hatchling` (a pet dragon: egg, warming, hatching, feeding, growth),
-`villages` (nine peoples with generated villages, peopled by job posts),
-`builder` (the blueprint table and a builder who raises buildings from it; a
-prototype, standing alone until the villages' builder job takes it over),
+`villages` (nineteen peoples with generated villages, peopled by job posts;
+the blueprint table and the builder job that raises buildings from it),
 `probe` (throwaway diagnostics), `gametest` (in-game tests). Shared code is
 under `packages/shared`.
 
@@ -171,7 +170,7 @@ Reading a headless run:
   failure that survives the re-run is *still* not proof of a pack bug: read the
   pack's own "N known" line at boot first. A rig that places a block a pack
   records asks the pack to forget the cell first (`bulwark:forget`,
-  `villages:forget`, `builder:forget`); that is what these hatches are for.
+  `villages:forget`); that is what these hatches are for.
 - `packages/gametest/known-failures.json` lists tests that fail for a reason
   that is not a bug, with the reason. A listed test that **passes** fails the
   run — the reason has expired and the entry should go. A test that fails

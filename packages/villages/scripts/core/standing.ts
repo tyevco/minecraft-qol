@@ -10,6 +10,7 @@
  * words, and the form's buttons change with the tier. Per player on
  * purpose: a sibling's standing is their own.
  */
+import { CATALOGUE, type CatalogueEntry } from "./blueprint";
 import { PEOPLES, PEOPLE_NAMES, PLACED_BY_WORLD, WORKER, type PostRecord } from "./record";
 import { ERRANDS, type Errand } from "./visitors";
 
@@ -45,8 +46,18 @@ export const STANDING_HIT = -5;
 export const STANDING_LAPSE = -2;
 /** Days an errand from the village stays open before it lapses. */
 export const ERRAND_DAYS = 3;
-/** A job post, sold at Friend. */
+/** A job post, sold at Friend; a blueprint of the people's own buildings (or a shared one), sold at Friend too. */
 export const POST_PRICE = 6;
+export const BLUEPRINT_PRICE = 12;
+/** Building for a people: a blueprint of theirs raised inside their village (§5). */
+export const STANDING_BUILDING = 10;
+
+/** The blueprints a people's trader sells at Friend: the catalogue's buildings authored for that people, and the shared ones. */
+export function blueprintsFor(people: number, tier: number): CatalogueEntry[] {
+  if (tier < FRIEND) return [];
+  const key = PEOPLES[people] ?? "stonefolk";
+  return CATALOGUE.filter((e) => e.key.startsWith(`${key}_`) || e.key.startsWith("shared_"));
+}
 export const EMERALD = "minecraft:emerald";
 export const POST_ITEM = "villages:post";
 /** How far from a guard a monster's death counts as the village's defence, and how far a hit rouses the guards. */

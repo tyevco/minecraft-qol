@@ -94,14 +94,6 @@ const PACKS: Pack[] = [
     external: ["@minecraft/server", "@minecraft/server-ui"],
     hasResourcePack: true,
   },
-  // The builder prototype: blueprints, the table and a builder who places
-  // them. Stands alone until it moves into the villages pack.
-  {
-    name: "builder",
-    dir: "packages/builder",
-    external: ["@minecraft/server", "@minecraft/server-ui"],
-    hasResourcePack: true,
-  },
   // In-game tests. Beta-only module, throwaway world, never shipped.
   {
     name: "qol_gametest",

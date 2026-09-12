@@ -1,0 +1,9 @@
+{
+  "resource_pack_name": "villages",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "villages:blueprint": {
+      "textures": "textures/items/blueprint"
+    }
+  }
+}

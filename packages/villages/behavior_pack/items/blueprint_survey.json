@@ -1,0 +1,26 @@
+{
+  "format_version": "1.26.30",
+  "minecraft:item": {
+    "description": {
+      "identifier": "villages:blueprint_survey",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.crafting"
+      }
+    },
+    "components": {
+      "villages:blueprint": {
+        "key": "survey"
+      },
+      "minecraft:display_name": {
+        "value": "Blueprint: Survey"
+      },
+      "minecraft:icon": {
+        "textures": {
+          "default": "villages:blueprint"
+        }
+      },
+      "minecraft:max_stack_size": 1
+    }
+  }
+}

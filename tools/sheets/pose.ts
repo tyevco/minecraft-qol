@@ -90,7 +90,7 @@ const SPREAD: Record<string, Vec3> = {
  */
 export const OUTFIT_BONES: readonly string[] = ["helmet", "hat", "pack", "tool"];
 
-/** Which outfit bones each job wears (packages/villages, and the builder). */
+/** Which outfit bones each job wears (packages/villages). */
 export const JOB_OUTFIT: Record<string, readonly string[]> = {
   guard: ["helmet"],
   worker: ["hat"],

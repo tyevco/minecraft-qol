@@ -43,17 +43,17 @@ for (const bp of BUILDINGS) {
   console.log(`concepts/structures/${bp.key}  ${bp.size.join("x")}  ${blocks} blocks`);
 }
 
-// The builder prototype (docs/design/settlements.md §5, §9 step 2): the
-// three blueprints a builder raises from the table, shipped in the builder
-// pack as `builder:<key>`. Small, and no stand-ins; the rest of the
-// catalogue follows once the placer is measured against these.
+// The blueprints (docs/design/settlements.md §5): the buildings a builder
+// raises from the blueprint table, shipped in the villages pack as
+// `villages:<key>` beside the village pieces (tools/structures/builder.ts
+// says what is left out of each).
 export const BUILDER_KEYS = ["tallfolk_well", "shared_larder", "shared_wall", "tallfolk_gatehouse", "tallfolk_farmhouse", "tallfolk_barn", "shared_inn", "tinker_stall", "shared_bridge", "tallfolk_field"] as const;
-const BUILDER = resolve(ROOT, "packages/builder/behavior_pack/structures/builder");
+const BUILDER = resolve(ROOT, "packages/villages/behavior_pack/structures/villages");
 mkdirSync(BUILDER, { recursive: true });
 for (const key of BUILDER_KEYS) {
   const bp = builderBlueprint(key);
   writeFileSync(resolve(BUILDER, `${key}.mcstructure`), bp.toMcstructure());
-  console.log(`packages/builder/behavior_pack/structures/builder/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
+  console.log(`packages/villages/behavior_pack/structures/villages/${key}.mcstructure  ${bp.size.join("x")}  ${bp.blocks().length} cells`);
 }
 
 

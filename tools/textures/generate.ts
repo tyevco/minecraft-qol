@@ -304,7 +304,6 @@ packIcon("packages/fluidworks", T.iconFluidworks());
 packIcon("packages/bulwark", T.iconBulwark());
 packIcon("packages/hatchling", T.iconHatchling());
 packIcon("packages/villages", T.iconVillages());
-packIcon("packages/builder", T.iconBuilder());
 packIcon("packages/gametest", T.iconGametest(), false);
 write("packages/probe/pack_icon.png", T.iconProbe().scale(ICON_SCALE));
 
@@ -408,39 +407,11 @@ for (const people of PEOPLES) {
   }
 }
 
-// The builder prototype (packages/builder): the blueprint table, the blueprint
-// item, and one builder - a tallfolk in the builder's outfit, the same
-// painters as the villages' people, so the person the villages pack gives
-// the job to later looks the same.
-const BUILDER_RP = "packages/builder/resource_pack/textures";
+// The blueprint table and the blueprint item (packages/villages, the
+// builder job); the builder is one of the peoples above.
+const BUILDER_RP = "packages/villages/resource_pack/textures";
 write(`${BUILDER_RP}/blocks/blueprint_table.png`, atlas(A.BLUEPRINT_TABLE, { top: T.plankU(T.OAK, 801), side: T.plankV(T.OAK, 802), leg: T.plankV(T.OAK, 803), sheet: T.draftingSheet(), dark: T.flatDark(T.DARK_STONE) }));
 write(`${BUILDER_RP}/items/blueprint.png`, T.blueprintIcon());
-{
-  const people = PEOPLES.find((p) => p.key === "tallfolk")!;
-  const job = JOBS.find((j) => j.key === "builder")!;
-  const look: T.Look = { skin: people.skin, hair: people.hair, eye: people.eye, cloth: job.cloth, trim: job.trim, trousers: job.trousers, boot: job.boot, front: job.front };
-  write(
-    `${BUILDER_RP}/entity/builder.png`,
-    atlas(A.BIPED, {
-      skin: T.skinTile(people.skin),
-      face: T.faceTile(look, people.head[0], people.head[1], people.beard),
-      hair: T.hairTile(people.hair),
-      hairTop: T.hairTile(people.hair),
-      shirt: T.shirtTile(look, people.body[0], people.body[1]),
-      shirtBack: T.clothTile(job.cloth, 611),
-      shirtSide: T.clothTile(job.cloth, 612),
-      sleeve: T.sleeveTile(look, people.arm[0], people.arm[1]),
-      hand: T.skinTile(people.skin),
-      trousers: T.trousersTile(look, people.leg[0], people.leg[1]),
-      helmet: T.helmetTile(),
-      hat: T.straw(T.STRAW, 613),
-      pack: T.packTile(),
-      tool: T.toolTile(),
-      toolWood: T.plankV(T.OAK, 614),
-      dark: T.flatDark(T.DARK_STONE),
-    }),
-  );
-}
 
 // Furfolk (docs/design/furfolk.md): animal peoples on the same job outfits,
 // peoples 9-18 of the villages pack. Window sizes are the furred specs' in

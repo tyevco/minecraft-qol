@@ -2,9 +2,9 @@
   "format_version": 2,
   "header": {
     "name": "Villages Resources",
-    "description": "Models, textures, animations and names for the nineteen peoples and their job posts. Enabled automatically with the Villages behavior pack.",
+    "description": "Models, textures, animations and names for the nineteen peoples, their job posts, the blueprint table and the blueprints. Enabled automatically with the Villages behavior pack.",
     "uuid": "de59241d-4308-4c82-9c14-fe3aa9e0ccef",
-    "version": [0, 3, 0],
+    "version": [0, 4, 0],
     "min_engine_version": [1, 26, 40]
   },
   "modules": [
@@ -12,7 +12,7 @@
       "description": "Villages resources",
       "type": "resources",
       "uuid": "5f1c2a8e-7d3b-4c4e-9a21-3e6f8b0d1c72",
-      "version": [0, 3, 0]
+      "version": [0, 4, 0]
     }
   ],
   "metadata": {

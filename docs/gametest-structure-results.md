@@ -265,9 +265,10 @@ commit is innocent, and the pack is right in both directions:
 One cause, two opposite-looking symptoms, and a re-run cannot tell either from
 a bug because the re-run is itself such a session.
 
-The fix is the escape hatch `builder:forget` already had: a rig asks the pack
-to forget the cell before it places anything there. `bulwark:forget x y z
-[radius]` and `villages:forget x y z [radius]` now exist beside it, all three
+The fix is the escape hatch the builder prototype already had (`builder:forget`,
+now the builder half of `villages:forget`): a rig asks the pack to forget the
+cell before it places anything there. `bulwark:forget x y z [radius]` and
+`villages:forget x y z [radius]` now exist beside it, all of them
 taking their position on the line so they need no sender — a command from a
 SimulatedPlayer or the console arrives with no `sourceEntity` at all. With
 `placeTurret` calling it, a session that boots `1 turret(s) known` logs

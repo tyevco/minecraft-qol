@@ -4,12 +4,16 @@
  *   npm run viewer           then serve dist/viewer (any static server)
  *
  * Copies the generated geometry and atlases the catalogue below points at,
- * plus index.html and viewer.js, and writes catalog.json. GitHub Pages
- * publishes the same folder from .github/workflows/pages.yml on every push
- * to main, so the page always shows what the repo generates.
+ * plus viewer.js, fills index.html with the site's shared navigation bar
+ * (tools/pages/site.ts), and writes catalog.json. GitHub Pages publishes the
+ * same folder from .github/workflows/pages.yml on every push to main, so the
+ * page always shows what the repo generates. The other sections of the site
+ * (the T-pose sheets) are written into this folder by their own generators,
+ * after this one, since this one clears it.
  */
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { fillTemplate } from "../pages/site";
 import { buildVanilla, type PaletteEntry } from "./vanilla";
 
 const ROOT = resolve(__dirname, "../..");
@@ -639,7 +643,7 @@ const catalog = {
 };
 
 writeFileSync(resolve(OUT, "catalog.json"), JSON.stringify(catalog, null, 2));
-copyFileSync(resolve(__dirname, "index.html"), resolve(OUT, "index.html"));
+writeFileSync(resolve(OUT, "index.html"), fillTemplate(readFileSync(resolve(__dirname, "index.html"), "utf8"), "models", ""));
 copyFileSync(resolve(__dirname, "viewer.js"), resolve(OUT, "viewer.js"));
 writeFileSync(resolve(OUT, ".nojekyll"), "");
 console.log(`dist/viewer: ${MODELS.length} models`);

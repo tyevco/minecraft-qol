@@ -83,8 +83,12 @@ read-only, is only half true: `tame(player)` is in the 2.9.0 typings, though
 bonded hatchling has no tameable component and no `tamedToPlayerId`: what
 survives is the `minecraft:is_tamed` marker, which says *that* it is
 somebody's and not *whose*. Reading the wrong one was what kept a bonded
-hatchling from ever being fed. The panel's owner-only switch waits on the pack
-recording its own owner (issue #98).
+hatchling from ever being fed. So the pack records its own owner (issue #98):
+the berry offer's before-event carries the player, and once `is_tamed` has
+appeared the offerer's id is written to `hatchling:owner` on the entity. The
+owner-only switch keys on that. It cannot be measured headlessly - a
+simulated player's offer raises no before-event in the pack at all, though
+the engine still bonds - so it is on the README's confirm list.
 
 ## 3. The entities
 
@@ -161,9 +165,10 @@ Listed with the fix for each outcome in the pack README. The headline items:
 
 - **Pet insurance** through Guardian Phase 3: a bonded hatchling that dies is
   re-spawned at its owner's side with its name and stage. Variant and stage
-  are properties, so that half is there - but the owner is **not** on the
-  tameable component, which a bonded hatchling does not have (issue #98), so
-  the pack has to record the owner before this can be built.
+  are properties, so that half is there - and the owner is now the pack's
+  own `hatchling:owner` record (issue #98), since a bonded hatchling has no
+  tameable component to read it off. What insurance still needs is
+  `tame(player)` with a `Player`, so an offline owner is the open question.
 - **Variant touches:** the ember hatchling could dry a wet player, the frost
   one slow a mob that hurts its owner, the moss one drop a sweet berry now
   and then. Cosmetic at first: a puff of embers, spores or frost from the

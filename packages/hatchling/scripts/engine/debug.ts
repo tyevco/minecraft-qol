@@ -11,7 +11,7 @@ import {
   variantById,
 } from "../core/rules";
 import { readEgg } from "./egg";
-import { readPet } from "./pet";
+import { isBonded, ownerName, readPet } from "./pet";
 import * as settings from "./settings";
 import { EGG, PET } from "./tend";
 
@@ -44,13 +44,12 @@ export function install(): void {
     const pet = nearest(player, PET);
     if (pet) {
       const s = readPet(pet);
-      const tameable = pet.getComponent(EntityComponentTypes.Tameable);
       const scale = pet.getComponent(EntityComponentTypes.Scale)?.value;
       const wait = cooldownRemaining(s.lastFedAt, now, policy.feedCooldownMs);
       player.sendMessage(
         `§7hatchling: §f${variantById(Number(pet.getProperty("hatchling:variant")))?.key}§7 ` +
           `${STAGE_NAMES[s.stage]} (scale ${scale ?? "?"}), feedings ${s.feedings}/${policy.feedingsPerStage}, ` +
-          `owner ${tameable?.isTamed ? (tameable.tamedToPlayer?.name ?? s.ownerId) : "none (wild)"}, ` +
+          `owner ${isBonded(pet) ? (s.ownerId ? `${ownerName(pet) ?? "?"} (${s.ownerId})` : "unrecorded (bonded before the pack kept owners)") : "none (wild)"}, ` +
           (wait > 0 ? `rest ${describeWait(wait)}` : "hungry"),
       );
     } else player.sendMessage(`§7hatchling: §8none within ${RADIUS}`);

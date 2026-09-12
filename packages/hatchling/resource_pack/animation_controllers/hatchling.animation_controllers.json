@@ -10,6 +10,9 @@
           ],
           "transitions": [
             {
+              "glide": "query.property('hatchling:gliding')"
+            },
+            {
               "flap": "query.property('hatchling:happy')"
             },
             {
@@ -24,6 +27,9 @@
           ],
           "transitions": [
             {
+              "glide": "query.property('hatchling:gliding')"
+            },
+            {
               "idle": "query.modified_move_speed <= 0.05"
             }
           ],
@@ -36,9 +42,23 @@
           ],
           "transitions": [
             {
+              "glide": "query.property('hatchling:gliding')"
+            },
+            {
               "idle": "query.all_animations_finished"
             }
           ]
+        },
+        "glide": {
+          "animations": [
+            "glide"
+          ],
+          "transitions": [
+            {
+              "idle": "!query.property('hatchling:gliding')"
+            }
+          ],
+          "blend_transition": 0.2
         }
       }
     }

@@ -21,6 +21,7 @@ import * as storage from "./engine/storage";
 import * as follow from "./engine/follow";
 import * as standing from "./engine/standing";
 import * as storehouse from "./engine/storehouse";
+import * as sweep from "./engine/sweep";
 import * as visitors from "./engine/visitors";
 
 const log = (...parts: unknown[]): void => console.warn("[Villages]", ...parts);
@@ -69,9 +70,12 @@ world.afterEvents.worldLoad.subscribe(() => {
   standing.install(log);
   storehouse.install(log);
   follow.install(log);
+  sweep.install(log);
   system.runInterval(() => {
     settings.refresh();
     clock.touch();
+    // Retire records whose block went away without a break event (issue #104).
+    sweep.sweep();
   }, 200);
   debug.install();
   hatches.install();

@@ -33,6 +33,15 @@ hold in their head and long enough to come back to:
 - **It never fights.** No attack goals, no `hurt_by_target`. It panics and
   runs. Its type family is `mob`, which the vanilla hostiles do not target, so
   it is not a liability at night either.
+- **It cannot fall to its death.** Added after the first one did, off a ledge,
+  in front of the person this pack was written for. `minecraft:damage_sensor`
+  refuses `fall` and `fly_into_wall` outright - not a switch, not a script
+  path, so it holds with the script asleep and every panel toggle off - and on
+  the way down the pack raises `hatchling:gliding` and holds the descent at a
+  drift, because a thing with wings should use them. Measured: 20 blocks in 45
+  ticks, fastest -0.49 blocks/tick, landing unhurt. What kills a pet after
+  that - fire, lava, water, a sibling's sword - is Guardian's pet shield, for
+  every tamed animal rather than only this one.
 - **Real time, not a timer.** The rests between warmings and feedings are wall
   clock (`Date.now()`), so leaving the Realm running does nothing; a player
   has to come back and tend. There is no way to rush it and no reason to,
@@ -59,14 +68,23 @@ Checked against the installed `node_modules/@minecraft/server/index.d.ts`.
 | Per-entity memory | Entity dynamic properties: warmings, last warmed, feedings, last fed |
 | Hatching as an event | `Entity.triggerEvent("hatchling:hatch")` and `world.afterEvents.dataDrivenEntityTrigger` filtered to the egg and that event |
 | Hatch that survived a world close | `world.afterEvents.entityLoad`: an egg loaded with `hatching` set finishes hatching |
+| Gliding rather than falling | `Entity.getVelocity()` / `applyImpulse()` on a short sweep; the units are blocks per tick and a mob honours them (measured) |
 
 **The correction.** The concept sheet said script would tame the hatchling to
-whoever warmed the egg. It cannot: `EntityTameableComponent` in 2.9.0 is
-read-only, and `tame()` / `tameToPlayer()` live only on
-`EntityTameMountComponent`, for rideables. So the hatchling hatches **wild**
-and is bonded by the vanilla component the moment a player offers it berries.
-That turned out to be a better beat anyway: the hatch and the bond are two
-moments, not one. Recorded in `docs/README.md`.
+whoever warmed the egg. The pack does not: the hatchling hatches **wild** and
+is bonded by the vanilla component the moment a player offers it berries,
+which turned out to be a better beat anyway - the hatch and the bond are two
+moments, not one. (The reason first given here, that the tameable component is
+read-only, is only half true: `tame(player)` is in the 2.9.0 typings, though
+`tameToPlayer()` really is rideable-only. Corrected in `docs/README.md`.)
+
+**A second correction, measured later.** Ownership cannot be read back at all.
+`hatchling:on_tame` removes the group that holds `minecraft:tameable`, so a
+bonded hatchling has no tameable component and no `tamedToPlayerId`: what
+survives is the `minecraft:is_tamed` marker, which says *that* it is
+somebody's and not *whose*. Reading the wrong one was what kept a bonded
+hatchling from ever being fed. The panel's owner-only switch waits on the pack
+recording its own owner (issue #98).
 
 ## 3. The entities
 
@@ -80,7 +98,9 @@ the before-event.
 **`hatchling:hatchling`.** A small walking mob: `navigation.walk`, float,
 panic, stroll, look at players; nameable, leashable, persistent, `mob`
 family. Properties `variant`, `stage` (0–2), `happy` (drives the flap
-animation). Component groups:
+animation) and `gliding` (drives the glide animation, raised by the pack's
+flight sweep while it is in the air). `minecraft:damage_sensor` refuses fall
+damage. Component groups:
 
 | Group | Contents |
 | --- | --- |
@@ -140,9 +160,10 @@ Listed with the fix for each outcome in the pack README. The headline items:
 ## 7. Later
 
 - **Pet insurance** through Guardian Phase 3: a bonded hatchling that dies is
-  re-spawned at its owner's side with its name and stage. The shape is
-  already there (variant and stage are properties, the owner is on the
-  tameable component).
+  re-spawned at its owner's side with its name and stage. Variant and stage
+  are properties, so that half is there - but the owner is **not** on the
+  tameable component, which a bonded hatchling does not have (issue #98), so
+  the pack has to record the owner before this can be built.
 - **Variant touches:** the ember hatchling could dry a wet player, the frost
   one slow a mob that hurts its owner, the moss one drop a sweet berry now
   and then. Cosmetic at first: a puff of embers, spores or frost from the

@@ -1,5 +1,6 @@
 import {
   EntityComponentTypes,
+  EntityDamageCause,
   GameMode,
   ItemStack,
   type Vector3,
@@ -35,6 +36,32 @@ function near(test: Test, type: string) {
 }
 
 /**
+ * Take away every egg and hatchling around the spot before a test starts
+ * (issue #99).
+ *
+ * `near` searches world space, and sequential tests sit in the same x/z
+ * column one block higher each time - so a four-block radius reaches the
+ * cells of the tests just below. A structure reload restores blocks but not
+ * entities, and `gametest clearall` does not touch them either, so an egg
+ * left by the previous hatchling test was still standing in this one's
+ * radius: `hatchling_egg_hatches_into_its_variant` failed with "egg still
+ * present after the hatch (1)" in the sequence and passed alone. The radius
+ * here is wider than `near`'s on purpose - it has to reach every cell that
+ * `near` can see, from either side.
+ */
+function clearSpot(test: Test): void {
+  for (const type of [EGG, PET]) {
+    for (const e of test.getDimension().getEntities({ type, location: test.worldBlockLocation(SPOT), maxDistance: 12 })) {
+      try {
+        e.remove();
+      } catch {
+        // Already gone, or in a chunk that went away: either way, not here.
+      }
+    }
+  }
+}
+
+/**
  * Spawn, then set the variant - deliberately NOT via `spawnEvent`.
  *
  * A spawnEvent REPLACES minecraft:entity_spawned rather than running alongside
@@ -59,6 +86,7 @@ function spawn(test: Test, type: string, variant: number) {
 
 registerAsync("qol", "hatchling_egg_keeps_variant_and_shell", async (test) => {
   floor(test);
+  clearSpot(test);
   const egg = spawn(test, EGG, 2);
   await test.idle(5);
   const variant = egg.getProperty("hatchling:variant");
@@ -80,6 +108,7 @@ registerAsync("qol", "hatchling_egg_keeps_variant_and_shell", async (test) => {
 
 registerAsync("qol", "hatchling_egg_hatches_into_its_variant", async (test) => {
   floor(test);
+  clearSpot(test);
   const egg = spawn(test, EGG, 1);
   await test.idle(5);
   egg.triggerEvent("hatchling:hatch");
@@ -104,6 +133,7 @@ registerAsync("qol", "hatchling_egg_hatches_into_its_variant", async (test) => {
 
 registerAsync("qol", "hatchling_grows_by_stage_event", async (test) => {
   floor(test);
+  clearSpot(test);
   const pet = spawn(test, PET, 0);
   await test.idle(5);
   const scale0 = pet.getComponent(EntityComponentTypes.Scale)?.value;
@@ -143,6 +173,7 @@ registerAsync("qol", "hatchling_grows_by_stage_event", async (test) => {
  */
 registerAsync("qol", "hatchling_tames_with_berries", async (test) => {
   floor(test);
+  clearSpot(test);
   const pet = spawn(test, PET, 0);
   await test.idle(10);
 
@@ -177,6 +208,111 @@ registerAsync("qol", "hatchling_tames_with_berries", async (test) => {
       pet.getComponent(EntityComponentTypes.Tameable) !== undefined
     } is_tamed=${pet.getComponent(EntityComponentTypes.IsTamed) !== undefined}`,
   );
+  // Printed on success as well, because this is the measurement the pack's
+  // `isBonded` depends on: the tameable component goes with the wild group, so
+  // `minecraft:is_tamed` is the only thing left that says "somebody's".
+  test.print(
+    `after the bond: tameable=${pet.getComponent(EntityComponentTypes.Tameable) !== undefined} is_tamed=${
+      pet.getComponent(EntityComponentTypes.IsTamed) !== undefined
+    }`,
+  );
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(400);
+
+/**
+ * A hatchling cannot fall to its death.
+ *
+ * This is the one thing about the pack that matters most to the person it was
+ * written for, and it is deliberately data and not script: the entity carries
+ * `minecraft:damage_sensor` refusing `fall` and `fly_into_wall`, so it holds
+ * with the script asleep, on a `/reload` mid-fall, and with every panel switch
+ * off. Applying the damage directly is the honest test of that - a real drop
+ * would also be caught by the glide, and then this would be measuring two
+ * things at once.
+ */
+registerAsync("qol", "hatchling_ignores_fall_damage", async (test) => {
+  floor(test);
+  clearSpot(test);
+  const pet = spawn(test, PET, 1);
+  await test.idle(5);
+  const health = pet.getComponent(EntityComponentTypes.Health);
+  test.assert(health !== undefined, "hatchling has no health component");
+  const before = health!.currentValue;
+
+  const applied = pet.applyDamage(20, { cause: EntityDamageCause.fall });
+  await test.idle(5);
+
+  test.assert(pet.isValid, "a 20-point fall killed the hatchling outright");
+  test.assert(
+    health!.currentValue === before,
+    `fall damage took the hatchling ${before} -> ${health!.currentValue} (applyDamage returned ${applied}); the damage sensor should refuse it`,
+  );
+  pet.remove();
+  test.succeed();
+})
+  .structureName(STRUCTURE)
+  .maxTicks(100);
+
+/**
+ * A hatchling has wings, so a drop should look like flight.
+ *
+ * Dropped from well above the arena, the pack's glide sweep
+ * (packages/hatchling/scripts/engine/flight.ts) should hold it near
+ * `GLIDE_SPEED` (0.35 blocks/tick) instead of letting it accelerate towards
+ * terminal velocity, which is about -3.9. The bound below is loose on purpose:
+ * what is being pinned is "drifts rather than plummets", and the assertion
+ * message carries the speed actually measured, so a failure is a measurement
+ * of how hard `applyImpulse` really pushes a mob.
+ */
+registerAsync("qol", "hatchling_glides_down_a_drop", async (test) => {
+  floor(test);
+  clearSpot(test);
+  const pet = spawn(test, PET, 1);
+  await test.idle(5);
+  const health = pet.getComponent(EntityComponentTypes.Health);
+  const before = health?.currentValue ?? NaN;
+
+  const at = test.worldBlockLocation(SPOT);
+  const from = at.y + 20;
+  pet.teleport({ x: at.x + 0.5, y: from, z: at.z + 0.5 });
+
+  // `isOnGround` still reads true for a tick or two after the teleport, so the
+  // sampling loop would end before it began if it trusted that straight away.
+  await test.idle(4);
+
+  let fastest = 0;
+  let gliding = false;
+  let samples = 0;
+  for (let t = 0; t < 300 && !pet.isOnGround; t++) {
+    fastest = Math.min(fastest, pet.getVelocity().y);
+    gliding ||= pet.getProperty("hatchling:gliding") === true;
+    samples++;
+    await test.idle(1);
+  }
+
+  // test.print goes to chat, which nobody reads on a headless server: every
+  // measurement below is in an assertion message instead.
+  const measured = `fell from y=${from.toFixed(1)} to y=${pet.location.y.toFixed(1)} over ${samples} sample(s), fastest ${fastest.toFixed(2)} blocks/tick, gliding seen: ${gliding}`;
+  // Take it away BEFORE the assertions, which throw. This one starts its fall
+  // above the structure, and GameTest only cleans up inside it: a hatchling
+  // left drifting outside the test volume is persistent, survives the run, and
+  // moves where later tests get placed. That is not hypothetical - it is what
+  // made villages_visitor_settles fail three runs in a row.
+  const after = health?.currentValue ?? NaN;
+  const alive = pet.isValid && after === before;
+  pet.remove();
+  test.assert(samples > 0, `the hatchling never left the ground: ${measured}`);
+  test.assert(alive, `hatchling took damage falling 20 blocks (${before} -> ${after}); ${measured}`);
+  test.assert(
+    gliding,
+    `hatchling:gliding was never set, so the wings never came out; ${measured}`,
+  );
+  test.assert(
+    fastest > -1.5,
+    `that is a plummet, not a glide - free fall reaches about -3.9; ${measured}`,
+  );
   test.succeed();
 })
   .structureName(STRUCTURE)
@@ -198,6 +334,7 @@ registerAsync("qol", "hatchling_tames_with_berries", async (test) => {
  */
 registerAsync("qol", "hatchling_shell_cracks_while_warming", async (test) => {
   floor(test);
+  clearSpot(test);
   const egg = spawn(test, EGG, 2);
   await test.idle(5);
 

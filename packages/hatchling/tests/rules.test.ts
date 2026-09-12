@@ -52,6 +52,7 @@ describe("parsePolicy", () => {
       "hatchling:feedings": "7",
       "hatchling:feed_cooldown": 0,
       "hatchling:anyone_tends": false,
+      "hatchling:glide": false,
     });
     expect(p).toEqual({
       warmingsToHatch: 5,
@@ -59,6 +60,7 @@ describe("parsePolicy", () => {
       feedingsPerStage: 7,
       feedCooldownMs: 0,
       anyoneCanTend: false,
+      glide: false,
     });
   });
 
@@ -75,9 +77,15 @@ describe("parsePolicy", () => {
     expect(p.anyoneCanTend).toBe(true);
   });
 
+  it("keeps the glide on unless the panel plainly says otherwise", () => {
+    expect(parsePolicy({ "hatchling:glide": "sometimes" }).glide).toBe(true);
+    expect(parsePolicy({ "hatchling:glide": false }).glide).toBe(false);
+  });
+
   it("samePolicy compares every field", () => {
     expect(samePolicy(DEFAULT_POLICY, parsePolicy({}))).toBe(true);
     expect(samePolicy(DEFAULT_POLICY, policy({ feedCooldownMs: 1 }))).toBe(false);
+    expect(samePolicy(DEFAULT_POLICY, policy({ glide: false }))).toBe(false);
   });
 });
 

@@ -231,6 +231,73 @@ evidence about a pack until it has also been run alone.
 `harvester_funnel` still passes alone and intermittently fails in sequence
 ("crop tile is air; expected it replanted"), so the sweep is not yet complete.
 
+## A re-run alone is a clean room for blocks, not for records
+
+The runner re-runs a failure **alone** before believing it, and CLAUDE.md says
+to do the same by hand. That rule is sound for the three mechanisms above —
+and it does nothing at all for a pack's own position-keyed records, because of
+how the isolation is built: `runSession` in `tools/bds/test.mjs` boots a
+**fresh server against the same world**. The world dynamic property the records
+live in survives that restart, and test cells repeat across sessions, so the
+re-run hands the test whatever the last session left on that cell.
+
+Measured on `main` at `3783e6f`, from one `npm run bds:test` and the retry logs
+it writes beside it. Every line is the same test, the same packs and the same
+world file; the only thing that differs is the Bulwark boot line:
+
+| session | `[Bulwark] ready ... N turret(s) known` | result |
+| --- | --- | --- |
+| `retry-5-turret_throws_splash_from_hopper-1` | **1** | fail — "the ammo gate materials were not taken (tier 3)" |
+| `retry-5-turret_throws_splash_from_hopper-2` | **1** | fail — same message |
+| `retry-6-turret_gate_holds_tipped_until_upgraded-1` | **1** | fail — "tier I fired the tint: 3 shots, hopper holds 5 of 8" |
+| `retry-6-turret_gate_holds_tipped_until_upgraded-2` | **1** | fail — same message |
+| a hand run of the same test minutes later | **0** | **pass** |
+
+Those are the failures issue #106 attributed to the hold-fire commit. The
+commit is innocent, and the pack is right in both directions:
+
+- a turret adopted from a record already at ammo tier III **fires the tint**
+  in a test that asserts tier I refuses it;
+- a turret whose gate is already maxed **correctly takes nothing** when the
+  test feeds it a fire charge, and the test, which waits for the material to
+  leave the hopper, reads that as "the materials were not taken".
+
+One cause, two opposite-looking symptoms, and a re-run cannot tell either from
+a bug because the re-run is itself such a session.
+
+The fix is the escape hatch the builder prototype already had (`builder:forget`,
+now the builder half of `villages:forget`): a rig asks the pack to forget the
+cell before it places anything there. `bulwark:forget x y z [radius]` and
+`villages:forget x y z [radius]` now exist beside it, all of them
+taking their position on the line so they need no sender — a command from a
+SimulatedPlayer or the console arrives with no `sourceEntity` at all. With
+`placeTurret` calling it, a session that boots `1 turret(s) known` logs
+
+```
+[Bulwark] bulwark:forget ok: 1 turret(s) forgotten near 5,-27,8 in minecraft:overworld; 0 record(s) left
+```
+
+and both tests pass on the world that had failed them four times running.
+
+Villages showed the same shape from the other side. A new test for the stale-
+post sweep failed three times, always at its first step — "expected a person at
+the post before the sweep, found 0" — in sessions booting `1 post(s) known`.
+The record left on that cell was a post the **kids** had placed, and `tick`'s
+"same post" check keeps such a record when a post of the same people and job is
+set over it (right for a plaque being turned, wrong here). A kids' post spawns
+nobody by design, so the test waited for a person that was never coming. With
+`villages:forget` in `placePost` it passes, and the log finally reaches the
+thing it was written to measure:
+
+```
+[Villages] villages:forget ok: 1 post(s) forgotten near 4,-27,6; 0 record(s) left
+[Villages] retired the record of a post that is no longer there at 4,-26,6; 0 post(s) left
+```
+
+**So: read the pack's own "N known" line before believing any failure**, even
+one that survived the re-run. A green line from a session that booted with
+records is worth as much as a green line from a test with a skip branch.
+
 ## A SimulatedPlayer is invisible to every other pack
 
 On headless BDS a `SimulatedPlayer` marshals as **`undefined`** into any
@@ -528,3 +595,30 @@ starts from a world that does not exist yet. Locally, a suite result from a
 world that has been run against before is worth exactly as much as a re-run in
 sequence — read the pack's own log lines before believing it, and re-run
 `--fresh` before reporting a failure that CI does not have.
+
+**Since fixed in the pack, and `--fresh` is no longer the answer to this one.**
+The dangling flag was a real bug, of the same family as the stale post records
+(issue #104): `state.visit` was cleared only when the visitor left at dawn, so
+a visitor removed by anything else — killed, despawned, or taken by a structure
+reload — left the settlement occupied by nobody for good. On the suite, where
+the clock is set per test, the leaving dawn may never come, so
+`villages_visitor_leaves_at_dawn` failed with "expected a visitor before dawn"
+on a world booting `0 post(s) known`. The visitor poll now gives a visit up
+after three consecutive polls that cannot find its visitor — three, not one,
+because `world.getEntity` returns nothing for an entity in an unloaded chunk
+exactly as it does for one that is gone (`core/visitors.ts` `visitLost`):
+
+```
+[Villages] the visitor (-124554051208) is no longer in the world; the visit is given up and the next comes on day 2
+```
+
+Both visitor tests then pass on a world that had just failed one of them.
+
+What remains for those two is **not** contamination, and is issue #108: an
+arriving visitor is put on the ground under `edgeSpot(settlement.centre)`, a
+settlement's radius is 48 blocks, and the rig's `floor()` paints 8x8 - so an
+edge spot off that square finds the world's own terrain about a hundred blocks
+down. Measured: the settlement was right (`2 posts` at y = 44, the test's own
+cell) and the visitor arrived correctly at **y = -60**, outside the test's
+40-block search. It passes alone because the random draw sometimes lands on
+the painted square, which is luck rather than isolation.

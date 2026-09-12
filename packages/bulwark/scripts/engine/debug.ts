@@ -16,6 +16,11 @@ import * as turret from "./turret";
  *   /scriptevent bulwark:debug       counters, loaded heads, the nearest record
  *   /scriptevent bulwark:reconcile   tick every recorded turret in a loaded
  *                                    chunk now - the escape hatch after /reload
+ *   /scriptevent bulwark:forget x y z [radius]
+ *                                    drop what the pack remembers about the
+ *                                    turret(s) there, blocks left standing and
+ *                                    nothing given back - the GameTests' sweep
+ *                                    (issue #106)
  *
  * The engine probes for the unknowns live in the probe pack as
  * qolprobe:turret-* (docs/bulwark-turret-probe.md).
@@ -125,8 +130,18 @@ function reconcileAll(player: Player): void {
 
 export function install(): void {
   system.afterEvents.scriptEventReceive.subscribe((ev) => {
-    if (ev.id !== "bulwark:debug" && ev.id !== "bulwark:reconcile") return;
     const src = ev.sourceEntity;
+
+    // `forget` takes its position on the line, so it needs no sender: a
+    // command from a SimulatedPlayer or the server console arrives with no
+    // sourceEntity at all (docs/README.md corrections), and the GameTests
+    // are the whole reason this event exists.
+    if (ev.id === "bulwark:forget") {
+      forget(ev.message, src instanceof Player ? src : undefined);
+      return;
+    }
+
+    if (ev.id !== "bulwark:debug" && ev.id !== "bulwark:reconcile") return;
     if (!(src instanceof Player)) {
       console.warn(`[Bulwark] ${ev.id}: run this as a player`);
       return;
@@ -134,4 +149,61 @@ export function install(): void {
     if (ev.id === "bulwark:debug") debug(src);
     else reconcileAll(src);
   });
+}
+
+/**
+ * `bulwark:forget x y z [radius]` - drop the record (and head) of the turret
+ * at that block, or of every turret whose record is within `radius` on x/z.
+ * Blocks are left standing and nothing is given back, which is what a test
+ * wants: `retire` would drop the buffer and the fed upgrades as items into
+ * the arena.
+ *
+ * Why the tests need it: a structure reload restores blocks but not a pack's
+ * position-keyed records, and the runner re-runs a failure in a fresh server
+ * session, which puts the test back on the first spot of the column - the one
+ * every earlier run has already written a record to. A turret adopted from
+ * such a record starts at whatever tiers that test left behind, which is how
+ * three ammo-gate tests came to fail on a world that had seen the suite
+ * before (issue #106).
+ */
+function forget(message: string, player: Player | undefined): void {
+  const say = (text: string): void => {
+    player?.sendMessage(`§7${text}`);
+    console.warn(`[Bulwark] ${text}`);
+  };
+  const parts = message.trim().split(/\s+/).filter((p) => p.length > 0);
+  const [x, y, z, radius] = parts.slice(0, 4).map(Number);
+  if ([x, y, z].some((n) => n === undefined || !Number.isInteger(n))) {
+    say("bulwark:forget wants x y z [radius]");
+    return;
+  }
+  const at = { x: x!, y: y!, z: z! };
+  const within = radius !== undefined && Number.isFinite(radius) ? radius : undefined;
+  // The caller's dimension, or the overworld for a console command - which
+  // has no sourceEntity to ask (the same default builder:* uses). Without
+  // this the radius would reach a turret standing at the same x/z in the
+  // Nether.
+  const dimId = player?.dimension.id ?? "minecraft:overworld";
+  // The radius is x/z only: records in one column share an x/z and differ
+  // by y, which is exactly the set a GameTest needs cleared.
+  const hits = storage
+    .all()
+    .filter((r) => r.dimId === dimId)
+    .filter((r) => (within !== undefined ? Math.hypot(r.x - at.x, r.z - at.z) <= within : r.x === at.x && r.y === at.y && r.z === at.z));
+  let forgotten = 0;
+  for (const r of hits) {
+    let dim;
+    try {
+      dim = world.getDimension(r.dimId);
+    } catch {
+      continue;
+    }
+    turret.forget(dim, r);
+    forgotten++;
+  }
+  say(
+    forgotten > 0
+      ? `bulwark:forget ok: ${forgotten} turret(s) forgotten near ${at.x},${at.y},${at.z} in ${dimId}; ${storage.count()} record(s) left`
+      : `bulwark:forget: no turret record at ${at.x},${at.y},${at.z}${within !== undefined ? ` within ${within}` : ""}`,
+  );
 }

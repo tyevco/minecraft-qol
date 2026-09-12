@@ -83,6 +83,12 @@ export interface Policy {
   feedCooldownMs: number;
   /** Off: only the owner may feed a bonded hatchling. Eggs are always shared. */
   anyoneCanTend: boolean;
+  /**
+   * Wings out on the way down: a falling hatchling drifts instead of dropping.
+   * Off is only about the LOOK of a fall - a hatchling never takes fall damage
+   * either way, because that is its damage sensor and not this switch.
+   */
+  glide: boolean;
 }
 
 const MINUTE_MS = 60_000;
@@ -93,6 +99,7 @@ export const DEFAULT_POLICY: Policy = {
   feedingsPerStage: 4,
   feedCooldownMs: 15 * MINUTE_MS,
   anyoneCanTend: true,
+  glide: true,
 };
 
 function slider(raw: unknown, fallback: number, min: number, max: number): number {
@@ -120,6 +127,7 @@ export function parsePolicy(raw: Readonly<Record<string, unknown>>): Policy {
       slider(raw["hatchling:feed_cooldown"], DEFAULT_POLICY.feedCooldownMs / MINUTE_MS, 0, 60) *
       MINUTE_MS,
     anyoneCanTend: toggle(raw["hatchling:anyone_tends"], DEFAULT_POLICY.anyoneCanTend),
+    glide: toggle(raw["hatchling:glide"], DEFAULT_POLICY.glide),
   };
 }
 
@@ -129,7 +137,8 @@ export function samePolicy(a: Policy, b: Policy): boolean {
     a.warmCooldownMs === b.warmCooldownMs &&
     a.feedingsPerStage === b.feedingsPerStage &&
     a.feedCooldownMs === b.feedCooldownMs &&
-    a.anyoneCanTend === b.anyoneCanTend
+    a.anyoneCanTend === b.anyoneCanTend &&
+    a.glide === b.glide
   );
 }
 
@@ -137,7 +146,8 @@ export function describePolicy(p: Policy): string {
   return (
     `hatch after ${p.warmingsToHatch} warming(s), ${p.warmCooldownMs / MINUTE_MS} min apart; ` +
     `grow every ${p.feedingsPerStage} feeding(s), ${p.feedCooldownMs / MINUTE_MS} min apart; ` +
-    (p.anyoneCanTend ? "anyone tends" : "owner feeds")
+    (p.anyoneCanTend ? "anyone tends" : "owner feeds") +
+    (p.glide ? "; glides" : "; no glide")
   );
 }
 

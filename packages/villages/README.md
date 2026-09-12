@@ -53,6 +53,29 @@ measurements: `docs/villages-jigsaw-results.md`.
   which counts from the server's boot; a restart is told by the marker
   below and ends every wait. A post placed over an existing
   record (a structure load, `/fill`) retires the old person and starts over.
+- **The sweep** (`scripts/core/sweep.ts` decides, `scripts/engine/sweep.ts`
+  acts; issue #104): `playerBreakBlock` is the only event that drops a
+  record, so a post taken by an explosion, `/fill`, `/setblock`, a piston or
+  a structure load over it used to leave its row behind for good - and the
+  post's own tick cannot notice, because a record with no block never ticks.
+  Since settlements cluster on x/z, one stale row joined a live one and
+  dragged the settlement's middle to wherever the old post used to be; on a
+  re-used test world that put a visitor sixty blocks under the arena. The
+  ten-second interval now walks the index, sixteen rows a pass, and retires
+  any row whose block is no longer a `villages:post`. Rule 6 of CLAUDE.md
+  decides the rest: an unreadable block (an unloaded chunk, or a position
+  outside the world) is **skipped, never evicted** - a post nobody is
+  standing near is out of sight, not gone. `villages:debug` counts what has
+  been swept, and `villages_stale_post_record_is_swept` pins it.
+- **`/scriptevent villages:forget x y z [radius]`**: retire the post
+  record(s) there - the record and its person - with the block left
+  standing. The GameTests' sweep, and the same escape hatch
+  `bulwark:forget` is; the builder's hatches hear the same event and drop
+  the building records within the radius. A test needs it because a
+  record outlives the session that wrote it and test cells repeat across
+  sessions: a post the kids placed, remembered on a cell a later test
+  uses, is kept by the "same post" check and spawns nobody, so the test
+  waits for a person that never comes (docs/gametest-structure-results.md).
 - **Trades** (design §5.1, `scripts/core/trades.ts` decides,
   `scripts/engine/trades.ts` acts): a **worker's** post surveys the blocks
   within sixteen of it on the first tick its person is present, and again
@@ -424,8 +447,9 @@ measurements: `docs/villages-jigsaw-results.md`.
     (the origin is the footing corner, the table the nearest within
     sixteen); `villages:remove`, `villages:resume` and `villages:repair x y
     z [ticksPerBlock]` for the building at a spot; `villages:forget x y z
-    [radius]` drops records and leaves the world as it is (the test
-    harness's sweep); `villages:survey x1 y1 z1 x2 y2 z2`. Each leaves its
+    [radius]` drops the building records and, through the post hatch above,
+    the post records, and leaves the world as it is (the test harness's
+    sweep); `villages:survey x1 y1 z1 x2 y2 z2`. Each leaves its
     verdict as the name tag of a `villages:verdict`-tagged waypoint at the
     spot, which is how the GameTests read it.
 - **Settings panel** (manifest format 3): minutes between a worker's cycles

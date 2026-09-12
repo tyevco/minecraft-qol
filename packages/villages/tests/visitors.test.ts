@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FRESH, PEOPLES, PLACED_BY_PLAYER, PLACED_BY_WORLD, WORKER, type PostRecord } from "../scripts/core/record";
 import { FARMER, FORAGER, MINER } from "../scripts/core/trades";
-import {
-  DAWN_TO, DAY_TICKS, EDGE_DISTANCE, ERRANDS, ERRANDS_TO_SETTLE, GIFTS, NAMES, SETTLEMENT_MIN_POSTS, SETTLEMENT_RANGE, STANDING_PER_ERRAND, VISIT_EVERY_DAYS,
-  afterPayment, arrived, dayOf, deliver, edgeSpot, isDawn, leavesAt, left, lockedDawn, mayStay, newFace, nextSettlement, parseState, peopleFor, planArrival, settleTarget, settlements,
-  ticksToLockedDawn,
-  standingProperty, visitorName, type Face, type VisitorsState,
-} from "../scripts/core/visitors";
+import { afterPayment, arrived, DAWN_TO, DAY_TICKS, dayOf, deliver, EDGE_DISTANCE, edgeSpot, ERRANDS, ERRANDS_TO_SETTLE, GIFTS, isDawn, leavesAt, left, lockedDawn, mayStay, NAMES, newFace, nextSettlement, parseState, peopleFor, planArrival, SETTLEMENT_MIN_POSTS, SETTLEMENT_RANGE, settlements, settleTarget, STANDING_PER_ERRAND, standingProperty, ticksToLockedDawn, type Face, type VisitorsState, VISIT_EVERY_DAYS, VISIT_MISSES_BEFORE_LOST, visitLost, visitorName } from "../scripts/core/visitors";
 
 const post = (x: number, z: number, extra: Partial<PostRecord> = {}): PostRecord => ({ dimId: "minecraft:overworld", x, y: 64, z, people: 0, job: WORKER, ...FRESH, placedBy: PLACED_BY_PLAYER, ...extra });
 const first = () => 0;
@@ -177,5 +172,52 @@ describe("the visit", () => {
     expect(parseState("nonsense")).toEqual(empty);
     expect(parseState(JSON.stringify({ version: 2 }))).toEqual(empty);
     expect(parseState(undefined).faces).not.toBe(parseState(undefined).faces);
+  });
+});
+
+/**
+ * A recorded visit must not outlive its visitor (the family of issue #104).
+ *
+ * `state.visit` is cleared only when the visitor leaves at dawn, so a visitor
+ * removed by anything else - killed, despawned, or taken by a structure
+ * reload on a test world - left the settlement occupied by nobody and every
+ * later arrival was refused with "no visitor comes: visiting". Measured on
+ * the headless suite, where the clock is set per test so the leaving dawn may
+ * never come: `villages_visitor_leaves_at_dawn` failed with "expected a
+ * visitor before dawn" on a world booting `0 post(s) known`.
+ *
+ * A single miss proves nothing, though: `world.getEntity` returns nothing for
+ * an entity in an unloaded chunk exactly as it does for one that is gone.
+ */
+describe("visitLost", () => {
+  it("keeps the visit, and forgets the misses, when the visitor is found", () => {
+    expect(visitLost(true, 0)).toEqual({ lost: false, misses: 0 });
+    expect(visitLost(true, VISIT_MISSES_BEFORE_LOST - 1)).toEqual({ lost: false, misses: 0 });
+  });
+
+  it("counts a miss without giving up on the first one", () => {
+    expect(visitLost(false, 0)).toEqual({ lost: false, misses: 1 });
+  });
+
+  it("gives up only once the misses run consecutively to the threshold", () => {
+    let misses = 0;
+    for (let poll = 1; poll < VISIT_MISSES_BEFORE_LOST; poll++) {
+      const v = visitLost(false, misses);
+      expect(v.lost, `gave up after ${poll} miss(es)`).toBe(false);
+      misses = v.misses;
+    }
+    expect(visitLost(false, misses).lost).toBe(true);
+  });
+
+  it("a visitor seen between two misses starts the count over", () => {
+    let misses = visitLost(false, 0).misses;
+    misses = visitLost(false, misses).misses;
+    misses = visitLost(true, misses).misses; // walked back into a loaded chunk
+    expect(misses).toBe(0);
+    expect(visitLost(false, misses)).toEqual({ lost: false, misses: 1 });
+  });
+
+  it("needs more than one poll, so an unloaded chunk cannot clear a visit", () => {
+    expect(VISIT_MISSES_BEFORE_LOST).toBeGreaterThan(1);
   });
 });

@@ -41,8 +41,30 @@ function heads(test: Test): number {
   return headList(test).length;
 }
 
+/**
+ * Ask the pack to forget every turret it remembers near this spot, before
+ * anything is placed on it (issue #106).
+ *
+ * A structure reload restores blocks but not a pack's position-keyed records,
+ * and the runner re-runs a failed test in a *fresh server session*, which puts
+ * it back on the first spot of the column - the spot the most earlier tests
+ * have already written a record to. A turret placed there is then adopted from
+ * that record, tiers and all, so a test that means to start at ammo tier I
+ * begins at tier III: `turret_gate_holds_tipped_until_upgraded` fired the tint
+ * "at tier I", and the two gate tests found their fire charge never taken
+ * because the gate was already maxed. The re-run alone is not a clean room for
+ * records; it is the most contaminated spot in the column.
+ */
+function forgetTurret(test: Test): void {
+  const w = test.worldBlockLocation(TURRET);
+  // Radius, not the exact block: earlier tests in this column stand at the
+  // same x/z a few blocks below, and their records are what contaminate.
+  test.getDimension().runCommand(`scriptevent bulwark:forget ${w.x} ${w.y} ${w.z} 8`);
+}
+
 function placeTurret(test: Test): void {
   floor(test);
+  forgetTurret(test);
   const player = test.spawnSimulatedPlayer({ x: 2, y: 1, z: 2 }, "bw_tester", GameMode.Survival);
   player.lookAtBlock(UNDER);
   const ok = player.useItemOnBlock(item(BLOCK), UNDER, Direction.Up);

@@ -1157,7 +1157,7 @@ async function loadTexture(url) {
 
 async function show(entry) {
   requested = entry.id;
-  for (const b of document.querySelectorAll("#models button")) b.classList.toggle("active", b.dataset.id === entry.id);
+  sidebar?.reveal(entry.id);
   // Deep link. Setting the hash fires hashchange later; the listener ignores
   // the id it has already been asked for.
   if (location.hash.slice(1) !== entry.id) location.hash = entry.id;
@@ -1195,34 +1195,131 @@ function advance(dt) {
   }
 }
 
-async function main() {
-  catalog = await (await fetch("catalog.json")).json();
-  const list = el("models");
-  const buttons = [];
-  for (const entry of catalog.models) {
-    const b = document.createElement("button");
-    b.dataset.id = entry.id;
-    b.innerHTML = `${entry.name}<small>${entry.pack}</small>`;
-    b.onclick = () => show(entry);
-    list.appendChild(b);
-    buttons.push({ b, text: `${entry.name} ${entry.pack} ${entry.id}`.toLowerCase() });
-  }
+// ---------------------------------------------------------------------------
+// The sidebar list. The catalogue is 331 entries, most of them village
+// pieces, so it is shown as tabs (catalog.categories: models, buildings,
+// villages), each grouped under collapsible headings (an entry's group: its
+// pack, or its people). One group is open at a time by default, the one the
+// shown model is in; the filter searches every tab at once, opens the groups
+// with hits, counts them on each tab, and moves to a tab with hits when the
+// current one has none.
+// ---------------------------------------------------------------------------
 
-  // The list is long (every building, street and village piece): a filter.
+function buildSidebar(catalog) {
+  const tabs = el("tabs");
+  const list = el("models");
   const filter = el("filter");
   const count = el("filter-count");
-  const applyFilter = () => {
-    const q = filter.value.trim().toLowerCase();
-    let shown = 0;
-    for (const { b, text } of buttons) {
-      const hit = !q || text.includes(q);
-      b.hidden = !hit;
-      if (hit) shown++;
+  const entries = []; // { entry, button, group, panel, text }
+  const groups = []; // { details, category, buttons }
+  const tabButtons = new Map();
+  let activeTab = catalog.categories[0].id;
+
+  for (const cat of catalog.categories) {
+    const tab = document.createElement("button");
+    tab.setAttribute("role", "tab");
+    tab.dataset.cat = cat.id;
+    tab.title = cat.blurb;
+    tab.onclick = () => selectTab(cat.id);
+    tabs.appendChild(tab);
+    tabButtons.set(cat.id, tab);
+
+    const panel = document.createElement("div");
+    panel.className = "tab-panel";
+    panel.dataset.cat = cat.id;
+    list.appendChild(panel);
+
+    // Groups in first-seen order, entries in catalogue order.
+    const byGroup = new Map();
+    for (const entry of catalog.models.filter((m) => m.category === cat.id)) {
+      if (!byGroup.has(entry.group)) byGroup.set(entry.group, []);
+      byGroup.get(entry.group).push(entry);
     }
-    count.textContent = q ? `${shown} of ${buttons.length}` : `${buttons.length} models`;
-  };
+    for (const [name, members] of byGroup) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      const n = document.createElement("span");
+      n.className = "n";
+      summary.append(document.createTextNode(name), n);
+      const box = document.createElement("div");
+      box.className = "entries";
+      details.append(summary, box);
+      panel.appendChild(details);
+      const group = { details, n, category: cat.id, buttons: [], total: members.length };
+      groups.push(group);
+      // The pack line under a name only where the group mixes packs.
+      const mixed = new Set(members.map((m) => m.pack)).size > 1;
+      for (const entry of members) {
+        const b = document.createElement("button");
+        b.dataset.id = entry.id;
+        b.innerHTML = `${entry.name}${mixed ? `<small>${entry.pack}</small>` : ""}`;
+        b.onclick = () => show(entry);
+        box.appendChild(b);
+        group.buttons.push(b);
+        entries.push({ entry, button: b, group, text: `${entry.name} ${entry.pack} ${entry.group} ${entry.id}`.toLowerCase() });
+      }
+    }
+  }
+
+  function selectTab(id) {
+    activeTab = id;
+    for (const [cat, tab] of tabButtons) tab.setAttribute("aria-selected", String(cat === id));
+    for (const panel of list.querySelectorAll(".tab-panel")) panel.hidden = panel.dataset.cat !== id;
+  }
+
+  function applyFilter() {
+    const q = filter.value.trim().toLowerCase();
+    const hits = new Map(catalog.categories.map((c) => [c.id, 0]));
+    for (const e of entries) {
+      const hit = !q || e.text.includes(q);
+      e.button.hidden = !hit;
+      if (hit) hits.set(e.group.category, hits.get(e.group.category) + 1);
+    }
+    for (const g of groups) {
+      const shown = g.buttons.filter((b) => !b.hidden).length;
+      g.details.hidden = shown === 0;
+      g.n.textContent = q ? `${shown} of ${g.total}` : String(g.total);
+      if (q) g.details.open = shown > 0;
+      else g.details.open = g.buttons.some((b) => b.classList.contains("active"));
+    }
+    let total = 0;
+    for (const [cat, tab] of tabButtons) {
+      const n = hits.get(cat);
+      total += n;
+      const all = entries.filter((e) => e.group.category === cat).length;
+      tab.innerHTML = `${catalog.categories.find((c) => c.id === cat).title}<small>${q ? `${n} of ${all}` : all}</small>`;
+      tab.classList.toggle("empty", q !== "" && n === 0);
+    }
+    count.textContent = q ? `${total} of ${entries.length}` : `${entries.length} models`;
+    // A search that misses the open tab but hits another moves there.
+    if (q && hits.get(activeTab) === 0) {
+      const to = catalog.categories.find((c) => hits.get(c.id) > 0);
+      if (to) selectTab(to.id);
+    }
+  }
   filter.oninput = applyFilter;
+
+  /** Mark an entry as the shown one, on its tab, with its group open and in view. */
+  function reveal(id) {
+    for (const e of entries) e.button.classList.toggle("active", e.entry.id === id);
+    const e = entries.find((x) => x.entry.id === id);
+    if (!e) return;
+    if (!filter.value.trim()) for (const g of groups) g.details.open = g === e.group;
+    else e.group.details.open = true;
+    selectTab(e.group.category);
+    e.button.scrollIntoView({ block: "nearest" });
+  }
+
+  selectTab(activeTab);
   applyFilter();
+  return { reveal, applyFilter, selectTab };
+}
+
+let sidebar = null;
+
+async function main() {
+  catalog = await (await fetch("catalog.json")).json();
+  sidebar = buildSidebar(catalog);
 
   const byHash = () => catalog.models.find((m) => m.id === location.hash.slice(1));
   await show(byHash() ?? catalog.models[0]);

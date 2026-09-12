@@ -12,12 +12,26 @@
   h1 { font-size:15px; margin:0 0 4px; }
   .sub { color:var(--dim); font-size:12px; margin-bottom:14px; }
   h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin:16px 0 6px; }
+  #tabs { display:flex; gap:4px; margin-bottom:8px; }
+  #tabs button { flex:1; background:none; border:1px solid var(--line); color:var(--dim); padding:5px 4px; border-radius:6px; cursor:pointer; font-size:13px; }
+  #tabs button:hover { color:var(--fg); }
+  #tabs button[aria-selected="true"] { color:var(--fg); border-color:var(--accent); background:#2b2622; }
+  #tabs button.empty { opacity:.45; }
+  #tabs small { display:block; font-size:11px; }
   #filter { width:100%; box-sizing:border-box; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px 8px; margin-bottom:6px; }
   #filter-count { color:var(--dim); font-size:12px; margin-bottom:4px; }
+  .models details { margin:0 0 2px; }
+  .models summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; padding:5px 6px; border-radius:6px; color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.06em; user-select:none; }
+  .models summary::-webkit-details-marker { display:none; }
+  .models summary::before { content:"▸"; font-size:10px; width:8px; }
+  .models details[open] > summary::before { content:"▾"; }
+  .models summary:hover { background:var(--bg); color:var(--fg); }
+  .models summary .n { margin-left:auto; font-size:11px; letter-spacing:0; }
+  .models .entries { padding-left:8px; }
   .models button { display:block; width:100%; text-align:left; background:none; border:1px solid transparent; color:var(--fg); padding:6px 8px; border-radius:6px; cursor:pointer; }
   .models button:hover { border-color:var(--line); }
   .models button.active { border-color:var(--accent); background:#2b2622; }
-  .models button[hidden] { display:none; }
+  .models button[hidden], .models details[hidden], .models .tab-panel[hidden] { display:none; }
   .models small { display:block; color:var(--dim); }
   label.row { display:flex; gap:8px; align-items:center; padding:3px 0; }
   select { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px; }
@@ -38,8 +52,9 @@
 <!-- @site-nav -->
 <div id="app">
   <aside>
-    <h1>Models</h1>
-    <div class="sub">Generated geometry and atlases, straight from the repo.</div>
+    <h1>Catalogue</h1>
+    <div class="sub">Generated geometry, atlases and blueprints, straight from the repo.</div>
+    <div id="tabs" role="tablist"></div>
     <input id="filter" type="search" placeholder="filter by name or pack" autocomplete="off" />
     <div id="filter-count"></div>
     <div class="models" id="models"></div>

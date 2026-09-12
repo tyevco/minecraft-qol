@@ -226,10 +226,12 @@ measurements: `docs/villages-jigsaw-results.md`.
   cannot be moved from script, so the settler is spawned fresh at the post
   and the visitor removed. A walk that fails ends in the settler being put
   there. That people's next visitor is a new face.
-  `/scriptevent villages:visitor <status|arrive|leave|settle>` is the
-  diagnostic hatch (console or operator): `arrive` brings the next visitor
-  now, `leave` and `settle` do what they say without the form, which a
-  SimulatedPlayer cannot be shown.
+  `/scriptevent villages:visitor <status|arrive [x z]|leave|settle>` is
+  the diagnostic hatch (console or operator): `arrive` brings the next
+  visitor now, to the drawn edge spot or, with `x z`, to the ground under
+  that column (the GameTests pin it: the drawn spot is fourteen blocks out
+  and a rig's floor eight wide, issue #108); `leave` and `settle` do what
+  they say without the form, which a SimulatedPlayer cannot be shown.
 - **The plaque** on a kid's post: the post item places the block's default
   states (an item cannot choose them), so a hand-placed post is a guard's
   until it is **tapped**: each tap turns the plaque to the next job while
@@ -638,12 +640,16 @@ own ring.
   the log reading `a player placed a post ...; its record already existed
   (onPlace first)`, so the event fires for a simulated placement and after
   the block's own hook. `villages_visitor_settles` places two posts by
-  hand, brings a visitor with the hatch (a fennecfolk, since the arena
-  offers no trade), settles it, and finds a settler of the same people
-  with the `villages:kin` tag at one of the posts and no visitor left; the
-  walk from the flat ground up to the arena timed out and the fallback put
-  the settler there. `villages_visitor_leaves_at_dawn` pushes the clock
-  across midnight with `time add` and the visitor is gone within a second.
+  hand, brings a visitor with the hatch to a pinned cell of the rig's
+  floor (`arrive x z`; a drawn edge spot is fourteen blocks out and lands
+  on the flat world's surface far below, where the search found it only
+  when the sequence had stacked the cell low enough - issue #108),
+  asserts it stands on that cell, settles it, and finds a settler of the
+  same people with the `villages:kin` tag at one of the posts and no
+  visitor left; the walk across the floor now completes, where the walk
+  up from the flat ground used to time out into the fallback teleport.
+  `villages_visitor_leaves_at_dawn` pushes the clock across midnight with
+  `time add` and the visitor is gone within a second.
 - **The furfolk end to end** (`docs/villages-jigsaw-results.md`, "The
   furfolk"): `villages_post_spawns_deerfolk` spawns people 18 from a post
   at `villages:people` 2, `villages:page` 1, named `Deerfolk`; the drow and

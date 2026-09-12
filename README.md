@@ -212,8 +212,15 @@ fetches the ones the blueprints use from Mojang's public bedrock-samples
 into `.cache/` and `dist/viewer/vanilla/` (never committed), mapped through
 the game's `blocks.json`, so an unknown block identifier is reported there.
 Offline, it warns and draws coloured cubes. Serve the folder with any static server
-(`npx http-server dist/viewer`). The list is long, so there is a filter over
-name and pack, and `#<id>` deep-links a model. Switching models is a load and
+(`npx http-server dist/viewer`). The catalogue is `tools/viewer/catalog.ts`:
+every model, where it is on disk, and where it sits in the sidebar, which is
+three tabs - models (blocks and entities, by pack, concepts last), buildings
+(by people) and villages (the whole villages, then the pieces by people) -
+each grouped under collapsible headings, with the shown model's group open. A
+filter searches every tab at once, counts the hits on each, and moves to a tab
+that has some when the open one has none; `#<id>` deep-links a model and
+opens its tab and group. `tools/viewer/tests` checks that every file the
+catalogue names exists and every entry has a tab. Switching models is a load and
 then a swap: the model on screen stays until its replacement is built, the two
 change places in one frame, and the old one's buffers are freed. A click while
 a load is in flight starts a newer load and the older one is dropped when it

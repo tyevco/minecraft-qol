@@ -1,4 +1,4 @@
-import { BlockPermutation, BlockVolume, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Vector3 } from "@minecraft/server";
+import { BlockPermutation, BlockVolume, Direction, EntityComponentTypes, GameMode, ItemStack, world, type Entity, type Vector3 } from "@minecraft/server";
 import { registerAsync, type SimulatedPlayer, type Test } from "@minecraft/server-gametest";
 import { WARES } from "../../../villages/scripts/core/standing";
 import { count, floor, put, until } from "./rig";
@@ -465,6 +465,34 @@ registerAsync("qol", "villages_player_post_waits_for_settler", async (test) => {
   test.succeed();
 }).maxTicks(600).structureName("qol:arena");
 
+/**
+ * Where a test asks its visitor to arrive: a cell of the rig's floor, a few
+ * blocks from the posts. The pack's own draw puts the visitor EDGE_DISTANCE
+ * (fourteen) from the settlement's middle, and the floor is eight blocks
+ * wide, so a drawn spot never lands on it: the visitor stood on the flat
+ * world's surface at y = -60, and whether the 40-block search round AT
+ * found it depended on how high the sequence had stacked this cell
+ * (issue #108 - measured at y = 44, "found 0"). Pinning the spot makes
+ * the assertion a measurement: the visitor must stand on this floor.
+ */
+const ARRIVAL: Vector3 = { x: 0, y: 1, z: 0 };
+
+/** Bring the next visitor to the rig's floor and return it, or fail saying where the pack put it. */
+async function bringVisitor(test: Test): Promise<Entity> {
+  const w = test.worldBlockLocation(ARRIVAL);
+  test.getDimension().runCommand(`scriptevent villages:visitor arrive ${w.x} ${w.z}`);
+  const came = await until(test, () => tagged(test, VISITOR, AT, 48).length > 0, 200, 5);
+  const visitors = tagged(test, VISITOR, AT, 48);
+  test.assert(came && visitors.length === 1, `expected one visitor within 48 of the rig, found ${visitors.length}`);
+  const visitor = visitors[0]!;
+  const at = test.relativeLocation(visitor.location);
+  test.assert(
+    Math.abs(at.x - (ARRIVAL.x + 0.5)) < 1.5 && Math.abs(at.z - (ARRIVAL.z + 0.5)) < 1.5 && Math.abs(at.y - ARRIVAL.y) < 1.5,
+    `expected the visitor on the floor at ${ARRIVAL.x},${ARRIVAL.y},${ARRIVAL.z} (test-relative), found it at ${at.x.toFixed(1)},${at.y.toFixed(1)},${at.z.toFixed(1)}`,
+  );
+  return visitor;
+}
+
 // Two posts by hand make a settlement; the hatch brings the next visitor
 // now, and settles it: the visitor is gone and a settler with the kids' tag
 // stands at one of the posts, of the visitor's people.
@@ -475,16 +503,12 @@ registerAsync("qol", "villages_visitor_settles", async (test) => {
   const player = test.spawnSimulatedPlayer({ x: 6, y: 1, z: 6 }, "vl_host", GameMode.Survival);
   const a = await placeByHand(test, player, { x: 4, y: 0, z: 3 });
   const b = await placeByHand(test, player, { x: 2, y: 0, z: 5 });
-  test.getDimension().runCommand("scriptevent villages:visitor arrive");
-  for (let t = 0; t < 200 && tagged(test, VISITOR, AT, 40).length === 0; t += 5) await test.idle(5);
-  const visitors = tagged(test, VISITOR, AT, 40);
-  test.assert(visitors.length === 1, `expected one visitor at the settlement's edge, found ${visitors.length}`);
-  const visitor = visitors[0]!;
+  const visitor = await bringVisitor(test);
   const people = visitor.getProperty("villages:people");
   test.assert(typeof people === "number", `expected the visitor to have a people, got ${String(people)}`);
   test.assert(visitor.nameTag.includes(" the "), `expected the visitor named "<name> the <People>", got "${visitor.nameTag}"`);
   test.getDimension().runCommand("scriptevent villages:visitor settle");
-  // The walk from the edge may fail (the arena stands above the flat world's surface) and end in a teleport after its timeout.
+  // The walk is a few blocks across the floor now; a walk that still fails ends in a teleport after its timeout, which the pack also allows.
   test.succeedWhen(() => {
     const left = tagged(test, VISITOR, AT, 48).length;
     test.assert(left === 0, `expected the visitor gone once settled, found ${left}`);
@@ -517,9 +541,7 @@ registerAsync("qol", "villages_visitor_leaves_at_dawn", async (test) => {
   await placeByHand(test, player, { x: 2, y: 0, z: 5 });
   test.getDimension().runCommand("time set 6000");
   await test.idle(40);
-  test.getDimension().runCommand("scriptevent villages:visitor arrive");
-  for (let t = 0; t < 200 && tagged(test, VISITOR, AT, 40).length === 0; t += 5) await test.idle(5);
-  test.assert(tagged(test, VISITOR, AT, 40).length === 1, "expected a visitor before dawn");
+  await bringVisitor(test);
   test.getDimension().runCommand("time add 18000"); // 6000 + 18000 = the next day's 0: dawn
   test.succeedWhen(() => {
     const n = tagged(test, VISITOR, AT, 48).length;

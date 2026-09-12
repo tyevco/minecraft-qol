@@ -130,6 +130,15 @@ describe("the visit", () => {
     const again = planArrival({ ...empty, faces: { "9": known } }, 5, all, first);
     expect(again.kind === "arrive" && again.face).toEqual(known);
   });
+  it("comes to a pinned spot when one is given, on the settlement's level for the engine to find the ground under", () => {
+    const drawn = planArrival(empty, 5, all, first);
+    const pinned = planArrival(empty, 5, all, first, { x: 3.7, z: -2.2 });
+    if (drawn.kind !== "arrive" || pinned.kind !== "arrive") throw new Error("no plan");
+    expect(Math.round(Math.hypot(drawn.spot.x - all[0]!.centre.x, drawn.spot.z - all[0]!.centre.z))).toBe(EDGE_DISTANCE);
+    expect(pinned.spot).toEqual({ x: 3, y: all[0]!.centre.y, z: -3 });
+    expect(pinned.people).toBe(drawn.people);
+    expect(pinned.face).toEqual(drawn.face);
+  });
   it("arrives, stays the day, leaves at the next dawn, and comes back in a few days with the errand kept", () => {
     const plan = planArrival(empty, 5, all, first);
     if (plan.kind !== "arrive") throw new Error("no plan");

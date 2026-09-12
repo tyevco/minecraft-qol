@@ -19,11 +19,14 @@
  * the `villages:visitor` tag and component group (nothing can hurt it); it
  * is never looked up by a post, since it has no post tag.
  *
- * `/scriptevent villages:visitor <status|arrive|leave|settle>` is the
- * diagnostic hatch: the console, or an operator. `arrive` brings the next
- * visitor now whether or not one is due, `leave` sends it off, `settle`
- * settles it without the form, since a SimulatedPlayer cannot be shown one
- * and the GameTests need the walk and the settling exercised.
+ * `/scriptevent villages:visitor <status|arrive [x z]|leave|settle>` is
+ * the diagnostic hatch: the console, or an operator. `arrive` brings the
+ * next visitor now whether or not one is due, at the drawn edge spot or,
+ * with `x z`, on the ground under that column (a GameTest pins it: the
+ * drawn spot is fourteen blocks out and a rig's floor is eight wide, #108);
+ * `leave` sends it off, `settle` settles it without the form, since a
+ * SimulatedPlayer cannot be shown one and the GameTests need the walk and
+ * the settling exercised.
  */
 import {
   CommandPermissionLevel,
@@ -158,9 +161,9 @@ function tick(): void {
   arrive(day);
 }
 
-function arrive(day: number, force = false): void {
+function arrive(day: number, force = false, pinned?: { x: number; z: number }): void {
   const all = core.settlements(storage.all());
-  const plan = core.planArrival(force ? { ...state, nextDay: 0 } : state, day, all, Math.random);
+  const plan = core.planArrival(force ? { ...state, nextDay: 0 } : state, day, all, Math.random, pinned);
   if (plan.kind === "none") {
     if (force) log(`no visitor comes: ${plan.reason}${plan.reason === "no settlement" ? ` (${all.length} settlement(s); one needs ${core.SETTLEMENT_MIN_POSTS} posts a player placed within ${core.SETTLEMENT_RANGE} blocks)` : ""}`);
     return;
@@ -354,12 +357,20 @@ function settle(player?: Player): void {
 // The hatch
 // ---------------------------------------------------------------------------
 
-function hatch(command: string): void {
+function hatch(line: string): void {
   const day = today();
+  const [command, ...args] = line.split(/\s+/).filter((p) => p.length > 0);
   switch (command) {
-    case "arrive":
-      arrive(day, true);
+    case "arrive": {
+      // `arrive x z`: the visitor comes to the ground under that column instead of a drawn edge spot.
+      const [x, z] = args.map(Number);
+      if (args.length > 0 && (args.length !== 2 || !Number.isFinite(x) || !Number.isFinite(z))) {
+        log("villages:visitor arrive wants no arguments, or x z");
+        return;
+      }
+      arrive(day, true, args.length === 2 ? { x: x!, z: z! } : undefined);
       return;
+    }
     case "leave":
       if (state.visit) leave(day);
       else log("no visitor to send off");

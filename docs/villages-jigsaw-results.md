@@ -443,6 +443,19 @@ villages suite:
   midnight: the poll read the time of day entering 0–1000 on a later day
   and removed the visitor within a second, logging the next visit for
   day 3.
+- **The edge spot never lands on a rig's floor** (issue #108). The draw
+  is `EDGE_DISTANCE` (fourteen) from the settlement's middle and the
+  rig's `floor()` is eight blocks wide, so the visitor always stood on the
+  flat world's surface at y = −60, and the 40-block search round the cell
+  found it only while the sequence had the cell low enough: at y = 44,
+  "found 0", and a re-run alone at a low cell passed - luck, not
+  isolation. `villages:visitor arrive x z` now pins the column and the
+  engine finds the ground under it as for a drawn spot; both tests pin a
+  floor cell and assert the visitor stands on it. Measured: `arrives at
+  0,-51,3` for a floor whose surface is y = −52, three times in sequence,
+  and `settle` walked the visitor to the post (`settled at 4,-51,6`, no
+  "the walk failed; put there") where the walk up from y = −60 had timed
+  out into the teleport every time.
 - **Not measured**: the form. A SimulatedPlayer's interaction marshals no
   player into the pack, so `showForm` never runs headlessly; the errand's
   delivery, the standing property and the gift are in the villages README

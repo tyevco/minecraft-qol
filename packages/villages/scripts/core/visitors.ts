@@ -297,15 +297,23 @@ export function visitLost(found: boolean, misses: number): { lost: boolean; miss
 
 export type ArrivalPlan = { kind: "none"; reason: "visiting" | "not due" | "no settlement" } | { kind: "arrive"; settlement: Settlement; people: number; face: Face; spot: Vec };
 
-/** What dawn brings: a visitor, if one is due and there is somewhere for it to go. */
-export function planArrival(state: VisitorsState, day: number, all: readonly Settlement[], rand: () => number): ArrivalPlan {
+/**
+ * What dawn brings: a visitor, if one is due and there is somewhere for it
+ * to go. The spot is drawn on the settlement's edge unless one is pinned
+ * (`x`/`z`; the engine finds the ground under either): a GameTest pins it,
+ * because the drawn spot is EDGE_DISTANCE from the middle and a rig's floor
+ * is eight blocks wide, so a drawn one lands on the world's own surface far
+ * below the arena and the assertion was a bet on the cell's height (#108).
+ */
+export function planArrival(state: VisitorsState, day: number, all: readonly Settlement[], rand: () => number, pinned?: { x: number; z: number }): ArrivalPlan {
   if (state.visit) return { kind: "none", reason: "visiting" };
   if (day < state.nextDay) return { kind: "none", reason: "not due" };
   const settlement = nextSettlement(all, state.lastSettlement);
   if (!settlement) return { kind: "none", reason: "no settlement" };
   const people = peopleFor(settlement, rand);
   const face = state.faces[String(people)] ?? newFace(people, rand);
-  return { kind: "arrive", settlement, people, face, spot: edgeSpot(settlement.centre, rand) };
+  const spot = pinned ? { x: Math.floor(pinned.x), y: settlement.centre.y, z: Math.floor(pinned.z) } : edgeSpot(settlement.centre, rand);
+  return { kind: "arrive", settlement, people, face, spot };
 }
 
 /** The state once the visitor has arrived (the engine adds the entity id). */
